@@ -15,7 +15,7 @@ setup_args = {
     'packages': ['hera_qm'],
     #    'scripts': glob.glob('scripts/*'),
     'version': __version__,
-    'package_data': {'hera_qm': ['data/*', 'data/*/*', 'calibrations/*']},
+    #'package_data': {'hera_qm': ['data/*', 'data/*/*', 'calibrations/*']},
     #    'install_requires': ['numpy>=1.10', 'scipy', 'pyuvdata', 'astropy>1.2', 'aipy']
     #    'dependency_links': ['https://github.com/zakiali/omnical/tarball/master#egg=omnical-dev',]
     'zip_safe': False,
