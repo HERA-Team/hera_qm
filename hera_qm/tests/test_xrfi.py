@@ -3,6 +3,7 @@ import glob
 import hera_qm.xrfi as xrfi
 import numpy as np
 import pylab as plt
+import hera_qm.tests as qmtest
 
 np.random.seed(0)
 
@@ -102,7 +103,7 @@ class TestSparseScatter(Template):
 
         def rfi_gen():
             for i in xrange(NTRIALS):
-                data = np.random.normal(size=(SIZE, SIZE))
+                data = qmtest.real_noise((SIZE, SIZE))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
                 data[rfi] = NSIG
@@ -120,7 +121,7 @@ class TestDenseScatter(Template):
 
         def rfi_gen():
             for i in xrange(NTRIALS):
-                data = np.random.normal(size=(SIZE, SIZE))
+                data = qmtest.real_noise((SIZE, SIZE))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
                 data[rfi] = NSIG
@@ -140,7 +141,7 @@ class TestCluster(Template):
 
         def rfi_gen():
             for i in xrange(NTRIALS):
-                data = np.random.normal(size=(SIZE, SIZE))
+                data = qmtest.real_noise((SIZE, SIZE))
                 x, y = (np.random.randint(SIZE - 1, size=RFI),
                         np.random.randint(SIZE - 1, size=RFI))
                 x = np.concatenate([x, x, x + 1, x + 1])
@@ -163,7 +164,7 @@ class TestLines(Template):
 
         def rfi_gen():
             for i in xrange(NTRIALS):
-                data = np.random.normal(size=(SIZE, SIZE))
+                data = qmtest.real_noise((SIZE, SIZE))
                 x, y = (np.random.randint(SIZE, size=RFI),
                         np.random.randint(SIZE, size=RFI))
                 mask = np.zeros_like(data)
@@ -191,7 +192,7 @@ class TestBackground(Template):
                 sin_t.shape = (-1, 1)
                 sin_f = np.sin(np.linspace(0, 4 * np.pi, SIZE))
                 sin_f.shape = (1, -1)
-                data = 5 * sin_t * sin_f + np.random.normal(size=(SIZE, SIZE))
+                data = 5 * sin_t * sin_f + qmtest.real_noise((SIZE, SIZE))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
                 data[rfi] = NSIG
@@ -230,11 +231,6 @@ class TestBackground(Template):
 #        self.ans['detrend_medfilt'] = (.1, .1)
 #        self.ans['detrend_medminfilt'] = (.0, .35)
 #        self.ans['xrfi_simple'] = (.3, .5)
-
-
-# TODO: noise tilts
-# TODO: faint RFI
-# TODO: combination of everything
 
 
 if __name__ == '__main__':

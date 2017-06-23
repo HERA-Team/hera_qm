@@ -1,19 +1,13 @@
 import unittest
 from hera_qm import datacontainer
 import numpy as np
-
-np.random.seed(0)
-
-
-def noise(size):
-    sig = 1. / np.sqrt(2)
-    return np.random.normal(scale=sig, size=size) + 1j * np.random.normal(scale=sig, size=size)
+import hera_qm.tests as qmtest
 
 
 class TestDataContainer(unittest.TestCase):
 
     def setUp(self):
-        self.bls = [(1, 2), (2, 3), (3, 4), (1, 3), (2, 4)]  # not (3,4)
+        self.bls = [(1, 2), (2, 3), (3, 4), (1, 3), (2, 4)]  # not (1,4)
         self.pols = ['xx', 'yy']
         self.blpol = {}
         for bl in self.bls:

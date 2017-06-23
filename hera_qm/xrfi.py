@@ -1,10 +1,13 @@
-'''Module for all things Radio Frequency Interference Flagging'''
+'''
+Module for all things Radio Frequency Interference Flagging.
+Note these functions currently operate on real numbers only.
+'''
 import numpy as np
 from scipy.signal import medfilt
 
 
 def medmin(d):
-    """Calculate the median minus median statistic of array.
+    """Calculate the median minus minimum statistic of array.
 
     Args:
         d (array): 2D data array
@@ -12,7 +15,6 @@ def medmin(d):
     Returns:
         (array): array with the statistic applied.
     """
-    # return np.median(np.min(chisq,axis=0))
     mn = np.min(d, axis=0)
     return 2 * np.median(mn) - np.min(mn)
 
@@ -56,7 +58,7 @@ def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
     # mask off any points above 'sig' sigma and nan's.
     f1 = np.ma.array(d, mask=np.where(d > sig_init, 1, 0))
     f1.mask |= np.isnan(f1)
-    if not f is None:
+    if f is not None:
         f1.mask |= f
 
     # Loop over flagged points and examine adjacent points to see if they exceed sig_adj
@@ -184,12 +186,12 @@ def detrend_medfilt(d, K=8):
 
 def xrfi(d, f=None, K=8, sig_init=6, sig_adj=2):
     """Run best rfi exciion we have. Uses detrending and watershed algorithms above.
-    Args: 
+    Args:
         d (array): 2D of data array.
         f (array, optional): input flag array
         K (int, optional): Box size for detrend
         sig_init (float, optional): initial sigma to flag.
-        sig_adj (float, optional): number of sigma to flag adjacent to flagged data (sig_init) 
+        sig_adj (float, optional): number of sigma to flag adjacent to flagged data (sig_init)
 
     Returns:
         bool array: array of flags

@@ -7,7 +7,7 @@ class DataContainer:
     def __init__(self, data):
         """
         Args:
-            data (dict): dictionary of visibilities with keywords of pol/ant pair 
+            data (dict): dictionary of visibilities with keywords of pol/ant pair
                 in any order.
         """
         self._data = {}
@@ -25,7 +25,8 @@ class DataContainer:
         self._bls = set([k[:2] for k in self._data.keys()])
         self._pols = set([k[-1] for k in self._data.keys()])
 
-    def mk_key(self, bl, pol): return bl + (pol,)
+    def mk_key(self, bl, pol):
+        return bl + (pol,)
 
     def _switch_bl(self, key):
         if len(key) == 3:
@@ -45,7 +46,8 @@ class DataContainer:
         else:
             return set([pol for pol in self._pols if self.has_key(bl, pol)])
 
-    def keys(self): return self._data.keys()
+    def keys(self):
+        return self._data.keys()
 
     def __getitem__(self, key):
         if type(key) is str:  # asking for a pol
@@ -64,8 +66,11 @@ class DataContainer:
         else:
             return self.has_key(self.mk_key(args[0], args[1]))
 
-    def has_bl(self, bl): return bl in self._bls
+    def has_bl(self, bl):
+        return bl in self._bls
 
-    def has_pol(self, pol): return pol in self._pols
+    def has_pol(self, pol):
+        return pol in self._pols
 
-    def get(self, bl, pol): return self[self.mk_key(bl, pol)]
+    def get(self, bl, pol):
+        return self[self.mk_key(bl, pol)]

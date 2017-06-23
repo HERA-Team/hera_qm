@@ -1,20 +1,14 @@
 import unittest
 from hera_qm import vis_metrics
 import numpy as np
-
-np.random.seed(0)
-
-
-def noise(size):
-    sig = 1. / np.sqrt(2)
-    return np.random.normal(scale=sig, size=size) + 1j * np.random.normal(scale=sig, size=size)
+import hera_qm.tests as qmtest
 
 
 class TestMethods(unittest.TestCase):
 
     def setUp(self):
-        self.data1 = noise(size=(100, 100))
-        self.data2 = noise(size=(100, 100))
+        self.data1 = qmtest.noise(size=(100, 100))
+        self.data2 = qmtest.noise(size=(100, 100))
 
     def test_check_ants(self):
         reds = [[(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
@@ -52,27 +46,29 @@ class TestMethods(unittest.TestCase):
         wgts = {'xx': {}}
         ants = range(10)
         ant_dat = {}
+        ntimes = 100
+        nchan = 100
         for i in ants:
-            ant_dat[i] = noise(size=(100, 100)) + .1 * self.data1
-        for i, ai in enumerate(ants):
+            ant_dat[i] = qmtest.noise(size=(ntimes, nchan)) + .1 * self.data1
+        for i in ants:
             for j in ants[i:]:
                 data['xx'][(i, j)] = ant_dat[i] * ant_dat[j].conj()
-                wgts['xx'][(i, j)] = np.ones((100, 100), dtype=float)
+                wgts['xx'][(i, j)] = np.ones((ntimes, nchan), dtype=float)
         nos = vis_metrics.check_noise_variance(data, wgts, 1., 1.)
         for bl in data['xx']:
             n = nos[bl + ('xx',)]
-            self.assertEqual(n.shape, (100 - 1,))
+            self.assertEqual(n.shape, (nchan - 1,))
             np.testing.assert_almost_equal(n, np.ones_like(n), 0)
         nos = vis_metrics.check_noise_variance(data, wgts, 1., 10.)
         for bl in data['xx']:
             n = nos[bl + ('xx',)]
-            self.assertEqual(n.shape, (100 - 1,))
+            self.assertEqual(n.shape, (nchan - 1,))
             np.testing.assert_almost_equal(n, 10 * np.ones_like(n), -1)
         nos = vis_metrics.check_noise_variance(data, wgts, 10., 10.)
         for bl in data['xx']:
             n = nos[bl + ('xx',)]
-            self.assertEqual(n.shape, (100 - 1,))
-            np.testing.assert_almost_equal(n, 106 * np.ones_like(n), -2)
+            self.assertEqual(n.shape, (nchan - 1,))
+            np.testing.assert_almost_equal(n, 100 * np.ones_like(n), -2)
 
 
 if __name__ == '__main__':

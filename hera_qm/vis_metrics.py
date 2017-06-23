@@ -1,6 +1,7 @@
 import numpy as np
 from hera_qm.datacontainer import DataContainer
 
+
 def _count_flags(m, labels):
     '''
     Count flags in an "inside-out" way that doesn't penalize well-performing
