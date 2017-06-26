@@ -1,0 +1,22 @@
+# Distribution and Packaging
+*.pyc
+*.DS_Store
+build/
+dist/
+*.coverage
+*.egg-info/
+
+# Sphinx documentation
+docs/_build
+docs/_static
+docs/_templates
+
+# Data files (can override if necessary)
+hera_qm/data/test_output/*
+
+# Test notebooks
+hera_qm/notebooks
+hera_qm/.ipynb_checkpoints/
+
+# Test coverage
+hera_qm/tests/cover
