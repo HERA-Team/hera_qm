@@ -6,6 +6,7 @@ from pyuvdata import UVCal
 from pyuvdata import UVData
 from hera_cal import firstcal
 from hera_qm.datacontainer import DataContainer
+import json
 
 
 #######################################################################
