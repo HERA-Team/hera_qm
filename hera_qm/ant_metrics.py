@@ -286,7 +286,7 @@ class Antenna_Metrics():
         
         self.data = DataContainer(data)
         self.ants = sorted(list(set([bl[0] for bl in self.data.bls()]).union(set([bl[1] for bl in self.data.bls()]))))
-        self.antpols = list(set(''.join(pols)))
+        self.antpols = list(set(''.join(self.pols)))
         self.reds = reds
         if len(self.antpols) is not 2 or len(self.pols) is not 4:
             raise ValueError, 'Missing polarization information. pols =' + str(self.pols) + ' and antpols = ' + str(self.antpols)
