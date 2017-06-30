@@ -232,28 +232,6 @@ def load_antenna_metrics(metricsJSONFile):
         jsonMetrics = json.load(infile)
     return {key: eval(str(val)) for key,val in jsonMetrics.items()}
 
-def plot_metric(metrics, ants=None, antpols=None, title='', ylabel='Modified z-Score', xlabel=''):
-    '''Helper function for quickly plotting an individual antenna metric.'''
-
-    if ants is None:
-        ants = list(set([key[0] for key in metrics.keys()]))
-    if antpols is None:
-        antpols = list(set([key[1] for key in metrics.keys()]))
-    
-    plt.figure()    
-    for antpol in antpols:
-        for i,ant in enumerate(ants):
-            metric = 0
-            if metrics.has_key((ant,antpol)):
-                metric = metrics[(ant,antpol)]
-            plt.plot(i,metric,'.')
-            plt.annotate(str(ant)+antpol,xy=(i,metrics[(ant,antpol)]))
-        plt.gca().set_prop_cycle(None)
-    plt.title(title)
-    plt.ylabel(ylabel)
-    plt.xlabel(xlabel)
-
-
 
 #######################################################################
 #High level functionality for HERA
