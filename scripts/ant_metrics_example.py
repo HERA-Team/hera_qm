@@ -31,6 +31,27 @@ am.save_antenna_metrics(metricsJSONFilename)
 
 #Load results and plot them.
 
+def plot_metric(metrics, ants=None, antpols=None, title='', ylabel='Modified z-Score', xlabel=''):
+    '''Helper function for quickly plotting an individual antenna metric.'''
+
+    if ants is None:
+        ants = list(set([key[0] for key in metrics.keys()]))
+    if antpols is None:
+        antpols = list(set([key[1] for key in metrics.keys()]))
+    
+    plt.figure()    
+    for antpol in antpols:
+        for i,ant in enumerate(ants):
+            metric = 0
+            if metrics.has_key((ant,antpol)):
+                metric = metrics[(ant,antpol)]
+            plt.plot(i,metric,'.')
+            plt.annotate(str(ant)+antpol,xy=(i,metrics[(ant,antpol)]))
+        plt.gca().set_prop_cycle(None)
+    plt.title(title)
+    plt.ylabel(ylabel)
+    plt.xlabel(xlabel)
+
 metrics_results = ant_metrics.load_antenna_metrics(metricsJSONFilename)
 if plotFinalMetrics:
     ant_metrics.plot_metric(metrics_results['final_mod_z_scores']['meanVij'], 
