@@ -60,6 +60,12 @@ class DataContainer:
             except(KeyError):
                 return np.conj(self._data[self._switch_bl(key)])
 
+    def get_data(self, *args):
+        if len(args) > 1:
+            return self.__getitem__(tuple(args))
+        else:
+            return self.__getitem__(*args)
+
     def has_key(self, *args):
         if len(args) == 1:
             return self._data.has_key(args[0]) or self._data.has_key(self._switch_bl(args[0]))
