@@ -3,7 +3,6 @@ from hera_qm import datacontainer
 import numpy as np
 import hera_qm.tests as qmtest
 
-
 class TestDataContainer(unittest.TestCase):
 
     def setUp(self):
@@ -85,16 +84,24 @@ class TestDataContainer(unittest.TestCase):
         self.assertEqual(dc[(2, 1, 'xx')], -1j)
         self.assertEqual(dc[(1, 2)], {'xx': 1j, 'yy': 1j})
         self.assertEqual(set(dc['xx'].keys()), set(self.bls))
+        self.assertEqual(dc[(1, 2, 'xx')], dc.get_data((1, 2, 'xx')))
+        self.assertEqual(dc[(1, 2, 'xx')], dc.get_data(1, 2, 'xx'))
         dc = datacontainer.DataContainer(self.polbl)
         self.assertEqual(dc[(1, 2, 'xx')], 1j)
         self.assertEqual(dc[(2, 1, 'xx')], -1j)
         self.assertEqual(dc[(1, 2)], {'xx': 1j, 'yy': 1j})
         self.assertEqual(set(dc['xx'].keys()), set(self.bls))
+        self.assertEqual(dc[(2, 1, 'xx')], dc.get_data((2, 1, 'xx')))
+        self.assertEqual(dc[(2, 1, 'xx')], dc.get_data(2, 1, 'xx'))
         dc = datacontainer.DataContainer(self.both)
         self.assertEqual(dc[(1, 2, 'xx')], 1j)
         self.assertEqual(dc[(2, 1, 'xx')], -1j)
         self.assertEqual(dc[(1, 2)], {'xx': 1j, 'yy': 1j})
         self.assertEqual(set(dc['xx'].keys()), set(self.bls))
+        self.assertEqual(dc[(1, 2)], dc.get_data((1, 2)))
+        self.assertEqual(dc[(1, 2)], dc.get_data(1, 2))
+
+
 
     def test_has_key(self):
         dc = datacontainer.DataContainer(self.blpol)
