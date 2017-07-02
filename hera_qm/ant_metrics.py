@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import aipy as a 
 from copy import deepcopy
-from pyuvdata import UVCal
 from pyuvdata import UVData
 from hera_cal import firstcal
 from hera_qm.datacontainer import DataContainer
@@ -29,14 +28,15 @@ def per_antenna_modified_z_scores(metric):
                 #this factor makes it comparable to a standard z-score for gaussian data
     return zscores
 
-def mean_Vij_metrics(data, pols, antpols, ants, xants=[], rawMetric=False):
+def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
     '''Calculates how an antennas's average |Vij| deviates from others.
 
     Arguments:
-    data -- data for all polarizations in the DataContainer format
+    data -- data for all polarizations in a format that can support data.get_data(i,j,pol)
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
+    bls -- List of tuples of antenna pairs.
     xants -- list of antennas in the (ant,antpol) format that should be ignored.
     rawMetric -- return the raw mean Vij metric instead of the modified z-score
 
@@ -48,13 +48,12 @@ def mean_Vij_metrics(data, pols, antpols, ants, xants=[], rawMetric=False):
     
     absVijMean = {(ant,antpol):0.0 for ant in ants for antpol in antpols if (ant,antpol) not in xants}
     visCounts = deepcopy(absVijMean)
-    
-    for (i,j) in data.bls():
+    for (i,j) in bls:
         if i != j:
             for pol in pols:
                 for ant, antpol in zip((i,j), pol):
                     if (ant,antpol) not in xants:
-                        absVijMean[(ant,antpol)] += np.abs(data[i,j,pol])
+                        absVijMean[(ant,antpol)] += np.abs(data.get_data(i,j,pol))
                         visCounts[(ant,antpol)] += 1
     timeFreqMeans = {key: np.nanmean(absVijMean[key] / visCounts[key]) for key in absVijMean.keys()}
 
@@ -68,7 +67,7 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
     with others they are nominmally redundant with.
 
     Arguments:
-    data -- data for all polarizations in the DataContainer format
+    data -- data for all polarizations in a format that can support data.get_data(i,j,pol)
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
@@ -87,8 +86,8 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
     autoPower ={} 
     for pol in pols:
         for bls in reds:
-            for bl in bls:
-                autoPower[bl[0],bl[1],pol] = np.median(np.sum(np.abs(data.get(bl,pol))**2, axis=0))
+            for (i,j) in bls:
+                autoPower[i,j,pol] = np.median(np.sum(np.abs(data.get_data(i,j,pol))**2, axis=0))
 
     #Compute power correlations and assign them to each antenna
     antCorrs = {(ant,antpol):0.0 for ant in ants for antpol in antpols if (ant,antpol) not in xants}
@@ -102,9 +101,9 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
             if (not crossPol and (pol0 is pol1)) or (crossPol and onlyOnePolCrossed):
                 for bls in reds:
                     for n,(ant0_i,ant0_j) in enumerate(bls):
-                        data0 = data.get((ant0_i,ant0_j),pol0)
+                        data0 = data.get_data(ant0_i,ant0_j,pol0)
                         for (ant1_i,ant1_j) in bls[n+1:]:
-                            data1 = data.get((ant1_i,ant1_j),pol1)
+                            data1 = data.get_data(ant1_i,ant1_j,pol1)
                             corr = np.median(np.abs(np.sum(data0*data1.conj(), axis=0)))
                             corr /= np.sqrt(autoPower[ant0_i,ant0_j,pol0] 
                                             * autoPower[ant1_i,ant1_j,pol1])
@@ -151,15 +150,16 @@ def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics, xants=[]):
     return crossPolRatio
 
 
-def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, xants=[], rawMetric=False):
+def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
     '''Find which antennas are outliers based on the ratio of mean cross-pol visibilities to 
     mean same-pol visibilities: (Vxy+Vyx)/(Vxx+Vyy).
 
     Arguments:
-    data -- data for all polarizations in the DataContainer format
+    data -- data for all polarizations in a format that can support data.get_data(i,j,pol)
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
+    bls -- List of tuples of antenna pairs.
     xants -- list of antennas in the (ant,antpol) format that should be ignored. If, e.g., (81,'y')
             is excluded, (81,'x') cannot be identified as cross-polarized and will be excluded.
     rawMetric -- return the raw power ratio instead of the modified z-score
@@ -174,8 +174,8 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, xants=[], rawMetric=Fa
     samePols = [pol for pol in pols if pol[0] == pol[1]]
     crossPols = [pol for pol in pols if pol[0] != pol[1]]
     full_xants = exclude_partially_excluded_ants(antpols, xants)
-    meanVijMetricsSame = mean_Vij_metrics(data, samePols, antpols, ants, xants=full_xants, rawMetric=True)
-    meanVijMetricsCross = mean_Vij_metrics(data, crossPols, antpols, ants, xants=full_xants, rawMetric=True)
+    meanVijMetricsSame = mean_Vij_metrics(data, samePols, antpols, ants, bls, xants=full_xants, rawMetric=True)
+    meanVijMetricsCross = mean_Vij_metrics(data, crossPols, antpols, ants, bls, xants=full_xants, rawMetric=True)
 
     # Compute the ratio of the cross/same metrics, saving the same value in each antpol
     crossPolRatio = antpol_metric_sum_ratio(ants, antpols, meanVijMetricsCross, meanVijMetricsSame, xants=full_xants)
@@ -184,13 +184,12 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, xants=[], rawMetric=Fa
     else:
         return per_antenna_modified_z_scores(crossPolRatio)
 
-    
 def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False):
     '''Find which antennas are part of visibilities that are significantly better correlated with 
     polarization-flipped visibilities in a redundant group. Returns the modified z-score.
 
     Arguments:
-    data -- data for all polarizations in the DataContainer format
+    data -- data for all polarizations in a format that can support data.get_data(i,j,pol)
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
@@ -266,29 +265,25 @@ class Antenna_Metrics():
     an iterative method for identifying one bad antenna at a time while keeping track of all 
     metrics, and for writing metrics to a JSON.'''
     
-    def __init__(self, dataFileDict, reds):
+    def __init__(self, dataFileList, reds):
         '''Arguments:
-        dataFileDict -- Dictionary of miriad data filenames index by visibility polarization strings
+        dataFileList -- List of miriad data filenames for the different polarizations
         reds -- List of lists of tuples of antenna numbers that make up redundant baseline groups
         '''
         
-        self.pols = dataFileDict.keys()
-        #TODO: eventually, this should be handled in a more pyuvdata-consistent way
-        data, flags = {}, {}
-        for pol in self.pols:
-            uv_in = UVData()
-            uv_in.read_miriad(dataFileDict[pol])
-            datapack, flagpack = firstcal.UVData_to_dict([uv_in])
-            #TODO: update this class to support flagged arrays once we start using pyuvdata more thoroughly
-            if len(data) == 0: 
-                data = datapack
-            else:
-                for key in datapack: data[key].update(datapack[key])
-        
-        self.data = DataContainer(data)
-        self.ants = sorted(list(set([bl[0] for bl in self.data.bls()]).union(set([bl[1] for bl in self.data.bls()]))))
-        self.antpols = list(set(''.join(self.pols)))
+        self.data = UVData()
+        self.data.read_miriad(dataFileList)
+        self.ants = self.data.get_ants()
+        self.pols = [pol.lower() for pol in self.data.get_pols()]
+        self.antpols = [antpol.lower() for antpol in self.data.get_feedpols()]
+        self.bls = [(i,j) for (i,j,pol) in self.data.get_antpairpols()]
         self.reds = reds
+
+        #Temporary solution to keep using data containers until pyuvdata gets faster
+        self.uvdata = self.data
+        datapack, flagspack = firstcal.UVData_to_dict([self.uvdata])
+        self.data = DataContainer(datapack)
+
         if len(self.antpols) is not 2 or len(self.pols) is not 4:
             raise ValueError, 'Missing polarization information. pols =' + str(self.pols) + ' and antpols = ' + str(self.antpols)
 
@@ -297,7 +292,7 @@ class Antenna_Metrics():
 
         if pols is None:
             pols = self.pols
-        return mean_Vij_metrics(self.data, pols, self.antpols, self.ants, xants=xants, rawMetric=rawMetric)
+        return mean_Vij_metrics(self.data, pols, self.antpols, self.ants, self.bls, xants=xants, rawMetric=rawMetric)
 
 
     def red_corr_metrics(self, pols=None, xants=[], rawMetric=False, crossPol=False):
@@ -310,7 +305,7 @@ class Antenna_Metrics():
     def mean_Vij_cross_pol_metrics(self, xants=[], rawMetric=False):
         '''Local wrapper for mean_Vij_cross_pol_metrics in hera_qm.ant_metrics module.'''
         
-        return mean_Vij_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants, xants=xants, rawMetric=rawMetric)
+        return mean_Vij_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants, self.bls, xants=xants, rawMetric=rawMetric)
 
 
     def red_corr_cross_pol_metrics(self, xants=[], rawMetric=False):
@@ -371,8 +366,8 @@ class Antenna_Metrics():
             worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt])/deadCut
 
             # Most likely cross-polarized antenna 
-            crossMetrics = average_metrics(self.allModzScores[-1]['meanVijXPol'], 
-                                           self.allModzScores[-1]['redCorrXPol'])    
+            crossMetrics = average_metrics(self.allModzScores[-1]['meanVijXPol'],
+                                           self.allModzScores[-1]['redCorrXPol'])
             worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
             worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt])/crossCut
             
