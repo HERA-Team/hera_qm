@@ -19,7 +19,7 @@ def medmin(d):
     return 2 * np.median(mn) - np.min(mn)
 
 
-def medminfilt(d, K=8):
+def medminfilt(d, K=8, complex=False):
     """Filter an array on scales of K indexes with medmin.
 
     Args:
@@ -30,12 +30,20 @@ def medminfilt(d, K=8):
         array: filtered array. Same shape as input array.
     """
     d_sm = np.empty_like(d)
-    for i in xrange(d.shape[0]):
-        for j in xrange(d.shape[1]):
-            i0, j0 = max(0, i - K), max(0, j - K)
-            i1, j1 = min(d.shape[0], i + K), min(d.shape[1], j + K)
-            d_sm[i, j] = medmin(d[i0:i1, j0:j1])
-    return d_sm
+    if complex:
+        for i in xrange(d.shape[0]):
+            for j in xrange(d.shape[1]):
+                i0, j0 = max(0, i - K), max(0, j - K)
+                i1, j1 = min(d.shape[0], i + K), min(d.shape[1], j + K)
+                d_sm[i, j] = medmin(d[i0:i1, j0:j1].real) + 1j*medmin(d[i0:i1, j0:j1].imag)
+        return d_sm
+    else:
+        for i in xrange(d.shape[0]):
+            for j in xrange(d.shape[1]):
+                i0, j0 = max(0, i - K), max(0, j - K)
+                i1, j1 = min(d.shape[0], i + K), min(d.shape[1], j + K)
+                d_sm[i, j] = medmin(d[i0:i1, j0:j1])
+        return d_sm
 
 
 def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
@@ -144,7 +152,7 @@ def detrend_deriv(d, dt=True, df=True):
     return d_dt / sig
 
 
-def detrend_medminfilt(d, K=8):
+def detrend_medminfilt(d, K=8, complex=False):
     """Detrend array using medminfilt statistic. See medminfilt.
 
     Args:
@@ -154,13 +162,22 @@ def detrend_medminfilt(d, K=8):
     Returns:
         bool array: boolean array of flags
     """
-    d_sm = medminfilt(np.abs(d), 2 * K + 1)
-    d_rs = d - d_sm
-    d_sq = np.abs(d_rs)**2
+    if complex:
+        d_sm = medminfilt(np.abs(d)*np.angle(d), 2*K + 1)
+        d_rs = d - d_sm
+        d_sq = np.abs(d_rs)**2
+        # puts minmed on same scale as average
+        sig = np.sqrt(medminfilt(d_sq, 2 * K + 1,complex=True)) * (K / .64)
+        f = d_rs / sig
+        return f
+    else:
+        d_sm = medminfilt(np.abs(d), 2 * K + 1)
+        d_rs = d - d_sm
+        d_sq = np.abs(d_rs)**2
     # puts minmed on same scale as average
-    sig = np.sqrt(medminfilt(d_sq, 2 * K + 1)) * (K / .64)
-    f = d_rs / sig
-    return f
+        sig = np.sqrt(medminfilt(d_sq, 2 * K + 1)) * (K / .64)
+        f = d_rs / sig
+        return f
 
 
 def detrend_medfilt(d, K=8):
@@ -179,6 +196,7 @@ def detrend_medfilt(d, K=8):
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts median on same scale as average
+    # .456 scaling?
     sig = np.sqrt(medfilt(d_sq, 2 * K + 1) / .456)
     f = d_rs / sig
     return f[K:-K, K:-K]
