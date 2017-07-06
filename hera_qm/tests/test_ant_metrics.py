@@ -111,7 +111,7 @@ class Test_Antenna_Metrics(unittest.TestCase):
         # internal names for summary statistics
         self.summaryStats = ['xants', 'crossedAntsRemoved', 'deadAntsRemoved', 'removalIter', 
                              'finalMetrics', 'allMetrics', 'finalModzScores', 'allModzScores',
-                             'crossCut', 'deadCut']
+                             'crossCut', 'deadCut', 'dataFileList', 'reds']
 
     def test_nPos(self):
         with self.assertRaises(ValueError):
@@ -138,9 +138,9 @@ class Test_Antenna_Metrics(unittest.TestCase):
         self.am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
         loaded = ant_metrics.load_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
         # json names for summary statistics
-        jsonStats = ['xants', 'ants_removed_as_crossed', 'ants_removed_as_dead', 'removal_iteration',
+        jsonStats = ['xants', 'crossed_ants', 'dead_ants', 'removal_iteration',
                      'final_metrics', 'all_metrics', 'final_mod_z_scores', 'all_mod_z_scores', 
-                     'cross_pol_z_cut', 'dead_ant_z_cut']
+                     'cross_pol_z_cut', 'dead_ant_z_cut', 'datafile_list', 'reds']
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
             self.assertEqual(loaded[jsonStat], getattr(self.am, stat))
 

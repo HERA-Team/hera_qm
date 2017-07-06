@@ -259,6 +259,7 @@ class Antenna_Metrics():
         self.pols = [pol.lower() for pol in self.data.get_pols()]
         self.antpols = [antpol.lower() for antpol in self.data.get_feedpols()]
         self.bls = list(set([(i,j) for (i,j,pol) in self.data.get_antpairpols()]))
+        self.dataFileList = dataFileList
         self.reds = reds
 
         # For using data containers until pyuvdata gets faster
@@ -380,8 +381,8 @@ class Antenna_Metrics():
             raise KeyError('Must run AntennaMetrics.iterative_antenna_metrics_and_flagging() first.')
         
         allMetricsData = {'xants': str(self.xants)}
-        allMetricsData['ants_removed_as_crossed'] = str(self.crossedAntsRemoved)
-        allMetricsData['ants_removed_as_dead'] = str(self.deadAntsRemoved)
+        allMetricsData['crossed_ants'] = str(self.crossedAntsRemoved)
+        allMetricsData['dead_ants'] = str(self.deadAntsRemoved)
         allMetricsData['final_metrics'] = str(self.finalMetrics)
         allMetricsData['all_metrics'] = str(self.allMetrics)
         allMetricsData['final_mod_z_scores'] = str(self.finalModzScores)
@@ -389,6 +390,8 @@ class Antenna_Metrics():
         allMetricsData['removal_iteration'] = str(self.removalIter)
         allMetricsData['cross_pol_z_cut'] = str(self.crossCut)
         allMetricsData['dead_ant_z_cut'] = str(self.deadCut)
-        
+        allMetricsData['datafile_list'] = str(self.dataFileList)
+        allMetricsData['reds'] = str(self.reds)
+
         with open(metricsJSONFilename, 'w') as outfile:
             json.dump(allMetricsData, outfile, indent=4)
