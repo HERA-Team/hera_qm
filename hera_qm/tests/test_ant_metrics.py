@@ -133,6 +133,8 @@ class Test_Antenna_Metrics(unittest.TestCase):
             self.assertTrue(hasattr(self.am, stat))
         self.assertIn((81,'x'), self.am.xants)
         self.assertIn((81,'y'), self.am.xants)
+        self.assertIn((81,'x'), self.am.deadAntsRemoved)
+        self.assertIn((81,'y'), self.am.deadAntsRemoved)
 
     def test_save_and_load_antenna_metrics(self):
         self.am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
@@ -143,6 +145,17 @@ class Test_Antenna_Metrics(unittest.TestCase):
                      'cross_pol_z_cut', 'dead_ant_z_cut', 'datafile_list', 'reds']
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
             self.assertEqual(loaded[jsonStat], getattr(self.am, stat))
+
+    def test_cross_detection(self):
+        am2 = ant_metrics.Antenna_Metrics(self.am.dataFileList, self.am.reds, fileformat='miriad')
+        am2.iterative_antenna_metrics_and_flagging(crossCut=3, deadCut=10)
+        for stat in self.summaryStats:
+            self.assertTrue(hasattr(am2, stat))
+        self.assertIn((81,'x'), am2.xants)
+        self.assertIn((81,'y'), am2.xants)
+        self.assertIn((81,'x'), am2.crossedAntsRemoved)
+        self.assertIn((81,'y'), am2.crossedAntsRemoved)
+
 
 if __name__ == '__main__':
     unittest.main()
