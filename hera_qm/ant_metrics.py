@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 import aipy as a 
 from copy import deepcopy
 from pyuvdata import UVData
-from hera_cal import firstcal
-from hera_qm.datacontainer import DataContainer
 import json
 
 
@@ -217,12 +215,12 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[], rawMet
     else:
         return per_antenna_modified_z_scores(crossPolRatio)
 
-def average_metrics(metrics1, metrics2):
-    '''Averages two metrics together.'''
+def average_abs_metrics(metrics1, metrics2):
+    '''Averages the absolute value of two metrics together.'''
     
     if set(metrics1.keys()) != set(metrics2.keys()):
-        raise KeyError, 'Metrics being averaged have differnt (ant,antpol) keys.'
-    return {key: metrics1[key]/2 + metrics2[key]/2 for key in metrics1.keys()}
+        raise KeyError('Metrics being averaged have differnt (ant,antpol) keys.')
+    return {key: np.abs(metrics1[key]/2) + np.abs(metrics2[key]/2) for key in metrics1.keys()}
 
 def load_antenna_metrics(metricsJSONFile):
     '''Loads all cut decisions and meta-metrics from a JSON into python dictionary.'''
@@ -239,7 +237,6 @@ def plot_metric(metrics, ants=None, antpols=None, title='', ylabel='Modified z-S
     if antpols is None:
         antpols = list(set([key[1] for key in metrics.keys()]))
     
-    plt.figure()    
     for antpol in antpols:
         for i,ant in enumerate(ants):
             metric = 0
@@ -265,27 +262,35 @@ class Antenna_Metrics():
     an iterative method for identifying one bad antenna at a time while keeping track of all 
     metrics, and for writing metrics to a JSON.'''
     
-    def __init__(self, dataFileList, reds):
+    def __init__(self, dataFileList, reds, fileformat='miriad'):
         '''Arguments:
-        dataFileList -- List of miriad data filenames for the different polarizations
+        dataFileList -- List of data filenames for the different polarizations
         reds -- List of lists of tuples of antenna numbers that make up redundant baseline groups
+        format -- default miriad. Otheqr options: uvfits
         '''
         
         self.data = UVData()
-        self.data.read_miriad(dataFileList)
+        if fileformat is 'miriad':
+            self.data.read_miriad(dataFileList)
+        elif fileformat is 'uvfits':
+            self.data.read_uvfits(dataFileList)
+        else:
+            raise ValueError('Unrecognized file format' + str(fileformat))
         self.ants = self.data.get_ants()
         self.pols = [pol.lower() for pol in self.data.get_pols()]
         self.antpols = [antpol.lower() for antpol in self.data.get_feedpols()]
-        self.bls = [(i,j) for (i,j,pol) in self.data.get_antpairpols()]
+        self.bls = list(set([(i,j) for (i,j,pol) in self.data.get_antpairpols()]))
         self.reds = reds
 
-        #Temporary solution to keep using data containers until pyuvdata gets faster
-        self.uvdata = self.data
-        datapack, flagspack = firstcal.UVData_to_dict([self.uvdata])
-        self.data = DataContainer(datapack)
+        # For using data containers until pyuvdata gets faster
+        # from hera_cal import firstcal
+        # from hera_qm.datacontainer import DataContainer
+        # self.uvdata = self.data
+        # datapack, flagspack = firstcal.UVData_to_dict([self.uvdata])
+        # self.data = DataContainer(datapack)
 
         if len(self.antpols) is not 2 or len(self.pols) is not 4:
-            raise ValueError, 'Missing polarization information. pols =' + str(self.pols) + ' and antpols = ' + str(self.antpols)
+            raise ValueError('Missing polarization information. pols =' + str(self.pols) + ' and antpols = ' + str(self.antpols))
 
     def mean_Vij_metrics(self, pols=None, xants=[], rawMetric=False):
         '''Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module.'''
@@ -360,17 +365,17 @@ class Antenna_Metrics():
             self._run_all_metrics()
             
             # Mostly likely dead antenna
-            deadMetrics = average_metrics(self.allModzScores[-1]['meanVij'], 
-                                          self.allModzScores[-1]['redCorr'])
-            worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
+            deadMetrics = average_abs_metrics(self.allModzScores[-1]['meanVij'], 
+                                              self.allModzScores[-1]['redCorr'])
+            worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
             worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt])/deadCut
 
             # Most likely cross-polarized antenna 
-            crossMetrics = average_metrics(self.allModzScores[-1]['meanVijXPol'],
-                                           self.allModzScores[-1]['redCorrXPol'])
+            crossMetrics = average_abs_metrics(self.allModzScores[-1]['meanVijXPol'],
+                                               self.allModzScores[-1]['redCorrXPol'])
             worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
             worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt])/crossCut
-            
+
             # Find the single worst antenna, remove it, log it, and run again
             if worstCrossCutRatio >= worstDeadCutRatio and worstCrossCutRatio >= 1.0:
                 for antpol in self.antpols:
@@ -393,11 +398,11 @@ class Antenna_Metrics():
         back into a dictionary using hera_qm.ant_metrics.load_antenna_metrics().'''
         
         if not hasattr(self, 'xants'): 
-            raise KeyError, 'Must run AntennaMetrics.iterative_antenna_metrics_and_flagging() first.'
+            raise KeyError('Must run AntennaMetrics.iterative_antenna_metrics_and_flagging() first.')
         
         allMetricsData = {'xants': str(self.xants)}
-        allMetricsData['ants_removed_as_crossed'] = str(self.deadAntsRemoved)
-        allMetricsData['ants_removed_as_dead'] = str(self.crossedAntsRemoved)
+        allMetricsData['ants_removed_as_crossed'] = str(self.crossedAntsRemoved)
+        allMetricsData['ants_removed_as_dead'] = str(self.deadAntsRemoved)
         allMetricsData['final_metrics'] = str(self.finalMetrics)
         allMetricsData['all_metrics'] = str(self.allMetrics)
         allMetricsData['final_mod_z_scores'] = str(self.finalModzScores)
