@@ -4,7 +4,7 @@ Note these functions currently operate on real numbers only.
 '''
 import numpy as np
 from scipy.signal import medfilt
-
+from collections import Counter
 
 class RFI:
     def __init__(self,pyuvObject):
@@ -25,8 +25,15 @@ class RFI:
         if f != None:
             return np.sum(flagarr[:,f])/(1.*len(flagarr[:,f]))
         
-
-
+    def datastats(self):
+        data = np.abs(self.d)
+        bins = 100#np.int(np.max(data) - np.min(data))
+        counts = Counter(data.ravel())
+        count_arr = np.zeros(bins)
+        for i in sorted(counts):
+            count_arr[i] = counts[i]
+        return count_arr
+            
     def medmin(self,d=None):
         """Calculate the median minus minimum statistic of array.
 
