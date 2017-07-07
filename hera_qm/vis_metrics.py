@@ -1,6 +1,7 @@
 import numpy as np
 from hera_qm.datacontainer import DataContainer
 
+
 def check_noise_variance(data, wgts, bandwidth, inttime):
     """XXX"""
     dc = DataContainer(data)
