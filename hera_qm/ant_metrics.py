@@ -51,9 +51,10 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
             for pol in pols:
                 for ant, antpol in zip((i,j), pol):
                     if (ant,antpol) not in xants:
-                        absVijMean[(ant,antpol)] += np.abs(data.get_data(i,j,pol))
-                        visCounts[(ant,antpol)] += 1
-    timeFreqMeans = {key: np.nanmean(absVijMean[key] / visCounts[key]) for key in absVijMean.keys()}
+                        d = data.get_data(i,j,pol)
+                        absVijMean[(ant,antpol)] += np.nansum(np.abs(d))
+                        visCounts[(ant,antpol)] += d.size
+    timeFreqMeans = {key: absVijMean[key] / visCounts[key] for key in absVijMean.keys()}
 
     if rawMetric: 
         return timeFreqMeans
@@ -61,7 +62,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
         return per_antenna_modified_z_scores(timeFreqMeans)
 
 def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False, crossPol=False):
-    '''Calculates the extent to which baselines involving an antenna don't correlated
+    '''Calculates the extent to which baselines involving an antenna do not correlate
     with others they are nominmally redundant with.
 
     Arguments:
@@ -140,7 +141,7 @@ def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics, xants=[]):
     antenna metric with the same value in both polarizations for each antenna.'''
     crossPolRatio = {}
     for ant in ants: 
-        if (ant,antpols[0]) not in xants:
+        if np.all([(ant,antpol) not in xants for antpol in antpols]):
             crossSum = np.sum([crossMetrics[(ant,antpol)] for antpol in antpols])
             sameSum = np.sum([sameMetrics[(ant,antpol)] for antpol in antpols])
             for antpol in antpols: 
@@ -239,13 +240,15 @@ class Antenna_Metrics():
     '''Object for holding relevant visibility data and metadata with interfaces to four 
     antenna metrics (two for identifying dead antennas, two for identifying cross-polarized ones), 
     an iterative method for identifying one bad antenna at a time while keeping track of all 
-    metrics, and for writing metrics to a JSON.'''
+    metrics, and for writing metrics to a JSON. Works on raw data from a single observation
+    with all four visibility polarizations.'''
     
     def __init__(self, dataFileList, reds, fileformat='miriad'):
         '''Arguments:
-        dataFileList -- List of data filenames for the different polarizations
+        dataFileList -- List of data filenames of the four different visibility 
+                        polarizations for the same observation
         reds -- List of lists of tuples of antenna numbers that make up redundant baseline groups
-        format -- default miriad. Otheqr options: uvfits
+        format -- default 'miriad'. Other options: 'uvfits', 'fhd', 'ms ' (see pyuvdata docs)
         '''
         
         self.data = UVData()
@@ -253,12 +256,16 @@ class Antenna_Metrics():
             self.data.read_miriad(dataFileList)
         elif fileformat is 'uvfits':
             self.data.read_uvfits(dataFileList)
+        elif fileformat is 'fhd':
+            self.data.read_fhd(dataFileList)
+        elif fileformat is 'ms':
+            self.data.read_ms(dataFileList)
         else:
             raise ValueError('Unrecognized file format' + str(fileformat))
         self.ants = self.data.get_ants()
         self.pols = [pol.lower() for pol in self.data.get_pols()]
         self.antpols = [antpol.lower() for antpol in self.data.get_feedpols()]
-        self.bls = list(set([(i,j) for (i,j,pol) in self.data.get_antpairpols()]))
+        self.bls = self.data.get_antpairs()
         self.dataFileList = dataFileList
         self.reds = reds
 
@@ -298,6 +305,14 @@ class Antenna_Metrics():
 
         return red_corr_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants, self.reds, xants=xants, rawMetric=False)
     
+    def reset_summary_stats(self):
+        '''Resets all the internal summary statistics back to empty.'''
+
+        self.xants, self.crossedAntsRemoved, self.deadAntsRemoved = [], [], []
+        self.removalIter = {}
+        self.allMetrics, self.allModzScores = [], []
+        self.finalMetrics, self.finalModzScores = {}, {}
+
     def _run_all_metrics(self):
         '''Designed to be run as part of AntennaMetrics.iterative_antenna_metrics_and_flagging().'''
         
@@ -333,11 +348,7 @@ class Antenna_Metrics():
         deadCut -- Modified z-score cut for most likely dead antenna. Default 5 "sigmas".
         '''
         
-        #Summary statistics
-        self.xants, self.crossedAntsRemoved, self.deadAntsRemoved = [], [], []
-        self.removalIter = {}
-        self.allMetrics, self.allModzScores = [], []
-        self.finalMetrics, self.finalModzScores = {}, {}
+        self.reset_summary_stats()
         self.crossCut, self.deadCut = crossCut, deadCut
         
         #Loop over 
