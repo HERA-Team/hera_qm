@@ -48,7 +48,7 @@ def plot_result(f, rfi):
     plt.show()
 
 
-class Template(unittest.TestCase):
+class Template():
 
     def setUp(self):
         raise unittest.SkipTest  # setUp has to be overridden to actually run a test
@@ -94,7 +94,7 @@ class Template(unittest.TestCase):
         self._run_test(xrfi.xrfi, cf, fp, nsig=.5)
 
 
-class TestSparseScatter(Template):
+class TestSparseScatter(Template, unittest.TestCase):
 
     def setUp(self):
         RFI = 50
@@ -112,7 +112,7 @@ class TestSparseScatter(Template):
         self.rfi_gen = rfi_gen
 
 
-class TestDenseScatter(Template):
+class TestDenseScatter(Template, unittest.TestCase):
 
     def setUp(self):
         RFI = 1000
@@ -132,7 +132,7 @@ class TestDenseScatter(Template):
         self.ans['xrfi_simple'] = (.90, .1)
 
 
-class TestCluster(Template):
+class TestCluster(Template, unittest.TestCase):
 
     def setUp(self):
         RFI = 10
@@ -155,7 +155,7 @@ class TestCluster(Template):
         self.ans['detrend_deriv'] = (-.05, .1)
 
 
-class TestLines(Template):
+class TestLines(Template, unittest.TestCase):
 
     def setUp(self):
         RFI = 3
@@ -179,7 +179,7 @@ class TestLines(Template):
         self.ans['xrfi'] = (.97, .01)
 
 
-class TestBackground(Template):
+class TestBackground(Template, unittest.TestCase):
 
     def setUp(self):
         RFI = 50
@@ -204,7 +204,7 @@ class TestBackground(Template):
         self.ans['xrfi'] = (.75, .1)
         self.ans['xrfi_simple'] = (.90, .1)
 
-# class TestHERA(Template):
+# class TestHERA(Template, unittest.TestCase):
 #    def setUp(self):
 #        def rfi_gen():
 #            for f in FILES['hera']:
@@ -218,7 +218,7 @@ class TestBackground(Template):
 #        self.ans['detrend_medminfilt'] = (.30, .1)
 #        self.ans['xrfi_simple'] = (.40, .3)
 #
-# class TestPAPER(Template):
+# class TestPAPER(Template, unittest.TestCase):
 #    def setUp(self):
 #        def rfi_gen():
 #            for f in FILES['paper']:
