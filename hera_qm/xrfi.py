@@ -89,8 +89,11 @@ def detrend_medminfilt(d, Kt=8, Kf=8, complex=False):
         d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
         d_rs = d - d_sm
         d_sq = np.abs(d_rs)**2
-        # puts minmed on same scale as average                                                                                                                      
-        sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
+        # puts minmed on same scale as average
+        if Kt == Kf:
+            sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1)) * (Kt / .64)
+        else:
+            sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
         f = d_rs / sig
         return f
 
