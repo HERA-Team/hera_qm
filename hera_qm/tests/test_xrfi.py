@@ -4,12 +4,13 @@ import hera_qm.xrfi as xrfi
 import numpy as np
 import pylab as plt
 import hera_qm.tests as qmtest
+from inspect import getargspec
 
 np.random.seed(0)
 
 SIZE = 100
 VERBOSE = False
-PLOT = False
+LOT = False
 
 FILES = {
     'paper': glob.glob('xrfi_data/paper/chisq0*.npz'),
@@ -26,6 +27,12 @@ def get_accuracy(f, rfi, verbose=VERBOSE):
         print '\t Found RFI: %1.3f\n\t False Positive: %1.3f' % (correctly_flagged, false_positive)
     return correctly_flagged, false_positive
 
+def fake_flags():
+    RFI = 10
+    SIZE = 100
+    fakeflags = np.random.randint(0,2,size=(SIZE,SIZE)).astype(bool)
+    return fakeflags
+    
 
 def plot_waterfall(data, f, mx=10, drng=10, mode='lin'):
     if not PLOT:
@@ -54,9 +61,9 @@ class Template():
         raise unittest.SkipTest  # setUp has to be overridden to actually run a test
     rfi_gen = None  # Need to override this for each TestCase, usually in setUp
 
-    def _run_test(self, func, correct_flag, false_positive, nsig=4):
-        for data, rfi in self.rfi_gen():
-            f = func(data)
+    def _run_test(self, func, arg, correct_flag, false_positive, nsig=4):
+        for data, rfi in self.rfi_gen():      
+            f = func(data,*arg)
             if VERBOSE:
                 print self.__class__, func.__name__
             # plot_waterfall(data, f)
@@ -75,23 +82,34 @@ class Template():
 
     def test_detrend_deriv(self):
         cf, fp = self.ans['detrend_deriv']
-        self._run_test(xrfi.detrend_deriv, cf, fp, nsig=4)
+        argsList = [(True,True),(True,False),(False,True)]
+        for arg in argsList:
+            self._run_test(xrfi.detrend_deriv, arg,  cf, fp, nsig=4)
 
     def test_detrend_medfilt(self):
         cf, fp = self.ans['detrend_medfilt']
-        self._run_test(xrfi.detrend_medfilt, cf, fp, nsig=4)
+        argsList = [(8,8),(7,9),(9,7)]
+        for arg in argsList:
+            self._run_test(xrfi.detrend_medfilt, arg, cf, fp, nsig=4)
 
     def test_detrend_medminfilt(self):
         cf, fp = self.ans['detrend_medminfilt']
-        self._run_test(xrfi.detrend_medminfilt, cf, fp, nsig=6)
+        argsList = [(8,8),(7,9),(9,7)]
+        for arg in argsList:
+            self._run_test(xrfi.detrend_medminfilt, arg, cf, fp, nsig=6)
 
     def test_xrfi_simple(self):
         cf, fp = self.ans['xrfi_simple']
-        self._run_test(xrfi.xrfi_simple, cf, fp, nsig=.5)
+        args = getargspec(xrfi.xrfi_simple).defaults
+        fflags = fake_flags()
+        argsList = [args,(fflags, 6, 6, 1)]
+        for arg in argsList:
+            self._run_test(xrfi.xrfi_simple, arg, cf, fp, nsig=.5)
 
     def test_xrfi(self):
         cf, fp = self.ans['xrfi']
-        self._run_test(xrfi.xrfi, cf, fp, nsig=.5)
+        args = getargspec(xrfi.xrfi_simple).defaults
+        self._run_test(xrfi.xrfi, args, cf, fp, nsig=.5)
 
 
 class TestSparseScatter(Template, unittest.TestCase):
@@ -103,7 +121,7 @@ class TestSparseScatter(Template, unittest.TestCase):
 
         def rfi_gen():
             for i in xrange(NTRIALS):
-                data = qmtest.real_noise((SIZE, SIZE))
+                data = np.array(qmtest.real_noise((SIZE, SIZE)))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
                 data[rfi] = NSIG
@@ -153,7 +171,6 @@ class TestCluster(Template, unittest.TestCase):
         self.rfi_gen = rfi_gen
         self.ans['xrfi_simple'] = (.39, .1)
         self.ans['detrend_deriv'] = (-.05, .1)
-
 
 class TestLines(Template, unittest.TestCase):
 

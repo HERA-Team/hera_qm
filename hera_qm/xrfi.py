@@ -16,7 +16,7 @@ def medmin(d):
     return 2 * np.median(mn) - np.min(mn)
 
 
-def medminfilt(d, Kt=8, Kf=8, complex=False):
+def medminfilt(d, Kt=8, Kf=8):
     '''Filter an array on scales of Kt,Kf indexes with medmin.
     Args:
         d (array): 2D data array of the shape (time,frequency).
@@ -26,27 +26,18 @@ def medminfilt(d, Kt=8, Kf=8, complex=False):
         array: filtered array. Same shape as input array.
     '''
     d_sm = np.empty_like(d)
-    if complex:
-        for i in xrange(d.shape[0]):
-            for j in xrange(d.shape[1]):
-                i0, j0 = max(0, i - Kt), max(0, j - Kf)
-                i1, j1 = min(d.shape[0], i + Kt), min(d.shape[1], j + Kf)
-                d_sm[i, j] = medmin(d[i0:i1, j0:j1].real) + 1j*medmin(d[i0:i1, j0:j1].imag)
-        return d_sm
-    else:
-        for i in xrange(d.shape[0]):
-            for j in xrange(d.shape[1]):
-                i0, j0 = max(0, i - Kt), max(0, j - Kf)
-                i1, j1 = min(d.shape[0], i + Kt), min(d.shape[1], j + Kf)
-                d_sm[i, j] = medmin(d[i0:i1, j0:j1])
-        return d_sm
+    for i in xrange(d.shape[0]):
+        for j in xrange(d.shape[1]):
+            i0, j0 = max(0, i - Kt), max(0, j - Kf)
+            i1, j1 = min(d.shape[0], i + Kt), min(d.shape[1], j + Kf)
+            d_sm[i, j] = medmin(d[i0:i1, j0:j1])
+    return d_sm
 
 def detrend_deriv(d, dt=True, df=True):
     '''XXX This only works ok on sparse RFI.'''
     if df:
         d_df = np.empty_like(d)
-        d_df[:, 1:-1] = (d[:, 1:-1] - .5 *
-                         (d[:, :-2] + d[:, 2:])) / np.sqrt(1.5)
+        d_df[:, 1:-1] = (d[:, 1:-1] - .5 * (d[:, :-2] + d[:, 2:])) / np.sqrt(1.5)
         d_df[:, 0] = (d[:, 0] - d[:, 1]) / np.sqrt(2)
         d_df[:, -1] = (d[:, -1] - d[:, -2]) / np.sqrt(2)
     else:
@@ -57,7 +48,7 @@ def detrend_deriv(d, dt=True, df=True):
         d_dt[0] = (d_df[0] - d_df[1]) / np.sqrt(2)
         d_dt[-1] = (d_df[-1] - d_df[-2]) / np.sqrt(2)
     else:
-        d_d = d_df
+        d_dt = d
     d2 = np.abs(d_dt)**2
     # model sig as separable function of 2 axes                                                                                                                 
     sig_f = np.median(d2, axis=0)
@@ -68,7 +59,7 @@ def detrend_deriv(d, dt=True, df=True):
     return d_dt / sig
 
 
-def detrend_medminfilt(d, Kt=8, Kf=8, complex=False):
+def detrend_medminfilt(d, Kt=8, Kf=8):
     """Detrend array using medminfilt statistic. See medminfilt.
     Args:
         d (array): data array of the shape (time, frequency) to detrend   
@@ -77,25 +68,16 @@ def detrend_medminfilt(d, Kt=8, Kf=8, complex=False):
     Returns:        
          bool array: boolean array of flags    
     """
-    if complex:
-        d_sm = medminfilt(np.abs(d)*np.angle(d), 2*Kt + 1, 2*Kf + 1)
-        d_rs = d - d_sm
-        d_sq = np.abs(d_rs)**2
-        # puts minmed on same scale as average
-        sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1,complex=True)) * (n.sqrt(Kt**2 + Kf**2) / .64)
-        f = d_rs / sig
-        return f
+    d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
+    d_rs = d - d_sm
+    d_sq = np.abs(d_rs)**2
+    # puts minmed on same scale as average
+    if Kt == Kf:
+        sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1)) * (Kt / .64)
     else:
-        d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
-        d_rs = d - d_sm
-        d_sq = np.abs(d_rs)**2
-        # puts minmed on same scale as average
-        if Kt == Kf:
-            sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1)) * (Kt / .64)
-        else:
-            sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
-        f = d_rs / sig
-        return f
+        sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
+    f = d_rs / sig
+    return f
 
 def detrend_medfilt(d, Kt=8, Kf=8):
     """Detrend array using a median filter.    
@@ -142,7 +124,7 @@ def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
     f1 = np.ma.array(d, mask=np.where(d > sig_init, 1, 0))
     f1.mask |= np.isnan(f1)
     if f is not None:
-        f1.mask |= f
+        f1.mask |= n.array(f)
 
     # Loop over flagged points and examine adjacent points to see if they exceed sig_adj
     # Start the watershed
