@@ -6,6 +6,7 @@ import pylab as plt
 import hera_qm.tests as qmtest
 from inspect import getargspec
 
+
 np.random.seed(0)
 
 SIZE = 100
@@ -35,20 +36,22 @@ def fake_flags():
     
 
 def plot_waterfall(data, f, mx=10, drng=10, mode='lin'):
-    if not PLOT:
-        return
+    #if not PLOT:
+    #    return
     plt.subplot(121)
-    capo.plot.waterfall(data, mode='lin', mx=10, drng=10)
+    plt.imshow(np.abs(data),aspect='auto',cmap='jet')
+#    capo.plot.waterfall(data, mode='lin', mx=10, drng=10)
     plt.colorbar()
     plt.subplot(122)
-    capo.plot.waterfall(f, mode='lin', mx=10, drng=10)
+    #capo.plot.waterfall(f, mode='lin', mx=10, drng=10)
+    plt.imshow(f,aspect='auto',cmap='jet')
     plt.colorbar()
     plt.show()
 
 
 def plot_result(f, rfi):
-    if not PLOT:
-        return
+    #if not PLOT:
+    #    return
     plt.plot(rfi[0], rfi[1], 'ko')
     fi = np.where(f)
     plt.plot(fi[0], fi[1], 'r.')
@@ -61,30 +64,34 @@ class Template():
         raise unittest.SkipTest  # setUp has to be overridden to actually run a test
     rfi_gen = None  # Need to override this for each TestCase, usually in setUp
 
-    def _run_test(self, func, arg, correct_flag, false_positive, nsig=4):
+    def _run_test(self, func, arg, correct_flag, false_positive, nsig=5):
         for data, rfi in self.rfi_gen():      
             f = func(data,*arg)
             if VERBOSE:
                 print self.__class__, func.__name__
-            # plot_waterfall(data, f)
+            #plot_waterfall(data, f)
             f = np.where(f > nsig, 1, 0)
             cf, fp = get_accuracy(f, rfi)
-            # plot_result(f, rfi)
+            print cf, fp
+            #plot_result(f, rfi)
             self.assertGreater(cf, correct_flag)
             self.assertLess(fp, false_positive)
     ans = {
-        'detrend_deriv': (.9, .1),
+        'detrend_deriv': [(.9, .9, .9),(.1,.1,.1)],
         'detrend_medfilt': (.99, .01),
         'detrend_medminfilt': (.97, .05),
-        'xrfi_simple': (.99, .1),
+        'xrfi_simple': [(.99, .99),(.01, .01)],
         'xrfi': (.99, .01),
     }
 
     def test_detrend_deriv(self):
         cf, fp = self.ans['detrend_deriv']
-        argsList = [(True,True),(True,False),(False,True)]
-        for arg in argsList:
-            self._run_test(xrfi.detrend_deriv, arg,  cf, fp, nsig=4)
+        args = [(True,True),(True,False),(False,True)]
+        #for arg in argsList:
+        for i in range(3):
+            print args[i]
+            print cf[i],fp[i]
+            self._run_test(xrfi.detrend_deriv, args[i],  cf[i], fp[i], nsig=4)
 
     def test_detrend_medfilt(self):
         cf, fp = self.ans['detrend_medfilt']
@@ -103,8 +110,8 @@ class Template():
         args = getargspec(xrfi.xrfi_simple).defaults
         fflags = fake_flags()
         argsList = [args,(fflags, 6, 6, 1)]
-        for arg in argsList:
-            self._run_test(xrfi.xrfi_simple, arg, cf, fp, nsig=.5)
+        for i in range(2):
+            self._run_test(xrfi.xrfi_simple, argsList[i], cf[i], fp[i], nsig=.5)
 
     def test_xrfi(self):
         cf, fp = self.ans['xrfi']
@@ -146,8 +153,8 @@ class TestDenseScatter(Template, unittest.TestCase):
                 yield data, rfi
             return
         self.rfi_gen = rfi_gen
-        self.ans['detrend_deriv'] = (.33, .1)
-        self.ans['xrfi_simple'] = (.90, .1)
+        self.ans['detrend_deriv'] = [(.33, .33, .33),(.1, .1, .1)]
+        self.ans['xrfi_simple'] = [(.90, .90),(.1, .1)]
 
 
 class TestCluster(Template, unittest.TestCase):
@@ -169,8 +176,8 @@ class TestCluster(Template, unittest.TestCase):
                 yield data, rfi
             return
         self.rfi_gen = rfi_gen
-        self.ans['xrfi_simple'] = (.39, .1)
-        self.ans['detrend_deriv'] = (-.05, .1)
+        self.ans['xrfi_simple'] = [(.39, .39),(.1, .1)]
+        self.ans['detrend_deriv'] = [(-.05, -.05, -.05),(.1, .1, .1)]
 
 class TestLines(Template, unittest.TestCase):
 
@@ -191,8 +198,8 @@ class TestLines(Template, unittest.TestCase):
                 yield data, np.where(mask)
             return
         self.rfi_gen = rfi_gen
-        self.ans['detrend_deriv'] = (.0, .1)
-        self.ans['xrfi_simple'] = (.75, .1)
+        self.ans['detrend_deriv'] = [(.01, .01, .01),(0.1,0.1,0.1)]
+        self.ans['xrfi_simple'] = [(.75, .75),(.1, .1)]
         self.ans['xrfi'] = (.97, .01)
 
 
@@ -216,10 +223,10 @@ class TestBackground(Template, unittest.TestCase):
                 yield data, rfi
             return
         self.rfi_gen = rfi_gen
-        self.ans['detrend_deriv'] = (.83, .1)
+        self.ans['detrend_deriv'] = [(.83, .83, .83),(.1,.1,.1)]
         self.ans['detrend_medminfilt'] = (.2, .1)
         self.ans['xrfi'] = (.75, .1)
-        self.ans['xrfi_simple'] = (.90, .1)
+        self.ans['xrfi_simple'] = [(.90, .90),(.1, .1)]
 
 # class TestHERA(Template, unittest.TestCase):
 #    def setUp(self):
