@@ -22,3 +22,5 @@ hera_qm/cover
 # Script Output
 *metrics.json
 *.ipynb_checkpoints
+hera_qm/GIT_INFO
+hera_qm/data/test_output/ant_metrics_output.json
