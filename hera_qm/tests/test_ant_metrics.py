@@ -176,7 +176,7 @@ class Test_Antenna_Metrics(unittest.TestCase):
         # json names for summary statistics
         jsonStats = ['xants', 'crossed_ants', 'dead_ants', 'removal_iteration',
                      'final_metrics', 'all_metrics', 'final_mod_z_scores', 'all_mod_z_scores',
-                     'cross_pol_z_cut', 'dead_ant_z_cut', 'datafile_list', 'reds']
+                     'cross_pol_z_cut', 'dead_ant_z_cut', 'datafile_list', 'reds', 'version']
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
             self.assertEqual(loaded[jsonStat], getattr(am, stat))
 

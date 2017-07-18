@@ -5,7 +5,6 @@ import json
 
 def construct_version_info():
     hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
-    print(hera_qm_dir)
     version_file = os.path.join(hera_qm_dir, 'VERSION')
     version = open(version_file).read().strip()
 
@@ -15,13 +14,8 @@ def construct_version_info():
                                              stderr=subprocess.STDOUT).strip()
         git_hash = subprocess.check_output(['git', '-C', hera_qm_dir, 'rev-parse', 'HEAD'],
                                            stderr=subprocess.STDOUT).strip()
-        try:
-            # Don't have any tags yet.
-            git_description = subprocess.check_output(['git', '-C', hera_qm_dir,
-                                                       'describe', '--dirty',
-                                                       '--tag', '--always']).strip()
-        except:
-            git_description = ''
+        git_description = subprocess.check_output(['git', '-C', hera_qm_dir,
+                                                   'describe', '--dirty', '--tag', '--always']).strip()
         git_branch = subprocess.check_output(['git', '-C', hera_qm_dir, 'rev-parse',
                                               '--abbrev-ref', 'HEAD'],
                                              stderr=subprocess.STDOUT).strip()
