@@ -5,3 +5,6 @@ import xrfi
 import vis_metrics
 import ant_metrics
 import datacontainer
+import version
+
+__version__ = version.version
