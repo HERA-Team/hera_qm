@@ -4,6 +4,7 @@ import aipy as a
 from copy import deepcopy
 from pyuvdata import UVData
 import json
+from hera_qm.version import hera_qm_version_str
 
 
 #######################################################################
@@ -286,6 +287,7 @@ class Antenna_Metrics():
         self.bls = self.data.get_antpairs()
         self.dataFileList = dataFileList
         self.reds = reds
+        self.version_str = hera_qm_version_str
 
         # For using data containers until pyuvdata gets faster
         # from hera_cal import firstcal
@@ -424,6 +426,7 @@ class Antenna_Metrics():
         allMetricsData['dead_ant_z_cut'] = str(self.deadCut)
         allMetricsData['datafile_list'] = str(self.dataFileList)
         allMetricsData['reds'] = str(self.reds)
+        allMetricsData['version'] = self.version_str
 
         with open(metricsJSONFilename, 'w') as outfile:
             json.dump(allMetricsData, outfile, indent=4)
