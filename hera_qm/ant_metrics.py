@@ -247,7 +247,8 @@ def load_antenna_metrics(metricsJSONFile):
 
     with open(metricsJSONFile, 'r') as infile:
         jsonMetrics = json.load(infile)
-    return {key: eval(str(val)) for key, val in jsonMetrics.items()}
+    return {key: (eval(str(val)) if key != 'version' else str(val)) for
+            key, val in jsonMetrics.items()}
 
 
 #######################################################################
