@@ -33,6 +33,7 @@ setup_args = {
     'description': 'HERA Data Quality Metrics.',
     'package_dir': {'hera_qm': 'hera_qm'},
     'packages': ['hera_qm'],
+    'include_package_data': True,
     #    'scripts': glob.glob('scripts/*'),
     'version': version.version,
     'package_data': {'hera_qm': data_files},
