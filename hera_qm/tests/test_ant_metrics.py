@@ -2,6 +2,7 @@ import unittest
 from hera_qm import ant_metrics
 import numpy as np
 from hera_qm.data import DATA_PATH
+import os
 
 
 class fake_data():
@@ -93,6 +94,8 @@ class Test_Antenna_Metrics(unittest.TestCase):
                              DATA_PATH + '/zen.2457698.40355.xy.HH.uvcA',
                              DATA_PATH + '/zen.2457698.40355.yx.HH.uvcA',
                              DATA_PATH + '/zen.2457698.40355.yy.HH.uvcA']
+        if not os.path.exists(DATA_PATH + '/test_output/'):
+            os.makedirs(DATA_PATH + '/test_output/')
         self.reds = [[(9, 31), (20, 65), (22, 89), (53, 96), (64, 104), (72, 81),
                       (112, 10), (105, 20), (81, 43), (88, 53)], [(65, 72), (96, 105)],
                      [(31, 105), (43, 112), (96, 9), (65, 22), (89, 72), (104, 88)],
