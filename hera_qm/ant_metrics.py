@@ -1,9 +1,13 @@
+from __future__ import print_function, division, absolute_import
 import numpy as np
 import matplotlib.pyplot as plt
-import aipy as a
+import aipy
 from copy import deepcopy
 from pyuvdata import UVData
 import json
+import optparse
+import os
+import re
 from hera_qm.version import hera_qm_version_str
 
 
@@ -398,13 +402,13 @@ class Antenna_Metrics():
                     self.crossedAntsRemoved.append((worstCrossAnt[0], antpol))
                     self.removalIter[(worstCrossAnt[0], antpol)] = n
                     if verbose:
-                        print 'On iteration', n, 'we flag', (worstCrossAnt[0], antpol)
+                        print('On iteration', n, 'we flag', (worstCrossAnt[0], antpol))
             elif worstDeadCutRatio > worstCrossCutRatio and worstDeadCutRatio > 1.0:
                 self.xants.append(worstDeadAnt)
                 self.deadAntsRemoved.append(worstDeadAnt)
                 self.removalIter[worstDeadAnt] = n
                 if verbose:
-                    print 'On iteration', n, 'we flag', worstDeadAnt
+                    print('On iteration', n, 'we flag', worstDeadAnt)
             else:
                 break
 
@@ -431,3 +435,143 @@ class Antenna_Metrics():
 
         with open(metricsJSONFilename, 'w') as outfile:
             json.dump(allMetricsData, outfile, indent=4)
+
+# code for running ant_metrics on a file
+def get_metrics_OptionParser():
+    """
+    Method to get an OptionParser instance for working with the ant_metrics_run function.
+
+    Args:
+        None
+    Returns:
+        o: an optparse.OptionParser instance with the relevant options for the selected method
+    """
+    o = optparse.OptionParser()
+
+    o.set_usage("ant_metrics_run.py -C [calfile] [options] *.uv")
+    aipy.scripting.add_standard_options(o, cal=cal)
+    o.add_option('--crossCut', dest='crossCut', default=5, type='float',
+                 help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
+    o.add_option('--deadCut', dest='deadCut', default=5, type='float',
+                 help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
+    o.add_option('--extension', dest='extension', default='.ant_metrics.json', type='string',
+                 help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
+
+    return o
+
+# helper functions
+def get_pol(fname):
+     """Strips the filename of a HERA visibility to it's polarization
+    Args:
+        fname -- name of file (string)
+    Returns:
+        polarization -- polarization label e.g. "xx" (string)
+    """
+    # XXX assumes file naming format
+    # extract just the filename if we're passed a path with periods in it
+    fn = re.findall('zen\.\d{7}\.\d{5}\..*', fname)[0]
+    return fn.split('.')[3]
+
+def file2djd(fname):
+    """Strips the filename of a HERA visibility to it's decimal julian date.
+    Args:
+        fname -- name of file (string)
+    Returns:
+        decimal_jd -- the decimal julian date at the start of the file (string)
+    """
+    return re.findall("\d{7}\.\d{5}", fname)[0]
+
+def generate_fullpol_file_list(files, pol_list):
+    """Generate a list of unique JDs that have all four polarizations available
+    Args:
+       files -- list of files to look for
+       pol_list -- list of polarizations to look for
+    Returns:
+       jd_list -- list of JDs where all supplied polarizations could be found
+
+    This function, when given a list of files, will look for the specified polarizations,
+    and add the JD to the returned list if all polarizations were found.
+    """
+    # initialize
+    file_list = []
+
+    for filename in files:
+        abspath = os.path.abspath(filename)
+        if abspath not in file_list:
+            # try to find the other polarizations
+            pols_exist = True
+            file_pol = get_pol(filename)
+            dirname = os.path.dirname(abspath)
+            for pol in pol_list:
+                # guard against strange directory names that might contain something that
+                # looks like a pol string
+                fn = re.sub(file_pol, pol, filename)
+                full_filename = os.path.join(dirname, fn)
+                if not os.path.exists(full_filename):
+                    warnings.warn("Could not find " + full_filename + "; skipping that JD")
+                    pols_exist = False
+            if pols_exist:
+                # add all pols to file_list
+                for pol in pol_list:
+                    fn = re.sub(file_pol, pol, filename)
+                    full_filename = os.path.join(dirname, fn)
+                    file_list.append(full_filename)
+
+    return file_list
+
+def ant_metrics_run(files, opts):
+    """
+    Run a series of ant_metrics tests on a given set of input files.
+
+    Args:
+       files -- a list of files to run ant metrics on. Can be any of the 4 polarizations
+       opts -- an optparse OptionParser instance
+    Return:
+       None
+
+    The funciton will take in a list of files and options. It will run the
+    sereis of ant metrics tests, and produce a JSON file containing the relevant
+    information. The file list passed in need only contain one of the polarization
+    files for a given JD, and the function will look for the other polarizations
+    in the same folder. If not all four polarizations are found, a warning is
+    generated, since the code assumes all four polarizations are present.
+    """
+    # import hera_cal.omni
+    # XXX: does this create a circular dependency if we only do this inside the function?
+    from hera_cal import omni
+
+    # define polarizations to look for
+    # XXX: This will have to change if file naming convention changes from 'xx', 'xy', etc.
+    pol_list = ['xx', 'xy', 'yx', 'yy']
+
+    # check that we were given some files to process
+    if len(files) == 0:
+        raise AssertionError('Please provide a list of visibility files')
+
+    # generate a list of all files to be read in
+    fullpol_file_list = generate_fullpol_file_list(files)
+    if len(jd_list) == 0:
+        raise AssertionError('Could not find all 4 polarizations for any files provided')
+
+    # define freqs
+    # XXX: might want to make this flexible in the future
+    freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
+
+    # process calfile
+    aa = aipy.cal.get_aa(opts.cal, freqs)
+    info = omni.aa_to_info(aa, pols=pol_list)
+    reds = info.get_reds()
+
+    # do the work
+    num_files = len(fullpol_file_list) // 4
+    for i in range(num_files):
+        file_list = fullpol_file_list[4*i:4*(i+1)]
+        am = Antenna_Metrics(file_list, reds, fileformat='miriad')
+        am.iterative_antenna_metrics_and_flagging(crossCut=opts.crossCut, deadCut=opts.deadCut, verbose=True)
+        base_filename = fullpol_file_list[4*i]
+        abspath = os.path.abspath(base_filename)
+        dirname = os.path.dirname(abspath)
+        basename = os.path.basename(base_filename)
+        nopol_filename = re.sub('\.{}\.'.format(pol_list[0]), '..', basename)
+        metrics_filename = os.path.join(dirname, nopol_filename, opts.extension)
+        am.save_antenna_metrics(metrics_filename)
