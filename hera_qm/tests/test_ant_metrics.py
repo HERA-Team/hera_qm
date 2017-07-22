@@ -1,8 +1,11 @@
 import unittest
+import nose.tools as nt
 from hera_qm import ant_metrics
 import numpy as np
 from hera_qm.data import DATA_PATH
+import pyuvdata.tests as uvtest
 import os
+import sys
 
 
 class fake_data():
@@ -18,7 +21,7 @@ class fake_data():
         return self.data[(i, j)][pol]
 
 
-class Test_Low_Level_Functions(unittest.TestCase):
+class TestLowLevelFunctions(unittest.TestCase):
 
     def setUp(self):
         self.data = fake_data()
@@ -87,7 +90,7 @@ class Test_Low_Level_Functions(unittest.TestCase):
             ant_metrics.average_abs_metrics(metric1, metric3)
 
 
-class Test_Antenna_Metrics(unittest.TestCase):
+class TestAntennaMetrics(unittest.TestCase):
 
     def setUp(self):
         self.dataFileList = [DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA',
@@ -193,6 +196,81 @@ class Test_Antenna_Metrics(unittest.TestCase):
         self.assertIn((81, 'x'), am2.crossedAntsRemoved)
         self.assertIn((81, 'y'), am2.crossedAntsRemoved)
 
+class TestAntmetricsRun(object):
+    # test helper functions
+    def test_get_pol(self):
+        filename = 'zen.2457698.40355.xx.HH.uvcA'
+        nt.assert_equal(ant_metrics.get_pol(filename), 'xx')
+
+    def test_generate_fullpol_file_list(self):
+        pol_list = ['xx', 'xy', 'yx', 'yy']
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA')
+        xy_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xy.HH.uvcA')
+        yx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.yx.HH.uvcA')
+        yy_file = os.path.join(DATA_PATH, 'zen.2457698.40355.yy.HH.uvcA')
+        file_list = [xx_file, xy_file, yx_file, yy_file]
+
+        # feed in one file at a time
+        fullpol_file_list = ant_metrics.generate_fullpol_file_list([xx_file], pol_list)
+        nt.assert_equal(sorted(fullpol_file_list), sorted(file_list))
+        fullpol_file_list = ant_metrics.generate_fullpol_file_list([xy_file], pol_list)
+        nt.assert_equal(sorted(fullpol_file_list), sorted(file_list))
+        fullpol_file_list = ant_metrics.generate_fullpol_file_list([yx_file], pol_list)
+        nt.assert_equal(sorted(fullpol_file_list), sorted(file_list))
+        fullpol_file_list = ant_metrics.generate_fullpol_file_list([yy_file], pol_list)
+        nt.assert_equal(sorted(fullpol_file_list), sorted(file_list))
+
+        # feed in all four files
+        fullpol_file_list = ant_metrics.generate_fullpol_file_list(file_list, pol_list)
+        nt.assert_equal(sorted(fullpol_file_list), sorted(file_list))
+
+        # try to pass in a file that doesn't have all pols present
+        lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        fullpol_file_list = uvtest.checkWarnings(ant_metrics.generate_fullpol_file_list,
+                                                 [[lone_file], pol_list], nwarnings=1,
+                                                 message='Could not find')
+        nt.assert_equal(fullpol_file_list, [])
+
+    def test_ant_metrics_run(self):
+        # define file names
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA')
+
+        # get options object
+        o = ant_metrics.get_metrics_OptionParser()
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        calfile = 'heratest_calfile'
+        opt0 = "-C {}".format(calfile)
+        opt1 = "--crossCut=5"
+        opt2 = "--deadCut=5"
+        opt3 = "--extension=.ant_metrics.json"
+        opt4 = "--metrics_path={}".format(os.path.join(DATA_PATH,'test_output'))
+        options = ' '.join([opt0, opt1, opt2, opt3, opt4])
+
+        # test running with no files
+        cmd = ' '.join([options, ''])
+        opts, args = o.parse_args(cmd.split())
+        nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run, args, opts)
+
+        # test running with a lone file
+        lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        cmd = ' '.join([options, lone_file])
+        opts, args = o.parse_args(cmd.split())
+        # this test raises a warning, then fails...
+        uvtest.checkWarnings(nt.assert_raises, [
+            AssertionError, ant_metrics.ant_metrics_run, args, opts], nwarnings=1,
+                             message='Could not find')
+
+        # test actually running metrics
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA')
+        dest_file = os.path.join(DATA_PATH, 'test_output',
+                                 'zen.2457698.40355.HH.uvcA.ant_metrics.json')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([options, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        ant_metrics.ant_metrics_run(args, opts)
+        nt.assert_true(os.path.exists(dest_file))
 
 if __name__ == '__main__':
     unittest.main()

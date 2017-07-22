@@ -8,6 +8,7 @@ import json
 import optparse
 import os
 import re
+import warnings
 from hera_qm.version import hera_qm_version_str
 
 
@@ -449,19 +450,21 @@ def get_metrics_OptionParser():
     o = optparse.OptionParser()
 
     o.set_usage("ant_metrics_run.py -C [calfile] [options] *.uv")
-    aipy.scripting.add_standard_options(o, cal=cal)
+    aipy.scripting.add_standard_options(o, cal=True)
     o.add_option('--crossCut', dest='crossCut', default=5, type='float',
                  help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
     o.add_option('--deadCut', dest='deadCut', default=5, type='float',
                  help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
     o.add_option('--extension', dest='extension', default='.ant_metrics.json', type='string',
                  help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
+    o.add_option('--metrics_path', dest='metrics_path', default='', type='string',
+                 help='Path to save metrics file to. Default is same directory as file')
 
     return o
 
 # helper functions
 def get_pol(fname):
-     """Strips the filename of a HERA visibility to it's polarization
+    """Strips the filename of a HERA visibility to its polarization
     Args:
         fname -- name of file (string)
     Returns:
@@ -471,15 +474,6 @@ def get_pol(fname):
     # extract just the filename if we're passed a path with periods in it
     fn = re.findall('zen\.\d{7}\.\d{5}\..*', fname)[0]
     return fn.split('.')[3]
-
-def file2djd(fname):
-    """Strips the filename of a HERA visibility to it's decimal julian date.
-    Args:
-        fname -- name of file (string)
-    Returns:
-        decimal_jd -- the decimal julian date at the start of the file (string)
-    """
-    return re.findall("\d{7}\.\d{5}", fname)[0]
 
 def generate_fullpol_file_list(files, pol_list):
     """Generate a list of unique JDs that have all four polarizations available
@@ -510,6 +504,7 @@ def generate_fullpol_file_list(files, pol_list):
                 if not os.path.exists(full_filename):
                     warnings.warn("Could not find " + full_filename + "; skipping that JD")
                     pols_exist = False
+                    break
             if pols_exist:
                 # add all pols to file_list
                 for pol in pol_list:
@@ -536,9 +531,12 @@ def ant_metrics_run(files, opts):
     in the same folder. If not all four polarizations are found, a warning is
     generated, since the code assumes all four polarizations are present.
     """
-    # import hera_cal.omni
     # XXX: does this create a circular dependency if we only do this inside the function?
-    from hera_cal import omni
+    try:
+        from hera_cal import omni
+    except(ImportError):
+        from nose.plugins.skip import SkipTest
+        raise SkipTest('hera_cal.omni not detected. It must be installed to calculate array info')
 
     # define polarizations to look for
     # XXX: This will have to change if file naming convention changes from 'xx', 'xy', etc.
@@ -549,8 +547,8 @@ def ant_metrics_run(files, opts):
         raise AssertionError('Please provide a list of visibility files')
 
     # generate a list of all files to be read in
-    fullpol_file_list = generate_fullpol_file_list(files)
-    if len(jd_list) == 0:
+    fullpol_file_list = generate_fullpol_file_list(files, pol_list)
+    if len(fullpol_file_list) == 0:
         raise AssertionError('Could not find all 4 polarizations for any files provided')
 
     # define freqs
@@ -559,7 +557,7 @@ def ant_metrics_run(files, opts):
 
     # process calfile
     aa = aipy.cal.get_aa(opts.cal, freqs)
-    info = omni.aa_to_info(aa, pols=pol_list)
+    info = omni.aa_to_info(aa, pols=[pol_list[-1][0]], crosspols=[pol_list[-1]])
     reds = info.get_reds()
 
     # do the work
@@ -572,6 +570,14 @@ def ant_metrics_run(files, opts):
         abspath = os.path.abspath(base_filename)
         dirname = os.path.dirname(abspath)
         basename = os.path.basename(base_filename)
-        nopol_filename = re.sub('\.{}\.'.format(pol_list[0]), '..', basename)
-        metrics_filename = os.path.join(dirname, nopol_filename, opts.extension)
+        nopol_filename = re.sub('\.{}\.'.format(pol_list[0]), '.', basename)
+        if opts.metrics_path == '':
+            # default path is same directory as file
+            metrics_path = dirname
+        else:
+            metrics_path = opts.metrics_path
+        metrics_basename = nopol_filename + opts.extension
+        metrics_filename = os.path.join(metrics_path, metrics_basename)
         am.save_antenna_metrics(metrics_filename)
+
+    return
