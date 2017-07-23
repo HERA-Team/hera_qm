@@ -236,7 +236,7 @@ class TestAntmetricsRun(object):
         xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA')
 
         # get options object
-        o = ant_metrics.get_metrics_OptionParser()
+        o = ant_metrics.get_metrics_OptionParser('ant_metrics')
         if DATA_PATH not in sys.path:
             sys.path.append(DATA_PATH)
         calfile = 'heratest_calfile'
