@@ -438,27 +438,34 @@ class Antenna_Metrics():
             json.dump(allMetricsData, outfile, indent=4)
 
 # code for running ant_metrics on a file
-def get_metrics_OptionParser():
+def get_metrics_OptionParser(method_name):
     """
-    Method to get an OptionParser instance for working with the ant_metrics_run function.
+    Function to get an OptionParser instance for working with metrics wrappers.
 
     Args:
-        None
+        method_name -- target wrapper, must be "ant_metrics" or "xrfi"
     Returns:
-        o: an optparse.OptionParser instance with the relevant options for the selected method
+        o -- an optparse.OptionParser instance with the relevant options for the selected method
     """
+    methods = ["ant_metrics", "xrfi"]
+    if method_name not in methods:
+        raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
+
     o = optparse.OptionParser()
 
-    o.set_usage("ant_metrics_run.py -C [calfile] [options] *.uv")
-    aipy.scripting.add_standard_options(o, cal=True)
-    o.add_option('--crossCut', dest='crossCut', default=5, type='float',
-                 help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
-    o.add_option('--deadCut', dest='deadCut', default=5, type='float',
-                 help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
-    o.add_option('--extension', dest='extension', default='.ant_metrics.json', type='string',
-                 help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
-    o.add_option('--metrics_path', dest='metrics_path', default='', type='string',
-                 help='Path to save metrics file to. Default is same directory as file')
+    if method_name == 'ant_metrics':
+        o.set_usage("ant_metrics_run.py -C [calfile] [options] *.uv")
+        aipy.scripting.add_standard_options(o, cal=True)
+        o.add_option('--crossCut', dest='crossCut', default=5, type='float',
+                     help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
+        o.add_option('--deadCut', dest='deadCut', default=5, type='float',
+                     help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
+        o.add_option('--extension', dest='extension', default='.ant_metrics.json', type='string',
+                     help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
+        o.add_option('--metrics_path', dest='metrics_path', default='', type='string',
+                     help='Path to save metrics file to. Default is same directory as file')
+    elif method_name == 'xrfi':
+        o.set_usage("xrfi_run.py")
 
     return o
 
