@@ -124,7 +124,7 @@ def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
     f1 = np.ma.array(d, mask=np.where(d > sig_init, 1, 0))
     f1.mask |= np.isnan(f1)
     if f is not None:
-        f1.mask |= n.array(f)
+        f1.mask |= np.array(f)
 
     # Loop over flagged points and examine adjacent points to see if they exceed sig_adj
     # Start the watershed
