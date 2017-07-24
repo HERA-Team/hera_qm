@@ -42,3 +42,6 @@ def test_generate_fullpol_file_list():
                                              message='Could not find')
     nt.assert_equal(fullpol_file_list, [])
 
+def test_get_metrics_OptionParser():
+    # raise error for requesting unknown type of parser
+    nt.assert_raises(AssertionError, utils.get_metrics_OptionParser, 'fake_method')
