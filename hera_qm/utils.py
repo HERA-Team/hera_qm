@@ -34,14 +34,29 @@ def get_metrics_OptionParser(method_name):
         o.add_option('--extension', dest='extension', default='.ant_metrics.json', type='string',
                      help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
         o.add_option('--metrics_path', dest='metrics_path', default='', type='string',
-                     help='Path to save metrics file to. Default is same directory as file')
+                     help='Path to save metrics file to. Default is same directory as file.')
         o.add_option('--vis_format', dest='vis_format', default='miriad', type='string',
                      help='File format for visibility files. Default is miriad.')
         o.add_option('-q', '--quiet', action='store_false', dest='verbose', default=True,
                      help='Silence feedback to the command line.')
     elif method_name == 'xrfi':
-        o.set_usage("xrfi_run.py")
-
+        o.set_usage("xrfi_run.py [options] *.uv")
+        o.add_option('--infile_format', dest='infile_format', default='miriad', type='string',
+                     help='File format for input files. Default is miriad.')
+        o.add_option('--outfile_format', dest='outfile_format', default='miriad', type='string',
+                     help='File format for output files. Default is miriad.')
+        o.add_option('--extension', dest='extension', default='R', type='string',
+                     help='Extension to be appended to input file name. Default is "R".')
+        o.add_option('--xrfi_path', dest='xrfi_path', default='', type='string',
+                     help='Path to save flagged file to. Default is same directory as input file.')
+        o.add_option('--algorithm', dest='algorithm', default='xrfi_simple', type='string',
+                     help='RFI-flagging algorithm to use. Default is xrfi_simple.')
+        o.add_option('--nsig_df', dest='nsig_df', default=6, type='float',
+                     help='Number of sigma above median value to flag in f direction'
+                     + ' for xrfi_simple. Default is 6.')
+        o.add_option('--nsig_dt', dest='nsig_dt', default=6, type='float',
+                     help='Number of sigma above median value to flag in t direction'
+                     + ' for xrfi_simple. Default is 6.')
     return o
 
 def get_pol(fname):

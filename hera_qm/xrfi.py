@@ -4,6 +4,7 @@ Note these functions currently operate on real numbers only.
 '''
 import numpy as np
 from scipy.signal import medfilt
+from pyuvdata import UVData
 
 
 def medmin(d):
@@ -201,3 +202,78 @@ def xrfi(d, f=None, K=8, sig_init=6, sig_adj=2):
     return f
 
 # XXX split off median filter as one type of flagger
+
+def xrfi_run(files, opts):
+    """
+    Run an RFI-flagging algorithm on an entire file and store results in flag array.
+
+    Args:
+       files -- a list of files to run RFI flagging on
+       opts -- an optparse OptionParser instance
+    Return:
+       None
+
+    This function will take in a series of files, and run an RFI-flagging algorithm to
+    identify contaminated observations. Then the flags array of the object will be
+    updated to reflect these identifications.
+    """
+    # make sure we were given files to process
+    if len(files) == 0:
+        raise AssertionError('Please provide a list of visibility files')
+
+    # loop over files
+    for fn in files:
+        # read files in as pyuvdata object
+        uvd = UVData()
+        if opts.infile_format == 'miriad':
+            uvd.read_miriad(fn)
+        elif opts.infile_format == 'uvfits':
+            uvd.read_uvfits(fn)
+        elif opts.infile_format == 'fhd':
+            uvd.read_fhd(fn)
+        elif opts.infile_format == 'ms':
+            uvd.read_ms(fn)
+        else:
+            raise ValueError('Unrecognized file format ' + str(opts.infile_format))
+
+        # create an iterator over data contents
+        for key, d in uvd.antpairpol_iter():
+            ind1, ind2, ipol = uv._key2inds(key)
+
+            # make sure that we are selecting some number of values
+            if len(ind1) > 0:
+                f = uv.flag_array[ind1, 0, :, ipol]
+                if opts.algorithm == 'xrfi_simple':
+                    new_f = xrfi_simple(d, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                else:
+                    raise ValueError('Unrecognize RFI method ' + str(opts.algorithm))
+                # combine old flags and new flags
+                uv.flag_array[ind1, 0, :, ipol] = np.logical_or(f, new_f)
+            if len(ind2) > 0:
+                f = uv.flag_array[ind2, 0, :, ipol]
+                if opts.algorithm == 'xrfi_simple':
+                    new_f = xrfi_simple(d, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                else:
+                    raise ValueError('Unrecognize RFI method ' + str(opts.algorithm))
+                # combine old flags and new flags
+                uv.flag_array[ind2, 0, :, ipol] = np.logical_or(f, new_f)
+
+        # save output when we're done
+        if opts.xrfi_path == '':
+            # default to the same directory
+            abspath = os.path.abspath(fn)
+            dirname = os.path.dirname(abspath)
+        else:
+            dirname = opts.xrfi_path
+        filename = ''.join([fn, opts.extension])
+        outpath = os.path.join(dirname, filename)
+        if opts.outfile_format == 'miriad':
+            uvd.write_miriad(outpath)
+        elif opts.outfile_format == 'uvfits':
+            uvd.write_uvfits(outpath)
+        elif opts.outfile_format == 'fhd':
+            uvd.write_fhd(outpath)
+        else:
+            raise ValueError('Unrecognized file format ' + str(opts.outfile_format))
+
+    return
