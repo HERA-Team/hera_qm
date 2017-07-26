@@ -7,6 +7,7 @@ import os
 from pyuvdata import UVData, UVCal
 import hera_cal as hc
 import matplotlib.pyplot as plt
+import matplotlib
 import astropy.stats as astats
 from collections import OrderedDict
 import json
