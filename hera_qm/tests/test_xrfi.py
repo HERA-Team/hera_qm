@@ -1,4 +1,5 @@
 import unittest
+import nose.tools as nt
 import glob
 import hera_qm.xrfi as xrfi
 import numpy as np
@@ -204,34 +205,10 @@ class TestBackground(Template, unittest.TestCase):
         self.ans['xrfi'] = (.75, .1)
         self.ans['xrfi_simple'] = (.90, .1)
 
-# class TestHERA(Template, unittest.TestCase):
-#    def setUp(self):
-#        def rfi_gen():
-#            for f in FILES['hera']:
-#                data = np.load(f)['chisq']
-#                rfi = np.where(xrfi.xrfi(data)) # XXX actual answers?
-#                yield data, rfi
-#            return
-#        self.rfi_gen = rfi_gen
-#        self.ans['detrend_deriv'] = (.05, .1)
-#        self.ans['detrend_medfilt'] = (.5, .1)
-#        self.ans['detrend_medminfilt'] = (.30, .1)
-#        self.ans['xrfi_simple'] = (.40, .3)
-#
-# class TestPAPER(Template, unittest.TestCase):
-#    def setUp(self):
-#        def rfi_gen():
-#            for f in FILES['paper']:
-#                data = np.load(f)['chisq']
-#                rfi = np.where(xrfi.xrfi(data)) # XXX actual answers?
-#                yield data, rfi
-#            return
-#        self.rfi_gen = rfi_gen
-#        self.ans['detrend_deriv'] = (.0, .1)
-#        self.ans['detrend_medfilt'] = (.1, .1)
-#        self.ans['detrend_medminfilt'] = (.0, .35)
-#        self.ans['xrfi_simple'] = (.3, .5)
-
+class TestXrfiRun(object):
+    def test_xrfi_run(self):
+        # define file name
+        pass
 
 if __name__ == '__main__':
     unittest.main()
