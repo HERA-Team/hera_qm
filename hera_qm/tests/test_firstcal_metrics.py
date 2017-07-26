@@ -6,13 +6,14 @@ import matplotlib
 matplotlib.use('Agg')
 import numpy as np
 from hera_qm import firstcal_metrics
+from hera_qm.data import DATA_PATH
 import unittest
 import os
 
 class Test_FirstCal_Metrics(unittest.TestCase):
 
     def setUp(self):
-        self.FC = firstcal_metrics.FirstCal_Metrics('../data/zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+        self.FC = firstcal_metrics.FirstCal_Metrics(DATA_PATH+'/zen.2457678.16694.yy.HH.uvc.good.first.calfits')
 
     def test_init(self):
         self.assertEqual(self.FC.Nants, 18)
