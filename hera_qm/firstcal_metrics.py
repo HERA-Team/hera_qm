@@ -71,7 +71,7 @@ class FirstCal_Metrics(object):
         self.Nants = self.UVC.Nants_data
         self.ants = self.UVC.ant_array
 
-    def run_metrics(self, filename=None, std_cut=0.5, output=False, filetype='pkl', write=True):
+    def run_metrics(self, std_cut=0.5, output=False):
         """
         Run all metrics and write results to file
 
@@ -92,11 +92,13 @@ class FirstCal_Metrics(object):
         write : bool, default=True
             write output file or not
 
-        """
-        # get filename prefix
-        if filename is None:
-            filename = self.file_stem + ".metrics"
+        Output:
+        -------
+        Create a self.result dictionary
+        if output == True:
+            return self.result
 
+        """
         # Calculate std and zscores
         self.ant_std, self.time_std, self.agg_std, self.z_scores = self.delay_std(return_dict=True)
 
@@ -121,25 +123,69 @@ class FirstCal_Metrics(object):
         result['time_std'] = self.time_std
         result['agg_std'] = self.agg_std
         result['times'] = self.times
+        self.result = result
+
+        if output == True:
+            return self.result
+       
+    def write_metrics(self, filename=None, filetype='pkl'):
+        """
+        Write metrics to file after running run_metrics()
+
+        filename : str, default=None
+            filename without filetype suffix
+            if None, use default filename stem
+
+        filetype : str, default='pkl'
+            filetype to write out to
+            options = ['json', 'pkl']
+
+        """
+        # get filename prefix
+        if filename is None:
+            filename = self.file_stem + ".metrics"
 
         # write to file
         if filetype == 'json':
             filename +='.json'
-            for r in result:
-                if type(result[r]) != str:
-                    result[r] = str(result[r])
+            # change ndarrays to lists
+            self.result['times'] = list(self.result['times'])
+            for k in self.result['z_scores'].keys():
+                self.result['z_scores'][k] = list(self.result['z_scores'][k])
+                   
+            result_str = json.dumps(self.result)
             with open(filename, 'w') as f:
-                json.dump(result, f, indent=4)
+                json.dump(result_str, f, indent=4)
 
         elif filetype == 'pkl':
             filename += '.pkl'
             with open(filename, 'wb') as f:
                 outp = pkl.Pickler(f)
-                outp.dump(result)
+                outp.dump(self.result)
 
-        if output == True:
-            return result
-        
+    def load_metrics(self, filename):
+        """
+        Read-in a firstcal_metrics file and append to class
+
+        Input:
+        ------
+        filename : str
+            filename to read in
+
+        """
+        # get filetype
+        filetype = filename.split('.')[-1]
+        if filetype == 'json':
+            with open(filename, 'r') as f:
+                self.result = json.load(f)
+
+        elif filetype == 'pkl':
+            with open(filename, 'rb') as f:
+                inp = pkl.Unpickler(f)
+                self.result = inp.load() 
+        else:
+            raise IOError("Filetype not recognized, try a json or pkl file")
+
 
     def delay_std(self, return_dict=False):
         """

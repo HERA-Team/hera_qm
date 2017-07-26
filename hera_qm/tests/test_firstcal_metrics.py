@@ -19,17 +19,25 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertEqual(len(self.FC.delays), 18)
 
     def test_run_metrics(self):
-        result = self.FC.run_metrics(output=True, write=False, std_cut=1.0)
+        result = self.FC.run_metrics(output=True, std_cut=1.0)
         self.assertEqual(result['full_sol'], 'good')
         self.assertEqual(result['bad_ant'], [])
         self.assertIn('9', result['z_scores'])
         self.assertIn('9', result['ant_std'])
         self.assertAlmostEqual(result['agg_std'], 0.08702395042454745)
 
-    def test_write_metrics(self):
-        self.FC.run_metrics(output=False, write=True, filetype='json', fname='metrics', std_cut=1.0)
-        self.assertEqual(os.path.isfile('metrics.json'), True)
-        os.system('rm metrics.json')
+    def test_write_load_metrics(self):
+        # run metrics
+        self.FC.run_metrics()
+        num_keys = len(self.FC.result.keys())
+        # write
+        self.FC.write_metrics(filename='metrics', filetype='pkl')
+        self.assertEqual(os.path.isfile('metrics.pkl'), True)
+        # load
+        self.FC.load_metrics(filename='metrics.pkl')
+        self.assertEqual(len(self.FC.result.keys()), num_keys)
+        # erase
+        os.system('rm metrics.pkl')
 
     def test_plot_delays(self):
         self.FC.plot_delays(fname='dlys.png', save=True)
