@@ -234,7 +234,7 @@ def xrfi_run(files, opts):
         elif opts.infile_format == 'ms':
             uvd.read_ms(fn)
         else:
-            raise ValueError('Unrecognized file format ' + str(opts.infile_format))
+            raise ValueError('Unrecognized input file format ' + str(opts.infile_format))
 
         # create an iterator over data contents
         for key, d in uvd.antpairpol_iter():
@@ -244,7 +244,9 @@ def xrfi_run(files, opts):
             if len(ind1) > 0:
                 f = uv.flag_array[ind1, 0, :, ipol]
                 if opts.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(d, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                    new_f = xrfi_simple(d, f=f, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                elif opts.algorithm == 'xrfi':
+                    new_f = xrfi(d, f=f, K=opts.k_size, sig_init=opts.sig_init, sig_adj=opts.sig_adj)
                 else:
                     raise ValueError('Unrecognize RFI method ' + str(opts.algorithm))
                 # combine old flags and new flags
@@ -252,7 +254,9 @@ def xrfi_run(files, opts):
             if len(ind2) > 0:
                 f = uv.flag_array[ind2, 0, :, ipol]
                 if opts.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(d, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                    new_f = xrfi_simple(d, f=f, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                elif opts.algorithm == 'xrfi':
+                    new_f = xrfi(d, f=f, K=opts.k_size, sig_init=opts.sig_init, sig_adj=opts.sig_adj)
                 else:
                     raise ValueError('Unrecognize RFI method ' + str(opts.algorithm))
                 # combine old flags and new flags
@@ -274,6 +278,6 @@ def xrfi_run(files, opts):
         elif opts.outfile_format == 'fhd':
             uvd.write_fhd(outpath)
         else:
-            raise ValueError('Unrecognized file format ' + str(opts.outfile_format))
+            raise ValueError('Unrecognized output file format ' + str(opts.outfile_format))
 
     return
