@@ -57,6 +57,12 @@ def get_metrics_OptionParser(method_name):
         o.add_option('--nsig_dt', dest='nsig_dt', default=6, type='float',
                      help='Number of sigma above median value to flag in t direction'
                      + ' for xrfi_simple. Default is 6.')
+        o.add_option('--k_size', dest='k_size', default=8, type='int',
+                     help='Size of kernel for detrend in xrfi algorithm. Default is 8.')
+        o.add_option('--sig_init', dest='sig_init', default=6, type='float',
+                     help='Starting number of sigmas to flag on. Default is 6.')
+        o.add_option('--sig_adj', dest='sig_adj', default=2, type='float',
+                     help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
     return o
 
 def get_pol(fname):
