@@ -1,10 +1,14 @@
 import unittest
 import nose.tools as nt
 import glob
+import os
+import shutil
 import hera_qm.xrfi as xrfi
 import numpy as np
 import pylab as plt
 import hera_qm.tests as qmtest
+import hera_qm.utils as utils
+from hera_qm.data import DATA_PATH
 
 np.random.seed(0)
 
@@ -206,9 +210,64 @@ class TestBackground(Template, unittest.TestCase):
         self.ans['xrfi_simple'] = (.90, .1)
 
 class TestXrfiRun(object):
-    def test_xrfi_run(self):
-        # define file name
-        pass
+    def test_xrfi_run_xrfi(self):
+        # get options object
+        o = utils.get_metrics_OptionParser('xrfi')
+        opt0 = "--infile_format=miriad"
+        opt1 = "--outfile_format=miriad"
+        opt2 = "--extension=R"
+        opt3 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        opt4 = "--algorithm=xrfi"
+        opt5 = "--k_size=2"
+        opt6 = "--sig_init=6"
+        opt7 = "--sig_adj=2"
+        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6, opt7])
+
+        # test running with no files
+        cmd = ' '.join([options, ''])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        nt.assert_raises(AssertionError, xrfi.xrfi_run, args, opts, history)
+
+        # test running on our test data
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        dest_file = os.path.join(DATA_PATH, 'test_output', 'zen.2457698.40355.xx.HH.uvcAAR')
+        if os.path.exists(dest_file):
+            shutil.rmtree(dest_file)
+        cmd = ' '.join([options, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        xrfi.xrfi_run(args, opts, cmd)
+        nt.assert_true(os.path.exists(dest_file))
+
+    def test_xrfi_run_xrfi_simple(self):
+        # get options object
+        o = utils.get_metrics_OptionParser('xrfi')
+        opt0 = "--infile_format=miriad"
+        opt1 = "--outfile_format=miriad"
+        opt2 = "--extension=R"
+        opt3 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        opt4 = "--algorithm=xrfi_simple"
+        opt5 = "--nsig_dt=6"
+        opt6 = "--nsig_df=6"
+        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6])
+
+        # test running with no files
+        cmd = ' '.join([options, ''])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        nt.assert_raises(AssertionError, xrfi.xrfi_run, args, opts, history)
+
+        # test running on our test data
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        dest_file = os.path.join(DATA_PATH, 'test_output', 'zen.2457698.40355.xx.HH.uvcAAR')
+        if os.path.exists(dest_file):
+            shutil.rmtree(dest_file)
+        cmd = ' '.join([options, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        xrfi.xrfi_run(args, opts, cmd)
+        nt.assert_true(os.path.exists(dest_file))
 
 if __name__ == '__main__':
     unittest.main()

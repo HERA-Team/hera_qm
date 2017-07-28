@@ -199,9 +199,6 @@ class TestAntennaMetrics(unittest.TestCase):
 
 class TestAntmetricsRun(object):
     def test_ant_metrics_run(self):
-        # define file names
-        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA')
-
         # get options object
         o = utils.get_metrics_OptionParser('ant_metrics')
         if DATA_PATH not in sys.path:
@@ -212,7 +209,7 @@ class TestAntmetricsRun(object):
         opt2 = "--crossCut=5"
         opt3 = "--deadCut=5"
         opt4 = "--extension=.ant_metrics.json"
-        opt5 = "--metrics_path={}".format(os.path.join(DATA_PATH,'test_output'))
+        opt5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
         opt6 = "--vis_format=miriad"
         options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6])
 
