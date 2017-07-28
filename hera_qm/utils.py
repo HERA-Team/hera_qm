@@ -24,7 +24,8 @@ def get_metrics_OptionParser(method_name):
 
     if method_name == 'ant_metrics':
         o.set_usage("ant_metrics_run.py -C [calfile] [options] *.uv")
-        aipy.scripting.add_standard_options(o, cal=True)
+        o.add_option('-C', '--cal', dest='cal', type='string',
+                     help='Calibration file to be used. Must be specified.')
         o.add_option('-p', '--pol', dest='pol', default='', type='string',
                      help="Comma-separated list of polarizations included. Default is ''")
         o.add_option('--crossCut', dest='crossCut', default=5, type='float',

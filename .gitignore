@@ -19,6 +19,9 @@ hera_qm/.ipynb_checkpoints/
 hera_qm/tests/cover
 hera_qm/cover
 
+# Test output
+hera_qm/data/test_output
+
 # Script Output
 *metrics.json
 *.ipynb_checkpoints

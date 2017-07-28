@@ -2,7 +2,9 @@
 Module for all things Radio Frequency Interference Flagging.
 Note these functions currently operate on real numbers only.
 '''
+from __future__ import print_function, division, absolute_import
 import numpy as np
+import os
 from scipy.signal import medfilt
 from pyuvdata import UVData
 
@@ -203,7 +205,7 @@ def xrfi(d, f=None, K=8, sig_init=6, sig_adj=2):
 
 # XXX split off median filter as one type of flagger
 
-def xrfi_run(files, opts):
+def xrfi_run(files, opts, history):
     """
     Run an RFI-flagging algorithm on an entire file and store results in flag array.
 
@@ -238,29 +240,32 @@ def xrfi_run(files, opts):
 
         # create an iterator over data contents
         for key, d in uvd.antpairpol_iter():
-            ind1, ind2, ipol = uv._key2inds(key)
+            ind1, ind2, ipol = uvd._key2inds(key)
 
             # make sure that we are selecting some number of values
             if len(ind1) > 0:
-                f = uv.flag_array[ind1, 0, :, ipol]
+                f = uvd.flag_array[ind1, 0, :, ipol]
                 if opts.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(d, f=f, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
                 elif opts.algorithm == 'xrfi':
-                    new_f = xrfi(d, f=f, K=opts.k_size, sig_init=opts.sig_init, sig_adj=opts.sig_adj)
+                    new_f = xrfi(np.abs(d), f=f, K=opts.k_size, sig_init=opts.sig_init, sig_adj=opts.sig_adj)
                 else:
-                    raise ValueError('Unrecognize RFI method ' + str(opts.algorithm))
+                    raise ValueError('Unrecognized RFI method ' + str(opts.algorithm))
                 # combine old flags and new flags
-                uv.flag_array[ind1, 0, :, ipol] = np.logical_or(f, new_f)
+                uvd.flag_array[ind1, 0, :, ipol] = np.logical_or(f, new_f)
             if len(ind2) > 0:
-                f = uv.flag_array[ind2, 0, :, ipol]
+                f = uvd.flag_array[ind2, 0, :, ipol]
                 if opts.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(d, f=f, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
                 elif opts.algorithm == 'xrfi':
-                    new_f = xrfi(d, f=f, K=opts.k_size, sig_init=opts.sig_init, sig_adj=opts.sig_adj)
+                    new_f = xrfi(np.abs(d), f=f, K=opts.k_size, sig_init=opts.sig_init, sig_adj=opts.sig_adj)
                 else:
-                    raise ValueError('Unrecognize RFI method ' + str(opts.algorithm))
+                    raise ValueError('Unrecognized RFI method ' + str(opts.algorithm))
                 # combine old flags and new flags
-                uv.flag_array[ind2, 0, :, ipol] = np.logical_or(f, new_f)
+                uvd.flag_array[ind2, 0, :, ipol] = np.logical_or(f, new_f)
+
+        # append to history
+        uvd.history  = uvd.history + history
 
         # save output when we're done
         if opts.xrfi_path == '':
@@ -269,7 +274,8 @@ def xrfi_run(files, opts):
             dirname = os.path.dirname(abspath)
         else:
             dirname = opts.xrfi_path
-        filename = ''.join([fn, opts.extension])
+        basename = os.path.basename(fn)
+        filename = ''.join([basename, opts.extension])
         outpath = os.path.join(dirname, filename)
         if opts.outfile_format == 'miriad':
             uvd.write_miriad(outpath)
