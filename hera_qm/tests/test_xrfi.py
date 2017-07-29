@@ -255,8 +255,7 @@ class TestXrfiRun(object):
         # test running with no files
         cmd = ' '.join([options, ''])
         opts, args = o.parse_args(cmd.split())
-        history = cmd
-        nt.assert_raises(AssertionError, xrfi.xrfi_run, args, opts, history)
+        nt.assert_raises(AssertionError, xrfi.xrfi_run, args, opts, cmd)
 
         # test running on our test data
         xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
@@ -265,9 +264,88 @@ class TestXrfiRun(object):
             shutil.rmtree(dest_file)
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
-        history = cmd
         xrfi.xrfi_run(args, opts, cmd)
         nt.assert_true(os.path.exists(dest_file))
+
+    def test_xrfi_run_errors(self):
+        # test code to read different file formats
+        # these will raise errors
+        o = utils.get_metrics_OptionParser('xrfi')
+        opt0 = "--infile_format=uvfits"
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        cmd = ' '.join([opt0, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        nt.assert_raises(IOError, xrfi.xrfi_run, args, opts, cmd)
+
+        opt0 = "--infile_format=fhd"
+        cmd = ' '.join([opt0, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        nt.assert_raises(StandardError, xrfi.xrfi_run, args, opts, cmd)
+
+        opt0 = "--infile_format=ms"
+        cmd = ' '.join([opt0, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        nt.assert_raises(RuntimeError, xrfi.xrfi_run, args, opts, cmd)
+
+        opt0 = "--infile_format=blah"
+        cmd = ' '.join([opt0, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        nt.assert_raises(ValueError, xrfi.xrfi_run, args, opts, cmd)
+
+        # choose an invalid alrogithm
+        opt0 = "--infile_format=miriad"
+        opt1 = "--algorithm=foo"
+        options = ' '.join([opt0, opt1])
+        cmd = ' '.join([options, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        nt.assert_raises(ValueError, xrfi.xrfi_run, args, opts, cmd)
+
+        # choose an invalid output format
+        opt0 = "--infile_format=miriad"
+        opt1 = "--outfile_format=blah"
+        options = ' '.join([opt0, opt1])
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        cmd = ' '.join([options, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        nt.assert_raises(ValueError, xrfi.xrfi_run, args, opts, cmd)
+
+    def test_xrfi_run_output_options(self):
+        # test different output options
+        o = utils.get_metrics_OptionParser('xrfi')
+
+        # test writing uvfits
+        opt0 = "--infile_format=miriad"
+        opt1 = "--outfile_format=uvfits"
+        opt2 = "--extension=.uvfits"
+        opt3 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        opt4 = "--algorithm=xrfi_simple"
+        options = ' '.join([opt0, opt1, opt2, opt3, opt4])
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        dest_file = os.path.join(DATA_PATH, 'test_output', 'zen.2457698.40355.xx.HH.uvcAA.uvfits')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([options, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        xrfi.xrfi_run(args, opts, cmd)
+        nt.assert_true(os.path.exists(dest_file))
+
+        # test writing to same directory
+        opt0 = "--infile_format=miriad"
+        opt1 = "--outfile_format=miriad"
+        opt2 = "--extension=R"
+        opt3 = "--algorithm=xrfi_simple"
+        options = ' '.join([opt0, opt1, opt2, opt3])
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        dest_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAAR')
+        if os.path.exists(dest_file):
+            shutil.rmtree(dest_file)
+        cmd = ' '.join([options, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        xrfi.xrfi_run(args, opts, cmd)
+        nt.assert_true(os.path.exists(dest_file))
+        # clean up
+        shutil.rmtree(dest_file)
+
 
 if __name__ == '__main__':
     unittest.main()

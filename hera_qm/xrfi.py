@@ -280,9 +280,7 @@ def xrfi_run(files, opts, history):
         if opts.outfile_format == 'miriad':
             uvd.write_miriad(outpath)
         elif opts.outfile_format == 'uvfits':
-            uvd.write_uvfits(outpath)
-        elif opts.outfile_format == 'fhd':
-            uvd.write_fhd(outpath)
+            uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
         else:
             raise ValueError('Unrecognized output file format ' + str(opts.outfile_format))
 
