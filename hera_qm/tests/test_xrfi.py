@@ -303,7 +303,8 @@ class TestXrfiRun(object):
         # choose an invalid output format
         opt0 = "--infile_format=miriad"
         opt1 = "--outfile_format=blah"
-        options = ' '.join([opt0, opt1])
+        opt2 = "--algorithm=xrfi_simple"
+        options = ' '.join([opt0, opt1, opt2])
         xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
