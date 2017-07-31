@@ -252,7 +252,7 @@ def load_antenna_metrics(metricsJSONFile):
 
     with open(metricsJSONFile, 'r') as infile:
         jsonMetrics = json.load(infile)
-    return {key: (eval(str(val)) if key != 'version' else str(val)) for
+    return {key: (eval(str(val)) if (key != 'version' and key != 'history') else str(val)) for
             key, val in jsonMetrics.items()}
 
 
@@ -294,6 +294,7 @@ class Antenna_Metrics():
         self.dataFileList = dataFileList
         self.reds = reds
         self.version_str = hera_qm_version_str
+        self.history = ''
 
         # For using data containers until pyuvdata gets faster
         # from hera_cal import firstcal
@@ -433,12 +434,15 @@ class Antenna_Metrics():
         allMetricsData['datafile_list'] = str(self.dataFileList)
         allMetricsData['reds'] = str(self.reds)
         allMetricsData['version'] = self.version_str
+        # make sure we have something in the history string to write it out
+        if self.history != '':
+            allMetricsData['history'] = self.history
 
         with open(metricsJSONFilename, 'w') as outfile:
             json.dump(allMetricsData, outfile, indent=4)
 
 # code for running ant_metrics on a file
-def ant_metrics_run(files, opts):
+def ant_metrics_run(files, opts, history):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
@@ -492,6 +496,10 @@ def ant_metrics_run(files, opts):
         am = Antenna_Metrics(jd_list, reds, fileformat=opts.vis_format)
         am.iterative_antenna_metrics_and_flagging(crossCut=opts.crossCut, deadCut=opts.deadCut,
                                                   verbose=opts.verbose)
+
+        # add history
+        am.history = am.history + history
+
         base_filename = jd_list[0]
         abspath = os.path.abspath(base_filename)
         dirname = os.path.dirname(abspath)
