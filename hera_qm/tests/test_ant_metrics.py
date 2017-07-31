@@ -216,15 +216,17 @@ class TestAntmetricsRun(object):
         # test running with no files
         cmd = ' '.join([options, ''])
         opts, args = o.parse_args(cmd.split())
-        nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run, args, opts)
+        history = cmd
+        nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run, args, opts, history)
 
         # test running with a lone file
         lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
         cmd = ' '.join([options, lone_file])
         opts, args = o.parse_args(cmd.split())
+        history = cmd
         # this test raises a warning, then fails...
         uvtest.checkWarnings(nt.assert_raises, [
-            AssertionError, ant_metrics.ant_metrics_run, args, opts], nwarnings=1,
+            AssertionError, ant_metrics.ant_metrics_run, args, opts, history], nwarnings=1,
                              message='Could not find')
 
         # test actually running metrics
@@ -235,7 +237,8 @@ class TestAntmetricsRun(object):
             os.remove(dest_file)
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
-        ant_metrics.ant_metrics_run(args, opts)
+        history = cmd
+        ant_metrics.ant_metrics_run(args, opts, history)
         nt.assert_true(os.path.exists(dest_file))
 
 if __name__ == '__main__':
