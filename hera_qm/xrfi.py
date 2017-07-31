@@ -5,6 +5,7 @@ from scipy.signal import medfilt
 # Functions for preprocessing data prior to RFI flagging
 #############################################################################
 
+
 def medmin(d):
     '''Calculate the median minus minimum statistic of array.
     Args:
@@ -35,6 +36,7 @@ def medminfilt(d, Kt=8, Kf=8):
             d_sm[i, j] = medmin(d[i0:i1, j0:j1])
     return d_sm
 
+
 def detrend_deriv(d, dt=True, df=True):
     ''' Detrend array by taking the derivative in either time, frequency
         or both.
@@ -45,7 +47,6 @@ def detrend_deriv(d, dt=True, df=True):
     Returns:
         array: detrended array with same shape as input array.
     '''
-
 
     if df:
         d_df = np.empty_like(d)
@@ -62,7 +63,7 @@ def detrend_deriv(d, dt=True, df=True):
     else:
         d_dt = d
     d2 = np.abs(d_dt)**2
-    # model sig as separable function of 2 axes                                                                                                                 
+    # model sig as separable function of 2 axes
     sig_f = np.median(d2, axis=0)
     sig_f.shape = (1, -1)
     sig_t = np.median(d2, axis=1)
@@ -74,11 +75,11 @@ def detrend_deriv(d, dt=True, df=True):
 def detrend_medminfilt(d, Kt=8, Kf=8):
     """Detrend array using medminfilt statistic. See medminfilt.
     Args:
-        d (array): data array of the shape (time, frequency) to detrend   
+        d (array): data array of the shape (time, frequency) to detrend
         Kt (int): size in time to apply medminfilter over
         Kf (int): size in frequency to apply medminfilter over
-    Returns:        
-         bool array: boolean array of flags    
+    Returns:
+         bool array: boolean array of flags
     """
     d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
     d_rs = d - d_sm
@@ -88,13 +89,14 @@ def detrend_medminfilt(d, Kt=8, Kf=8):
     f = d_rs / sig
     return f
 
+
 def detrend_medfilt(d, Kt=8, Kf=8):
-    """Detrend array using a median filter.    
-    Args:        
-        d (array): data array to detrend.        
-        K (int, optional): box size to apply medminfilt over    
-    Returns:        
-        bool array: boolean array of flags    
+    """Detrend array using a median filter.
+    Args:
+        d (array): data array to detrend.
+        K (int, optional): box size to apply medminfilt over
+    Returns:
+        bool array: boolean array of flags
     """
     if Kt > d.shape[0] or Kf > d.shape[1]:
         raise ValueError('Kernel size exceeds data.')
@@ -109,10 +111,9 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     return f[Kt:-Kt, Kf:-Kf]
 
 
-
 #############################################################################
 # RFI flagging algorithms
-############################################################################# 
+#############################################################################
 
 def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
     '''Generates a mask for flags using a watershed algorithm.
@@ -143,7 +144,7 @@ def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
     while x.size != prevx and y.size != prevy:
         for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             prevx, prevy = x.size, y.size
-            xp, yp = (x + dx).clip(0,f1.shape[0] - 1), (y + dy).clip(0, f1.shape[1] - 1)
+            xp, yp = (x + dx).clip(0, f1.shape[0] - 1), (y + dy).clip(0, f1.shape[1] - 1)
             i = np.where(f1[xp, yp] > sig_adj)[0]  # if sigma > 'sigl'
             f1.mask[xp[i], yp[i]] = 1
             x, y = np.where(f1.mask)
@@ -153,7 +154,7 @@ def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
 def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
     '''Flag RFI using derivatives in time and frequency.
     Args:
-        d (array): 2D data array of the shape (time, frequency) to flag 
+        d (array): 2D data array of the shape (time, frequency) to flag
         f (array, optional): input flags, defaults to zeros
         nsig_df (float, optional): number of sigma above median to flag in frequency direction
         nsig_dt (float, optional): number of sigma above median to flag in time direction
@@ -185,6 +186,7 @@ def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
         sig = np.sqrt(np.median(np.abs(ad - med)**2))
         f = np.where(ad > med + nsig_all * sig, 1, f)
     return f
+
 
 def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     """Run best rfi excision we have. Uses detrending and watershed algorithms above.
