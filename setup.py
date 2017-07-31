@@ -34,7 +34,7 @@ setup_args = {
     'package_dir': {'hera_qm': 'hera_qm'},
     'packages': ['hera_qm'],
     'include_package_data': True,
-    #    'scripts': glob.glob('scripts/*'),
+    'scripts': ['scripts/ant_metrics_run.py', 'scripts/xrfi_run.py'],
     'version': version.version,
     'package_data': {'hera_qm': data_files},
     #    'install_requires': ['numpy>=1.10', 'scipy', 'pyuvdata', 'astropy>1.2', 'aipy']
