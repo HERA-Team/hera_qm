@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import medfilt
 
 #############################################################################
-# Functions useful for understanding the statistics in RFI selection/flagging
+# Functions for preprocessing data prior to RFI flagging
 #############################################################################
 
 def medmin(d):
@@ -10,7 +10,7 @@ def medmin(d):
     Args:
         d (array): 2D data array of the shape (time,frequency).
     Returns:
-        (array): array with the statistic applied.
+        (float): medmin statistic.
     '''
     mn = np.min(d, axis=0)
     return 2 * np.median(mn) - np.min(mn)
@@ -23,8 +23,10 @@ def medminfilt(d, Kt=8, Kf=8):
         Kt (int, optional): integer representing box dimension in time to apply statistic.
         Kf (int, optional): integer representing box dimension in frequency to apply statistic.
     Returns:
-        array: filtered array. Same shape as input array.
+        array: filtered array with same shape as input array.
     '''
+    if Kt > d.shape[0] or Kf > d.shape[1]:
+        raise ValueError('Kernel size exceeds data.')
     d_sm = np.empty_like(d)
     for i in xrange(d.shape[0]):
         for j in xrange(d.shape[1]):
@@ -34,7 +36,17 @@ def medminfilt(d, Kt=8, Kf=8):
     return d_sm
 
 def detrend_deriv(d, dt=True, df=True):
-    '''XXX This only works ok on sparse RFI.'''
+    ''' Detrend array by taking the derivative in either time, frequency
+        or both.
+    Args:
+        d (array): 2D data array of the shape (time,frequency).
+        dt (bool, optional): derivative across time bins.
+        df (bool, optional): derivative across frequency bins.
+    Returns:
+        array: detrended array with same shape as input array.
+    '''
+
+
     if df:
         d_df = np.empty_like(d)
         d_df[:, 1:-1] = (d[:, 1:-1] - .5 * (d[:, :-2] + d[:, 2:])) / np.sqrt(1.5)
@@ -72,10 +84,7 @@ def detrend_medminfilt(d, Kt=8, Kf=8):
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts minmed on same scale as average
-    if Kt == Kf:
-        sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1)) * (Kt / .64)
-    else:
-        sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
+    sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
     f = d_rs / sig
     return f
 
@@ -87,13 +96,14 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     Returns:        
         bool array: boolean array of flags    
     """
+    if Kt > d.shape[0] or Kf > d.shape[1]:
+        raise ValueError('Kernel size exceeds data.')
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     d_sm = medfilt(d, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
-    # puts median on same scale as average    
-    # .456 scaling?    
+    # puts median on same scale as average
     sig = np.sqrt(medfilt(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     f = d_rs / sig
     return f[Kt:-Kt, Kf:-Kf]
@@ -101,7 +111,7 @@ def detrend_medfilt(d, Kt=8, Kf=8):
 
 
 #############################################################################
-# Various techniques for flagging RFI in interferometer visibilities
+# RFI flagging algorithms
 ############################################################################# 
 
 def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
@@ -180,8 +190,9 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     """Run best rfi excision we have. Uses detrending and watershed algorithms above.
     Args:
         d (array): 2D of data array.
-        f (array, optional): input flag array
-        K (int, optional): Box size for detrend
+        f (array, optional): input flag array.
+        Kt (int, optional): time size for detrending box.
+        Kf (int, optional): frequency size for detrending box/
         sig_init (float, optional): initial sigma to flag.
         sig_adj (float, optional): number of sigma to flag adjacent to flagged data (sig_init)
 
@@ -191,5 +202,3 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
     f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
     return f
-
-# XXX split off median filter as one type of flagger
