@@ -1,10 +1,15 @@
+from __future__ import print_function, division, absolute_import
 import numpy as np
 import matplotlib.pyplot as plt
-import aipy as a
+import aipy
 from copy import deepcopy
 from pyuvdata import UVData
 import json
+import optparse
+import os
+import re
 from hera_qm.version import hera_qm_version_str
+from hera_qm import utils
 
 
 #######################################################################
@@ -247,7 +252,7 @@ def load_antenna_metrics(metricsJSONFile):
 
     with open(metricsJSONFile, 'r') as infile:
         jsonMetrics = json.load(infile)
-    return {key: (eval(str(val)) if key != 'version' else str(val)) for
+    return {key: (eval(str(val)) if (key != 'version' and key != 'history') else str(val)) for
             key, val in jsonMetrics.items()}
 
 
@@ -272,16 +277,16 @@ class Antenna_Metrics():
         '''
 
         self.data = UVData()
-        if fileformat is 'miriad':
+        if fileformat == 'miriad':
             self.data.read_miriad(dataFileList)
-        elif fileformat is 'uvfits':
+        elif fileformat == 'uvfits':
             self.data.read_uvfits(dataFileList)
-        elif fileformat is 'fhd':
+        elif fileformat == 'fhd':
             self.data.read_fhd(dataFileList)
-        elif fileformat is 'ms':
+        elif fileformat == 'ms':
             self.data.read_ms(dataFileList)
         else:
-            raise ValueError('Unrecognized file format' + str(fileformat))
+            raise ValueError('Unrecognized file format ' + str(fileformat))
         self.ants = self.data.get_ants()
         self.pols = [pol.lower() for pol in self.data.get_pols()]
         self.antpols = [antpol.lower() for antpol in self.data.get_feedpols()]
@@ -289,6 +294,7 @@ class Antenna_Metrics():
         self.dataFileList = dataFileList
         self.reds = reds
         self.version_str = hera_qm_version_str
+        self.history = ''
 
         # For using data containers until pyuvdata gets faster
         # from hera_cal import firstcal
@@ -398,13 +404,13 @@ class Antenna_Metrics():
                     self.crossedAntsRemoved.append((worstCrossAnt[0], antpol))
                     self.removalIter[(worstCrossAnt[0], antpol)] = n
                     if verbose:
-                        print 'On iteration', n, 'we flag', (worstCrossAnt[0], antpol)
+                        print('On iteration', n, 'we flag', (worstCrossAnt[0], antpol))
             elif worstDeadCutRatio > worstCrossCutRatio and worstDeadCutRatio > 1.0:
                 self.xants.append(worstDeadAnt)
                 self.deadAntsRemoved.append(worstDeadAnt)
                 self.removalIter[worstDeadAnt] = n
                 if verbose:
-                    print 'On iteration', n, 'we flag', worstDeadAnt
+                    print('On iteration', n, 'we flag', worstDeadAnt)
             else:
                 break
 
@@ -428,6 +434,84 @@ class Antenna_Metrics():
         allMetricsData['datafile_list'] = str(self.dataFileList)
         allMetricsData['reds'] = str(self.reds)
         allMetricsData['version'] = self.version_str
+        # make sure we have something in the history string to write it out
+        if self.history != '':
+            allMetricsData['history'] = self.history
 
         with open(metricsJSONFilename, 'w') as outfile:
             json.dump(allMetricsData, outfile, indent=4)
+
+# code for running ant_metrics on a file
+def ant_metrics_run(files, opts, history):
+    """
+    Run a series of ant_metrics tests on a given set of input files.
+
+    Args:
+       files -- a list of files to run ant metrics on. Can be any of the 4 polarizations
+       opts -- an optparse OptionParser instance
+    Return:
+       None
+
+    The funciton will take in a list of files and options. It will run the
+    sereis of ant metrics tests, and produce a JSON file containing the relevant
+    information. The file list passed in need only contain one of the polarization
+    files for a given JD, and the function will look for the other polarizations
+    in the same folder. If not all four polarizations are found, a warning is
+    generated, since the code assumes all four polarizations are present.
+    """
+    try:
+        from hera_cal.omni import aa_to_info
+    except(ImportError):
+        from nose.plugins.skip import SkipTest
+        raise SkipTest('hera_cal.omni not detected. It must be installed to calculate array info')
+
+    # check that we were given some files to process
+    if len(files) == 0:
+        raise AssertionError('Please provide a list of visibility files')
+
+    # define polarizations to look for
+    if opts.pol == '':
+        # default polarization list
+        pol_list = ['xx', 'xy', 'yx', 'yy']
+    else:
+        # assumes polarizations are passed in as comma-separated list, e.g. 'xx,xy,yx,yy'
+        pol_list = opts.pol.split(',')
+
+    # generate a list of all files to be read in
+    fullpol_file_list = utils.generate_fullpol_file_list(files, pol_list)
+    if len(fullpol_file_list) == 0:
+        raise AssertionError('Could not find all 4 polarizations for any files provided')
+
+    # define freqs
+    # note that redundancy calculation does not depend on this, so this is just a dummy range
+    freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
+
+    # process calfile
+    aa = aipy.cal.get_aa(opts.cal, freqs)
+    info = aa_to_info(aa, pols=[pol_list[-1][0]], crosspols=[pol_list[-1]])
+    reds = info.get_reds()
+
+    # do the work
+    for jd_list in fullpol_file_list:
+        am = Antenna_Metrics(jd_list, reds, fileformat=opts.vis_format)
+        am.iterative_antenna_metrics_and_flagging(crossCut=opts.crossCut, deadCut=opts.deadCut,
+                                                  verbose=opts.verbose)
+
+        # add history
+        am.history = am.history + history
+
+        base_filename = jd_list[0]
+        abspath = os.path.abspath(base_filename)
+        dirname = os.path.dirname(abspath)
+        basename = os.path.basename(base_filename)
+        nopol_filename = re.sub('\.{}\.'.format(pol_list[0]), '.', basename)
+        if opts.metrics_path == '':
+            # default path is same directory as file
+            metrics_path = dirname
+        else:
+            metrics_path = opts.metrics_path
+        metrics_basename = nopol_filename + opts.extension
+        metrics_filename = os.path.join(metrics_path, metrics_basename)
+        am.save_antenna_metrics(metrics_filename)
+
+    return

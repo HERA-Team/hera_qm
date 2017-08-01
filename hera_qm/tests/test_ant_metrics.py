@@ -1,8 +1,12 @@
 import unittest
+import nose.tools as nt
 from hera_qm import ant_metrics
 import numpy as np
 from hera_qm.data import DATA_PATH
+import pyuvdata.tests as uvtest
+from hera_qm import utils
 import os
+import sys
 
 
 class fake_data():
@@ -18,7 +22,7 @@ class fake_data():
         return self.data[(i, j)][pol]
 
 
-class Test_Low_Level_Functions(unittest.TestCase):
+class TestLowLevelFunctions(unittest.TestCase):
 
     def setUp(self):
         self.data = fake_data()
@@ -87,7 +91,7 @@ class Test_Low_Level_Functions(unittest.TestCase):
             ant_metrics.average_abs_metrics(metric1, metric3)
 
 
-class Test_Antenna_Metrics(unittest.TestCase):
+class TestAntennaMetrics(unittest.TestCase):
 
     def setUp(self):
         self.dataFileList = [DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA',
@@ -193,6 +197,49 @@ class Test_Antenna_Metrics(unittest.TestCase):
         self.assertIn((81, 'x'), am2.crossedAntsRemoved)
         self.assertIn((81, 'y'), am2.crossedAntsRemoved)
 
+class TestAntmetricsRun(object):
+    def test_ant_metrics_run(self):
+        # get options object
+        o = utils.get_metrics_OptionParser('ant_metrics')
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        calfile = 'heratest_calfile'
+        opt0 = "-C {}".format(calfile)
+        opt1 = "-p xx,xy,yx,yy"
+        opt2 = "--crossCut=5"
+        opt3 = "--deadCut=5"
+        opt4 = "--extension=.ant_metrics.json"
+        opt5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        opt6 = "--vis_format=miriad"
+        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6])
+
+        # test running with no files
+        cmd = ' '.join([options, ''])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run, args, opts, history)
+
+        # test running with a lone file
+        lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        cmd = ' '.join([options, lone_file])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        # this test raises a warning, then fails...
+        uvtest.checkWarnings(nt.assert_raises, [
+            AssertionError, ant_metrics.ant_metrics_run, args, opts, history], nwarnings=1,
+                             message='Could not find')
+
+        # test actually running metrics
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA')
+        dest_file = os.path.join(DATA_PATH, 'test_output',
+                                 'zen.2457698.40355.HH.uvcA.ant_metrics.json')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([options, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        ant_metrics.ant_metrics_run(args, opts, history)
+        nt.assert_true(os.path.exists(dest_file))
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,7 +3,21 @@ from hera_qm.datacontainer import DataContainer
 
 
 def check_noise_variance(data, wgts, bandwidth, inttime):
-    """XXX"""
+    '''Function to calculate the noise levels of each baseline/pol combination,
+    relative to the noise on the autos.
+
+    Args:
+        data (dict): dictionary of visibilities with keywords of pol/ant pair
+            in any order.
+        wgts (dict): dictionary of weights with keywords of pol/ant pair in any order
+        bandwidth (float): Channel width, preferably Hz, but only restriction is
+            bandwidth units are recipricol inttime units.
+        inttime (float): Integration time, preferably seconds, but only restriction
+            is inttime units are recipricol bandwidth units.
+
+    Returns:
+        Cij (dict): dictionary of variance measurements with keywords of ant pair/pol
+    '''
     dc = DataContainer(data)
     wc = DataContainer(wgts)
     Cij = {}
