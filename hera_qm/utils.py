@@ -54,12 +54,19 @@ def get_metrics_OptionParser(method_name):
                      help='RFI-flagging algorithm to use. Default is xrfi_simple.')
         o.add_option('--nsig_df', dest='nsig_df', default=6, type='float',
                      help='Number of sigma above median value to flag in f direction'
-                     + ' for xrfi_simple. Default is 6.')
+                     ' for xrfi_simple. Default is 6.')
         o.add_option('--nsig_dt', dest='nsig_dt', default=6, type='float',
                      help='Number of sigma above median value to flag in t direction'
-                     + ' for xrfi_simple. Default is 6.')
-        o.add_option('--k_size', dest='k_size', default=8, type='int',
-                     help='Size of kernel for detrend in xrfi algorithm. Default is 8.')
+                     ' for xrfi_simple. Default is 6.')
+        o.add_option('--nsig_all', dest='nsig_all', default=0, type='float',
+                     help='Number of overall sigma above median value to flag'
+                     ' for xrfi_simple. Default is 0 (skip).')
+        o.add_option('--kt_size', dest='kt_size', default=8, type='int',
+                     help='Size of kernel in time dimension for detrend in xrfi '
+                     'algorithm. Default is 8.')
+        o.add_option('--kf_size', dest='kf_size', default=8, type='int',
+                     help='Size of kernel in frequency dimension for detrend in '
+                     'xrfi algorithm. Default is 8.')
         o.add_option('--sig_init', dest='sig_init', default=6, type='float',
                      help='Starting number of sigmas to flag on. Default is 6.')
         o.add_option('--sig_adj', dest='sig_adj', default=2, type='float',
@@ -132,4 +139,3 @@ def generate_fullpol_file_list(files, pol_list):
                 file_list.append(jd_list)
 
     return file_list
-
