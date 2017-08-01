@@ -250,9 +250,11 @@ def xrfi_run(files, opts, history):
             if len(ind1) > 0:
                 f = uvd.flag_array[ind1, 0, :, ipol]
                 if opts.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=opts.nsig_df,
+                                        nsig_dt=opts.nsig_dt, nsig_all=opts.nsig_all)
                 elif opts.algorithm == 'xrfi':
-                    new_f = xrfi(np.abs(d), f=f, K=opts.k_size, sig_init=opts.sig_init, sig_adj=opts.sig_adj)
+                    new_f = xrfi(np.abs(d), f=f, Kt=opts.kt_size, Kf=opts.kf_size,
+                                 sig_init=opts.sig_init, sig_adj=opts.sig_adj)
                 else:
                     raise ValueError('Unrecognized RFI method ' + str(opts.algorithm))
                 # combine old flags and new flags
@@ -260,16 +262,18 @@ def xrfi_run(files, opts, history):
             if len(ind2) > 0:
                 f = uvd.flag_array[ind2, 0, :, ipol]
                 if opts.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=opts.nsig_df, nsig_dt=opts.nsig_dt)
+                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=opts.nsig_df,
+                                        nsig_dt=opts.nsig_dt, nsig_all=opts.nsig_all)
                 elif opts.algorithm == 'xrfi':
-                    new_f = xrfi(np.abs(d), f=f, K=opts.k_size, sig_init=opts.sig_init, sig_adj=opts.sig_adj)
+                    new_f = xrfi(np.abs(d), f=f, Kt=opts.kt_size, Kf=opts.kf_size,
+                                 sig_init=opts.sig_init, sig_adj=opts.sig_adj)
                 else:
                     raise ValueError('Unrecognized RFI method ' + str(opts.algorithm))
                 # combine old flags and new flags
                 uvd.flag_array[ind2, 0, :, ipol] = np.logical_or(f, new_f)
 
         # append to history
-        uvd.history  = uvd.history + history
+        uvd.history = uvd.history + history
 
         # save output when we're done
         if opts.xrfi_path == '':

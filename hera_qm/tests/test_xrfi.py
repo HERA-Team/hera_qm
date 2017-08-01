@@ -281,7 +281,7 @@ class TestBackground(Template, unittest.TestCase):
         self.mode['detrend_medminfilt'] = [False, False, False, True]
         self.mode['watershed'] = [True, True]
 
-        
+
 class TestXrfiRun(object):
     def test_xrfi_run_xrfi(self):
         # get options object
@@ -291,10 +291,11 @@ class TestXrfiRun(object):
         opt2 = "--extension=R"
         opt3 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
         opt4 = "--algorithm=xrfi"
-        opt5 = "--k_size=2"
-        opt6 = "--sig_init=6"
-        opt7 = "--sig_adj=2"
-        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6, opt7])
+        opt5 = "--kt_size=2"
+        opt6 = "--kf_size=2"
+        opt7 = "--sig_init=6"
+        opt8 = "--sig_adj=2"
+        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6, opt7, opt8])
 
         # test running with no files
         cmd = ' '.join([options, ''])
@@ -323,7 +324,8 @@ class TestXrfiRun(object):
         opt4 = "--algorithm=xrfi_simple"
         opt5 = "--nsig_dt=6"
         opt6 = "--nsig_df=6"
-        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6])
+        opt7 = "--nsig_all=0"
+        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6, opt7])
 
         # test running with no files
         cmd = ' '.join([options, ''])
