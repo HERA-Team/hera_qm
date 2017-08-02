@@ -472,7 +472,7 @@ def ant_metrics_run(files, opts, history):
     # define polarizations to look for
     if opts.pol == '':
         # default polarization list
-        pol_list = ['xx', 'xy', 'yx', 'yy']
+        pol_list = ['xx', 'yy', 'xy', 'yx']
     else:
         # assumes polarizations are passed in as comma-separated list, e.g. 'xx,xy,yx,yy'
         pol_list = opts.pol.split(',')
@@ -488,7 +488,7 @@ def ant_metrics_run(files, opts, history):
 
     # process calfile
     aa = aipy.cal.get_aa(opts.cal, freqs)
-    info = aa_to_info(aa, pols=[pol_list[-1][0]], crosspols=[pol_list[-1]])
+    info = aa_to_info(aa, pols=[pol_list[-1][0]])
     reds = info.get_reds()
 
     # do the work
