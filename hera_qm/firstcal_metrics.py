@@ -9,6 +9,8 @@ import hera_cal as hc
 import matplotlib
 import matplotlib.pyplot as plt
 plt.switch_backend('Agg')
+import pkg_resources
+pkg_resources.require('astropy>=2.0')
 import astropy.stats as astats
 from collections import OrderedDict
 from hera_qm.version import hera_qm_version_str
