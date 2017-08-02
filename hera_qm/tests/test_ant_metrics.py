@@ -95,9 +95,9 @@ class TestAntennaMetrics(unittest.TestCase):
 
     def setUp(self):
         self.dataFileList = [DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA',
+                             DATA_PATH + '/zen.2457698.40355.yy.HH.uvcA',
                              DATA_PATH + '/zen.2457698.40355.xy.HH.uvcA',
-                             DATA_PATH + '/zen.2457698.40355.yx.HH.uvcA',
-                             DATA_PATH + '/zen.2457698.40355.yy.HH.uvcA']
+                             DATA_PATH + '/zen.2457698.40355.yx.HH.uvcA']
         if not os.path.exists(DATA_PATH + '/test_output/'):
             os.makedirs(DATA_PATH + '/test_output/')
         self.reds = [[(9, 31), (20, 65), (22, 89), (53, 96), (64, 104), (72, 81),
@@ -141,8 +141,10 @@ class TestAntennaMetrics(unittest.TestCase):
 
     def test_load_errors(self):
         with self.assertRaises(ValueError):
-            ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
-                                        [], fileformat='miriad')
+            uvtest.checkWarnings(ant_metrics.Antenna_Metrics,
+                                 [[DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'], []],
+                                 {"fileformat": 'miriad'}, nwarnings=1,
+                                 message='antenna_diameters is not set')
         with self.assertRaises(IOError):
             ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='uvfits')
@@ -158,7 +160,13 @@ class TestAntennaMetrics(unittest.TestCase):
         #                                 [], fileformat='ms')
 
     def test_init(self):
-        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds, fileformat='miriad')
+        # We will throw 4 warnings for unknown antenna diameters.
+        # All warnings are UserWarnings
+        messages = (['antenna_diameters is not set'] * 4)
+        categories = ([UserWarning] * 4)
+        am = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [self.dataFileList, self.reds],
+                                  {"fileformat": 'miriad'}, nwarnings=4, message=messages,
+                                  category=categories)
         self.assertEqual(len(am.ants), 19)
         self.assertEqual(set(am.pols), set(['xx', 'yy', 'xy', 'yx']))
         self.assertEqual(set(am.antpols), set(['x', 'y']))
@@ -166,7 +174,13 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertEqual(len(am.reds), 27)
 
     def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(self):
-        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds, fileformat='miriad')
+        # We will throw 4 warnings for unknown antenna diameters.
+        # All warnings are UserWarnings
+        messages = (['antenna_diameters is not set'] * 4)
+        categories = ([UserWarning] * 4)
+        am = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [self.dataFileList, self.reds],
+                                  {"fileformat": 'miriad'}, nwarnings=4, message=messages,
+                                  category=categories)
         with self.assertRaises(KeyError):
             am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
 
@@ -188,7 +202,13 @@ class TestAntennaMetrics(unittest.TestCase):
             self.assertEqual(loaded[jsonStat], getattr(am, stat))
 
     def test_cross_detection(self):
-        am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds, fileformat='miriad')
+        # We will throw 4 warnings for unknown antenna diameters.
+        # All warnings are UserWarnings
+        messages = (['antenna_diameters is not set'] * 4)
+        categories = ([UserWarning] * 4)
+        am2 = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [
+            self.dataFileList, self.reds], {"fileformat": 'miriad'}, nwarnings=4,
+                                   message=messages, category=categories)
         am2.iterative_antenna_metrics_and_flagging(crossCut=3, deadCut=10)
         for stat in self.summaryStats:
             self.assertTrue(hasattr(am2, stat))
@@ -205,7 +225,7 @@ class TestAntmetricsRun(object):
             sys.path.append(DATA_PATH)
         calfile = 'heratest_calfile'
         opt0 = "-C {}".format(calfile)
-        opt1 = "-p xx,xy,yx,yy"
+        opt1 = "-p xx,yy,xy,yx"
         opt2 = "--crossCut=5"
         opt3 = "--deadCut=5"
         opt4 = "--extension=.ant_metrics.json"
@@ -238,7 +258,12 @@ class TestAntmetricsRun(object):
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
         history = cmd
-        ant_metrics.ant_metrics_run(args, opts, history)
+        # We will throw 4 warnings for unknown antenna diameters.
+        # All warnings are UserWarnings
+        messages = (['antenna_diameters is not set'] * 4)
+        categories = ([UserWarning] * 4)
+        uvtest.checkWarnings(ant_metrics.ant_metrics_run, [args, opts, history],
+                             nwarnings=4, message=messages, category=categories)
         nt.assert_true(os.path.exists(dest_file))
 
 if __name__ == '__main__':
