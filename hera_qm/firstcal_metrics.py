@@ -16,6 +16,7 @@ import json
 import cPickle as pkl
 import copy
 
+
 class FirstCal_Metrics(object):
     """
     FirstCal_Metrics class for holding firstcal data,
@@ -120,9 +121,9 @@ class FirstCal_Metrics(object):
         metrics['version'] = self.version_str
         self.metrics = metrics
 
-        if output == True:
+        if output is True:
             return self.metrics
-       
+
     def write_metrics(self, filename=None, filetype='json'):
         """
         Write metrics to file after running run_metrics()
@@ -143,7 +144,7 @@ class FirstCal_Metrics(object):
         # write to file
         if filetype == 'json':
             if filename.split('.')[-1] != 'json':
-                filename +='.json'
+                filename += '.json'
             # change ndarrays to lists
             metrics_out = copy.deepcopy(self.metrics)
             metrics_out['times'] = list(metrics_out['times'])
@@ -189,10 +190,9 @@ class FirstCal_Metrics(object):
         elif filetype == 'pkl':
             with open(filename, 'rb') as f:
                 inp = pkl.Unpickler(f)
-                self.metrics = inp.load() 
+                self.metrics = inp.load()
         else:
             raise IOError("Filetype not recognized, try a json or pkl file")
-
 
     def delay_std(self, return_dict=False):
         """
@@ -268,7 +268,7 @@ class FirstCal_Metrics(object):
 
     def plot_delays(self, ants=None, plot_type='both', ax=None,
                     cm='spectral', save=False, fname=None,
-                    plt_kwargs={'markersize':8, 'alpha':0.75}):
+                    plt_kwargs={'markersize': 8, 'alpha': 0.75}):
         """
         plot delay solutions from a calfits file
         plot either
@@ -290,13 +290,13 @@ class FirstCal_Metrics(object):
             'both' for both
 
         ax : list, [default=None]
-            list containing matplotlib axis objects 
+            list containing matplotlib axis objects
             to make plots in.
             if None, will create a figure and axes by default.
             if not None, ax must contain enough subplots
             given specification of plot_type plus one
             more axis for a legend at the end
-         
+
         cm : str, [default='spectral']
             select matplotlib colormap to use
 
@@ -308,17 +308,17 @@ class FirstCal_Metrics(object):
         fname : str, [default=self.file_stem+'.png']
             filename to save plot as
             default is self.file_stem
- 
+
         plt_kwargs : dict, [default={'markersize':8,'alpha':0.75}]
             keyword arguments for ax.plot() calls
-            other than "c" and "marker" which are 
-            already defined 
+            other than "c" and "marker" which are
+            already defined
         """
         # Init figure and ax if needed
         custom_ax = True
         if ax is None:
             custom_ax = False
-            fig = plt.figure(figsize=(8,8))
+            fig = plt.figure(figsize=(8, 8))
             self.fig = fig
             fig.subplots_adjust(hspace=0.3)
             if plot_type == 'both':
@@ -330,7 +330,7 @@ class FirstCal_Metrics(object):
 
         # match ants fed to true ants
         if ants is not None:
-            plot_ants = [np.where(self.ants==ant)[0][0] for ant in ants if ant in self.ants]
+            plot_ants = [np.where(self.ants == ant)[0][0] for ant in ants if ant in self.ants]
         else:
             plot_ants = range(self.Nants)
 
@@ -351,9 +351,9 @@ class FirstCal_Metrics(object):
             ax.grid(True)
             for i, index in enumerate(plot_ants):
                 p, = ax.plot(self.frac_JD, self.delays[index], marker='.',
-                                c=cmap[i], **plt_kwargs)
+                             c=cmap[i], **plt_kwargs)
                 plabel.append(p)
-            ax.set_xlabel('fraction of JD %d'%self.start_JD, fontsize=14)
+            ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
             ax.set_ylabel('delay solution [ns]', fontsize=14)
             if plot_type == 'both':
                 ax = axes
@@ -367,30 +367,28 @@ class FirstCal_Metrics(object):
             ax.grid(True)
             for i, index in enumerate(plot_ants):
                 p, = ax.plot(self.frac_JD, self.delay_offsets[index],
-                                marker='.', c=cmap[i], **plt_kwargs)
+                             marker='.', c=cmap[i], **plt_kwargs)
                 plabel.append(p)
-            ax.set_xlabel('fraction of JD %d'%self.start_JD, fontsize=14)
+            ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
             ax.set_ylabel('delay offset [ns]', fontsize=14)
             if plot_type == 'both':
                 ax = axes
 
         # add legend
-        if custom_ax == False:
-            ax = fig.add_axes([1.0,0.1,0.05,0.8])
+        if custom_ax is False:
+            ax = fig.add_axes([1.0, 0.1, 0.05, 0.8])
             ax.axis('off')
             ax.legend(plabel, [self.ants[i] for i in plot_ants])
         else:
             ax[-1].legend(plabel, [self.ants[i] for i in plot_ants])
 
-        if save == True and custom_ax == False:
+        if save is True and custom_ax is False:
             if fname is None:
                 fname = self.file_stem + '.dlys.png'
             fig.savefig(fname, bbox_inches='tight')
 
-
-    def plot_zscores(self, fname=None, plot_type='full', cm='viridis_r', ax=None, figsize=(10,6),
-                        save=False,
-                        kwargs={'cmap':'viridis_r','vmin':0,'vmax':5}):
+    def plot_zscores(self, fname=None, plot_type='full', cm='viridis_r', ax=None, figsize=(10, 6),
+                     save=False, kwargs={'cmap': 'viridis_r', 'vmin': 0, 'vmax': 5}):
         """
         Plot antenna delay solution z_scores
 
@@ -434,28 +432,28 @@ class FirstCal_Metrics(object):
         if plot_type == 'full':
             # plot
             xlen = [self.frac_JD.min(), self.frac_JD.max()]
-            xlen_round = [np.ceil(self.frac_JD.min()*1000)/1000,
-                                np.floor(self.frac_JD.max()*1000)/1000]
+            xlen_round = [np.ceil(self.frac_JD.min() * 1000) / 1000,
+                          np.floor(self.frac_JD.max() * 1000) / 1000]
             ylen = [0, len(self.ants)]
             cax = ax.matshow(z_scores, origin='lower', aspect='auto',
-                    extent=[xlen[0], xlen[1], ylen[0], ylen[1]], **kwargs)
+                             extent=[xlen[0], xlen[1], ylen[0], ylen[1]], **kwargs)
 
             # define ticks
             ax.xaxis.set_ticks_position('bottom')
-            xticks = np.arange(xlen_round[0], xlen_round[1]+1e-5, 0.001)
+            xticks = np.arange(xlen_round[0], xlen_round[1] + 1e-5, 0.001)
             ax.set_xticks(xticks)
-            #[t.set_rotation(20) for t in ax.get_xticklabels()]
-            ax.set_yticks(np.arange(len(self.ants))+0.5)
+            # [t.set_rotation(20) for t in ax.get_xticklabels()]
+            ax.set_yticks(np.arange(len(self.ants)) + 0.5)
             ax.set_yticklabels(self.ants)
             [t.set_rotation(20) for t in ax.get_yticklabels()]
 
             # set labels
-            ax.set_xlabel('fraction of JD %d'%self.start_JD, fontsize=14)
+            ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
             ax.set_ylabel('antenna number', fontsize=14)
 
             # set colorbar
             fig.colorbar(cax, label='z-score')
-           
+
         if plot_type == 'time_avg':
             # plot
             cmap = matplotlib.cm.spectral(np.linspace(0, 0.95, len(self.ants)))
@@ -467,20 +465,19 @@ class FirstCal_Metrics(object):
 
             # define ticks
             ax.set_xlim(-1, len(self.ants))
-            ax.set_ylim(0,5)
+            ax.set_ylim(0, 5)
 
             ax.set_xticks(range(len(self.ants)))
             ax.set_xticklabels(self.ants)
             [t.set_rotation(20) for t in ax.get_xticklabels()]
-             
+
             ax.set_xlabel('antenna number', fontsize=14)
             ax.set_ylabel('time-averaged z-score', fontsize=14)
 
-        if save == True and custom_ax == False:
+        if save is True and custom_ax is False:
             if fname is None:
                 fname = self.file_stem + '.zscrs.png'
             fig.savefig(fname, bbox_inches='tight')
-
 
     def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         """
@@ -488,10 +485,10 @@ class FirstCal_Metrics(object):
 
         Input:
         ------
-       
+
         fname : str, default=None
             filename
- 
+
         xaxis : str, default='ant', option=['ant', 'time']
             what to plot on the xaxis, antennas or time stamp
 
@@ -508,7 +505,7 @@ class FirstCal_Metrics(object):
         custom_ax = True
         if ax is None:
             custom_ax = False
-            fig = plt.figure(figsize=(8,6))
+            fig = plt.figure(figsize=(8, 6))
             ax = fig.add_subplot(111)
 
         # get std
@@ -521,7 +518,7 @@ class FirstCal_Metrics(object):
             cmap = matplotlib.cm.spectral(np.linspace(0, 0.95, len(xax)))
             ax.grid(True)
             ax.scatter(xax, yax, c=cmap, alpha=0.85,
-                    marker='o', edgecolor='None', s=70)
+                       marker='o', edgecolor='None', s=70)
             ax.set_xlim(-1, len(self.ants))
             ax.set_xticks(range(len(self.ants)))
             ax.set_xticklabels(self.ants)
@@ -532,15 +529,14 @@ class FirstCal_Metrics(object):
         elif xaxis == 'time':
             xax = self.frac_JD
             yax = time_std
-            cmap=None
+            cmap = None
             ax.grid(True)
             ax.plot(xax, yax, c='k', marker='.', linestyle='-', alpha=0.85)
             [t.set_rotation(20) for t in ax.get_xticklabels()]
             ax.set_xlabel('fractional JD of {}'.format(self.start_JD), fontsize=14)
             ax.set_ylabel('delay solution standard deviation [ns]', fontsize=14)
 
-        if save == True and custom_ax == False:
+        if save is True and custom_ax is False:
             if fname is None:
                 fname = self.file_stem + '.stds.png'
             fig.savefig(fname, bbox_inches='tight')
-
