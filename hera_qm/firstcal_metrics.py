@@ -92,7 +92,8 @@ class FirstCal_Metrics(object):
 
         """
         # Calculate std and zscores
-        self.ant_std, self.time_std, self.agg_std, self.z_scores = self.delay_std(return_dict=True)
+        (self.ant_avg, self.ant_std, self.time_std, self.agg_std,
+         self.z_scores) = self.delay_std(return_dict=True)
 
         # Given delay std cut find "bad" ant
         # determine if full sol is bad
@@ -111,6 +112,7 @@ class FirstCal_Metrics(object):
         metrics['full_sol'] = self.full_sol
         metrics['bad_ant'] = self.bad_ants
         metrics['z_scores'] = self.z_scores
+        metrics['ant_avg'] = self.ant_avg
         metrics['ant_std'] = self.ant_std
         metrics['time_std'] = self.time_std
         metrics['agg_std'] = self.agg_std
@@ -175,6 +177,8 @@ class FirstCal_Metrics(object):
                 self.metrics = json.load(f)
 
             # ensure keys of dicts are not strings
+            for i in self.metrics['ant_avg'].keys():
+                self.metrics['ant_avg'][int(i)] = self.metrics['ant_avg'].pop(i)
             for i in self.metrics['ant_std'].keys():
                 self.metrics['ant_std'][int(i)] = self.metrics['ant_std'].pop(i)
             for i in self.metrics['time_std'].keys():
@@ -211,7 +215,10 @@ class FirstCal_Metrics(object):
 
         Output:
         --------
-        return ant_std, time_std, agg_std, z_scores
+        return ant_avg, ant_std, time_std, agg_std, z_scores
+
+        ant_avg : ndarray, shape=(N_ants,)
+            average delay solution across time for each antenna
 
         ant_std : ndarray, shape=(N_ants,)
             standard deviation of delay solutions across time
@@ -231,30 +238,33 @@ class FirstCal_Metrics(object):
 
         """
         # calculate standard deviations
+        ant_avg = self.delay_avgs
         ant_std = astats.biweight_midvariance(self.delay_offsets, axis=1)
         time_std = astats.biweight_midvariance(self.delay_offsets, axis=0)
         agg_std = astats.biweight_midvariance(self.delay_offsets)
 
         # calculate z-scores
         z_scores = np.abs(self.delay_offsets / agg_std)
-       
-        # convert to ordered dict if desired 
-        if return_dict == True:
+
+        # convert to ordered dict if desired
+        if return_dict is True:
+            ant_avg_d = OrderedDict()
             time_std_d = OrderedDict()
             ant_std_d = OrderedDict()
             z_scores_d = OrderedDict()
             for i, ant in enumerate(self.ants):
+                ant_avg_d[ant] = ant_avg[i]
                 ant_std_d[ant] = ant_std[i]
                 z_scores_d[ant] = z_scores[i]
             for i, t in enumerate(self.times):
                 time_std_d[t] = time_std[i]
 
+            ant_avg = ant_avg_d
             time_std = time_std_d
             ant_std = ant_std_d
             z_scores = z_scores_d
 
-        return ant_std, time_std, agg_std, z_scores
-
+        return ant_avg, ant_std, time_std, agg_std, z_scores
 
     def plot_delays(self, ants=None, plot_type='both', ax=None,
                     cm='spectral', save=False, fname=None,
@@ -418,7 +428,7 @@ class FirstCal_Metrics(object):
             ax = fig.add_subplot(111)
 
         # Get zscores
-        ant_std, time_std, agg_std, z_scores = self.delay_std()
+        ant_avg, ant_std, time_std, agg_std, z_scores = self.delay_std()
 
         # Plot zscores
         if plot_type == 'full':
@@ -502,7 +512,7 @@ class FirstCal_Metrics(object):
             ax = fig.add_subplot(111)
 
         # get std
-        ant_std, time_std, agg_std, z_scores = self.delay_std()
+        ant_avg, ant_std, time_std, agg_std, z_scores = self.delay_std()
 
         # choose xaxis
         if xaxis == 'ant':

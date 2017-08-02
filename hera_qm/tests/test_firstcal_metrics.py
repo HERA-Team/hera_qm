@@ -25,6 +25,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertEqual(metrics['bad_ant'], [])
         self.assertIn(9, metrics['z_scores'])
         self.assertIn(9, metrics['ant_std'])
+        self.assertIn(9, metrics['ant_avg'])
         self.assertAlmostEqual(metrics['agg_std'], 0.08702395042454745)
 
     def test_write_load_metrics(self):
