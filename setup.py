@@ -38,6 +38,7 @@ setup_args = {
     'version': version.version,
     'package_data': {'hera_qm': data_files},
     #    'install_requires': ['numpy>=1.10', 'scipy', 'pyuvdata', 'astropy>1.2', 'aipy']
+    'install_requires': ['astropy>=2.0'],
     #    'dependency_links': ['https://github.com/zakiali/omnical/tarball/master#egg=omnical-dev',]
     'zip_safe': False,
 }
