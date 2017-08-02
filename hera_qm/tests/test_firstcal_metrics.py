@@ -3,7 +3,7 @@ test_firstcal_metrics.py
 
 """
 import matplotlib
-matplotlib.use('agg')
+matplotlib.use('Agg')
 import numpy as np
 from hera_qm import firstcal_metrics
 from hera_qm.data import DATA_PATH
@@ -20,25 +20,25 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertEqual(len(self.FC.delays), 18)
 
     def test_run_metrics(self):
-        result = self.FC.run_metrics(output=True, std_cut=1.0)
-        self.assertEqual(result['full_sol'], 'good')
-        self.assertEqual(result['bad_ant'], [])
-        self.assertIn('9', result['z_scores'])
-        self.assertIn('9', result['ant_std'])
-        self.assertAlmostEqual(result['agg_std'], 0.08702395042454745)
+        metrics = self.FC.run_metrics(output=True, std_cut=1.0)
+        self.assertEqual(metrics['full_sol'], 'good')
+        self.assertEqual(metrics['bad_ant'], [])
+        self.assertIn(9, metrics['z_scores'])
+        self.assertIn(9, metrics['ant_std'])
+        self.assertAlmostEqual(metrics['agg_std'], 0.08702395042454745)
 
     def test_write_load_metrics(self):
         # run metrics
         self.FC.run_metrics()
-        num_keys = len(self.FC.result.keys())
+        num_keys = len(self.FC.metrics.keys())
         # write
-        self.FC.write_metrics(filename='metrics', filetype='pkl')
-        self.assertEqual(os.path.isfile('metrics.pkl'), True)
+        self.FC.write_metrics(filename='metrics', filetype='json')
+        self.assertEqual(os.path.isfile('metrics.json'), True)
         # load
-        self.FC.load_metrics(filename='metrics.pkl')
-        self.assertEqual(len(self.FC.result.keys()), num_keys)
+        self.FC.load_metrics(filename='metrics.json')
+        self.assertEqual(len(self.FC.metrics.keys()), num_keys)
         # erase
-        os.system('rm metrics.pkl')
+        os.system('rm metrics.json')
 
     def test_plot_delays(self):
         self.FC.plot_delays(fname='dlys.png', save=True)

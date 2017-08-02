@@ -8,22 +8,19 @@ from pyuvdata import UVData, UVCal
 import hera_cal as hc
 import matplotlib
 import matplotlib.pyplot as plt
+plt.switch_backend('Agg')
 import astropy.stats as astats
 from collections import OrderedDict
+from hera_qm.version import hera_qm_version_str
 import json
 import cPickle as pkl
-
+import copy
 
 class FirstCal_Metrics(object):
     """
     FirstCal_Metrics class for holding firstcal data,
     running metrics, and plotting delay solutions
 
-    FirstCal_Metrics currently only works on a 
-    per-file basis, as pyuvadata.UVCal also only
-    works on a per-file basis. It also only works
-    with files that have more than a few time integrations,
-    otherwise the standard deviation metric is not well-defined.
     """
 
     def __init__(self, calfits_file):
@@ -37,15 +34,16 @@ class FirstCal_Metrics(object):
         -------
         self.UVC : pyuvdata.UVCal() instance
 
-        self.delsys : ndarray, shape=(N_ant, N_times)
-            firstcal delay solutions
+        self.delays : ndarray, shape=(N_ant, N_times)
+            firstcal delay solutions in seconds
 
         self.delay_offsets : ndarray, shape=(N_ant, N_times)
             firstcal delay solution offsets from time average
 
         self.frac_JD : ndarray, shape=(N_times,)
             ndarray containing time-stamps of each integration
-            in fraction of current JD
+            in units of the fraction of current JD
+            i.e. 2457966.53433 -> 0.53433
 
         self.ants : ndarray, shape=(N_ants,)
             ndarray containing antenna numbers
@@ -70,10 +68,11 @@ class FirstCal_Metrics(object):
         self.minutes = 24 * 60 * (self.frac_JD - self.frac_JD.min())
         self.Nants = self.UVC.Nants_data
         self.ants = self.UVC.ant_array
+        self.version_str = hera_qm_version_str
 
     def run_metrics(self, std_cut=0.5, output=False):
         """
-        Run all metrics and write results to file
+        Run all metrics and attach to class
 
         filename : str, default=None
             filename for output w/o filetype suffix
@@ -85,18 +84,11 @@ class FirstCal_Metrics(object):
         output : bool, default=False
             return with function
 
-        filetype : str, default='pkl'
-            output filetype
-            options = ['pkl', 'json']
-
-        write : bool, default=True
-            write output file or not
-
         Output:
         -------
-        Create a self.result dictionary
+        Create a self.metrics dictionary
         if output == True:
-            return self.result
+            return self.metrics
 
         """
         # Calculate std and zscores
@@ -115,20 +107,21 @@ class FirstCal_Metrics(object):
                 self.bad_ants.append(ant)
 
         # put into dictionary
-        result = OrderedDict()
-        result['full_sol'] = self.full_sol
-        result['bad_ant'] = self.bad_ants
-        result['z_scores'] = self.z_scores
-        result['ant_std'] = self.ant_std
-        result['time_std'] = self.time_std
-        result['agg_std'] = self.agg_std
-        result['times'] = self.times
-        self.result = result
+        metrics = OrderedDict()
+        metrics['full_sol'] = self.full_sol
+        metrics['bad_ant'] = self.bad_ants
+        metrics['z_scores'] = self.z_scores
+        metrics['ant_std'] = self.ant_std
+        metrics['time_std'] = self.time_std
+        metrics['agg_std'] = self.agg_std
+        metrics['times'] = self.times
+        metrics['version'] = self.version_str
+        self.metrics = metrics
 
         if output == True:
-            return self.result
+            return self.metrics
        
-    def write_metrics(self, filename=None, filetype='pkl'):
+    def write_metrics(self, filename=None, filetype='json'):
         """
         Write metrics to file after running run_metrics()
 
@@ -136,7 +129,7 @@ class FirstCal_Metrics(object):
             filename without filetype suffix
             if None, use default filename stem
 
-        filetype : str, default='pkl'
+        filetype : str, default='json'
             filetype to write out to
             options = ['json', 'pkl']
 
@@ -147,21 +140,23 @@ class FirstCal_Metrics(object):
 
         # write to file
         if filetype == 'json':
-            filename +='.json'
+            if filename.split('.')[-1] != 'json':
+                filename +='.json'
             # change ndarrays to lists
-            self.result['times'] = list(self.result['times'])
-            for k in self.result['z_scores'].keys():
-                self.result['z_scores'][k] = list(self.result['z_scores'][k])
-                   
-            result_str = json.dumps(self.result)
+            metrics_out = copy.deepcopy(self.metrics)
+            metrics_out['times'] = list(metrics_out['times'])
+            for k in metrics_out['z_scores'].keys():
+                metrics_out['z_scores'][k] = list(metrics_out['z_scores'][k])
+
             with open(filename, 'w') as f:
-                json.dump(result_str, f, indent=4)
+                json.dump(metrics_out, f, indent=4)
 
         elif filetype == 'pkl':
-            filename += '.pkl'
+            if filename.split('.')[-1] != 'pkl':
+                filename += '.pkl'
             with open(filename, 'wb') as f:
                 outp = pkl.Pickler(f)
-                outp.dump(self.result)
+                outp.dump(self.metrics)
 
     def load_metrics(self, filename):
         """
@@ -177,12 +172,20 @@ class FirstCal_Metrics(object):
         filetype = filename.split('.')[-1]
         if filetype == 'json':
             with open(filename, 'r') as f:
-                self.result = json.load(f)
+                self.metrics = json.load(f)
+
+            # ensure keys of dicts are not strings
+            for i in self.metrics['ant_std'].keys():
+                self.metrics['ant_std'][int(i)] = self.metrics['ant_std'].pop(i)
+            for i in self.metrics['time_std'].keys():
+                self.metrics['time_std'][float(i)] = self.metrics['time_std'].pop(i)
+            for i in self.metrics['z_scores'].keys():
+                self.metrics['z_scores'][float(i)] = self.metrics['z_scores'].pop(i)
 
         elif filetype == 'pkl':
             with open(filename, 'rb') as f:
                 inp = pkl.Unpickler(f)
-                self.result = inp.load() 
+                self.metrics = inp.load() 
         else:
             raise IOError("Filetype not recognized, try a json or pkl file")
 
@@ -202,8 +205,8 @@ class FirstCal_Metrics(object):
 
         return_dict : bool, [default=False]
             if True, return time_std, ant_std and z_scores
-            as a dictionary with "ant" as keys in str
-            and "times" as keys in str
+            as a dictionary with "ant" as keys
+            and "times" as keys
             else, return as ndarrays
 
         Output:
@@ -241,10 +244,10 @@ class FirstCal_Metrics(object):
             ant_std_d = OrderedDict()
             z_scores_d = OrderedDict()
             for i, ant in enumerate(self.ants):
-                ant_std_d[str(ant)] = ant_std[i]
-                z_scores_d[str(ant)] = z_scores[i]
+                ant_std_d[ant] = ant_std[i]
+                z_scores_d[ant] = z_scores[i]
             for i, t in enumerate(self.times):
-                time_std_d[str(t)] = time_std[i]
+                time_std_d[t] = time_std[i]
 
             time_std = time_std_d
             ant_std = ant_std_d

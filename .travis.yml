@@ -30,6 +30,11 @@ install:
   - pip install git+https://github.com/HERA-Team/linsolve.git
   - python setup.py install
 
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3
+
 script: nosetests hera_qm --with-coverage --cover-package=hera_qm
 
 after_success:
