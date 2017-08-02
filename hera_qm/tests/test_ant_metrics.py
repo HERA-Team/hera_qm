@@ -141,8 +141,10 @@ class TestAntennaMetrics(unittest.TestCase):
 
     def test_load_errors(self):
         with self.assertRaises(ValueError):
-            ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
-                                        [], fileformat='miriad')
+            uvtest.checkWarnings(ant_metrics.Antenna_Metrics,
+                                 [[DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'], []],
+                                 {"fileformat": 'miriad'}, nwarnings=1,
+                                 message='antenna_diameters is not set')
         with self.assertRaises(IOError):
             ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='uvfits')
@@ -158,7 +160,17 @@ class TestAntennaMetrics(unittest.TestCase):
         #                                 [], fileformat='ms')
 
     def test_init(self):
-        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds, fileformat='miriad')
+        # We will throw 5 total warnings: 4 for unknown antenna diameters, and one
+        #   for unevenly spaced polarizations. All warnings are UserWarnings
+        msg_ant = 'antenna_diameters is not set'
+        msg_pol = 'Combined polarizations are not'
+        messages = ([msg_ant]*3)
+        messages.append(msg_pol)
+        messages.append(msg_ant)
+        categories = ([UserWarning]*5)
+        am = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [self.dataFileList, self.reds],
+                                  {"fileformat": 'miriad'}, nwarnings=5, message=messages,
+                                  category=categories)
         self.assertEqual(len(am.ants), 19)
         self.assertEqual(set(am.pols), set(['xx', 'yy', 'xy', 'yx']))
         self.assertEqual(set(am.antpols), set(['x', 'y']))
@@ -166,7 +178,17 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertEqual(len(am.reds), 27)
 
     def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(self):
-        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds, fileformat='miriad')
+        # We will throw 5 total warnings: 4 for unknown antenna diameters, and one
+        #   for unevenly spaced polarizations. All warnings are UserWarnings
+        msg_ant = 'antenna_diameters is not set'
+        msg_pol = 'Combined polarizations are not'
+        messages = ([msg_ant]*3)
+        messages.append(msg_pol)
+        messages.append(msg_ant)
+        categories = ([UserWarning]*5)
+        am = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [self.dataFileList, self.reds],
+                                  {"fileformat": 'miriad'}, nwarnings=5, message=messages,
+                                  category=categories)
         with self.assertRaises(KeyError):
             am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
 
@@ -188,7 +210,17 @@ class TestAntennaMetrics(unittest.TestCase):
             self.assertEqual(loaded[jsonStat], getattr(am, stat))
 
     def test_cross_detection(self):
-        am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds, fileformat='miriad')
+        # We will throw 5 total warnings: 4 for unknown antenna diameters, and one
+        #   for unevenly spaced polarizations. All warnings are UserWarnings
+        msg_ant = 'antenna_diameters is not set'
+        msg_pol = 'Combined polarizations are not'
+        messages = ([msg_ant]*3)
+        messages.append(msg_pol)
+        messages.append(msg_ant)
+        categories = ([UserWarning]*5)
+        am2 = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [
+            self.dataFileList, self.reds], {"fileformat": 'miriad'}, nwarnings=5,
+                                   message=messages, category=categories)
         am2.iterative_antenna_metrics_and_flagging(crossCut=3, deadCut=10)
         for stat in self.summaryStats:
             self.assertTrue(hasattr(am2, stat))
@@ -238,7 +270,16 @@ class TestAntmetricsRun(object):
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
         history = cmd
-        ant_metrics.ant_metrics_run(args, opts, history)
+        # We will throw 5 total warnings: 4 for unknown antenna diameters, and one
+        #   for unevenly spaced polarizations. All warnings are UserWarnings
+        msg_ant = 'antenna_diameters is not set'
+        msg_pol = 'Combined polarizations are not'
+        messages = ([msg_ant]*3)
+        messages.append(msg_pol)
+        messages.append(msg_ant)
+        categories = ([UserWarning]*5)
+        uvtest.checkWarnings(ant_metrics.ant_metrics_run, [args, opts, history],
+                             nwarnings=5, message=messages, category=categories)
         nt.assert_true(os.path.exists(dest_file))
 
 if __name__ == '__main__':

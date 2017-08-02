@@ -72,7 +72,7 @@ def detrend_deriv(d, dt=True, df=True):
     sig_t = np.median(d2, axis=1)
     sig_t.shape = (-1, 1)
     sig = np.sqrt(sig_f * sig_t / np.median(sig_t))
-    return d_dt / sig
+    return np.divide(d_dt, sig, where=(np.abs(sig) > 1e-7))
 
 
 def detrend_medminfilt(d, Kt=8, Kf=8):
@@ -89,7 +89,8 @@ def detrend_medminfilt(d, Kt=8, Kf=8):
     d_sq = np.abs(d_rs)**2
     # puts minmed on same scale as average
     sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
-    f = d_rs / sig
+    # take care not to divide by zero
+    f = np.divide(d_rs, sig, where=(np.abs(sig) > 1e-7))
     return f
 
 
@@ -110,7 +111,8 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     d_sq = np.abs(d_rs)**2
     # puts median on same scale as average
     sig = np.sqrt(medfilt(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
-    f = d_rs / sig
+    # take care not to divide by zero
+    f = np.divide(d_rs, sig, where=(np.abs(sig) > 1e-7))
     return f[Kt:-Kt, Kf:-Kf]
 
 
