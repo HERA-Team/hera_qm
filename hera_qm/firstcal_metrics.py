@@ -201,7 +201,7 @@ class FirstCal_Metrics(object):
         each (antenna, time) delay solution w.r.t. aggregate
         mean and standard deviation.
 
-        Uses astropy.stats.biweight_midvariance for a robust measure
+        Uses sqrt( astropy.stats.biweight_midvariance ) for a robust measure
         of the std
 
         Input:
@@ -239,9 +239,9 @@ class FirstCal_Metrics(object):
         """
         # calculate standard deviations
         ant_avg = self.delay_avgs
-        ant_std = astats.biweight_midvariance(self.delay_offsets, axis=1)
-        time_std = astats.biweight_midvariance(self.delay_offsets, axis=0)
-        agg_std = astats.biweight_midvariance(self.delay_offsets)
+        ant_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets, axis=1) )
+        time_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets, axis=0) )
+        agg_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets) )
 
         # calculate z-scores
         z_scores = np.abs(self.delay_offsets / agg_std)
