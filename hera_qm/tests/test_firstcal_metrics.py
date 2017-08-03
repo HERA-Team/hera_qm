@@ -69,11 +69,11 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         # Check some exceptions
         outfile = os.path.join(self.out_dir, 'firstcal_metrics.txt')
         self.assertRaises(IOError, self.FC.load_metrics, filename=outfile)
-        outfile = self.FC.file_stem + '.metrics.json'
+        outfile = self.FC.file_stem + '.first_metrics.json'
         self.FC.write_metrics(filetype='json')  # No filename
         self.assertTrue(os.path.isfile(outfile))
         os.remove(outfile)
-        outfile = self.FC.file_stem + '.metrics.pkl'
+        outfile = self.FC.file_stem + '.first_metrics.pkl'
         self.FC.write_metrics(filetype='pkl')  # No filename
         self.assertTrue(os.path.isfile(outfile))
         os.remove(outfile)
