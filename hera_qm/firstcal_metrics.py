@@ -9,12 +9,54 @@ import hera_cal as hc
 import matplotlib
 import matplotlib.pyplot as plt
 plt.switch_backend('Agg')
+import pkg_resources
+pkg_resources.require('astropy>=2.0')
 import astropy.stats as astats
 from collections import OrderedDict
 from hera_qm.version import hera_qm_version_str
 import json
 import cPickle as pkl
 import copy
+
+
+def load_firstcal_metrics(filename):
+    """
+    Read-in a firstcal_metrics file and return dictionary
+
+    Input:
+    ------
+    filename : str
+        filename to read in
+
+    Returns:
+    --------
+    metrics : dict
+        dictionary holding metrics
+    """
+    # get filetype
+    filetype = filename.split('.')[-1]
+    if filetype == 'json':
+        with open(filename, 'r') as f:
+            metrics = json.load(f)
+
+        # ensure keys of dicts are not strings
+        for i in metrics['ant_avg'].keys():
+            metrics['ant_avg'][int(i)] = metrics['ant_avg'].pop(i)
+        for i in metrics['ant_std'].keys():
+            metrics['ant_std'][int(i)] = metrics['ant_std'].pop(i)
+        for i in metrics['time_std'].keys():
+            metrics['time_std'][float(i)] = metrics['time_std'].pop(i)
+        for i in metrics['z_scores'].keys():
+            metrics['z_scores'][float(i)] = metrics['z_scores'].pop(i)
+
+    elif filetype == 'pkl':
+        with open(filename, 'rb') as f:
+            inp = pkl.Unpickler(f)
+            metrics = inp.load()
+    else:
+        raise IOError("Filetype not recognized, try a json or pkl file")
+
+    return metrics
 
 
 class FirstCal_Metrics(object):
@@ -169,30 +211,8 @@ class FirstCal_Metrics(object):
         ------
         filename : str
             filename to read in
-
         """
-        # get filetype
-        filetype = filename.split('.')[-1]
-        if filetype == 'json':
-            with open(filename, 'r') as f:
-                self.metrics = json.load(f)
-
-            # ensure keys of dicts are not strings
-            for i in self.metrics['ant_avg'].keys():
-                self.metrics['ant_avg'][int(i)] = self.metrics['ant_avg'].pop(i)
-            for i in self.metrics['ant_std'].keys():
-                self.metrics['ant_std'][int(i)] = self.metrics['ant_std'].pop(i)
-            for i in self.metrics['time_std'].keys():
-                self.metrics['time_std'][float(i)] = self.metrics['time_std'].pop(i)
-            for i in self.metrics['z_scores'].keys():
-                self.metrics['z_scores'][float(i)] = self.metrics['z_scores'].pop(i)
-
-        elif filetype == 'pkl':
-            with open(filename, 'rb') as f:
-                inp = pkl.Unpickler(f)
-                self.metrics = inp.load()
-        else:
-            raise IOError("Filetype not recognized, try a json or pkl file")
+        self.metrics = load_firstcal_metrics(filename)
 
     def delay_std(self, return_dict=False):
         """

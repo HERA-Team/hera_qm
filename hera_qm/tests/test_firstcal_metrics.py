@@ -29,7 +29,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertIn(9, metrics['z_scores'])
         self.assertIn(9, metrics['ant_std'])
         self.assertIn(9, metrics['ant_avg'])
-        self.assertAlmostEqual(metrics['agg_std'], 0.08702395042454745)
+        self.assertAlmostEqual(metrics['agg_std'], 0.088757931322363717)
 
         # Test bad ants detection
         self.FC.delay_offsets[0, :] *= 10
