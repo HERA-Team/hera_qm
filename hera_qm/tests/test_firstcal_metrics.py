@@ -25,7 +25,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
     def test_run_metrics(self):
         metrics = self.FC.run_metrics(output=True, std_cut=1.0)
         self.assertEqual(metrics['full_sol'], 'good')
-        self.assertEqual(metrics['bad_ant'], [])
+        self.assertEqual(metrics['bad_ants'], [])
         self.assertIn(9, metrics['z_scores'])
         self.assertIn(9, metrics['ant_std'])
         self.assertIn(9, metrics['ant_avg'])
