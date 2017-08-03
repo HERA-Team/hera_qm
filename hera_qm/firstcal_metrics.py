@@ -1,14 +1,13 @@
 """
 FirstCal metrics
-
 """
+import matplotlib
+import matplotlib.pyplot as plt
+plt.switch_backend('Agg')
 import numpy as np
 import os
 from pyuvdata import UVData, UVCal
 import hera_cal as hc
-import matplotlib
-import matplotlib.pyplot as plt
-plt.switch_backend('Agg')
 import pkg_resources
 pkg_resources.require('astropy>=2.0')
 import astropy.stats as astats
@@ -63,7 +62,6 @@ class FirstCal_Metrics(object):
     """
     FirstCal_Metrics class for holding firstcal data,
     running metrics, and plotting delay solutions
-
     """
 
     def __init__(self, calfits_file):
@@ -78,10 +76,13 @@ class FirstCal_Metrics(object):
         self.UVC : pyuvdata.UVCal() instance
 
         self.delays : ndarray, shape=(N_ant, N_times)
-            firstcal delay solutions in seconds
+            firstcal delay solutions in nanoseconds
+
+        self.delay_avgs : ndarray, shape=(N_ant,)
+            median delay solutions across time [nanosec]
 
         self.delay_offsets : ndarray, shape=(N_ant, N_times)
-            firstcal delay solution offsets from time average
+            firstcal delay solution offsets from time average [nanosec]
 
         self.frac_JD : ndarray, shape=(N_times,)
             ndarray containing time-stamps of each integration
@@ -115,7 +116,12 @@ class FirstCal_Metrics(object):
 
     def run_metrics(self, std_cut=0.5, output=False):
         """
-        Run all metrics and attach to class
+        Run all metrics, put them in "metrics" dictionary
+        and attach to class. Can optionally output with
+        function call using "output=True" kwarg.
+
+        Input:
+        ------
 
         filename : str, default=None
             filename for output w/o filetype suffix
@@ -127,19 +133,32 @@ class FirstCal_Metrics(object):
         output : bool, default=False
             return with function
 
-        Output:
+        Result:
         -------
-        Create a self.metrics dictionary
+        Create a self.metrics dictionary containing:
+
+        full_sol : str
+            Statement on goodness of full FirstCal solution,
+            determined "good" if aggregate stand. dev is < std_cut
+
+        bad_ants : list
+            list of bad antennas that don't meet std_cut tolerance
+
+        z_scores : dictionary
+            contains z_score for each antenna and each time-stamp
+            w.r.t. standard deviation of all antennas and all times
+
+        Optional Output:
+        -------
         if output == True:
             return self.metrics
-
         """
         # Calculate std and zscores
         (self.ant_avg, self.ant_std, self.time_std, self.agg_std,
          self.z_scores) = self.delay_std(return_dict=True)
 
-        # Given delay std cut find "bad" ant
-        # determine if full sol is bad
+        # Given delay standard dev. cut, find "bad" ants
+        # also determine if full solultion is bad
         if self.agg_std > std_cut:
             self.full_sol = 'bad'
         else:
@@ -153,7 +172,7 @@ class FirstCal_Metrics(object):
         # put into dictionary
         metrics = OrderedDict()
         metrics['full_sol'] = self.full_sol
-        metrics['bad_ant'] = self.bad_ants
+        metrics['bad_ants'] = self.bad_ants
         metrics['z_scores'] = self.z_scores
         metrics['ant_avg'] = self.ant_avg
         metrics['ant_std'] = self.ant_std
@@ -181,7 +200,7 @@ class FirstCal_Metrics(object):
         """
         # get filename prefix
         if filename is None:
-            filename = self.file_stem + ".metrics"
+            filename = self.file_stem + ".first_metrics"
 
         # write to file
         if filetype == 'json':
@@ -253,8 +272,8 @@ class FirstCal_Metrics(object):
             across all antennas
 
         z_scores : ndarray, shape=(N_ant, N_times)
-            absolute value of z_scores (standard scores)
-            for each (antenna, time) delay solution w.r.t. agg_std
+            z_scores (standard scores) for each (antenna, time)
+            delay solution w.r.t. agg_std
 
         """
         # calculate standard deviations
@@ -264,7 +283,7 @@ class FirstCal_Metrics(object):
         agg_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets) )
 
         # calculate z-scores
-        z_scores = np.abs(self.delay_offsets / agg_std)
+        z_scores = self.delay_offsets / agg_std
 
         # convert to ordered dict if desired
         if return_dict is True:
@@ -410,7 +429,7 @@ class FirstCal_Metrics(object):
     def plot_zscores(self, fname=None, plot_type='full', cm='viridis_r', ax=None, figsize=(10, 6),
                      save=False, kwargs={'cmap': 'viridis_r', 'vmin': 0, 'vmax': 5}):
         """
-        Plot antenna delay solution z_scores
+        Plot absolute value of antenna delay solution z_scores
 
         Input:
         ------
@@ -447,6 +466,7 @@ class FirstCal_Metrics(object):
 
         # Get zscores
         ant_avg, ant_std, time_std, agg_std, z_scores = self.delay_std()
+        z_scores = np.abs(z_scores)
 
         # Plot zscores
         if plot_type == 'full':
@@ -462,7 +482,6 @@ class FirstCal_Metrics(object):
             ax.xaxis.set_ticks_position('bottom')
             xticks = np.arange(xlen_round[0], xlen_round[1] + 1e-5, 0.001)
             ax.set_xticks(xticks)
-            # [t.set_rotation(20) for t in ax.get_xticklabels()]
             ax.set_yticks(np.arange(len(self.ants)) + 0.5)
             ax.set_yticklabels(self.ants)
             [t.set_rotation(20) for t in ax.get_yticklabels()]
@@ -479,8 +498,6 @@ class FirstCal_Metrics(object):
             cmap = matplotlib.cm.spectral(np.linspace(0, 0.95, len(self.ants)))
             z_scores = np.mean(z_scores, axis=1)
             ax.grid(True)
-#            ax.scatter(range(len(z_scores)), z_scores,  c=cmap, alpha=0.85,
-#                            marker='o', s=70, edgecolor='None')
             ax.bar(range(len(z_scores)), z_scores, align='center', color='b', alpha=0.4)
 
             # define ticks
