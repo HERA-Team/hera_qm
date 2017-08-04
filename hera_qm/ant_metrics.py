@@ -10,31 +10,31 @@ from hera_qm.version import hera_qm_version_str
 from hera_qm import utils
 
 
-metric_list = {'final_metrics_meanVij': 'Mean of the absolute value of all '
-               'visibilities associated with an antenna.',
-               'final_metrics_meanVijXPol': 'Ratio of mean cross-pol visibilities '
-               'to mean same-pol visibilities: (Vxy+Vyx)/(Vxx+Vyy).',
-               'final_metrics_redCorr': 'Extent to which baselines involving an '
-               'antenna do not correlate with others they are nominmally redundant with.',
-               'final_metrics_redCorrXPol': 'Mean correlation ratio between '
-               'redundant visibilities and singlely-polarization flipped ones.',
-               'final_mod_z_scores_meanVij': 'Modified z-score of the mean of the '
-               'absolute value of all visibilities associated with an antenna.',
-               'final_mod_z_scores_meanVijXPol': 'Modified z-score of the ratio '
-               'of mean cross-pol visibilities to mean same-pol visibilities: '
-               '(Vxy+Vyx)/(Vxx+Vyy).',
-               'final_mod_z_scores_redCorr': 'Modified z-score of the extent to '
-               'which baselines involving an antenna do not correlate with others '
-               'they are nominally redundant with.',
-               'final_mod_z_scores_redCorrXPol': 'Modified z-score of the mean '
-               'correlation ratio between redundant visibilities and singlely-'
-               'polarization flipped ones.',
-               'crossed_ants': 'Antennas deemed to be cross-polarized by '
-               'hera_qm.ant_metrics.',
-               'removal_iteration': 'hera_qm.ant_metrics iteration number in '
-               'which the antenna was removed.',
-               'xants': 'Antennas deemed bad by hera_qm.ant_metrics.',
-               'dead_ants': 'Antennas deemed to be dead by hera_qm.ant_metrics.'}
+ant_metric_list = {'ant_metrics_meanVij': 'Mean of the absolute value of all '
+                   'visibilities associated with an antenna.',
+                   'ant_metrics_meanVijXPol': 'Ratio of mean cross-pol visibilities '
+                   'to mean same-pol visibilities: (Vxy+Vyx)/(Vxx+Vyy).',
+                   'ant_metrics_redCorr': 'Extent to which baselines involving an '
+                   'antenna do not correlate with others they are nominmally redundant with.',
+                   'ant_metrics_redCorrXPol': 'Mean correlation ratio between '
+                   'redundant visibilities and singlely-polarization flipped ones.',
+                   'ant_metrics_mod_z_scores_meanVij': 'Modified z-score of the mean of the '
+                   'absolute value of all visibilities associated with an antenna.',
+                   'ant_metrics_mod_z_scores_meanVijXPol': 'Modified z-score of the ratio '
+                   'of mean cross-pol visibilities to mean same-pol visibilities: '
+                   '(Vxy+Vyx)/(Vxx+Vyy).',
+                   'ant_metrics_mod_z_scores_redCorr': 'Modified z-score of the extent to '
+                   'which baselines involving an antenna do not correlate with others '
+                   'they are nominally redundant with.',
+                   'ant_metrics_mod_z_scores_redCorrXPol': 'Modified z-score of the mean '
+                   'correlation ratio between redundant visibilities and singlely-'
+                   'polarization flipped ones.',
+                   'ant_metrics_crossed_ants': 'Antennas deemed to be cross-polarized by '
+                   'hera_qm.ant_metrics.',
+                   'ant_metrics_removal_iteration': 'hera_qm.ant_metrics iteration number in '
+                   'which the antenna was removed.',
+                   'ant_metrics_xants': 'Antennas deemed bad by hera_qm.ant_metrics.',
+                   'ant_metrics_dead_ants': 'Antennas deemed to be dead by hera_qm.ant_metrics.'}
 
 #######################################################################
 # Low level functionality that is potentially reusable

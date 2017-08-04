@@ -89,6 +89,7 @@ def get_pol(fname):
     fn = re.findall('zen\.\d{7}\.\d{5}\..*', fname)[0]
     return fn.split('.')[3]
 
+
 def generate_fullpol_file_list(files, pol_list):
     """Generate a list of unique JDs that have all four polarizations available
     Args:
@@ -138,3 +139,75 @@ def generate_fullpol_file_list(files, pol_list):
                 file_list.append(jd_list)
 
     return file_list
+
+
+def metrics2mc(filename, ftype):
+    """ Read in file containing quality metrics and stuff into a dictionary which
+    can be used by M&C to populate db.
+
+    Args:
+        filename: (str) file to read and convert
+        ftype: (str) Type of metrics file. Options are ['ant', 'firstcal', 'omnical']
+    Returns:
+        d: (dict) Dictionary containing keys and data to pass to M&C.
+            Structure is as follows:
+            d['ant_metrics']: Dictionary with metric names
+                d['ant_metrics'][metric]: list of lists, each containing [ant, pol, val]
+            d['array_metrics']: Dictionary with metric names
+                d['array_metrics'][metric]: Single metric value
+    """
+    d = {'ant_metrics': {}, 'array_metrics': {}}
+    if ftype is 'ant':
+        from hera_qm.ant_metrics import load_antenna_metrics
+        data = load_antenna_metrics(filename)
+        for category in ['ant_metrics', 'ant_metrics_mod_z_scores']:
+            for met, array in data[category].items():
+                metric = '_'.join([category, met])
+                d['ant_metrics'][metric] = []
+                for antpol, val in array.items():
+                    d['ant_metrics'][metric].append([antpol[0], antpol[1], val])
+            for met in ['crossed_ants', 'dead_ants', 'xants']:
+                metric = '_'.join(['ant_metrics', met])
+                d['ant_metrics'][metric] = []
+                for antpol in data[met]:
+                    d['ant_metrics'][metric].append([antpol[0], antpol[1], 1])
+            d['ant_metrics']['removal_iteration'] = []
+            metric = 'ant_metrics_removal_iteration'
+            for antpol, val in data['removal_iteration']:
+                d['ant_metrics'][metric].append([antpol[0], antpol[1], val])
+
+    elif ftype is 'firstcal':
+        from hera_qm.firstcal_metrics import load_firstcal_metrics
+        data = load_firstcal_metrics(filename)
+        pol = data['pol']
+        d['array_metrics']['firstcal_metrics_good_sol'] = float(data['good_sol'])
+        d['array_metrics']['firstcal_metrics_agg_std'] = data['agg_std']
+        for met in ['ant_z_score', 'ant_avg', 'ant_std']:
+            metric = '_'.join(['firstcal_metrics', met])
+            d['ant_metrics'][metric] = []
+            for ant, val in data[met]:
+                d['ant_metrics'][metric].append([ant, pol, val])
+        metric = 'firstcal_metrics_bad_ants'
+        d['ant_metrics'][metric] = []
+        for ant in data['bad_ants']:
+            d['ant_metrics'][metric].append([ant, pol, 1])
+
+    elif ftype is 'omnical':
+        from pyuvdata import UVCal
+        uvcal = UVCal()
+        uvcal.read_calfits(filename)
+        pol_dict = {-5: 'x', -6: 'y'}
+        d['ant_metrics']['omnical_quality'] = []
+        for pi, pol in uvcal.jones_array:
+            try:
+                pol = pol_dict[pol]
+            except KeyError:
+                raise ValueError('Invalid polarization for ant_metrics in M&C.')
+            for ai, ant in uvcal.ant_array:
+                val = np.mean(uvcal.quality_array[ai, 0, 0, :, pi])
+                d['ant_metrics']['omnical_quality'].append([ant, pol, val])
+        if uvcal.total_quality_array is not None:
+            d['array_metrics']['omnical_total_quality'] = np.mean(uvcal.total_quality_array)
+
+    else:
+        raise ValueError('Metric file type ' + ftype + ' is not recognized.')
