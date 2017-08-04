@@ -23,13 +23,13 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertEqual(len(self.FC.delays), 18)
 
     def test_run_metrics(self):
-        metrics = self.FC.run_metrics(output=True, std_cut=1.0)
-        self.assertEqual(metrics['full_sol'], 'good')
-        self.assertEqual(metrics['bad_ants'], [])
-        self.assertIn(9, metrics['z_scores'])
-        self.assertIn(9, metrics['ant_std'])
-        self.assertIn(9, metrics['ant_avg'])
-        self.assertAlmostEqual(metrics['agg_std'], 0.088757931322363717)
+        self.FC.run_metrics(std_cut=1.0)
+        self.assertEqual(self.FC.metrics['good_sol'], True)
+        self.assertEqual(self.FC.metrics['bad_ants'], [])
+        self.assertIn(9, self.FC.metrics['z_scores'])
+        self.assertIn(9, self.FC.metrics['ant_std'])
+        self.assertIn(9, self.FC.metrics['ant_avg'])
+        self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.088757931322363717)
 
         # Test bad ants detection
         self.FC.delay_offsets[0, :] *= 10
@@ -38,7 +38,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         # Test bad full solution
         self.FC.delay_offsets[1:, :] *= 10
         self.FC.run_metrics()
-        self.assertEqual(self.FC.full_sol, 'bad')
+        self.assertEqual(self.FC.good_sol, False)
 
     def test_write_load_metrics(self):
         # run metrics

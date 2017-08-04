@@ -137,9 +137,10 @@ class FirstCal_Metrics(object):
         -------
         Create a self.metrics dictionary containing:
 
-        full_sol : str
+        good_sol : bool
             Statement on goodness of full FirstCal solution,
-            determined "good" if aggregate stand. dev is < std_cut
+            determined True if aggregate stand. dev is < std_cut
+            otherwise False
 
         bad_ants : list
             list of bad antennas that don't meet std_cut tolerance
@@ -148,6 +149,10 @@ class FirstCal_Metrics(object):
             contains z_score for each antenna and each time-stamp
             w.r.t. standard deviation of all antennas and all times
 
+        ant_z_scores : dictionary
+            contains z_score for each antenna w.r.t stand dev. of
+            all antennas, then averaged over time
+
         Optional Output:
         -------
         if output == True:
@@ -155,14 +160,14 @@ class FirstCal_Metrics(object):
         """
         # Calculate std and zscores
         (self.ant_avg, self.ant_std, self.time_std, self.agg_std,
-         self.z_scores) = self.delay_std(return_dict=True)
+         self.z_scores, self.ant_z_scores) = self.delay_std(return_dict=True)
 
         # Given delay standard dev. cut, find "bad" ants
         # also determine if full solultion is bad
         if self.agg_std > std_cut:
-            self.full_sol = 'bad'
+            self.good_sol = False
         else:
-            self.full_sol = 'good'
+            self.good_sol = True
 
         self.bad_ants = []
         for ant in self.ant_std:
@@ -171,9 +176,10 @@ class FirstCal_Metrics(object):
 
         # put into dictionary
         metrics = OrderedDict()
-        metrics['full_sol'] = self.full_sol
+        metrics['good_sol'] = self.good_sol
         metrics['bad_ants'] = self.bad_ants
         metrics['z_scores'] = self.z_scores
+        metrics['ant_z_scores'] = self.ant_z_scores
         metrics['ant_avg'] = self.ant_avg
         metrics['ant_std'] = self.ant_std
         metrics['time_std'] = self.time_std
@@ -181,9 +187,6 @@ class FirstCal_Metrics(object):
         metrics['times'] = self.times
         metrics['version'] = self.version_str
         self.metrics = metrics
-
-        if output is True:
-            return self.metrics
 
     def write_metrics(self, filename=None, filetype='json'):
         """
@@ -269,11 +272,15 @@ class FirstCal_Metrics(object):
 
         agg_std : float
             aggregate standard deviation of delay solutions
-            across all antennas
+            across all antennas and all times
 
         z_scores : ndarray, shape=(N_ant, N_times)
             z_scores (standard scores) for each (antenna, time)
             delay solution w.r.t. agg_std
+
+        ant_z_scores : ndarray, shape=(N_ant,)
+            absolute_value(z_scores) for each antenna & time
+            then averaged over time
 
         """
         # calculate standard deviations
@@ -284,17 +291,20 @@ class FirstCal_Metrics(object):
 
         # calculate z-scores
         z_scores = self.delay_offsets / agg_std
+        ant_z_scores = np.median(np.abs(z_scores), axis=1)
 
         # convert to ordered dict if desired
-        if return_dict is True:
+        if return_dict == True:
             ant_avg_d = OrderedDict()
             time_std_d = OrderedDict()
             ant_std_d = OrderedDict()
             z_scores_d = OrderedDict()
+            ant_z_scores_d = OrderedDict()
             for i, ant in enumerate(self.ants):
                 ant_avg_d[ant] = ant_avg[i]
                 ant_std_d[ant] = ant_std[i]
                 z_scores_d[ant] = z_scores[i]
+                ant_z_scores_d[ant] = ant_z_scores[i]
             for i, t in enumerate(self.times):
                 time_std_d[t] = time_std[i]
 
@@ -302,8 +312,9 @@ class FirstCal_Metrics(object):
             time_std = time_std_d
             ant_std = ant_std_d
             z_scores = z_scores_d
+            ant_z_scores = ant_z_scores_d
 
-        return ant_avg, ant_std, time_std, agg_std, z_scores
+        return ant_avg, ant_std, time_std, agg_std, z_scores, ant_z_scores
 
     def plot_delays(self, ants=None, plot_type='both', ax=None,
                     cm='spectral', save=False, fname=None,
@@ -427,9 +438,9 @@ class FirstCal_Metrics(object):
             fig.savefig(fname, bbox_inches='tight')
 
     def plot_zscores(self, fname=None, plot_type='full', cm='viridis_r', ax=None, figsize=(10, 6),
-                     save=False, kwargs={'cmap': 'viridis_r', 'vmin': 0, 'vmax': 5}):
+                     save=False, kwargs={'cmap': 'viridis_r', 'vmin': 0, 'vmax': 5}, plot_abs=False):
         """
-        Plot absolute value of antenna delay solution z_scores
+        Plot z_scores for antenna delay solution
 
         Input:
         ------
@@ -465,8 +476,10 @@ class FirstCal_Metrics(object):
             ax = fig.add_subplot(111)
 
         # Get zscores
-        ant_avg, ant_std, time_std, agg_std, z_scores = self.delay_std()
-        z_scores = np.abs(z_scores)
+        (ant_avg, ant_std, time_std, agg_std,
+         z_scores, ant_z_scores) = self.delay_std()
+        if plot_abs == True:
+            z_scores = np.abs(z_scores)
 
         # Plot zscores
         if plot_type == 'full':
@@ -496,9 +509,8 @@ class FirstCal_Metrics(object):
         if plot_type == 'time_avg':
             # plot
             cmap = matplotlib.cm.spectral(np.linspace(0, 0.95, len(self.ants)))
-            z_scores = np.mean(z_scores, axis=1)
             ax.grid(True)
-            ax.bar(range(len(z_scores)), z_scores, align='center', color='b', alpha=0.4)
+            ax.bar(range(len(ant_z_scores)), ant_z_scores, align='center', color='b', alpha=0.4)
 
             # define ticks
             ax.set_xlim(-1, len(self.ants))
@@ -546,7 +558,8 @@ class FirstCal_Metrics(object):
             ax = fig.add_subplot(111)
 
         # get std
-        ant_avg, ant_std, time_std, agg_std, z_scores = self.delay_std()
+        (ant_avg, ant_std, time_std, agg_std,
+         z_scores, ant_z_scores) = self.delay_std()
 
         # choose xaxis
         if xaxis == 'ant':
