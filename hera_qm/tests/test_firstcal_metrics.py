@@ -21,6 +21,8 @@ class Test_FirstCal_Metrics(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.FC.Nants, 18)
         self.assertEqual(len(self.FC.delays), 18)
+        self.assertEqual(self.FC.fc_filename, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+        self.assertEqual(self.FC.fc_filestem, 'zen.2457678.16694.yy.HH.uvc.good.first')
 
     def test_run_metrics(self):
         self.FC.run_metrics(std_cut=1.0)
@@ -29,6 +31,11 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertIn(9, self.FC.metrics['z_scores'])
         self.assertIn(9, self.FC.metrics['ant_std'])
         self.assertIn(9, self.FC.metrics['ant_avg'])
+        self.assertIn(9, self.FC.metrics['ants'])
+        self.assertIn(9, self.FC.metrics['z_scores'])
+        self.assertIn(9, self.FC.metrics['ant_z_scores'])
+        self.assertEqual(str, type(self.FC.metrics['version']))
+        self.assertAlmostEqual(1.0, self.FC.metrics['std_cut'])
         self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.088757931322363717)
 
         # Test bad ants detection
@@ -38,7 +45,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         # Test bad full solution
         self.FC.delay_offsets[1:, :] *= 10
         self.FC.run_metrics()
-        self.assertEqual(self.FC.good_sol, False)
+        self.assertEqual(self.FC.metrics['good_sol'], False)
 
     def test_write_load_metrics(self):
         # run metrics
@@ -69,11 +76,11 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         # Check some exceptions
         outfile = os.path.join(self.out_dir, 'firstcal_metrics.txt')
         self.assertRaises(IOError, self.FC.load_metrics, filename=outfile)
-        outfile = self.FC.file_stem + '.first_metrics.json'
+        outfile = self.FC.fc_filestem + '.first_metrics.json'
         self.FC.write_metrics(filetype='json')  # No filename
         self.assertTrue(os.path.isfile(outfile))
         os.remove(outfile)
-        outfile = self.FC.file_stem + '.first_metrics.pkl'
+        outfile = self.FC.fc_filestem + '.first_metrics.pkl'
         self.FC.write_metrics(filetype='pkl')  # No filename
         self.assertTrue(os.path.isfile(outfile))
         os.remove(outfile)
@@ -85,12 +92,26 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.plot_delays(fname=fname, save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        # Check cm defaults to spectral
-        self.FC.plot_delays(fname=fname, save=True, cm='foo')
+        self.FC.plot_delays(fname=fname, save=True, plot_type='solution')
+        self.assertTrue(os.path.isfile(fname))
+        os.remove(fname)
+        self.FC.plot_delays(fname=fname, save=True, plot_type='offset')
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
 
+        # Check cm defaults to spectral
+        self.FC.plot_delays(fname=fname, save=True, cmap='foo')
+        self.assertTrue(os.path.isfile(fname))
+        os.remove(fname)
+
+        # Check exception
+
     def test_plot_zscores(self):
+        # check exception
+        self.assertRaises(NameError, self.FC.plot_zscores)
+        self.FC.run_metrics()
+        self.assertRaises(NameError, self.FC.plot_zscores, plot_type='foo')
+        # check output
         fname = os.path.join(self.out_dir, 'zscrs.png')
         if os.path.isfile(fname):
             os.remove(fname)
@@ -102,6 +123,11 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         os.remove(fname)
 
     def test_plot_stds(self):
+        # check exception
+        self.assertRaises(NameError, self.FC.plot_stds)
+        self.FC.run_metrics()
+        self.assertRaises(NameError, self.FC.plot_stds, xaxis='foo')
+        # check output
         fname = os.path.join(self.out_dir, 'stds.png')
         if os.path.isfile(fname):
             os.remove(fname)

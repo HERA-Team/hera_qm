@@ -3,7 +3,6 @@ FirstCal metrics
 """
 import matplotlib
 import matplotlib.pyplot as plt
-plt.switch_backend('Agg')
 import numpy as np
 import os
 from pyuvdata import UVData, UVCal
@@ -16,7 +15,6 @@ from hera_qm.version import hera_qm_version_str
 import json
 import cPickle as pkl
 import copy
-
 
 def load_firstcal_metrics(filename):
     """
@@ -34,9 +32,11 @@ def load_firstcal_metrics(filename):
     """
     # get filetype
     filetype = filename.split('.')[-1]
+
+    # load json
     if filetype == 'json':
         with open(filename, 'r') as f:
-            metrics = json.load(f)
+            metrics = json.load(f, object_pairs_hook=OrderedDict)
 
         # ensure keys of dicts are not strings
         for i in metrics['ant_avg'].keys():
@@ -46,8 +46,11 @@ def load_firstcal_metrics(filename):
         for i in metrics['time_std'].keys():
             metrics['time_std'][float(i)] = metrics['time_std'].pop(i)
         for i in metrics['z_scores'].keys():
-            metrics['z_scores'][float(i)] = metrics['z_scores'].pop(i)
+            metrics['z_scores'][int(i)] = metrics['z_scores'].pop(i)
+        for i in metrics['ant_z_scores'].keys():
+            metrics['ant_z_scores'][int(i)] = metrics['ant_z_scores'].pop(i)
 
+    # load pickle
     elif filetype == 'pkl':
         with open(filename, 'rb') as f:
             inp = pkl.Unpickler(f)
@@ -56,6 +59,183 @@ def load_firstcal_metrics(filename):
         raise IOError("Filetype not recognized, try a json or pkl file")
 
     return metrics
+
+
+def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
+    """
+    Plot standard deviation of delay solutions per-ant or per-time
+
+    Input:
+    ------
+
+    metrics : dictionary
+        a "metrics" dictionary from FirstCal_Metrics.run_metrics()
+
+    fname : str, default=None
+        filename
+
+    xaxis : str, default='ant', option=['ant', 'time']
+        what to plot on the xaxis, antennas or time stamp
+
+    ax : axis object, default=None
+        matplotlib axis object
+
+    kwargs : dict
+        plotting kwargs
+
+    save : bool, default=False
+        save image to file
+
+    """
+    custom_ax = True
+    if ax is None:
+        custom_ax = False
+        fig = plt.figure(figsize=(8, 6))
+        ax = fig.add_subplot(111)
+
+    # choose xaxis
+    if xaxis == 'ant':
+        Nants = len(metrics['ants'])
+        xax = range(Nants)
+        yax = metrics['ant_std'].values()
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = 'Spectral'
+        cmap = plt.get_cmap(kwargs['cmap'])(np.linspace(0, 0.95, len(xax)))
+        ax.grid(True, zorder=0)
+        ax.tick_params(size=8)
+        ax.scatter(xax, yax, c=cmap, alpha=0.85, marker='o', edgecolor='k',
+                        s=70, zorder=3)
+        ax.set_xlim(-1, Nants)
+        ax.set_xticks(range(Nants))
+        ax.set_xticklabels(metrics['ants'])
+        [t.set_rotation(20) for t in ax.get_xticklabels()]
+        ax.set_xlabel('antenna number', fontsize=14)
+        ax.set_ylabel('delay solution standard deviation [ns]', fontsize=14)
+
+    elif xaxis == 'time':
+        xax = metrics['frac_JD']
+        yax = metrics['time_std'].values()
+        ax.grid(True, zorder=0)
+        ax.tick_params(size=8)
+        ax.plot(xax, yax, c='k', marker='.', linestyle='-', alpha=0.85, zorder=1)
+        [t.set_rotation(20) for t in ax.get_xticklabels()]
+        ax.set_xlabel('fractional JD of {}'.format(metrics['start_JD']), fontsize=14)
+        ax.set_ylabel('delay solution standard deviation [ns]', fontsize=14)
+
+    else:
+        raise NameError('xaxis kwarg not recognized, try "ant" or "time"')
+
+    if save is True and custom_ax is False:
+        if fname is None:
+            fname = metrics['fc_filestem'] + '.stds.png'
+        fig.savefig(fname, bbox_inches='tight')
+
+
+def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6),
+                 save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
+    """
+    Plot z_scores for antenna delay solution
+
+    Input:
+    ------
+
+    metrics : dict
+        a FirstCal_Metrics "metrics" dictionary
+
+    fname : str, default=None
+        filename
+
+    plot_type : str, default='full'
+        Type of plot to make
+        'full' : plot zscore for each (N_ant, N_times)
+        'time_avg' : plot zscore for each (N_ant,) avg over time
+
+    ax : axis object, default=None
+        matplotlib axis object
+
+    figsize : tuple, default=(10,6)
+        figsize if creating figure
+
+    save : bool, default=False
+        save figure to file
+
+    kwargs : dict
+        plotting kwargs
+    """
+    # Get ax if not provided
+    custom_ax = True
+    if ax is None:
+        custom_ax = False
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+    # unpack some variables
+    z_scores = np.array(metrics['z_scores'].values())
+    ant_z_scores = np.array(metrics['ant_z_scores'].values())
+    Nants = len(metrics['ants'])
+    if plot_abs == True:
+        z_scores = np.abs(z_scores)
+        if 'vmin' not in kwargs:
+            kwargs['vmin'] = 0
+        if 'vmax' not in kwargs:
+            kwargs['vmax'] = 5
+    else:
+        if 'vmin' not in kwargs:
+            kwargs['vmin'] = -5
+        if 'vmax' not in kwargs:
+            kwargs['vmax'] = 5
+
+    # Plot zscores
+    if plot_type == 'full':
+        # plot
+        xlen = [np.min(metrics['frac_JD']), np.max(metrics['frac_JD'])]
+        xlen_round = [np.ceil(np.min(metrics['frac_JD']) * 1000) / 1000,
+                  np.floor(np.max(metrics['frac_JD']) * 1000) / 1000]
+        ylen = [0, Nants]
+        cax = ax.matshow(z_scores, origin='lower', aspect='auto',
+                         extent=[xlen[0], xlen[1], ylen[0], ylen[1]], **kwargs)
+
+        # define ticks
+        ax.xaxis.set_ticks_position('bottom')
+        xticks = np.arange(xlen_round[0], xlen_round[1] + 1e-5, 0.001)
+        ax.set_xticks(xticks)
+        ax.set_yticks(np.arange(Nants) + 0.5)
+        ax.set_yticklabels(metrics['ants'])
+        [t.set_rotation(20) for t in ax.get_yticklabels()]
+        ax.tick_params(size=8)
+
+        # set labels
+        ax.set_xlabel('fraction of JD %d' % metrics['start_JD'], fontsize=14)
+        ax.set_ylabel('antenna number', fontsize=14)
+
+        # set colorbar
+        fig.colorbar(cax, label='z-score')
+
+    elif plot_type == 'time_avg':
+        # plot
+        cmap = plt.get_cmap(kwargs['cmap'])(np.linspace(0, 0.95, Nants))
+        ax.grid(True, zorder=0)
+        ax.bar(range(len(ant_z_scores)), ant_z_scores, align='center', color='steelblue', alpha=0.75,
+                    zorder=3)
+
+        # define ticks
+        ax.set_xlim(-1, Nants)
+        ax.set_ylim(0, kwargs['vmax'])
+
+        ax.set_xticks(range(Nants))
+        ax.set_xticklabels(metrics['ants'])
+        ax.tick_params(size=8)
+
+        ax.set_xlabel('antenna number', fontsize=14)
+        ax.set_ylabel('time-averaged z-score', fontsize=14)
+
+    else:
+        raise NameError("plot_type not understood, try 'full' or 'time_avg'")
+
+    if save is True and custom_ax is False:
+        if fname is None:
+            fname = metrics['fc_filestem'] + '.zscrs.png'
+        fig.savefig(fname, bbox_inches='tight')
 
 
 class FirstCal_Metrics(object):
@@ -92,13 +272,13 @@ class FirstCal_Metrics(object):
         self.ants : ndarray, shape=(N_ants,)
             ndarray containing antenna numbers
         """
-
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_file)
 
         # get file prefix
-        self.file_stem = '.'.join(calfits_file.split('.')[:-1])
+        self.fc_filename = calfits_file.split('/')[-1]
+        self.fc_filestem = '.'.join(self.fc_filename.split('.')[:-1])
 
         # Calculate median delay
         self.delays = self.UVC.delay_array.squeeze() * 1e9
@@ -114,24 +294,15 @@ class FirstCal_Metrics(object):
         self.ants = self.UVC.ant_array
         self.version_str = hera_qm_version_str
 
-    def run_metrics(self, std_cut=0.5, output=False):
+    def run_metrics(self, std_cut=0.5):
         """
         Run all metrics, put them in "metrics" dictionary
-        and attach to class. Can optionally output with
-        function call using "output=True" kwarg.
+        and attach metrics to class
 
         Input:
         ------
-
-        filename : str, default=None
-            filename for output w/o filetype suffix
-            if None, uses calfile stem
-
         std_cut : float, default=0.5
             delay stand. dev cut for good / bad determination
-
-        output : bool, default=False
-            return with function
 
         Result:
         -------
@@ -152,40 +323,41 @@ class FirstCal_Metrics(object):
         ant_z_scores : dictionary
             contains z_score for each antenna w.r.t stand dev. of
             all antennas, then averaged over time
-
-        Optional Output:
-        -------
-        if output == True:
-            return self.metrics
         """
         # Calculate std and zscores
-        (self.ant_avg, self.ant_std, self.time_std, self.agg_std,
-         self.z_scores, self.ant_z_scores) = self.delay_std(return_dict=True)
+        (ant_avg, ant_std, time_std, agg_std,
+         z_scores, ant_z_scores) = self.delay_std(return_dict=True)
 
         # Given delay standard dev. cut, find "bad" ants
         # also determine if full solultion is bad
-        if self.agg_std > std_cut:
-            self.good_sol = False
+        if agg_std > std_cut:
+            good_sol = False
         else:
-            self.good_sol = True
+            good_sol = True
 
-        self.bad_ants = []
-        for ant in self.ant_std:
-            if self.ant_std[ant] > std_cut:
-                self.bad_ants.append(ant)
+        bad_ants = []
+        for ant in ant_std:
+            if ant_std[ant] > std_cut:
+                bad_ants.append(ant)
 
         # put into dictionary
         metrics = OrderedDict()
-        metrics['good_sol'] = self.good_sol
-        metrics['bad_ants'] = self.bad_ants
-        metrics['z_scores'] = self.z_scores
-        metrics['ant_z_scores'] = self.ant_z_scores
-        metrics['ant_avg'] = self.ant_avg
-        metrics['ant_std'] = self.ant_std
-        metrics['time_std'] = self.time_std
-        metrics['agg_std'] = self.agg_std
+        metrics['good_sol'] = good_sol
+        metrics['ants'] = self.ants
+        metrics['bad_ants'] = bad_ants
+        metrics['z_scores'] = z_scores
+        metrics['ant_z_scores'] = ant_z_scores
+        metrics['ant_avg'] = ant_avg
+        metrics['ant_std'] = ant_std
+        metrics['time_std'] = time_std
+        metrics['agg_std'] = agg_std
         metrics['times'] = self.times
         metrics['version'] = self.version_str
+        metrics['fc_filename'] = self.fc_filename
+        metrics['fc_filestem'] = self.fc_filestem
+        metrics['start_JD'] = self.start_JD
+        metrics['frac_JD'] = self.frac_JD
+        metrics['std_cut'] = std_cut
         self.metrics = metrics
 
     def write_metrics(self, filename=None, filetype='json'):
@@ -203,7 +375,7 @@ class FirstCal_Metrics(object):
         """
         # get filename prefix
         if filename is None:
-            filename = self.file_stem + ".first_metrics"
+            filename = self.fc_filestem + ".first_metrics"
 
         # write to file
         if filetype == 'json':
@@ -211,7 +383,9 @@ class FirstCal_Metrics(object):
                 filename += '.json'
             # change ndarrays to lists
             metrics_out = copy.deepcopy(self.metrics)
+            metrics_out['frac_JD'] = list(metrics_out['frac_JD'])
             metrics_out['times'] = list(metrics_out['times'])
+            metrics_out['ants'] = list(metrics_out['ants'])
             for k in metrics_out['z_scores'].keys():
                 metrics_out['z_scores'][k] = list(metrics_out['z_scores'][k])
 
@@ -233,6 +407,10 @@ class FirstCal_Metrics(object):
         ------
         filename : str
             filename to read in
+
+        Result:
+        -------
+        self.metrics dictionary
         """
         self.metrics = load_firstcal_metrics(filename)
 
@@ -316,14 +494,13 @@ class FirstCal_Metrics(object):
 
         return ant_avg, ant_std, time_std, agg_std, z_scores, ant_z_scores
 
-    def plot_delays(self, ants=None, plot_type='both', ax=None,
-                    cm='spectral', save=False, fname=None,
+    def plot_delays(self, ants=None, plot_type='both', cmap='nipy_spectral', ax=None, save=False, fname=None,
                     plt_kwargs={'markersize': 8, 'alpha': 0.75}):
         """
         plot delay solutions from a calfits file
         plot either
             1. per-antenna delay solution in nanosec
-            2. per-antenna delay solution offset from average
+            2. per-antenna delay solution subtracting per-ant median
             3. both
 
         Input:
@@ -347,17 +524,17 @@ class FirstCal_Metrics(object):
             given specification of plot_type plus one
             more axis for a legend at the end
 
-        cm : str, [default='spectral']
-            select matplotlib colormap to use
+        cmap : str, [default='spectral']
+            colormap for different antennas
 
         save : bool, [default=False]
             if True save plot as png
             only works if fig is defined in function
             i.e. if ax == None
 
-        fname : str, [default=self.file_stem+'.png']
+        fname : str, [default=self.fc_filestem+'.png']
             filename to save plot as
-            default is self.file_stem
+            default is self.fc_filestem
 
         plt_kwargs : dict, [default={'markersize':8,'alpha':0.75}]
             keyword arguments for ax.plot() calls
@@ -386,11 +563,10 @@ class FirstCal_Metrics(object):
 
         # Get a colormap
         try:
-            cmap = getattr(matplotlib.cm, cm)
-            cmap = cmap(np.linspace(0, 0.95, len(plot_ants)))
-        except AttributeError:
-            print("matplotlib colormap not recognized, using spectral")
-            cmap = matplotlib.cm.spectral(np.linspace(0, 0.95, len(plot_ants)))
+            cm = plt.get_cmap(cmap)(np.linspace(0,0.95, len(plot_ants)))
+        except ValueError:
+            print("cmap not recognized, using spectral")
+            cm = plt.get_cmap('nipy_spectral')(np.linspace(0,0.95, len(plot_ants)))
 
         # plot delay solutions
         if (plot_type == 'both') or (plot_type == 'solution'):
@@ -398,10 +574,10 @@ class FirstCal_Metrics(object):
                 axes = ax
                 ax = axes[0]
             plabel = []
-            ax.grid(True)
+            ax.grid(True, zorder=0)
             for i, index in enumerate(plot_ants):
                 p, = ax.plot(self.frac_JD, self.delays[index], marker='.',
-                             c=cmap[i], **plt_kwargs)
+                             c=cm[i], **plt_kwargs)
                 plabel.append(p)
             ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
             ax.set_ylabel('delay solution [ns]', fontsize=14)
@@ -414,10 +590,10 @@ class FirstCal_Metrics(object):
                 axes = ax
                 ax = axes[1]
             plabel = []
-            ax.grid(True)
+            ax.grid(True, zorder=0)
             for i, index in enumerate(plot_ants):
                 p, = ax.plot(self.frac_JD, self.delay_offsets[index],
-                             marker='.', c=cmap[i], **plt_kwargs)
+                             marker='.', c=cm[i], **plt_kwargs)
                 plabel.append(p)
             ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
             ax.set_ylabel('delay offset [ns]', fontsize=14)
@@ -434,11 +610,11 @@ class FirstCal_Metrics(object):
 
         if save is True and custom_ax is False:
             if fname is None:
-                fname = self.file_stem + '.dlys.png'
+                fname = self.fc_filestem + '.dlys.png'
             fig.savefig(fname, bbox_inches='tight')
 
-    def plot_zscores(self, fname=None, plot_type='full', cm='viridis_r', ax=None, figsize=(10, 6),
-                     save=False, kwargs={'cmap': 'viridis_r', 'vmin': 0, 'vmax': 5}, plot_abs=False):
+    def plot_zscores(self, fname=None, plot_type='full', ax=None, figsize=(10, 6),
+                     save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
         """
         Plot z_scores for antenna delay solution
 
@@ -453,9 +629,6 @@ class FirstCal_Metrics(object):
             'full' : plot zscore for each (N_ant, N_times)
             'time_avg' : plot zscore for each (N_ant,) avg over time
 
-        cm : str, default='viridis_r'
-            colormap
-
         ax : axis object, default=None
             matplotlib axis object
 
@@ -468,65 +641,14 @@ class FirstCal_Metrics(object):
         kwargs : dict
             plotting kwargs
         """
+        # make sure metrics has been run
+        if hasattr(self, 'metrics') == False:
+            raise NameError("You need to run FirstCal_Metrics.run_metrics() "+
+                                "in order to plot delay z_scores")
+        plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
+                        save=save, kwargs=kwargs, plot_abs=plot_abs)
+                                  
 
-        custom_ax = True
-        if ax is None:
-            custom_ax = False
-            fig = plt.figure(figsize=figsize)
-            ax = fig.add_subplot(111)
-
-        # Get zscores
-        (ant_avg, ant_std, time_std, agg_std,
-         z_scores, ant_z_scores) = self.delay_std()
-        if plot_abs == True:
-            z_scores = np.abs(z_scores)
-
-        # Plot zscores
-        if plot_type == 'full':
-            # plot
-            xlen = [self.frac_JD.min(), self.frac_JD.max()]
-            xlen_round = [np.ceil(self.frac_JD.min() * 1000) / 1000,
-                          np.floor(self.frac_JD.max() * 1000) / 1000]
-            ylen = [0, len(self.ants)]
-            cax = ax.matshow(z_scores, origin='lower', aspect='auto',
-                             extent=[xlen[0], xlen[1], ylen[0], ylen[1]], **kwargs)
-
-            # define ticks
-            ax.xaxis.set_ticks_position('bottom')
-            xticks = np.arange(xlen_round[0], xlen_round[1] + 1e-5, 0.001)
-            ax.set_xticks(xticks)
-            ax.set_yticks(np.arange(len(self.ants)) + 0.5)
-            ax.set_yticklabels(self.ants)
-            [t.set_rotation(20) for t in ax.get_yticklabels()]
-
-            # set labels
-            ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
-            ax.set_ylabel('antenna number', fontsize=14)
-
-            # set colorbar
-            fig.colorbar(cax, label='z-score')
-
-        if plot_type == 'time_avg':
-            # plot
-            cmap = matplotlib.cm.spectral(np.linspace(0, 0.95, len(self.ants)))
-            ax.grid(True)
-            ax.bar(range(len(ant_z_scores)), ant_z_scores, align='center', color='b', alpha=0.4)
-
-            # define ticks
-            ax.set_xlim(-1, len(self.ants))
-            ax.set_ylim(0, 5)
-
-            ax.set_xticks(range(len(self.ants)))
-            ax.set_xticklabels(self.ants)
-            [t.set_rotation(20) for t in ax.get_xticklabels()]
-
-            ax.set_xlabel('antenna number', fontsize=14)
-            ax.set_ylabel('time-averaged z-score', fontsize=14)
-
-        if save is True and custom_ax is False:
-            if fname is None:
-                fname = self.file_stem + '.zscrs.png'
-            fig.savefig(fname, bbox_inches='tight')
 
     def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         """
@@ -551,42 +673,8 @@ class FirstCal_Metrics(object):
             save image to file
 
         """
-        custom_ax = True
-        if ax is None:
-            custom_ax = False
-            fig = plt.figure(figsize=(8, 6))
-            ax = fig.add_subplot(111)
-
-        # get std
-        (ant_avg, ant_std, time_std, agg_std,
-         z_scores, ant_z_scores) = self.delay_std()
-
-        # choose xaxis
-        if xaxis == 'ant':
-            xax = range(len(ant_std))
-            yax = ant_std
-            cmap = matplotlib.cm.spectral(np.linspace(0, 0.95, len(xax)))
-            ax.grid(True)
-            ax.scatter(xax, yax, c=cmap, alpha=0.85,
-                       marker='o', edgecolor='None', s=70)
-            ax.set_xlim(-1, len(self.ants))
-            ax.set_xticks(range(len(self.ants)))
-            ax.set_xticklabels(self.ants)
-            [t.set_rotation(20) for t in ax.get_xticklabels()]
-            ax.set_xlabel('antenna number', fontsize=14)
-            ax.set_ylabel('delay solution standard deviation [ns]', fontsize=14)
-
-        elif xaxis == 'time':
-            xax = self.frac_JD
-            yax = time_std
-            cmap = None
-            ax.grid(True)
-            ax.plot(xax, yax, c='k', marker='.', linestyle='-', alpha=0.85)
-            [t.set_rotation(20) for t in ax.get_xticklabels()]
-            ax.set_xlabel('fractional JD of {}'.format(self.start_JD), fontsize=14)
-            ax.set_ylabel('delay solution standard deviation [ns]', fontsize=14)
-
-        if save is True and custom_ax is False:
-            if fname is None:
-                fname = self.file_stem + '.stds.png'
-            fig.savefig(fname, bbox_inches='tight')
+        # make sure metrics has been run
+        if hasattr(self, 'metrics') == False:
+            raise NameError("You need to run FirstCal_Metrics.run_metrics() "+
+                             "in order to plot delay stds")
+        plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
