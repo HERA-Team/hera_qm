@@ -2,7 +2,7 @@ firstcal_metric_list = {'firstcal_metrics_good_sol': 'Whether full firstcal solu
                         'is good (1) or bad(0).',
                         'firstcal_metrics_agg_std': 'Aggregate standard deviation '
                         'of delay solutions',
-                        'firstcal_metrics_ant_z_score': 'Z-scores for each antenna '
+                        'firstcal_metrics_ant_z_scores': 'Z-scores for each antenna '
                         'delay solution w.r.t. agg_std',
                         'firstcal_metrics_ant_avg': 'Average delay solution for '
                         'each antenna.',

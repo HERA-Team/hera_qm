@@ -184,7 +184,7 @@ def metrics2mc(filename, ftype):
         pol = data['pol']
         d['array_metrics']['firstcal_metrics_good_sol'] = float(data['good_sol'])
         d['array_metrics']['firstcal_metrics_agg_std'] = data['agg_std']
-        for met in ['ant_z_score', 'ant_avg', 'ant_std']:
+        for met in ['ant_z_scores', 'ant_avg', 'ant_std']:
             metric = '_'.join(['firstcal_metrics', met])
             d['ant_metrics'][metric] = []
             for ant, val in data[met]:
