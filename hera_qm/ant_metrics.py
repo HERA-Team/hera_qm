@@ -1,11 +1,9 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
-import matplotlib.pyplot as plt
 import aipy
 from copy import deepcopy
 from pyuvdata import UVData
 import json
-import optparse
 import os
 import re
 from hera_qm.version import hera_qm_version_str
