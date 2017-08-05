@@ -41,7 +41,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         # Test bad ants detection
         self.FC.delay_offsets[0, :] *= 10
         self.FC.run_metrics()
-        self.assertIn(self.FC.ants[0], self.FC.bad_ants)
+        self.assertIn(self.FC.ants[0], self.FC.metrics['bad_ants'])
         # Test bad full solution
         self.FC.delay_offsets[1:, :] *= 10
         self.FC.run_metrics()
