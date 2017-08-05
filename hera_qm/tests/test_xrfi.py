@@ -360,11 +360,6 @@ class TestXrfiRun(object):
         opts, args = o.parse_args(cmd.split())
         nt.assert_raises(StandardError, xrfi.xrfi_run, args, opts, cmd)
 
-        opt0 = "--infile_format=ms"
-        cmd = ' '.join([opt0, xx_file])
-        opts, args = o.parse_args(cmd.split())
-        nt.assert_raises(RuntimeError, xrfi.xrfi_run, args, opts, cmd)
-
         opt0 = "--infile_format=blah"
         cmd = ' '.join([opt0, xx_file])
         opts, args = o.parse_args(cmd.split())
