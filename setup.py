@@ -37,8 +37,7 @@ setup_args = {
     'scripts': ['scripts/ant_metrics_run.py', 'scripts/xrfi_run.py'],
     'version': version.version,
     'package_data': {'hera_qm': data_files},
-    #    'install_requires': ['numpy>=1.10', 'scipy', 'pyuvdata', 'astropy>1.2', 'aipy']
-    #    'dependency_links': ['https://github.com/zakiali/omnical/tarball/master#egg=omnical-dev',]
+    'install_requires': ['astropy>=2.0'],
     'zip_safe': False,
 }
 
