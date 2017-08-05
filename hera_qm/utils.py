@@ -3,7 +3,6 @@ import re
 import os
 import warnings
 import optparse
-import aipy
 
 
 # option-generating function for *_run wrapper functions

@@ -1,11 +1,9 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
-import matplotlib.pyplot as plt
 import aipy
 from copy import deepcopy
 from pyuvdata import UVData
 import json
-import optparse
 import os
 import re
 from hera_qm.version import hera_qm_version_str
@@ -293,13 +291,6 @@ class Antenna_Metrics():
         self.reds = reds
         self.version_str = hera_qm_version_str
         self.history = ''
-
-        # For using data containers until pyuvdata gets faster
-        # from hera_cal import firstcal
-        # from hera_qm.datacontainer import DataContainer
-        # self.uvdata = self.data
-        # datapack, flagspack = firstcal.UVData_to_dict([self.uvdata])
-        # self.data = DataContainer(datapack)
 
         if len(self.antpols) is not 2 or len(self.pols) is not 4:
             raise ValueError('Missing polarization information. pols =' +

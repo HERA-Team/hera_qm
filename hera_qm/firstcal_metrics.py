@@ -4,9 +4,7 @@ FirstCal metrics
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-from pyuvdata import UVData, UVCal
-import hera_cal as hc
+from pyuvdata import UVCal
 import pkg_resources
 pkg_resources.require('astropy>=2.0')
 import astropy.stats as astats
