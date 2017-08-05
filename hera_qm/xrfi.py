@@ -244,8 +244,6 @@ def xrfi_run(files, opts, history):
             uvd.read_uvfits(fn)
         elif opts.infile_format == 'fhd':
             uvd.read_fhd(fn)
-        elif opts.infile_format == 'ms':
-            uvd.read_ms(fn)
         else:
             raise ValueError('Unrecognized input file format ' + str(opts.infile_format))
 
