@@ -283,8 +283,6 @@ class Antenna_Metrics():
             self.data.read_uvfits(dataFileList)
         elif fileformat == 'fhd':
             self.data.read_fhd(dataFileList)
-        elif fileformat == 'ms':
-            self.data.read_ms(dataFileList)
         else:
             raise ValueError('Unrecognized file format ' + str(fileformat))
         self.ants = self.data.get_ants()

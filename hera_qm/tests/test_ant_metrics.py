@@ -154,10 +154,6 @@ class TestAntennaMetrics(unittest.TestCase):
         with self.assertRaises(ValueError):
             ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='not_a_format')
-        # if casacore is not installed, this test raises a skiptest
-        # with self.assertRaises(IOError):
-        #     ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
-        #                                 [], fileformat='ms')
 
     def test_init(self):
         # We will throw 4 warnings for unknown antenna diameters.
