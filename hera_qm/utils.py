@@ -160,8 +160,10 @@ def metrics2mc(filename, ftype):
     if ftype is 'ant':
         from hera_qm.ant_metrics import load_antenna_metrics
         data = load_antenna_metrics(filename)
-        for category in ['ant_metrics', 'ant_metrics_mod_z_scores']:
-            for met, array in data[category].items():
+        key2cat = {'final_metrics': 'ant_metrics',
+                   'final_mod_z_scores': 'ant_metrics_mod_z_scores'}
+        for key, category in key2cat.items():
+            for met, array in data[key].items():
                 metric = '_'.join([category, met])
                 d['ant_metrics'][metric] = []
                 for antpol, val in array.items():
@@ -171,9 +173,9 @@ def metrics2mc(filename, ftype):
                 d['ant_metrics'][metric] = []
                 for antpol in data[met]:
                     d['ant_metrics'][metric].append([antpol[0], antpol[1], 1])
-            d['ant_metrics']['removal_iteration'] = []
+            d['ant_metrics']['ant_metrics_removal_iteration'] = []
             metric = 'ant_metrics_removal_iteration'
-            for antpol, val in data['removal_iteration']:
+            for antpol, val in data['removal_iteration'].items():
                 d['ant_metrics'][metric].append([antpol[0], antpol[1], val])
 
     elif ftype is 'firstcal':
@@ -211,3 +213,5 @@ def metrics2mc(filename, ftype):
 
     else:
         raise ValueError('Metric file type ' + ftype + ' is not recognized.')
+
+    return d
