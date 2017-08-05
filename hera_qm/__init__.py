@@ -7,5 +7,6 @@ import ant_metrics
 import datacontainer
 import firstcal_metrics
 import version
+import cal_metrics
 
 __version__ = version.version
