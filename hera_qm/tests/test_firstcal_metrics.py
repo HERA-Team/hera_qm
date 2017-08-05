@@ -3,7 +3,6 @@ test_firstcal_metrics.py
 
 """
 import matplotlib
-matplotlib.use('Agg')
 import numpy as np
 from hera_qm import firstcal_metrics
 from hera_qm.data import DATA_PATH
