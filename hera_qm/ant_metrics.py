@@ -294,13 +294,6 @@ class Antenna_Metrics():
         self.version_str = hera_qm_version_str
         self.history = ''
 
-        # For using data containers until pyuvdata gets faster
-        # from hera_cal import firstcal
-        # from hera_qm.datacontainer import DataContainer
-        # self.uvdata = self.data
-        # datapack, flagspack = firstcal.UVData_to_dict([self.uvdata])
-        # self.data = DataContainer(datapack)
-
         if len(self.antpols) is not 2 or len(self.pols) is not 4:
             raise ValueError('Missing polarization information. pols =' +
                              str(self.pols) + ' and antpols = ' + str(self.antpols))
