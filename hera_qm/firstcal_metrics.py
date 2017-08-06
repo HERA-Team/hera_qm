@@ -14,6 +14,7 @@ import json
 import cPickle as pkl
 import copy
 
+
 def load_firstcal_metrics(filename):
     """
     Read-in a firstcal_metrics file and return dictionary
@@ -102,7 +103,7 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         ax.grid(True, zorder=0)
         ax.tick_params(size=8)
         ax.scatter(xax, yax, c=cmap, alpha=0.85, marker='o', edgecolor='k',
-                        s=70, zorder=3)
+                   s=70, zorder=3)
         ax.set_xlim(-1, Nants)
         ax.set_xticks(range(Nants))
         ax.set_xticklabels(metrics['ants'])
@@ -171,7 +172,7 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
     z_scores = np.array(metrics['z_scores'].values())
     ant_z_scores = np.array(metrics['ant_z_scores'].values())
     Nants = len(metrics['ants'])
-    if plot_abs == True:
+    if plot_abs is True:
         z_scores = np.abs(z_scores)
         if 'vmin' not in kwargs:
             kwargs['vmin'] = 0
@@ -188,7 +189,7 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
         # plot
         xlen = [np.min(metrics['frac_JD']), np.max(metrics['frac_JD'])]
         xlen_round = [np.ceil(np.min(metrics['frac_JD']) * 1000) / 1000,
-                  np.floor(np.max(metrics['frac_JD']) * 1000) / 1000]
+                      np.floor(np.max(metrics['frac_JD']) * 1000) / 1000]
         ylen = [0, Nants]
         cax = ax.matshow(z_scores, origin='lower', aspect='auto',
                          extent=[xlen[0], xlen[1], ylen[0], ylen[1]], **kwargs)
@@ -214,7 +215,7 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
         cmap = plt.get_cmap(kwargs['cmap'])(np.linspace(0, 0.95, Nants))
         ax.grid(True, zorder=0)
         ax.bar(range(len(ant_z_scores)), ant_z_scores, align='center', color='steelblue', alpha=0.75,
-                    zorder=3)
+               zorder=3)
 
         # define ticks
         ax.set_xlim(-1, Nants)
@@ -461,16 +462,16 @@ class FirstCal_Metrics(object):
         """
         # calculate standard deviations
         ant_avg = self.delay_avgs
-        ant_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets, axis=1) )
-        time_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets, axis=0) )
-        agg_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets) )
+        ant_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets, axis=1))
+        time_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets, axis=0))
+        agg_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets))
 
         # calculate z-scores
         z_scores = self.delay_offsets / agg_std
         ant_z_scores = np.median(np.abs(z_scores), axis=1)
 
         # convert to ordered dict if desired
-        if return_dict == True:
+        if return_dict is True:
             ant_avg_d = OrderedDict()
             time_std_d = OrderedDict()
             ant_std_d = OrderedDict()
@@ -561,10 +562,10 @@ class FirstCal_Metrics(object):
 
         # Get a colormap
         try:
-            cm = plt.get_cmap(cmap)(np.linspace(0,0.95, len(plot_ants)))
+            cm = plt.get_cmap(cmap)(np.linspace(0, 0.95, len(plot_ants)))
         except ValueError:
             print("cmap not recognized, using spectral")
-            cm = plt.get_cmap('nipy_spectral')(np.linspace(0,0.95, len(plot_ants)))
+            cm = plt.get_cmap('nipy_spectral')(np.linspace(0, 0.95, len(plot_ants)))
 
         # plot delay solutions
         if (plot_type == 'both') or (plot_type == 'solution'):
@@ -641,12 +642,10 @@ class FirstCal_Metrics(object):
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') == False:
-            raise NameError("You need to run FirstCal_Metrics.run_metrics() "+
-                                "in order to plot delay z_scores")
+            raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
+                            "in order to plot delay z_scores")
         plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
-                        save=save, kwargs=kwargs, plot_abs=plot_abs)
-                                  
-
+                     save=save, kwargs=kwargs, plot_abs=plot_abs)
 
     def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         """
@@ -673,6 +672,6 @@ class FirstCal_Metrics(object):
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') == False:
-            raise NameError("You need to run FirstCal_Metrics.run_metrics() "+
-                             "in order to plot delay stds")
+            raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
+                            "in order to plot delay stds")
         plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
