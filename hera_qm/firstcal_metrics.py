@@ -240,7 +240,8 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
 class FirstCal_Metrics(object):
     """
     FirstCal_Metrics class for holding firstcal data,
-    running metrics, and plotting delay solutions
+    running metrics, and plotting delay solutions.
+    Currently only supports single polarization solutions.
     """
 
     def __init__(self, calfits_file):
@@ -270,6 +271,9 @@ class FirstCal_Metrics(object):
 
         self.ants : ndarray, shape=(N_ants,)
             ndarray containing antenna numbers
+
+        self.pol : str
+            Polarization, 'y' or 'x' currently supported
         """
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
@@ -292,6 +296,16 @@ class FirstCal_Metrics(object):
         self.Nants = self.UVC.Nants_data
         self.ants = self.UVC.ant_array
         self.version_str = hera_qm_version_str
+
+        if len(self.UVC.jones_array) > 1:
+            raise ValueError('Sorry, only single pol firstcal solutions are '
+                             'currently supported.')
+        pol_dict = {-5: 'x', -6: 'y'}
+        try:
+            self.pol = pol_dict[self.UVC.jones_array[0]]
+        except KeyError:
+            raise ValueError('Sorry, only calibration polarizations "x" and '
+                             '"y" are currently supported.')
 
     def run_metrics(self, std_cut=0.5):
         """
@@ -357,6 +371,7 @@ class FirstCal_Metrics(object):
         metrics['start_JD'] = self.start_JD
         metrics['frac_JD'] = self.frac_JD
         metrics['std_cut'] = std_cut
+        metrics['pol'] = self.pol
         self.metrics = metrics
 
     def write_metrics(self, filename=None, filetype='json'):

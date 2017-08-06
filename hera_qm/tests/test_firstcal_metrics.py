@@ -36,6 +36,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertEqual(str, type(self.FC.metrics['version']))
         self.assertAlmostEqual(1.0, self.FC.metrics['std_cut'])
         self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.088757931322363717)
+        self.assertEqual('y', self.FC.metrics['pol'])
 
         # Test bad ants detection
         self.FC.delay_offsets[0, :] *= 10
