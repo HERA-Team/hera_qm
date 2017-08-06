@@ -3,6 +3,7 @@ import re
 import os
 import warnings
 import optparse
+import numpy as np
 
 
 # option-generating function for *_run wrapper functions
@@ -187,7 +188,7 @@ def metrics2mc(filename, ftype):
         for met in ['ant_z_scores', 'ant_avg', 'ant_std']:
             metric = '_'.join(['firstcal_metrics', met])
             d['ant_metrics'][metric] = []
-            for ant, val in data[met]:
+            for ant, val in data[met].items():
                 d['ant_metrics'][metric].append([ant, pol, val])
         metric = 'firstcal_metrics_bad_ants'
         d['ant_metrics'][metric] = []
@@ -200,12 +201,12 @@ def metrics2mc(filename, ftype):
         uvcal.read_calfits(filename)
         pol_dict = {-5: 'x', -6: 'y'}
         d['ant_metrics']['omnical_quality'] = []
-        for pi, pol in uvcal.jones_array:
+        for pi, pol in enumerate(uvcal.jones_array):
             try:
                 pol = pol_dict[pol]
             except KeyError:
                 raise ValueError('Invalid polarization for ant_metrics in M&C.')
-            for ai, ant in uvcal.ant_array:
+            for ai, ant in enumerate(uvcal.ant_array):
                 val = np.mean(uvcal.quality_array[ai, 0, 0, :, pi])
                 d['ant_metrics']['omnical_quality'].append([ant, pol, val])
         if uvcal.total_quality_array is not None:

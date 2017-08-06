@@ -3,11 +3,14 @@ import os
 import pyuvdata.tests as uvtest
 from hera_qm import utils
 from hera_qm.data import DATA_PATH
+from hera_qm.ant_metrics import ant_metrics_list
+from hera_qm.cal_metrics import firstcal_metrics_list, omnical_metrics_list
 
 
 def test_get_pol():
     filename = 'zen.2457698.40355.xx.HH.uvcA'
     nt.assert_equal(utils.get_pol(filename), 'xx')
+
 
 def test_generate_fullpol_file_list():
     pol_list = ['xx', 'xy', 'yx', 'yy']
@@ -42,6 +45,28 @@ def test_generate_fullpol_file_list():
                                              message='Could not find')
     nt.assert_equal(fullpol_file_list, [])
 
+
 def test_get_metrics_OptionParser():
     # raise error for requesting unknown type of parser
     nt.assert_raises(AssertionError, utils.get_metrics_OptionParser, 'fake_method')
+
+
+def test_metrics2mc():
+    filename = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+    d = utils.metrics2mc(filename, ftype='ant')
+    nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
+    nt.assert_equal(len(d['array_metrics']), 0)
+    nt.assert_equal(set(d['ant_metrics'].keys()), set(ant_metrics_list.keys()))
+    filename = os.path.join(DATA_PATH, 'example_firstcal_metrics.json')
+    d = utils.metrics2mc(filename, ftype='firstcal')
+    nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
+    firstcal_array_metrics = set(['firstcal_metrics_agg_std',
+                                  'firstcal_metrics_good_sol'])
+    nt.assert_equal(set(d['array_metrics'].keys()), firstcal_array_metrics)
+    firstcal_ant_metrics = set(firstcal_metrics_list.keys()) - firstcal_array_metrics
+    nt.assert_equal(set(d['ant_metrics']), firstcal_ant_metrics)
+    filename = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+    d = utils.metrics2mc(filename, ftype='omnical')
+    nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
+    nt.assert_equal(d['array_metrics'].keys(), ['omnical_total_quality'])
+    nt.assert_equal(d['ant_metrics'].keys(), ['omnical_quality'])
