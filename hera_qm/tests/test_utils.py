@@ -1,6 +1,7 @@
 import nose.tools as nt
 import os
 import pyuvdata.tests as uvtest
+from pyuvdata import UVCal
 from hera_qm import utils
 from hera_qm.data import DATA_PATH
 from hera_qm.ant_metrics import ant_metrics_list
@@ -70,3 +71,13 @@ def test_metrics2mc():
     nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
     nt.assert_equal(d['array_metrics'].keys(), ['omnical_total_quality'])
     nt.assert_equal(d['ant_metrics'].keys(), ['omnical_quality'])
+    # Hit the exceptions
+    nt.assert_raises(ValueError, utils.metrics2mc, filename, ftype='foo')
+    uvcal = UVCal()
+    infile = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+    outfile = os.path.join(DATA_PATH, 'test_output', 'bad_omni.calfits')
+    uvcal.read_calfits(infile)
+    uvcal.jones_array[0] = -7  # Not allowed polarization
+    uvcal.write_calfits(outfile, clobber=True)
+    nt.assert_raises(ValueError, utils.metrics2mc, outfile, ftype='omnical')
+    os.remove(outfile)
