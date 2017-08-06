@@ -5,7 +5,8 @@ from pyuvdata import UVCal
 from hera_qm import utils
 from hera_qm.data import DATA_PATH
 from hera_qm.ant_metrics import ant_metrics_list
-from hera_qm.cal_metrics import firstcal_metrics_list, omnical_metrics_list
+from hera_qm.firstcal_metrics import firstcal_metrics_list
+from hera_qm.omnical_metrics import omnical_metrics_list
 
 
 def test_get_pol():
