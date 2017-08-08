@@ -15,18 +15,27 @@ import cPickle as pkl
 import copy
 
 
-firstcal_metrics_list = {'firstcal_metrics_good_sol': 'Whether full firstcal solution'
-                         'is good (1) or bad(0).',
-                         'firstcal_metrics_agg_std': 'Aggregate standard deviation '
-                         'of delay solutions',
-                         'firstcal_metrics_ant_z_scores': 'Z-scores for each antenna '
-                         'delay solution w.r.t. agg_std',
-                         'firstcal_metrics_ant_avg': 'Average delay solution for '
-                         'each antenna.',
-                         'firstcal_metrics_ant_std': 'Standard deviation of each '
-                         'antennas delay solution across time.',
-                         'firstcal_metrics_bad_ants': 'Antennas flagged as bad due '
-                         'to large variation in delay solution.'}
+def get_firstcal_metrics_dict():
+    """ Simple function that returns dictionary with metric names as keys and
+    their descriptions as values. This is used by hera_mc to populate the table
+    of metrics and their descriptions.
+
+    Returns:
+    metrics_dict -- Dictionary with metric names as keys and descriptions as values.
+    """
+    metrics_dict = {'firstcal_metrics_good_sol': 'Whether full firstcal solution'
+                    'is good (1) or bad(0).',
+                    'firstcal_metrics_agg_std': 'Aggregate standard deviation '
+                    'of delay solutions',
+                    'firstcal_metrics_ant_z_scores': 'Z-scores for each antenna '
+                    'delay solution w.r.t. agg_std',
+                    'firstcal_metrics_ant_avg': 'Average delay solution for '
+                    'each antenna.',
+                    'firstcal_metrics_ant_std': 'Standard deviation of each '
+                    'antennas delay solution across time.',
+                    'firstcal_metrics_bad_ants': 'Antennas flagged as bad due '
+                    'to large variation in delay solution.'}
+    return metrics_dict
 
 
 def load_firstcal_metrics(filename):

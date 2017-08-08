@@ -73,6 +73,7 @@ def get_metrics_OptionParser(method_name):
                      help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
     return o
 
+
 def get_pol(fname):
     """Strips the filename of a HERA visibility to its polarization
     Args:
@@ -142,9 +143,32 @@ def generate_fullpol_file_list(files, pol_list):
     return file_list
 
 
+def get_metrics_dict():
+    """ Function to combine metrics lists from hera_qm modules.
+
+    Returns:
+    Dictionary of all metrics and descriptions to be used in M&C database.
+    """
+    from hera_qm.ant_metrics import get_ant_metrics_dict
+    from hera_qm.firstcal_metrics import get_firstcal_metrics_dict
+    from hera_qm.omnical_metrics import get_omnical_metrics_dict
+    metrics_dict = get_ant_metrics_dict()
+    metrics_dict.update(get_firstcal_metrics_dict())
+    metrics_dict.update(get_omnical_metrics_dict())
+    return metrics_dict
+
+
 def metrics2mc(filename, ftype):
     """ Read in file containing quality metrics and stuff into a dictionary which
     can be used by M&C to populate db.
+    If one wishes to add a metric to the list that is tracked by M&C, it is
+    (unfortunately) currently a four step process:
+    1) Ensure your metric is written to the output files of the relevant module.
+    2) Add the metric and a description to the get_X_metrics_dict() function in
+       said module.
+    3) Check that the metric is appropriately ingested in this function, and make
+       changes as necessary.
+    4) Add unit tests! Also check that the hera_mc tests still pass.
 
     Args:
         filename: (str) file to read and convert
@@ -183,7 +207,7 @@ def metrics2mc(filename, ftype):
         from hera_qm.firstcal_metrics import load_firstcal_metrics
         data = load_firstcal_metrics(filename)
         pol = data['pol']
-        d['array_metrics']['firstcal_metrics_good_sol'] = float(data['good_sol'])
+        d['array_metrics']['firstcal_metrics_good_sol'] = data['good_sol']
         d['array_metrics']['firstcal_metrics_agg_std'] = data['agg_std']
         for met in ['ant_z_scores', 'ant_avg', 'ant_std']:
             metric = '_'.join(['firstcal_metrics', met])
@@ -193,7 +217,7 @@ def metrics2mc(filename, ftype):
         metric = 'firstcal_metrics_bad_ants'
         d['ant_metrics'][metric] = []
         for ant in data['bad_ants']:
-            d['ant_metrics'][metric].append([ant, pol, 1])
+            d['ant_metrics'][metric].append([ant, pol, 1.])
 
     elif ftype is 'omnical':
         from pyuvdata import UVCal

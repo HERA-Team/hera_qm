@@ -10,7 +10,15 @@ from hera_qm.version import hera_qm_version_str
 from hera_qm import utils
 
 
-ant_metrics_list = {'ant_metrics_meanVij': 'Mean of the absolute value of all '
+def get_ant_metrics_dict():
+    """ Simple function that returns dictionary with metric names as keys and
+    their descriptions as values. This is used by hera_mc to populate the table
+    of metrics and their descriptions.
+
+    Returns:
+    metrics_dict -- Dictionary with metric names as keys and descriptions as values.
+    """
+    metrics_dict = {'ant_metrics_meanVij': 'Mean of the absolute value of all '
                     'visibilities associated with an antenna.',
                     'ant_metrics_meanVijXPol': 'Ratio of mean cross-pol visibilities '
                     'to mean same-pol visibilities: (Vxy+Vyx)/(Vxx+Vyy).',
@@ -35,6 +43,7 @@ ant_metrics_list = {'ant_metrics_meanVij': 'Mean of the absolute value of all '
                     'which the antenna was removed.',
                     'ant_metrics_xants': 'Antennas deemed bad by hera_qm.ant_metrics.',
                     'ant_metrics_dead_ants': 'Antennas deemed to be dead by hera_qm.ant_metrics.'}
+    return metrics_dict
 
 #######################################################################
 # Low level functionality that is potentially reusable
