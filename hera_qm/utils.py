@@ -3,6 +3,7 @@ import re
 import os
 import warnings
 import optparse
+import numpy as np
 
 
 # option-generating function for *_run wrapper functions
@@ -72,6 +73,7 @@ def get_metrics_OptionParser(method_name):
                      help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
     return o
 
+
 def get_pol(fname):
     """Strips the filename of a HERA visibility to its polarization
     Args:
@@ -88,6 +90,7 @@ def get_pol(fname):
     # and the parser will return everying between the two periods.
     fn = re.findall('zen\.\d{7}\.\d{5}\..*', fname)[0]
     return fn.split('.')[3]
+
 
 def generate_fullpol_file_list(files, pol_list):
     """Generate a list of unique JDs that have all four polarizations available
@@ -138,3 +141,102 @@ def generate_fullpol_file_list(files, pol_list):
                 file_list.append(jd_list)
 
     return file_list
+
+
+def get_metrics_dict():
+    """ Function to combine metrics lists from hera_qm modules.
+
+    Returns:
+    Dictionary of all metrics and descriptions to be used in M&C database.
+    """
+    from hera_qm.ant_metrics import get_ant_metrics_dict
+    from hera_qm.firstcal_metrics import get_firstcal_metrics_dict
+    from hera_qm.omnical_metrics import get_omnical_metrics_dict
+    metrics_dict = get_ant_metrics_dict()
+    metrics_dict.update(get_firstcal_metrics_dict())
+    metrics_dict.update(get_omnical_metrics_dict())
+    return metrics_dict
+
+
+def metrics2mc(filename, ftype):
+    """ Read in file containing quality metrics and stuff into a dictionary which
+    can be used by M&C to populate db.
+    If one wishes to add a metric to the list that is tracked by M&C, it is
+    (unfortunately) currently a four step process:
+    1) Ensure your metric is written to the output files of the relevant module.
+    2) Add the metric and a description to the get_X_metrics_dict() function in
+       said module.
+    3) Check that the metric is appropriately ingested in this function, and make
+       changes as necessary.
+    4) Add unit tests! Also check that the hera_mc tests still pass.
+
+    Args:
+        filename: (str) file to read and convert
+        ftype: (str) Type of metrics file. Options are ['ant', 'firstcal', 'omnical']
+    Returns:
+        d: (dict) Dictionary containing keys and data to pass to M&C.
+            Structure is as follows:
+            d['ant_metrics']: Dictionary with metric names
+                d['ant_metrics'][metric]: list of lists, each containing [ant, pol, val]
+            d['array_metrics']: Dictionary with metric names
+                d['array_metrics'][metric]: Single metric value
+    """
+    d = {'ant_metrics': {}, 'array_metrics': {}}
+    if ftype is 'ant':
+        from hera_qm.ant_metrics import load_antenna_metrics
+        data = load_antenna_metrics(filename)
+        key2cat = {'final_metrics': 'ant_metrics',
+                   'final_mod_z_scores': 'ant_metrics_mod_z_scores'}
+        for key, category in key2cat.items():
+            for met, array in data[key].items():
+                metric = '_'.join([category, met])
+                d['ant_metrics'][metric] = []
+                for antpol, val in array.items():
+                    d['ant_metrics'][metric].append([antpol[0], antpol[1], val])
+            for met in ['crossed_ants', 'dead_ants', 'xants']:
+                metric = '_'.join(['ant_metrics', met])
+                d['ant_metrics'][metric] = []
+                for antpol in data[met]:
+                    d['ant_metrics'][metric].append([antpol[0], antpol[1], 1])
+            d['ant_metrics']['ant_metrics_removal_iteration'] = []
+            metric = 'ant_metrics_removal_iteration'
+            for antpol, val in data['removal_iteration'].items():
+                d['ant_metrics'][metric].append([antpol[0], antpol[1], val])
+
+    elif ftype is 'firstcal':
+        from hera_qm.firstcal_metrics import load_firstcal_metrics
+        data = load_firstcal_metrics(filename)
+        pol = data['pol']
+        d['array_metrics']['firstcal_metrics_good_sol'] = data['good_sol']
+        d['array_metrics']['firstcal_metrics_agg_std'] = data['agg_std']
+        for met in ['ant_z_scores', 'ant_avg', 'ant_std']:
+            metric = '_'.join(['firstcal_metrics', met])
+            d['ant_metrics'][metric] = []
+            for ant, val in data[met].items():
+                d['ant_metrics'][metric].append([ant, pol, val])
+        metric = 'firstcal_metrics_bad_ants'
+        d['ant_metrics'][metric] = []
+        for ant in data['bad_ants']:
+            d['ant_metrics'][metric].append([ant, pol, 1.])
+
+    elif ftype is 'omnical':
+        from pyuvdata import UVCal
+        uvcal = UVCal()
+        uvcal.read_calfits(filename)
+        pol_dict = {-5: 'x', -6: 'y'}
+        d['ant_metrics']['omnical_quality'] = []
+        for pi, pol in enumerate(uvcal.jones_array):
+            try:
+                pol = pol_dict[pol]
+            except KeyError:
+                raise ValueError('Invalid polarization for ant_metrics in M&C.')
+            for ai, ant in enumerate(uvcal.ant_array):
+                val = np.mean(uvcal.quality_array[ai, 0, 0, :, pi])
+                d['ant_metrics']['omnical_quality'].append([ant, pol, val])
+        if uvcal.total_quality_array is not None:
+            d['array_metrics']['omnical_total_quality'] = np.mean(uvcal.total_quality_array)
+
+    else:
+        raise ValueError('Metric file type ' + ftype + ' is not recognized.')
+
+    return d

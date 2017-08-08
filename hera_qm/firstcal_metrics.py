@@ -14,6 +14,30 @@ import json
 import cPickle as pkl
 import copy
 
+
+def get_firstcal_metrics_dict():
+    """ Simple function that returns dictionary with metric names as keys and
+    their descriptions as values. This is used by hera_mc to populate the table
+    of metrics and their descriptions.
+
+    Returns:
+    metrics_dict -- Dictionary with metric names as keys and descriptions as values.
+    """
+    metrics_dict = {'firstcal_metrics_good_sol': 'Whether full firstcal solution'
+                    'is good (1) or bad(0).',
+                    'firstcal_metrics_agg_std': 'Aggregate standard deviation '
+                    'of delay solutions',
+                    'firstcal_metrics_ant_z_scores': 'Z-scores for each antenna '
+                    'delay solution w.r.t. agg_std',
+                    'firstcal_metrics_ant_avg': 'Average delay solution for '
+                    'each antenna.',
+                    'firstcal_metrics_ant_std': 'Standard deviation of each '
+                    'antennas delay solution across time.',
+                    'firstcal_metrics_bad_ants': 'Antennas flagged as bad due '
+                    'to large variation in delay solution.'}
+    return metrics_dict
+
+
 def load_firstcal_metrics(filename):
     """
     Read-in a firstcal_metrics file and return dictionary
@@ -102,7 +126,7 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         ax.grid(True, zorder=0)
         ax.tick_params(size=8)
         ax.scatter(xax, yax, c=cmap, alpha=0.85, marker='o', edgecolor='k',
-                        s=70, zorder=3)
+                   s=70, zorder=3)
         ax.set_xlim(-1, Nants)
         ax.set_xticks(range(Nants))
         ax.set_xticklabels(metrics['ants'])
@@ -171,7 +195,7 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
     z_scores = np.array(metrics['z_scores'].values())
     ant_z_scores = np.array(metrics['ant_z_scores'].values())
     Nants = len(metrics['ants'])
-    if plot_abs == True:
+    if plot_abs is True:
         z_scores = np.abs(z_scores)
         if 'vmin' not in kwargs:
             kwargs['vmin'] = 0
@@ -188,7 +212,7 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
         # plot
         xlen = [np.min(metrics['frac_JD']), np.max(metrics['frac_JD'])]
         xlen_round = [np.ceil(np.min(metrics['frac_JD']) * 1000) / 1000,
-                  np.floor(np.max(metrics['frac_JD']) * 1000) / 1000]
+                      np.floor(np.max(metrics['frac_JD']) * 1000) / 1000]
         ylen = [0, Nants]
         cax = ax.matshow(z_scores, origin='lower', aspect='auto',
                          extent=[xlen[0], xlen[1], ylen[0], ylen[1]], **kwargs)
@@ -214,7 +238,7 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
         cmap = plt.get_cmap(kwargs['cmap'])(np.linspace(0, 0.95, Nants))
         ax.grid(True, zorder=0)
         ax.bar(range(len(ant_z_scores)), ant_z_scores, align='center', color='steelblue', alpha=0.75,
-                    zorder=3)
+               zorder=3)
 
         # define ticks
         ax.set_xlim(-1, Nants)
@@ -239,7 +263,8 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
 class FirstCal_Metrics(object):
     """
     FirstCal_Metrics class for holding firstcal data,
-    running metrics, and plotting delay solutions
+    running metrics, and plotting delay solutions.
+    Currently only supports single polarization solutions.
     """
 
     def __init__(self, calfits_file):
@@ -269,6 +294,9 @@ class FirstCal_Metrics(object):
 
         self.ants : ndarray, shape=(N_ants,)
             ndarray containing antenna numbers
+
+        self.pol : str
+            Polarization, 'y' or 'x' currently supported
         """
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
@@ -291,6 +319,16 @@ class FirstCal_Metrics(object):
         self.Nants = self.UVC.Nants_data
         self.ants = self.UVC.ant_array
         self.version_str = hera_qm_version_str
+
+        if len(self.UVC.jones_array) > 1:
+            raise ValueError('Sorry, only single pol firstcal solutions are '
+                             'currently supported.')
+        pol_dict = {-5: 'x', -6: 'y'}
+        try:
+            self.pol = pol_dict[self.UVC.jones_array[0]]
+        except KeyError:
+            raise ValueError('Sorry, only calibration polarizations "x" and '
+                             '"y" are currently supported.')
 
     def run_metrics(self, std_cut=0.5):
         """
@@ -356,6 +394,7 @@ class FirstCal_Metrics(object):
         metrics['start_JD'] = self.start_JD
         metrics['frac_JD'] = self.frac_JD
         metrics['std_cut'] = std_cut
+        metrics['pol'] = self.pol
         self.metrics = metrics
 
     def write_metrics(self, filename=None, filetype='json'):
@@ -461,16 +500,16 @@ class FirstCal_Metrics(object):
         """
         # calculate standard deviations
         ant_avg = self.delay_avgs
-        ant_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets, axis=1) )
-        time_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets, axis=0) )
-        agg_std = np.sqrt( astats.biweight_midvariance(self.delay_offsets) )
+        ant_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets, axis=1))
+        time_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets, axis=0))
+        agg_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets))
 
         # calculate z-scores
         z_scores = self.delay_offsets / agg_std
         ant_z_scores = np.median(np.abs(z_scores), axis=1)
 
         # convert to ordered dict if desired
-        if return_dict == True:
+        if return_dict is True:
             ant_avg_d = OrderedDict()
             time_std_d = OrderedDict()
             ant_std_d = OrderedDict()
@@ -561,10 +600,10 @@ class FirstCal_Metrics(object):
 
         # Get a colormap
         try:
-            cm = plt.get_cmap(cmap)(np.linspace(0,0.95, len(plot_ants)))
+            cm = plt.get_cmap(cmap)(np.linspace(0, 0.95, len(plot_ants)))
         except ValueError:
             print("cmap not recognized, using spectral")
-            cm = plt.get_cmap('nipy_spectral')(np.linspace(0,0.95, len(plot_ants)))
+            cm = plt.get_cmap('nipy_spectral')(np.linspace(0, 0.95, len(plot_ants)))
 
         # plot delay solutions
         if (plot_type == 'both') or (plot_type == 'solution'):
@@ -641,12 +680,10 @@ class FirstCal_Metrics(object):
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') == False:
-            raise NameError("You need to run FirstCal_Metrics.run_metrics() "+
-                                "in order to plot delay z_scores")
+            raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
+                            "in order to plot delay z_scores")
         plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
-                        save=save, kwargs=kwargs, plot_abs=plot_abs)
-                                  
-
+                     save=save, kwargs=kwargs, plot_abs=plot_abs)
 
     def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         """
@@ -673,6 +710,6 @@ class FirstCal_Metrics(object):
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') == False:
-            raise NameError("You need to run FirstCal_Metrics.run_metrics() "+
-                             "in order to plot delay stds")
+            raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
+                            "in order to plot delay stds")
         plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
