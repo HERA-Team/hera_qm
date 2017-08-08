@@ -1,7 +1,6 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
 import os
-from scipy.signal import medfilt
 from pyuvdata import UVData
 
 #############################################################################
@@ -106,6 +105,9 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     Returns:
         bool array: boolean array of flags
     """
+    # Delay import so scipy is not required for any use of hera_qm
+    from scipy.signal import medfilt
+
     if Kt > d.shape[0] or Kf > d.shape[1]:
         raise ValueError('Kernel size exceeds data.')
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
