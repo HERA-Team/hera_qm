@@ -65,14 +65,14 @@ detection and flagging. `xrfi.xrfi` provides the best RFI excision we currently 
 The function `xrfi.xrfi_run` demonstrates how to use and apply the RFI algorithms
 to a UVData object.
 
-### Known Issues and Planned Improvements
+## Known Issues and Planned Improvements
 Issues are tracked in the [issue log](https://github.com/HERA-Team/hera_qm/issues).
 Major current issues and planned improvements include:
 * A unified metric class structure
 * Develop Tsys calculations into metrics (HERA Memos 16 and 34)
 * Develop closure quantities into metrics (HERA Memo 15)
 
-### Contributing
+## Contributing
 Contributions to this package to introduce new functionality or address any of the
 issues in the [issue log](https://github.com/HERA-Team/hera_qm/issues) are very welcome.
 Please submit improvements as pull requests against the repo after verifying that
