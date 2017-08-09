@@ -49,10 +49,12 @@ There are currently three primary modules which drive HERA quality metrics.
 
 ### ant_metrics
 A module to handle visibility-based metrics designed to identify misbehaving antennas.
-The primary class, `Antenna_Metrics` includes methods to calculate several metrics
-to isolate cross-polarized antennas, dead antennas, or antennas which are forming
-non-redundant visibilities when they should be. And example of using this module
-is in `scripts/ant_metrics_example_notebook.ipynb`.
+The module includes methods to calculate several metrics to identify cross-polarized antennas 
+or dead antennas, based on either their redundancy with other antennas or their relative power.
+The primary class, `Antenna_Metrics`, includes interfaces to these methods and functions for 
+loading data, iteratively running metrics and removing misbehaving antennas, and saving the 
+results of those metrics in a JSON. And example of using this moduleis in 
+`scripts/ant_metrics_example_notebook.ipynb`.
 
 ### firstcal_metrics
 A module to calculate metrics based on firstcal delay solutions. These metrics
