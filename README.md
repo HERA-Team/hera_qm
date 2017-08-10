@@ -59,7 +59,9 @@ results of those metrics in a JSON. And example of using this moduleis in
 ### firstcal_metrics
 A module to calculate metrics based on firstcal delay solutions. These metrics
 identify large variations in delay solutions across time or across the array
-for a given time. An example of using this module is in `scripts/firstcal_metrics.ipynb`.
+for a given time. Included are functions for plotting firstcal delay solutions,
+running the firstcal metrics, plotting the metrics, and writing them to file.
+An example of using this module is in `scripts/firstcal_metrics.ipynb`.
 
 ### xrfi
 This module contains several algorithms for radio frequency interference (RFI)
