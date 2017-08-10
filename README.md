@@ -65,9 +65,11 @@ An example of using this module is in `scripts/firstcal_metrics.ipynb`.
 
 ### xrfi
 This module contains several algorithms for radio frequency interference (RFI)
-detection and flagging. `xrfi.xrfi` provides the best RFI excision we currently have.
+detection and flagging. `xrfi.xrfi` provides the most robust RFI excision we currently have.
 The function `xrfi.xrfi_run` demonstrates how to use and apply the RFI algorithms
-to a UVData object.
+to a UVData object. `xrfi.xrfi_simple` is the legacy RFI flagger from the PAPER pipeline. 
+NOTE: Default settings for each algorithm may not be the most optimal depending
+on the dataset.
 
 ## Known Issues and Planned Improvements
 Issues are tracked in the [issue log](https://github.com/HERA-Team/hera_qm/issues).
