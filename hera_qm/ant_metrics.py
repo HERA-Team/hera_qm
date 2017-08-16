@@ -465,6 +465,7 @@ class Antenna_Metrics():
         with open(metricsJSONFilename, 'w') as outfile:
             json.dump(allMetricsData, outfile, indent=4)
 
+
 # code for running ant_metrics on a file
 def ant_metrics_run(files, opts, history):
     """
@@ -477,7 +478,7 @@ def ant_metrics_run(files, opts, history):
        None
 
     The funciton will take in a list of files and options. It will run the
-    sereis of ant metrics tests, and produce a JSON file containing the relevant
+    series of ant metrics tests, and produce a JSON file containing the relevant
     information. The file list passed in need only contain one of the polarization
     files for a given JD, and the function will look for the other polarizations
     in the same folder. If not all four polarizations are found, a warning is
