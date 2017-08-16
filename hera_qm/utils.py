@@ -40,6 +40,14 @@ def get_metrics_OptionParser(method_name):
                      help='File format for visibility files. Default is miriad.')
         o.add_option('-q', '--quiet', action='store_false', dest='verbose', default=True,
                      help='Silence feedback to the command line.')
+    elif method_name == 'firstcal_metrics':
+        o.set_usage("firstcal_metrics_run.py [options] *.calfits")
+        o.add_option('--std_cut', dest='std_cut', default=0.5, type='float',
+                     help='Delay standard deviation cut for good / bad determination. Default 0.5')
+        o.add_option('--extension', dest='extension', default='.firstcal_metrics.json', type='string',
+                     help='Extension to be appended to the file name. Default is ".firstcal_metrics.json"')
+        o.add_option('--metrics_path', dest='metrics_path', default='', type='string',
+                     help='Path to save metrics file to. Default is same directory as file.')
     elif method_name == 'xrfi':
         o.set_usage("xrfi_run.py [options] *.uv")
         o.add_option('--infile_format', dest='infile_format', default='miriad', type='string',

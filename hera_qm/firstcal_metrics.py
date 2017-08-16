@@ -318,6 +318,7 @@ class FirstCal_Metrics(object):
         self.Nants = self.UVC.Nants_data
         self.ants = self.UVC.ant_array
         self.version_str = hera_qm_version_str
+        self.history = ''
 
         if len(self.UVC.jones_array) > 1:
             raise ValueError('Sorry, only single pol firstcal solutions are '
@@ -394,6 +395,8 @@ class FirstCal_Metrics(object):
         metrics['frac_JD'] = self.frac_JD
         metrics['std_cut'] = std_cut
         metrics['pol'] = self.pol
+        if self.history != '':
+            metrics['history'] = self.history
         self.metrics = metrics
 
     def write_metrics(self, filename=None, filetype='json'):
@@ -712,3 +715,39 @@ class FirstCal_Metrics(object):
             raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
                             "in order to plot delay stds")
         plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
+
+
+# code for running firstcal_metrics on a file
+def firstcal_metrics_run(files, opts, history):
+    """
+    Run firstcal_metrics tests on a given set of input files.
+
+    Args:
+        files -- a list of files to run firstcal metrics on.
+        opts -- an optparse OptionParser instance
+    Return:
+        None
+
+    The function will take in a list of files and options. It will run the firstcal
+    metrics and produce a JSON file containing the relevant information.
+    """
+    if len(files) == 0:
+        raise AssertionError('Please provide a list of calfits files')
+
+    for filename in files:
+        fm = FirstCal_Metrics(filename)
+        fm.run_metrics(std_cut=opts.std_cut)
+        # add history
+        fm.history = fm.history + history
+
+        abspath = os.path.abspath(filename)
+        dirname = os.path.dirname(abspath)
+        basename = os.path.basename(abspath)
+        if opts.metrics_path == '':
+            # default path is same directory as file
+            metrics_path = dirname
+        else:
+            metrics_path = opts.metrics_path
+        metrics_basename = filename + opts.extension
+        metrics_filename = os.path.join(metrics_path, metrics_basename)
+        fm.write_metrics(filename=metrics_filename)
