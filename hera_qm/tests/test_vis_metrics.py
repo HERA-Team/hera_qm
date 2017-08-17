@@ -2,42 +2,25 @@ import unittest
 from hera_qm import vis_metrics
 import numpy as np
 import hera_qm.tests as qmtest
+from pyuvdata import UVData
+from hera_qm.data import DATA_PATH
+import os
+import pyuvdata.tests as uvtest
 
 
 class TestMethods(unittest.TestCase):
 
     def setUp(self):
-        self.data1 = qmtest.noise(size=(100, 100))
-        self.data2 = qmtest.noise(size=(100, 100))
+        self.data = UVData()
+        filename = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        uvtest.checkWarnings(self.data.read_miriad, [filename], nwarnings=1,
+                             message='antenna_diameters is not set')
 
     def test_check_noise_variance(self):
-        data = {'xx': {}}
-        wgts = {'xx': {}}
-        ants = range(10)
-        ant_dat = {}
-        ntimes = 100
-        nchan = 100
-        for i in ants:
-            ant_dat[i] = qmtest.noise(size=(ntimes, nchan)) + .1 * self.data1
-        for i in ants:
-            for j in ants[i:]:
-                data['xx'][(i, j)] = ant_dat[i] * ant_dat[j].conj()
-                wgts['xx'][(i, j)] = np.ones((ntimes, nchan), dtype=float)
-        nos = vis_metrics.check_noise_variance(data, wgts, 1., 1.)
-        for bl in data['xx']:
-            n = nos[bl + ('xx',)]
-            self.assertEqual(n.shape, (nchan - 1,))
-            np.testing.assert_almost_equal(n, np.ones_like(n), 0)
-        nos = vis_metrics.check_noise_variance(data, wgts, 1., 10.)
-        for bl in data['xx']:
-            n = nos[bl + ('xx',)]
-            self.assertEqual(n.shape, (nchan - 1,))
-            np.testing.assert_almost_equal(n, 10 * np.ones_like(n), -1)
-        nos = vis_metrics.check_noise_variance(data, wgts, 10., 10.)
-        for bl in data['xx']:
-            n = nos[bl + ('xx',)]
-            self.assertEqual(n.shape, (nchan - 1,))
-            np.testing.assert_almost_equal(n, 100 * np.ones_like(n), -2)
+        nos = vis_metrics.check_noise_variance(self.data)
+        for bl in self.data.get_antpairs():
+            n = nos[bl + ('XX',)]
+            self.assertEqual(n.shape, (self.data.Nfreqs - 1,))
 
 
 if __name__ == '__main__':
