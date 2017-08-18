@@ -13,8 +13,7 @@ class TestMethods(unittest.TestCase):
     def setUp(self):
         self.data = UVData()
         filename = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-        uvtest.checkWarnings(self.data.read_miriad, [filename], nwarnings=1,
-                             message='antenna_diameters is not set')
+        self.data.read_miriad(filename)
 
     def test_check_noise_variance(self):
         nos = vis_metrics.check_noise_variance(self.data)

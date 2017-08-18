@@ -37,12 +37,22 @@ class TestLowLevelFunctions(unittest.TestCase):
                                                 self.ants, self.bls, rawMetric=True)
         self.assertEqual(mean_Vij, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
                                     (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
+        mean_Vijz = ant_metrics.mean_Vij_metrics(self.data, self.pols, self.antpols,
+                                                 self.ants, self.bls)
+        for key, val in mean_Vijz.items():
+            self.assertIn(key, mean_Vij.keys())
+            self.assertTrue(np.isnan(val))
 
     def test_red_corr_metrics(self):
         red_corr = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
                                                 self.ants, self.reds, rawMetric=True)
         self.assertEqual(red_corr, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
                                     (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
+        red_corrz = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
+                                                 self.ants, self.reds)
+        for key, val in red_corrz.items():
+            self.assertIn(key, red_corr.keys())
+            self.assertTrue(np.isnan(val))
 
     def test_mean_Vij_cross_pol_metrics(self):
         mean_Vij_cross_pol = ant_metrics.mean_Vij_cross_pol_metrics(self.data, self.pols,
@@ -50,6 +60,12 @@ class TestLowLevelFunctions(unittest.TestCase):
                                                                     self.bls, rawMetric=True)
         self.assertEqual(mean_Vij_cross_pol, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
                                               (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
+        mean_Vij_cross_polz = ant_metrics.mean_Vij_cross_pol_metrics(self.data, self.pols,
+                                                                     self.antpols, self.ants,
+                                                                     self.bls)
+        for key, val in mean_Vij_cross_polz.items():
+            self.assertIn(key, mean_Vij_cross_pol.keys())
+            self.assertTrue(np.isnan(val))
 
     def test_red_corr_cross_pol_metrics(self):
         red_corr_cross_pol = ant_metrics.red_corr_cross_pol_metrics(self.data, self.pols,
@@ -57,6 +73,12 @@ class TestLowLevelFunctions(unittest.TestCase):
                                                                     self.reds, rawMetric=True)
         self.assertEqual(red_corr_cross_pol, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
                                               (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
+        red_corr_cross_polz = ant_metrics.red_corr_cross_pol_metrics(self.data, self.pols,
+                                                                     self.antpols, self.ants,
+                                                                     self.reds)
+        for key, val in red_corr_cross_polz.items():
+            self.assertIn(key, red_corr_cross_pol.keys())
+            self.assertTrue(np.isnan(val))
 
     def test_per_antenna_modified_z_scores(self):
         metric = {(0, 'x'): 1, (50, 'x'): 0, (2, 'x'): 2, (2, 'y'): 2000, (0, 'y'): -300}
@@ -156,13 +178,8 @@ class TestAntennaMetrics(unittest.TestCase):
                                         [], fileformat='not_a_format')
 
     def test_init(self):
-        # We will throw 4 warnings for unknown antenna diameters.
-        # All warnings are UserWarnings
-        messages = (['antenna_diameters is not set'] * 4)
-        categories = ([UserWarning] * 4)
-        am = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [self.dataFileList, self.reds],
-                                  {"fileformat": 'miriad'}, nwarnings=4, message=messages,
-                                  category=categories)
+        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                         fileformat='miriad')
         self.assertEqual(len(am.ants), 19)
         self.assertEqual(set(am.pols), set(['xx', 'yy', 'xy', 'yx']))
         self.assertEqual(set(am.antpols), set(['x', 'y']))
@@ -170,13 +187,8 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertEqual(len(am.reds), 27)
 
     def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(self):
-        # We will throw 4 warnings for unknown antenna diameters.
-        # All warnings are UserWarnings
-        messages = (['antenna_diameters is not set'] * 4)
-        categories = ([UserWarning] * 4)
-        am = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [self.dataFileList, self.reds],
-                                  {"fileformat": 'miriad'}, nwarnings=4, message=messages,
-                                  category=categories)
+        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                         fileformat='miriad')
         with self.assertRaises(KeyError):
             am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
 
@@ -198,13 +210,8 @@ class TestAntennaMetrics(unittest.TestCase):
             self.assertEqual(loaded[jsonStat], getattr(am, stat))
 
     def test_cross_detection(self):
-        # We will throw 4 warnings for unknown antenna diameters.
-        # All warnings are UserWarnings
-        messages = (['antenna_diameters is not set'] * 4)
-        categories = ([UserWarning] * 4)
-        am2 = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [
-            self.dataFileList, self.reds], {"fileformat": 'miriad'}, nwarnings=4,
-                                   message=messages, category=categories)
+        am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                          fileformat='miriad')
         am2.iterative_antenna_metrics_and_flagging(crossCut=3, deadCut=10)
         for stat in self.summaryStats:
             self.assertTrue(hasattr(am2, stat))
@@ -212,6 +219,7 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertIn((81, 'y'), am2.xants)
         self.assertIn((81, 'x'), am2.crossedAntsRemoved)
         self.assertIn((81, 'y'), am2.crossedAntsRemoved)
+
 
 class TestAntmetricsRun(object):
     def test_ant_metrics_run(self):
@@ -254,12 +262,7 @@ class TestAntmetricsRun(object):
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
         history = cmd
-        # We will throw 4 warnings for unknown antenna diameters.
-        # All warnings are UserWarnings
-        messages = (['antenna_diameters is not set'] * 4)
-        categories = ([UserWarning] * 4)
-        uvtest.checkWarnings(ant_metrics.ant_metrics_run, [args, opts, history],
-                             nwarnings=4, message=messages, category=categories)
+        ant_metrics.ant_metrics_run(args, opts, history)
         nt.assert_true(os.path.exists(dest_file))
 
 if __name__ == '__main__':

@@ -316,8 +316,7 @@ class TestXrfiRun(object):
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
         history = cmd
-        uvtest.checkWarnings(xrfi.xrfi_run, [args, opts, cmd], nwarnings=1,
-                             message='antenna_diameters is not set')
+        xrfi.xrfi_run(args, opts, cmd)
         nt.assert_true(os.path.exists(dest_file))
 
     def test_xrfi_run_xrfi_simple(self):
@@ -345,8 +344,7 @@ class TestXrfiRun(object):
             shutil.rmtree(dest_file)
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
-        uvtest.checkWarnings(xrfi.xrfi_run, [args, opts, cmd], nwarnings=1,
-                             message='antenna_diameters is not set')
+        xrfi.xrfi_run(args, opts, cmd)
         nt.assert_true(os.path.exists(dest_file))
 
     def test_xrfi_run_errors(self):
@@ -375,8 +373,7 @@ class TestXrfiRun(object):
         options = ' '.join([opt0, opt1])
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
-        uvtest.checkWarnings(nt.assert_raises, [ValueError, xrfi.xrfi_run, args, opts, cmd],
-                             nwarnings=1, message='antenna_diamters is not set')
+        nt.assert_raises(ValueError, xrfi.xrfi_run, args, opts, cmd)
 
         # choose an invalid output format
         opt0 = "--infile_format=miriad"
@@ -386,8 +383,7 @@ class TestXrfiRun(object):
         xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
-        uvtest.checkWarnings(nt.assert_raises, [ValueError, xrfi.xrfi_run, args, opts, cmd],
-                             nwarnings=1, message='antenna_diameters is not set')
+        nt.assert_raises(ValueError, xrfi.xrfi_run, args, opts, cmd)
 
     def test_xrfi_run_output_options(self):
         # test different output options
@@ -406,8 +402,7 @@ class TestXrfiRun(object):
             os.remove(dest_file)
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
-        uvtest.checkWarnings(xrfi.xrfi_run, [args, opts, cmd], nwarnings=1,
-                             message='antenna_diamteters is not set')
+        xrfi.xrfi_run(args, opts, cmd)
         nt.assert_true(os.path.exists(dest_file))
 
         # test writing to same directory
@@ -422,8 +417,7 @@ class TestXrfiRun(object):
             shutil.rmtree(dest_file)
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
-        uvtest.checkWarnings(xrfi.xrfi_run, [args, opts, cmd], nwarnings=1,
-                             message='antenna_diameters is not set')
+        xrfi.xrfi_run(args, opts, cmd)
         nt.assert_true(os.path.exists(dest_file))
         # clean up
         shutil.rmtree(dest_file)
