@@ -37,9 +37,10 @@ class TestLowLevelFunctions(unittest.TestCase):
                                                 self.ants, self.bls, rawMetric=True)
         self.assertEqual(mean_Vij, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
                                     (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
-        mean_Vijz = ant_metrics.mean_Vij_metrics(self.data, self.pols, self.antpols,
-                                                 self.ants, self.bls)
-        for key, val in mean_Vijz.items():
+        args = [self.data, self.pols, self.antpols, self.ants, self.bls]
+        zs = uvtest.checkWarnings(ant_metrics.mean_Vij_metrics, args, nwarnings=6,
+                                  category=RuntimeWarning, message='invalid value')
+        for key, val in zs.items():
             self.assertIn(key, mean_Vij.keys())
             self.assertTrue(np.isnan(val))
 
@@ -48,9 +49,10 @@ class TestLowLevelFunctions(unittest.TestCase):
                                                 self.ants, self.reds, rawMetric=True)
         self.assertEqual(red_corr, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
                                     (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
-        red_corrz = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
-                                                 self.ants, self.reds)
-        for key, val in red_corrz.items():
+        args = [self.data, self.pols, self.antpols, self.ants, self.reds]
+        zs = uvtest.checkWarnings(ant_metrics.red_corr_metrics, args, nwarnings=6,
+                                  category=RuntimeWarning, message='invalid value')
+        for key, val in zs.items():
             self.assertIn(key, red_corr.keys())
             self.assertTrue(np.isnan(val))
 
@@ -60,10 +62,10 @@ class TestLowLevelFunctions(unittest.TestCase):
                                                                     self.bls, rawMetric=True)
         self.assertEqual(mean_Vij_cross_pol, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
                                               (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
-        mean_Vij_cross_polz = ant_metrics.mean_Vij_cross_pol_metrics(self.data, self.pols,
-                                                                     self.antpols, self.ants,
-                                                                     self.bls)
-        for key, val in mean_Vij_cross_polz.items():
+        args = [self.data, self.pols, self.antpols, self.ants, self.bls]
+        zs = uvtest.checkWarnings(ant_metrics.mean_Vij_cross_pol_metrics, args, nwarnings=6,
+                                  category=RuntimeWarning, message='invalid value')
+        for key, val in zs.items():
             self.assertIn(key, mean_Vij_cross_pol.keys())
             self.assertTrue(np.isnan(val))
 
@@ -73,10 +75,10 @@ class TestLowLevelFunctions(unittest.TestCase):
                                                                     self.reds, rawMetric=True)
         self.assertEqual(red_corr_cross_pol, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
                                               (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
-        red_corr_cross_polz = ant_metrics.red_corr_cross_pol_metrics(self.data, self.pols,
-                                                                     self.antpols, self.ants,
-                                                                     self.reds)
-        for key, val in red_corr_cross_polz.items():
+        args = [self.data, self.pols, self.antpols, self.ants, self.reds]
+        zs = uvtest.checkWarnings(ant_metrics.red_corr_cross_pol_metrics, args, nwarnings=6,
+                                  category=RuntimeWarning, message='invalid value')
+        for key, val in zs.items():
             self.assertIn(key, red_corr_cross_pol.keys())
             self.assertTrue(np.isnan(val))
 
