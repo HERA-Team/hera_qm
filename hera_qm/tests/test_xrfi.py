@@ -160,6 +160,7 @@ class Template():
 class TestSparseScatter(Template, unittest.TestCase):
 
     def setUp(self):
+        np.random.seed(0)
         RFI = 50
         NTRIALS = 10
         NSIG = 10
@@ -181,6 +182,7 @@ class TestSparseScatter(Template, unittest.TestCase):
 class TestDenseScatter(Template, unittest.TestCase):
 
     def setUp(self):
+        np.random.seed(0)
         RFI = 1000
         NTRIALS = 10
         NSIG = 10
@@ -204,6 +206,7 @@ class TestDenseScatter(Template, unittest.TestCase):
 class TestCluster(Template, unittest.TestCase):
 
     def setUp(self):
+        np.random.seed(0)
         RFI = 10
         NTRIALS = 10
         NSIG = 10
@@ -230,6 +233,7 @@ class TestCluster(Template, unittest.TestCase):
 class TestLines(Template, unittest.TestCase):
 
     def setUp(self):
+        np.random.seed(0)
         RFI = 3
         NTRIALS = 10
         NSIG = 10
@@ -275,7 +279,7 @@ class TestBackground(Template, unittest.TestCase):
             return
         self.rfi_gen = rfi_gen
         self.ans['detrend_deriv'] = [(.83, .83, .83), (.1, .1, .1)]
-        self.ans['detrend_medminfilt'] = [(.2, .3, .3, 0.), (.1, .1, .1, .8)]
+        self.ans['detrend_medminfilt'] = [(.2, .2, .3, 0.), (.1, .1, .1, .8)]
         self.ans['xrfi'] = (.7, .1)
         self.ans['xrfi_simple'] = [(.90, .90), (.1, .1)]
         self.mode['detrend_deriv'] = [False, False, True]
