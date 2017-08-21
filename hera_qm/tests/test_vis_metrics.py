@@ -36,7 +36,6 @@ class TestMethods(unittest.TestCase):
 
     def test_check_noise_variance(self):
         nos = vis_metrics.check_noise_variance(self.data)
-        print(self.data.Ntimes, self.data.Nfreqs)
         for bl in self.data.get_antpairs():
             n = nos[bl + ('XX',)]
             self.assertEqual(n.shape, (self.data.Nfreqs - 1,))
