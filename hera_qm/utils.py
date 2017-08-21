@@ -12,11 +12,11 @@ def get_metrics_OptionParser(method_name):
     Function to get an OptionParser instance for working with metrics wrappers.
 
     Args:
-        method_name -- target wrapper, must be "ant_metrics" or "xrfi"
+        method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", or "xrfi"
     Returns:
         o -- an optparse.OptionParser instance with the relevant options for the selected method
     """
-    methods = ["ant_metrics", "xrfi"]
+    methods = ["ant_metrics", "firstcal_metrics", "xrfi"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
