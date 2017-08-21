@@ -26,8 +26,8 @@ install:
   - conda install -c conda-forge aipy
   - pip install coveralls
   - pip install git+https://github.com/HERA-Team/pyuvdata.git
-  - pip install git+https://github.com/HERA-Team/hera_cal.git
   - pip install git+https://github.com/HERA-Team/omnical.git
+  - pip install git+https://github.com/HERA-Team/hera_cal.git
   - pip install git+https://github.com/HERA-Team/linsolve.git
   - python setup.py install
 

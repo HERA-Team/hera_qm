@@ -13,10 +13,11 @@ class fake_data():
 
     def __init__(self):
         self.data = {}
-        for bl in [(0, 1), (1, 2), (0, 2)]:
+        for bl in [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]:
             self.data[bl] = {}
-            for pol in ['xx', 'xy', 'yx', 'yy']:
-                self.data[bl][pol] = np.ones((2, 3), dtype=complex)
+            for poli, pol in enumerate(['xx', 'xy', 'yx', 'yy']):
+                np.random.seed(bl[0] * 10 + bl[1] + 100 * poli)  # Give each bl different data
+                self.data[bl][pol] = np.random.randn(2, 3)
 
     def get_data(self, i, j, pol):
         return self.data[(i, j)][pol]
@@ -26,37 +27,71 @@ class TestLowLevelFunctions(unittest.TestCase):
 
     def setUp(self):
         self.data = fake_data()
-        self.ants = [0, 1, 2]
-        self.reds = [[(0, 1), (1, 2)], [(0, 2)]]
+        self.ants = [0, 1, 2, 3]
+        self.reds = [[(0, 1), (1, 2), (2, 3)], [(0, 2), (1, 3)], [(0, 3)]]
         self.pols = ['xx', 'xy', 'yx', 'yy']
         self.antpols = ['x', 'y']
-        self.bls = [(0, 1), (1, 2), (0, 2)]
+        self.bls = [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]
 
     def test_mean_Vij_metrics(self):
         mean_Vij = ant_metrics.mean_Vij_metrics(self.data, self.pols, self.antpols,
                                                 self.ants, self.bls, rawMetric=True)
-        self.assertEqual(mean_Vij, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
-                                    (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
+        # The reference dictionaries here and in other functions were determined
+        # by running the metrics by hand with the random seeds defined in fake_data()
+        ref = {(0, 'x'): 1.009, (0, 'y'): 0.938, (1, 'x'): 0.788, (1, 'y'): 0.797,
+               (2, 'x'): 0.846, (2, 'y'): 0.774, (3, 'x'): 0.667, (3, 'y'): 0.755}
+        for key, val in ref.items():
+            self.assertAlmostEqual(val, mean_Vij[key], places=3)
+        zs = ant_metrics.mean_Vij_metrics(self.data, self.pols, self.antpols,
+                                          self.ants, self.bls)
+        ref = {(0, 'x'): 1.443, (0, 'y'): 4.970, (1, 'x'): -0.218, (1, 'y'): 0.373,
+               (2, 'x'): 0.218, (2, 'y'): -0.373, (3, 'x'): -1.131, (3, 'y'): -0.976}
+        for key, val in ref.items():
+            self.assertAlmostEqual(val, zs[key], places=3)
 
     def test_red_corr_metrics(self):
         red_corr = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
                                                 self.ants, self.reds, rawMetric=True)
-        self.assertEqual(red_corr, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
-                                    (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
+        ref = {(0, 'x'): 0.468, (0, 'y'): 0.479, (1, 'x'): 0.614, (1, 'y'): 0.472,
+               (2, 'x'): 0.536, (2, 'y'): 0.623, (3, 'x'): 0.567, (3, 'y'): 0.502}
+        for key, val in ref.items():
+            self.assertAlmostEqual(val, red_corr[key], places=3)
+        zs = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
+                                          self.ants, self.reds)
+        ref = {(0, 'x'): -1.445, (0, 'y'): -0.516, (1, 'x'): 1.088, (1, 'y'): -0.833,
+               (2, 'x'): -0.261, (2, 'y'): 6.033, (3, 'x'): 0.261, (3, 'y'): 0.516}
+        for key, val in ref.items():
+            self.assertAlmostEqual(val, zs[key], places=3)
 
     def test_mean_Vij_cross_pol_metrics(self):
         mean_Vij_cross_pol = ant_metrics.mean_Vij_cross_pol_metrics(self.data, self.pols,
                                                                     self.antpols, self.ants,
                                                                     self.bls, rawMetric=True)
-        self.assertEqual(mean_Vij_cross_pol, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
-                                              (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
+        ref = {(0, 'x'): 0.746, (0, 'y'): 0.746, (1, 'x'): 0.811, (1, 'y'): 0.811,
+               (2, 'x'): 0.907, (2, 'y'): 0.907, (3, 'x'): 1.091, (3, 'y'): 1.091}
+        for key, val in ref.items():
+            self.assertAlmostEqual(val, mean_Vij_cross_pol[key], places=3)
+        zs = ant_metrics.mean_Vij_cross_pol_metrics(self.data, self.pols, self.antpols,
+                                                    self.ants, self.bls)
+        ref = {(0, 'x'): -0.948, (0, 'y'): -0.948, (1, 'x'): -0.401, (1, 'y'): -0.401,
+               (2, 'x'): 0.401, (2, 'y'): 0.401, (3, 'x'): 1.944, (3, 'y'): 1.944}
+        for key, val in ref.items():
+            self.assertAlmostEqual(val, zs[key], places=3)
 
     def test_red_corr_cross_pol_metrics(self):
         red_corr_cross_pol = ant_metrics.red_corr_cross_pol_metrics(self.data, self.pols,
                                                                     self.antpols, self.ants,
                                                                     self.reds, rawMetric=True)
-        self.assertEqual(red_corr_cross_pol, {(1, 'y'): 1.0, (1, 'x'): 1.0, (0, 'x'): 1.0,
-                                              (0, 'y'): 1.0, (2, 'x'): 1.0, (2, 'y'): 1.0})
+        ref = {(0, 'x'): 1.062, (0, 'y'): 1.062, (1, 'x'): 0.934, (1, 'y'): 0.934,
+               (2, 'x'): 0.917, (2, 'y'): 0.917, (3, 'x'): 1.027, (3, 'y'): 1.027}
+        for key, val in ref.items():
+            self.assertAlmostEqual(val, red_corr_cross_pol[key], places=3)
+        zs = ant_metrics.red_corr_cross_pol_metrics(self.data, self.pols, self.antpols,
+                                                    self.ants, self.reds)
+        ref = {(0, 'x'): 1.001, (0, 'y'): 1.001, (1, 'x'): -0.572, (1, 'y'): -0.572,
+               (2, 'x'): -0.777, (2, 'y'): -0.777, (3, 'x'): 0.572, (3, 'y'): 0.572}
+        for key, val in ref.items():
+            self.assertAlmostEqual(val, zs[key], places=3)
 
     def test_per_antenna_modified_z_scores(self):
         metric = {(0, 'x'): 1, (50, 'x'): 0, (2, 'x'): 2, (2, 'y'): 2000, (0, 'y'): -300}
@@ -156,13 +191,8 @@ class TestAntennaMetrics(unittest.TestCase):
                                         [], fileformat='not_a_format')
 
     def test_init(self):
-        # We will throw 4 warnings for unknown antenna diameters.
-        # All warnings are UserWarnings
-        messages = (['antenna_diameters is not set'] * 4)
-        categories = ([UserWarning] * 4)
-        am = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [self.dataFileList, self.reds],
-                                  {"fileformat": 'miriad'}, nwarnings=4, message=messages,
-                                  category=categories)
+        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                         fileformat='miriad')
         self.assertEqual(len(am.ants), 19)
         self.assertEqual(set(am.pols), set(['xx', 'yy', 'xy', 'yx']))
         self.assertEqual(set(am.antpols), set(['x', 'y']))
@@ -170,13 +200,8 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertEqual(len(am.reds), 27)
 
     def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(self):
-        # We will throw 4 warnings for unknown antenna diameters.
-        # All warnings are UserWarnings
-        messages = (['antenna_diameters is not set'] * 4)
-        categories = ([UserWarning] * 4)
-        am = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [self.dataFileList, self.reds],
-                                  {"fileformat": 'miriad'}, nwarnings=4, message=messages,
-                                  category=categories)
+        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                         fileformat='miriad')
         with self.assertRaises(KeyError):
             am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
 
@@ -198,13 +223,8 @@ class TestAntennaMetrics(unittest.TestCase):
             self.assertEqual(loaded[jsonStat], getattr(am, stat))
 
     def test_cross_detection(self):
-        # We will throw 4 warnings for unknown antenna diameters.
-        # All warnings are UserWarnings
-        messages = (['antenna_diameters is not set'] * 4)
-        categories = ([UserWarning] * 4)
-        am2 = uvtest.checkWarnings(ant_metrics.Antenna_Metrics, [
-            self.dataFileList, self.reds], {"fileformat": 'miriad'}, nwarnings=4,
-                                   message=messages, category=categories)
+        am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                          fileformat='miriad')
         am2.iterative_antenna_metrics_and_flagging(crossCut=3, deadCut=10)
         for stat in self.summaryStats:
             self.assertTrue(hasattr(am2, stat))
@@ -212,6 +232,7 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertIn((81, 'y'), am2.xants)
         self.assertIn((81, 'x'), am2.crossedAntsRemoved)
         self.assertIn((81, 'y'), am2.crossedAntsRemoved)
+
 
 class TestAntmetricsRun(object):
     def test_ant_metrics_run(self):
@@ -241,8 +262,8 @@ class TestAntmetricsRun(object):
         opts, args = o.parse_args(cmd.split())
         history = cmd
         # this test raises a warning, then fails...
-        uvtest.checkWarnings(nt.assert_raises, [
-            AssertionError, ant_metrics.ant_metrics_run, args, opts, history], nwarnings=1,
+        args = [AssertionError, ant_metrics.ant_metrics_run, args, opts, history]
+        uvtest.checkWarnings(nt.assert_raises, args, nwarnings=1,
                              message='Could not find')
 
         # test actually running metrics
@@ -254,12 +275,7 @@ class TestAntmetricsRun(object):
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
         history = cmd
-        # We will throw 4 warnings for unknown antenna diameters.
-        # All warnings are UserWarnings
-        messages = (['antenna_diameters is not set'] * 4)
-        categories = ([UserWarning] * 4)
-        uvtest.checkWarnings(ant_metrics.ant_metrics_run, [args, opts, history],
-                             nwarnings=4, message=messages, category=categories)
+        ant_metrics.ant_metrics_run(args, opts, history)
         nt.assert_true(os.path.exists(dest_file))
 
 if __name__ == '__main__':
