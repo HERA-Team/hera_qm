@@ -121,7 +121,8 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         yax = metrics['ant_std'].values()
         if 'cmap' not in kwargs:
             kwargs['cmap'] = 'Spectral'
-        cmap = plt.get_cmap(kwargs['cmap'])(np.linspace(0, 0.95, len(xax)))
+        cmap_func = plt.get_cmap(kwargs['cmap'])
+        cmap = cmap_func(np.linspace(0, 0.95, len(xax)))
         ax.grid(True, zorder=0)
         ax.tick_params(size=8)
         ax.scatter(xax, yax, c=cmap, alpha=0.85, marker='o', edgecolor='k',
@@ -234,7 +235,8 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
 
     elif plot_type == 'time_avg':
         # plot
-        cmap = plt.get_cmap(kwargs['cmap'])(np.linspace(0, 0.95, Nants))
+        cmap_func = plt.get_cmap(kwargs['cmap'])
+        cmap = cmap_func(np.linspace(0, 0.95, Nants))
         ax.grid(True, zorder=0)
         ax.bar(range(len(ant_z_scores)), ant_z_scores, align='center', color='steelblue', alpha=0.75,
                zorder=3)
@@ -602,10 +604,12 @@ class FirstCal_Metrics(object):
 
         # Get a colormap
         try:
-            cm = plt.get_cmap(cmap)(np.linspace(0, 0.95, len(plot_ants)))
+            cm_func = plt.get_cmap(cmap)
+            cm = cm_func(np.linspace(0, 0.95, len(plot_ants)))
         except ValueError:
             print("cmap not recognized, using spectral")
-            cm = plt.get_cmap('nipy_spectral')(np.linspace(0, 0.95, len(plot_ants)))
+            cm_func = plt.get_cmap('nipy_spectral')
+            cm = cm_func(np.linspace(0, 0.95, len(plot_ants)))
 
         # plot delay solutions
         if (plot_type == 'both') or (plot_type == 'solution'):
