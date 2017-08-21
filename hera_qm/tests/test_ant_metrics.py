@@ -262,8 +262,8 @@ class TestAntmetricsRun(object):
         opts, args = o.parse_args(cmd.split())
         history = cmd
         # this test raises a warning, then fails...
-        uvtest.checkWarnings(nt.assert_raises, [
-            AssertionError, ant_metrics.ant_metrics_run, args, opts, history], nwarnings=1,
+        args = [AssertionError, ant_metrics.ant_metrics_run, args, opts, history]
+        uvtest.checkWarnings(nt.assert_raises, args, nwarnings=1,
                              message='Could not find')
 
         # test actually running metrics
