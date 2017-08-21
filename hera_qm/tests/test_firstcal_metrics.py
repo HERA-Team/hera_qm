@@ -8,6 +8,8 @@ from hera_qm import firstcal_metrics
 from hera_qm.data import DATA_PATH
 import unittest
 import os
+from hera_qm import utils
+import sys
 
 
 class Test_FirstCal_Metrics(unittest.TestCase):
@@ -137,6 +139,39 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.plot_stds(fname=fname, xaxis='time', save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
+
+
+class TestFirstcalMetricsRun(unittest.TestCase):
+    def test_firstcal_metrics_run(self):
+        # get options object
+        o = utils.get_metrics_OptionParser('firstcal_metrics')
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        opt0 = "--std_cut=0.5"
+        opt1 = "--extension=.firstcal_metrics.json"
+        opt2 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        options = ' '.join([opt0, opt1, opt2])
+
+        # Test runing with no files
+        cmd = ' '.join([options, ''])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        self.assertRaises(AssertionError, firstcal_metrics.firstcal_metrics_run,
+                          args, opts, history)
+
+        # Test running with file
+        filename = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+        dest_file = os.path.join(DATA_PATH, 'test_output',
+                                 'zen.2457678.16694.yy.HH.uvc.good.first.calfits.' +
+                                 'firstcal_metrics.json')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([options, filename])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        firstcal_metrics.firstcal_metrics_run(args, opts, history)
+        self.assertTrue(os.path.exists(dest_file))
+
 
 if __name__ == "__main__":
     unittest.main()

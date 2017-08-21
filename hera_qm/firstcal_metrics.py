@@ -12,6 +12,7 @@ from hera_qm.version import hera_qm_version_str
 import json
 import cPickle as pkl
 import copy
+import os
 
 
 def get_firstcal_metrics_dict():
@@ -752,6 +753,7 @@ def firstcal_metrics_run(files, opts, history):
             metrics_path = dirname
         else:
             metrics_path = opts.metrics_path
-        metrics_basename = filename + opts.extension
+            print(metrics_path)
+        metrics_basename = os.path.basename(filename) + opts.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
         fm.write_metrics(filename=metrics_filename)
