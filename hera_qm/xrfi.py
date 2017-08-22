@@ -304,68 +304,54 @@ def xrfi_run(files, opts, history):
     return
 
 
-def summarize_flags(files, outfilename, fileformat='miriad'):
+def summarize_flags(filename, outfilename, fileformat='miriad'):
     """ Collapse several dimensions of a UVData flag array to summarize.
     Args:
-        files -- list of files containing flag arrays to be summarized
-        outfilename -- filename for output json file
-        fileformat -- file format, one of ['miriad' (default), 'uvfits', 'fhd']
+        filename -- filename containing flag arrays to be summarized
+        outfilename -- filename for output npz file
+        fileformat -- input file format, one of ['miriad' (default), 'uvfits', 'fhd']
 
     Return:
-        json file containing "spectrum" of max, min, mean, std, median of flags
+        npz file containing "spectrum" of max, min, mean, std, median of flags
     """
-    # make sure we were given files to process
-    if len(files) == 0:
-        raise AssertionError('Please provide a list of visibility files')
-
-    # loop over files
-    for fn in files:
-        # read files in as pyuvdata object
-        uv = UVData()
-        if opts.infile_format == 'miriad':
-            uv.read_miriad(fn)
-        elif opts.infile_format == 'uvfits':
-            uv.read_uvfits(fn)
-        elif opts.infile_format == 'fhd':
-            uv.read_fhd(fn)
-        else:
-            raise ValueError('Unrecognized input file format ' + str(opts.infile_format))
-        # Average across bls for given time
-        waterfall = np.zeros((uv.Ntimes, uv.Nfreqs, uv.Npols))
-        waterfall_weight = np.zeros(uv.Ntimes)
-        for ti, time in enumerate(uv.get_times()):
-            ind = np.where(uv.time_array == time)
-            waterfall_weight[ti] = len(ind)
-            waterfall[ti, :, :] = np.mean(uv.flag_array[ind, 0, :, :])
-        # Calculate stats across time
-        summary = {}
-        summary['max_arr'] = np.max(waterfall, axis=0)
-        summary['min_arr'] = np.min(waterfall, axis=0)
-        summary['mean_arr'] = np.average(waterfall, axis=0, weights=waterfall_weight)
-        summary['std_arr'] = np.sqrt(np.average((waterfall - mean_arr[np.newaxis, :, :])**2,
-                                                axis=0, weights=waterfall_weight))
-        summary['median_arr'] = np.median(waterfall, axis=0)
-        # Some meta info
-        summary['freqs'] = uv.freq_array[0, :]
-        summary['pols'] = uv.polarization_array
-        summary['version'] = hera_qm_version_str
-        # Store data in json
-        with open(outfilename, 'w') as outfile:
-            json.dump(summary, outfile, indent=4)
-
-
-def load_flag_summary(filename):
-    """ Loads summary of flags from a JSON file into python dictionary.
-    Args:
-        filename -- filename of JSON summary file
-    Returns:
-        summary -- dictionary containing max, min, mean, std, median spectra and
-                   some meta info.
-    """
-    from pyuvdata import utils as uvutils
-
-    with open(filename, 'r') as infile:
-        summary = json.load(infile)
-    summary = {key: (eval(str(val)) if (key != 'version') else str(val)) for
-               key, val in summary.items()}
-    summary['pols'] = uvutils.polnum2str(summary['pols'])
+    import pyuvdata.utils as uvutils
+    # read file in as pyuvdata object
+    uv = UVData()
+    if opts.infile_format == 'miriad':
+        uv.read_miriad(filename)
+    elif opts.infile_format == 'uvfits':
+        uv.read_uvfits(filename)
+    elif opts.infile_format == 'fhd':
+        uv.read_fhd(filename)
+    else:
+        raise ValueError('Unrecognized input file format ' + str(opts.infile_format))
+    # Average across bls for given time
+    waterfall = np.zeros((uv.Ntimes, uv.Nfreqs, uv.Npols))
+    waterfall_weight = np.zeros(uv.Ntimes)
+    times = np.unique(uv.time_array)
+    for ti, time in enumerate(times):
+        ind = np.where(uv.time_array == time)
+        waterfall_weight[ti] = len(ind)
+        waterfall[ti, :, :] = np.mean(uv.flag_array[ind, 0, :, :])
+    # Calculate stats across time
+    tmax = np.max(waterfall, axis=0)
+    tmin = np.min(waterfall, axis=0)
+    tmean = np.average(waterfall, axis=0, weights=waterfall_weight)
+    tstd = np.sqrt(np.average((waterfall - mean_arr[np.newaxis, :, :])**2,
+                              axis=0, weights=waterfall_weight))
+    tmedian = np.median(waterfall, axis=0)
+    # Calculate stats across frequency
+    fmax = np.max(waterfall, axis=1)
+    fmin = np.min(waterfall, axis=1)
+    fmean = np.mean(waterfall, axis=1)  # no weights - all bls have all channels
+    fstd = np.std(waterfall, axis=1)
+    fmedian = np.median(waterfall, axis=1)
+    # Some meta info
+    freqs = uv.freq_array[0, :]
+    pols = uvutils.polnum2str(uv.polarization_array)
+    hera_qm_version = hera_qm_version_str
+    # Store data in json
+    np.savez(outfilename, waterfall=waterfall, tmax=tmax, tmin=tmin, tmean=tmean,
+             tstd=tstd, tmedian=tmedian, fmax=fmax, fmin=fmin, fmean=fmean,
+             fstd=fstd, fmedian=fmedian, freqs=freqs, times=times, pols=pols,
+             hera_qm_version=hera_qm_version)
