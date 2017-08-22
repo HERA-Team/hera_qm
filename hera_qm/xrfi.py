@@ -301,30 +301,24 @@ def xrfi_run(files, opts, history):
         else:
             raise ValueError('Unrecognized output file format ' + str(opts.outfile_format))
 
+        if opts.summary:
+            sum_file = ''.join([basename, opts.summary_ext])
+            sum_path = os.path.join(dirname, sum_file)
+            summarize_flags(uvd, sum_path)
     return
 
 
-def summarize_flags(filename, outfilename, fileformat='miriad'):
+def summarize_flags(uv, outfile):
     """ Collapse several dimensions of a UVData flag array to summarize.
     Args:
-        filename -- filename containing flag arrays to be summarized
-        outfilename -- filename for output npz file
-        fileformat -- input file format, one of ['miriad' (default), 'uvfits', 'fhd']
+        uv -- UVData object containing flag_array to be summarized
+        outfile -- filename for output npz file
 
     Return:
         npz file containing "spectrum" of max, min, mean, std, median of flags
     """
     import pyuvdata.utils as uvutils
-    # read file in as pyuvdata object
-    uv = UVData()
-    if opts.infile_format == 'miriad':
-        uv.read_miriad(filename)
-    elif opts.infile_format == 'uvfits':
-        uv.read_uvfits(filename)
-    elif opts.infile_format == 'fhd':
-        uv.read_fhd(filename)
-    else:
-        raise ValueError('Unrecognized input file format ' + str(opts.infile_format))
+
     # Average across bls for given time
     waterfall = np.zeros((uv.Ntimes, uv.Nfreqs, uv.Npols))
     waterfall_weight = np.zeros(uv.Ntimes)
@@ -337,7 +331,7 @@ def summarize_flags(filename, outfilename, fileformat='miriad'):
     tmax = np.max(waterfall, axis=0)
     tmin = np.min(waterfall, axis=0)
     tmean = np.average(waterfall, axis=0, weights=waterfall_weight)
-    tstd = np.sqrt(np.average((waterfall - mean_arr[np.newaxis, :, :])**2,
+    tstd = np.sqrt(np.average((waterfall - tmean[np.newaxis, :, :])**2,
                               axis=0, weights=waterfall_weight))
     tmedian = np.median(waterfall, axis=0)
     # Calculate stats across frequency
@@ -351,7 +345,7 @@ def summarize_flags(filename, outfilename, fileformat='miriad'):
     pols = uvutils.polnum2str(uv.polarization_array)
     hera_qm_version = hera_qm_version_str
     # Store data in json
-    np.savez(outfilename, waterfall=waterfall, tmax=tmax, tmin=tmin, tmean=tmean,
+    np.savez(outfile, waterfall=waterfall, tmax=tmax, tmin=tmin, tmean=tmean,
              tstd=tstd, tmedian=tmedian, fmax=fmax, fmin=fmin, fmean=fmean,
              fstd=fstd, fmedian=fmedian, freqs=freqs, times=times, pols=pols,
-             hera_qm_version=hera_qm_version)
+             version=hera_qm_version)

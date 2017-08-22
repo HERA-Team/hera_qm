@@ -330,7 +330,8 @@ class TestXrfiRun(object):
         opt5 = "--nsig_dt=6"
         opt6 = "--nsig_df=6"
         opt7 = "--nsig_all=0"
-        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6, opt7])
+        opt8 = "--summary"
+        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6, opt7, opt8])
 
         # test running with no files
         cmd = ' '.join([options, ''])
@@ -340,12 +341,17 @@ class TestXrfiRun(object):
         # test running on our test data
         xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
         dest_file = os.path.join(DATA_PATH, 'test_output', 'zen.2457698.40355.xx.HH.uvcAAR')
+        sum_file = os.path.join(DATA_PATH, 'test_output',
+                                'zen.2457698.40355.xx.HH.uvcAA.flag_summary.npz')
         if os.path.exists(dest_file):
             shutil.rmtree(dest_file)
+        if os.path.exists(sum_file):
+            os.remove(sum_file)
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
         xrfi.xrfi_run(args, opts, cmd)
         nt.assert_true(os.path.exists(dest_file))
+        nt.assert_true(os.path.exists(sum_file))
 
     def test_xrfi_run_errors(self):
         # test code to read different file formats
@@ -421,6 +427,41 @@ class TestXrfiRun(object):
         nt.assert_true(os.path.exists(dest_file))
         # clean up
         shutil.rmtree(dest_file)
+
+
+class TestSummary(unittest.TestCase):
+    def test_summarize_flags(self):
+        from hera_qm.version import hera_qm_version_str
+        from pyuvdata import UVData
+
+        infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        uv = UVData()
+        uv.read_miriad(infile)
+        outfile = os.path.join(DATA_PATH, 'test_output', 'rfi_summary.npz')
+        if os.path.exists(outfile):
+            os.remove(outfile)
+        xrfi.summarize_flags(uv, outfile)
+        self.assertTrue(os.path.exists(outfile))
+        data = np.load(outfile)
+        nt, nf, npol = (3, 256, 1)
+        self.assertEqual(data['waterfall'].shape, (nt, nf, npol))
+        self.assertEqual(data['waterfall'].min(), 0)
+        self.assertEqual(data['waterfall'].max(), 0)
+        self.assertEqual(data['tmax'].shape, (nf, npol))
+        self.assertEqual(data['tmin'].shape, (nf, npol))
+        self.assertEqual(data['tmean'].shape, (nf, npol))
+        self.assertEqual(data['tstd'].shape, (nf, npol))
+        self.assertEqual(data['tmedian'].shape, (nf, npol))
+        self.assertEqual(data['fmax'].shape, (nt, npol))
+        self.assertEqual(data['fmin'].shape, (nt, npol))
+        self.assertEqual(data['fmean'].shape, (nt, npol))
+        self.assertEqual(data['fstd'].shape, (nt, npol))
+        self.assertEqual(data['fmedian'].shape, (nt, npol))
+
+        self.assertEqual(data['times'].shape, (nt,))
+        self.assertEqual(data['freqs'].shape, (nf,))
+        self.assertEqual(data['pols'], ['XX'])
+        self.assertEqual(data['version'], hera_qm_version_str)
 
 
 if __name__ == '__main__':
