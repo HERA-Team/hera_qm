@@ -56,6 +56,11 @@ def get_metrics_OptionParser(method_name):
                      help='File format for output files. Default is miriad.')
         o.add_option('--extension', dest='extension', default='R', type='string',
                      help='Extension to be appended to input file name. Default is "R".')
+        o.add_option('--summary', action='store_true', dest='summary', default=False,
+                     help='Run summary of RFI flags and store in npz file.')
+        o.add_option('--summary_ext', dest='summary_ext', default='.flag_summary.npz',
+                     type='string', help='Extension to be appended to input file name'
+                     ' for summary file. Default is ".flag_summary.npz"')
         o.add_option('--xrfi_path', dest='xrfi_path', default='', type='string',
                      help='Path to save flagged file to. Default is same directory as input file.')
         o.add_option('--algorithm', dest='algorithm', default='xrfi_simple', type='string',
