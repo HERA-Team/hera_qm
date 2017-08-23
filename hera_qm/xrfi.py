@@ -315,7 +315,25 @@ def summarize_flags(uv, outfile):
         outfile -- filename for output npz file
 
     Return:
-        npz file containing "spectrum" of max, min, mean, std, median of flags
+        Writes an npz file to disk containing summary info. The keys are:
+            waterfall - ndarray (Ntimes, Nfreqs, Npols) of rfi flags, averaged
+                        over all baselines in the file.
+            tmax - ndarray (Nfreqs, Npols) of max rfi fraction along time dimension.
+            tmin - ndarray (Nfreqs, Npols) of min rfi fraction along time dimension.
+            tmean - ndarray (Nfreqs, Npols) of average rfi fraction along time dimension.
+            tstd - ndarray (Nfreqs, Npols) of standard deviation rfi fraction
+                   along time dimension.
+            tmedian - ndarray (Nfreqs, Npols) of median rfi fraction along time dimension.
+            fmax - ndarray (Ntimes, Npols) of max rfi fraction along freq dimension.
+            fmin - ndarray (Ntimes, Npols) of min rfi fraction along freq dimension.
+            fmean - ndarray (Ntimes, Npols) of average rfi fraction along freq dimension.
+            fstd - ndarray (Ntimes, Npols) of standard deviation rfi fraction
+                   along freq dimension.
+            fmedian - ndarray (Ntimes, Npols) of median rfi fraction along freq dimension.
+            freqs - ndarray (Nfreqs) of frequencies in observation (Hz).
+            times - ndarray (Ntimes) of times in observation (julian date).
+            pols - ndarray (Npols) of polarizations in data (string format).
+            version - Version string including git information.
     """
     import pyuvdata.utils as uvutils
 
@@ -343,9 +361,8 @@ def summarize_flags(uv, outfile):
     # Some meta info
     freqs = uv.freq_array[0, :]
     pols = uvutils.polnum2str(uv.polarization_array)
-    hera_qm_version = hera_qm_version_str
-    # Store data in json
+    # Store data in npz
     np.savez(outfile, waterfall=waterfall, tmax=tmax, tmin=tmin, tmean=tmean,
              tstd=tstd, tmedian=tmedian, fmax=fmax, fmin=fmin, fmean=fmean,
              fstd=fstd, fmedian=fmedian, freqs=freqs, times=times, pols=pols,
-             version=hera_qm_version)
+             version=hera_qm_version_str)
