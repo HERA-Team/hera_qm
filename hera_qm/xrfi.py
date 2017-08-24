@@ -108,17 +108,17 @@ def detrend_medfilt(d, Kt=8, Kf=8):
         bool array: boolean array of flags
     """
     # Delay import so scipy is not required for any use of hera_qm
-    from scipy.signal import medfilt
+    from scipy.signal import medfilt2d
 
     if Kt > d.shape[0] or Kf > d.shape[1]:
         raise ValueError('Kernel size exceeds data.')
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
-    d_sm = medfilt(d, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+    d_sm = medfilt2d(d, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts median on same scale as average
-    sig = np.sqrt(medfilt(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
+    sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
     f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-7))
     f = np.where(np.abs(sig) > 1e-7, f, np.inf)
