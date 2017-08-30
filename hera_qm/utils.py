@@ -244,7 +244,8 @@ def metrics2mc(filename, ftype):
             except KeyError:
                 raise ValueError('Invalid polarization for ant_metrics in M&C.')
             for ai, ant in enumerate(uvcal.ant_array):
-                val = np.mean(uvcal.quality_array[ai, 0, 0, :, pi])
+                val = np.median(uvcal.quality_array[ai, 0, :, :, pi], axis=0)
+                val = np.mean(val)
                 d['ant_metrics']['omnical_quality'].append([ant, pol, val])
         if uvcal.total_quality_array is not None:
             d['array_metrics']['omnical_total_quality'] = np.mean(uvcal.total_quality_array)
