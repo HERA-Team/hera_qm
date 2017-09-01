@@ -9,7 +9,7 @@ import numpy as np
 # argument-generating function for *_run wrapper functions
 def get_metrics_ArgumentParser(method_name):
     """
-    Function to get an OptionParser instance for working with metrics wrappers.
+    Function to get an ArgumentParser instance for working with metrics wrappers.
 
     Args:
         method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", or "xrfi"
@@ -40,18 +40,17 @@ def get_metrics_ArgumentParser(method_name):
                        help='File format for visibility files. Default is miriad.')
         a.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
                        help='Silence feedback to the command line.')
-        a.add_argument('files', metavar='files', type=str, nargs='+',
+        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.uv files for which to calculate ant_metrics.')
     elif method_name == 'firstcal_metrics':
         a.prog = 'firstcal_metrics.py'
-        a.set_usage("firstcal_metrics_run.py [options] *.calfits")
         a.add_argument('--std_cut', default=0.5, type=float,
                        help='Delay standard deviation cut for good / bad determination. Default 0.5')
         a.add_argument('--extension', default='.firstcal_metrics.json', type=str,
                        help='Extension to be appended to the file name. Default is ".firstcal_metrics.json"')
         a.add_argument('--metrics_path', default='', type=str,
                        help='Path to save metrics file to. Default is same directory as file.')
-        a.add_argument('files', metavar='files', type=str, nargs='+',
+        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.calfits files for which to calculate firstcal_metrics.')
     elif method_name == 'xrfi':
         a.prog = 'xrfi_run.py'
@@ -88,7 +87,7 @@ def get_metrics_ArgumentParser(method_name):
                        help='Starting number of sigmas to flag on. Default is 6.')
         a.add_argument('--sig_adj', default=2.0, type=float,
                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
-        a.add_argument('files', metavar='files', type=str, nargs='+',
+        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='files for which to flag RFI.')
     return a
 

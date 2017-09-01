@@ -251,7 +251,7 @@ class TestAntmetricsRun(object):
         arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6])
 
         # test running with no files
-        cmd = ' '.join([arguments])
+        cmd = ' '.join([arguments, ''])
         args = a.parse_args(cmd.split())
         history = cmd
         nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run, args.files,
@@ -274,7 +274,7 @@ class TestAntmetricsRun(object):
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, xx_file])
-        args = o.parse_args(cmd.split())
+        args = a.parse_args(cmd.split())
         history = cmd
         ant_metrics.ant_metrics_run(args.files, args, history)
         nt.assert_true(os.path.exists(dest_file))
