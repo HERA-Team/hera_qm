@@ -276,7 +276,7 @@ def average_abs_metrics(metrics1, metrics2):
 
     if set(metrics1.keys()) != set(metrics2.keys()):
         raise KeyError('Metrics being averaged have differnt (ant,antpol) keys.')
-    return {key: np.abs(metrics1[key] / 2) + np.abs(metrics2[key] / 2) for
+    return {key: np.nanmean([np.abs(metrics1[key]), np.abs(metrics2[key])]) for
             key in metrics1.keys()}
 
 
