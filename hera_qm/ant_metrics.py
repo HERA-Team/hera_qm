@@ -102,6 +102,14 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
     else:
         return per_antenna_modified_z_scores(timeFreqMeans)
 
+def compute_median_auto_power_dict(data, pols, reds):
+    '''Computes the median over frequency of the visibility squared, averaged over time.'''
+    autoPower = {}
+    for pol in pols:
+        for bls in reds:
+            for (i, j) in bls:
+                autoPower[i, j, pol] = np.median(np.mean(np.abs(data.get_data(i, j, pol))**2, axis=0))
+    return autoPower
 
 def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False, crossPol=False):
     '''Calculates the extent to which baselines involving an antenna do not correlate
@@ -123,14 +131,8 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
     Very small numbers are probably bad antennas.
     '''
 
-    # Precompute auto-powers to save time
-    autoPower = {}
-    for pol in pols:
-        for bls in reds:
-            for (i, j) in bls:
-                autoPower[i, j, pol] = np.median(np.sum(np.abs(data.get_data(i, j, pol))**2, axis=0))
-
     # Compute power correlations and assign them to each antenna
+    autoPower = compute_median_auto_power_dict(data, pols, reds)
     antCorrs = {(ant, antpol): 0.0 for ant in ants for antpol in antpols if
                 (ant, antpol) not in xants}
     antCounts = deepcopy(antCorrs)
@@ -146,7 +148,7 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
                         data0 = data.get_data(ant0_i, ant0_j, pol0)
                         for (ant1_i, ant1_j) in bls[n + 1:]:
                             data1 = data.get_data(ant1_i, ant1_j, pol1)
-                            corr = np.median(np.abs(np.sum(data0 * data1.conj(),
+                            corr = np.median(np.abs(np.mean(data0 * data1.conj(),
                                                            axis=0)))
                             corr /= np.sqrt(autoPower[ant0_i, ant0_j, pol0] *
                                             autoPower[ant1_i, ant1_j, pol1])
@@ -367,6 +369,28 @@ class Antenna_Metrics():
         self.allMetrics, self.allModzScores = [], []
         self.finalMetrics, self.finalModzScores = {}, {}
 
+    def find_totally_dead_ants(self):
+        '''Flags antennas whose median autoPower that they are involved in is 0.0. 
+        These antennas are marked as dead, but they do not appear in recorded antenna 
+        metrics or zscores. Their removal iteration is -1 (i.e. before iterative flagging).'''
+
+        autoPowers = compute_median_auto_power_dict(self.data, self.pols, self.reds)
+        while True:
+            current_xant_len = len(self.xants)
+            power_list_by_ant = {(ant,antpol): [] for ant in self.ants for antpol 
+                                 in self.antpols if (ant,antpol) not in self.xants}
+            for (ant0,ant1,pol),power in autoPowers.items():
+                if (ant0,pol[0]) not in self.xants and (ant1,pol[1]) not in self.xants:
+                    power_list_by_ant[(ant0,pol[0])].append(power)
+                    power_list_by_ant[(ant1,pol[1])].append(power)
+            for key, val in power_list_by_ant.items():
+                if np.median(val) == 0:
+                    self.xants.append(key)
+                    self.deadAntsRemoved.append(key)
+                    self.removalIter[key] = -1
+            if len(self.xants) == current_xant_len:
+                break
+
     def _run_all_metrics(self):
         '''Designed to be run as part of AntennaMetrics.iterative_antenna_metrics_and_flagging().'''
 
@@ -403,6 +427,7 @@ class Antenna_Metrics():
         '''
 
         self.reset_summary_stats()
+        self.find_totally_dead_ants()
         self.crossCut, self.deadCut = crossCut, deadCut
 
         # Loop over
