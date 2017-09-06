@@ -375,21 +375,17 @@ class Antenna_Metrics():
         metrics or zscores. Their removal iteration is -1 (i.e. before iterative flagging).'''
 
         autoPowers = compute_median_auto_power_dict(self.data, self.pols, self.reds)
-        while True:
-            current_xant_len = len(self.xants)
-            power_list_by_ant = {(ant,antpol): [] for ant in self.ants for antpol 
-                                 in self.antpols if (ant,antpol) not in self.xants}
-            for (ant0,ant1,pol),power in autoPowers.items():
-                if (ant0,pol[0]) not in self.xants and (ant1,pol[1]) not in self.xants:
-                    power_list_by_ant[(ant0,pol[0])].append(power)
-                    power_list_by_ant[(ant1,pol[1])].append(power)
-            for key, val in power_list_by_ant.items():
-                if np.median(val) == 0:
-                    self.xants.append(key)
-                    self.deadAntsRemoved.append(key)
-                    self.removalIter[key] = -1
-            if len(self.xants) == current_xant_len:
-                break
+        power_list_by_ant = {(ant,antpol): [] for ant in self.ants for antpol 
+                             in self.antpols if (ant,antpol) not in self.xants}
+        for (ant0,ant1,pol),power in autoPowers.items():
+            if (ant0,pol[0]) not in self.xants and (ant1,pol[1]) not in self.xants:
+                power_list_by_ant[(ant0,pol[0])].append(power)
+                power_list_by_ant[(ant1,pol[1])].append(power)
+        for key, val in power_list_by_ant.items():
+            if np.median(val) == 0:
+                self.xants.append(key)
+                self.deadAntsRemoved.append(key)
+                self.removalIter[key] = -1
 
     def _run_all_metrics(self):
         '''Designed to be run as part of AntennaMetrics.iterative_antenna_metrics_and_flagging().'''
