@@ -292,16 +292,15 @@ class TestAntmetricsRun(object):
         options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5])
 
         # test running with no calfile
-        xx_file = os.path.join(DATA_PATH, 'zen.2458000.46582.xx.HH.uvA')
+        xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2458000.46582.HH.uvA.ant_metrics.json')
+                                 'zen.2458002.47754.HH.uvA.ant_metrics.json')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([options, xx_file])
         opts, args = o.parse_args(cmd.split())
         history = cmd
         ant_metrics.ant_metrics_run(args, opts, history)
-        nt.assert_true(False)
         nt.assert_true(os.path.exists(dest_file))
 
 
