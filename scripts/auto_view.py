@@ -44,7 +44,7 @@ ants = np.unique([ant for (ant, pol) in autos.keys()])
 # Find most recent time, only keep spectra from that time
 latest = np.max(times.values())
 for key, t in times.items():
-    if latest - t > 1 / 60 / 24:
+    if latest - t > 1. / 60. / 24.:
         # more than a minute from latest, use NaN to flag
         autos[key] = np.nan
         amps[key] = np.nan
@@ -95,10 +95,15 @@ f = plt.figure(figsize=(10, 8))
 for ant in ants_connected:
     for pol in ['xx', 'yy']:
         try:
-            plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
-                        c=amps[(ant, pol)], vmin=vmin, vmax=vmax, cmap=goodbad)
+            if not np.isnan(amps[(ant, pol)]):
+                ax = plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
+                                 c=amps[(ant, pol)], vmin=vmin, vmax=vmax, cmap=goodbad)
+            else:
+                plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
+                            marker='x', color='k')
         except KeyError:
-            plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5), 'x')
+            plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
+                        marker='x', color='k')
     text = (str(ant) + '\n' + pams[ant] + '\n' + receiverators[ant])
     plt.annotate(text, xy=antpos[ant, 0:2] + [1, 0], textcoords='data',
                  verticalalignment='center')
@@ -106,12 +111,12 @@ if args.log:
     label = '10log10(Median Autos)'
 else:
     label = 'Median Autos'
-plt.colorbar(label=label)
+plt.colorbar(ax, label=label)
 xr = antpos[ants_connected, 0].max() - antpos[ants_connected, 0].min()
 yr = antpos[ants_connected, 1].max() - antpos[ants_connected, 1].min()
 plt.xlim([antpos[ants_connected, 0].min() - 0.05 * xr, antpos[ants_connected, 0].max() + 0.2 * xr])
 plt.ylim([antpos[ants_connected, 1].min() - 0.05 * yr, antpos[ants_connected, 1].max() + 0.1 * yr])
-plt.title(str(latest.datetime))
+plt.title(str(latest.datetime) + ' UTC')
 filename = 'auto_v_pos.%5f.png' % latest.jd
 plt.savefig(filename)
 
@@ -123,10 +128,13 @@ for rxr in np.unique(rxr_nums[ants_connected]):
     for i, ant in enumerate(ind):
         for pol in ['xx', 'yy']:
             try:
-                ax = axarr[rxr - 1].scatter(0, i + 0.3 * poli[pol], c=amps[(ant, pol)],
-                                            vmin=vmin, vmax=vmax, cmap=goodbad)
+                if not np.isnan(amps[(ant, pol)]):
+                    ax = axarr[rxr - 1].scatter(0, i + 0.3 * poli[pol], c=amps[(ant, pol)],
+                                                vmin=vmin, vmax=vmax, cmap=goodbad)
+                else:
+                    axarr[rxr - 1].scatter(0, i + 0.3 * poli[pol], marker='x', color='k')
             except:
-                ax = axarr[rxr - 1].scatter(0, i, 'x')
+                axarr[rxr - 1].scatter(0, i + 0.3 * poli[pol], marker='x', color='k')
         axarr[rxr - 1].annotate(str(ant) + ',' + pams[ant], xy=[0.01, i])
     axarr[rxr - 1].set_yticks([])
     axarr[rxr - 1].set_xticks([])
@@ -141,7 +149,7 @@ if args.log:
 else:
     label = 'Median Autos'
 f.colorbar(ax, cax=cbar_ax, orientation='horizontal', label=label)
-f.suptitle(str(latest.datetime))
+f.suptitle(str(latest.datetime) + ' UTC')
 filename = 'auto_v_rxr.%5f.png' % latest.jd
 plt.savefig(filename)
 
@@ -152,11 +160,12 @@ nants = len(ants)
 nx = int(np.ceil(np.log2(nants + 1)))
 ny = int(np.ceil(nants / float(nx)))
 pol_colors = {'xx': 'r', 'yy': 'b'}
+pol_labels = {'xx': 'E', 'yy': 'N'}
 for ant in range(np.max(ants) + 1):
     ax = plt.subplot(nx, ny, ant + 1)
     for pol in ['xx', 'yy']:
         try:
-            plt.plot(autos[(ant, pol)], pol_colors[pol], label=pol)
+            plt.plot(autos[(ant, pol)], pol_colors[pol], label=pol_labels[pol])
         except KeyError:
             continue
     if ant in ants_connected:
@@ -166,16 +175,16 @@ for ant in range(np.max(ants) + 1):
     plt.text(0.8, 0.8, str(ant), fontsize=12, transform=ax.transAxes, color=lcolor)
     # Axis stuff
     ax.axes.get_xaxis().set_ticklabels([])
-    if not ant % nx:
+    if ant % ny:
+        ax.axes.get_yaxis().set_ticklabels([])
+    else:
         if args.log:
             ax.set_ylabel('10log10')
         else:
             ax.set_ylabel('linear')
-    else:
-        ax.axes.get_yaxis().set_ticklabels([])
     ax.set_ylim([vmin, 1.3 * vmax])
     if ant == 0:
         plt.legend(loc='best')
-f.suptitle(str(latest.datetime))
+f.suptitle(str(latest.datetime) + ' UTC')
 filename = 'auto_specs.%5f.png' % latest.jd
 plt.savefig(filename)
