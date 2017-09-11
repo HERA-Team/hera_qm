@@ -220,8 +220,10 @@ def metrics2mc(filename, ftype):
         from hera_qm.firstcal_metrics import load_firstcal_metrics
         data = load_firstcal_metrics(filename)
         pol = data['pol']
-        d['array_metrics']['firstcal_metrics_good_sol'] = data['good_sol']
-        d['array_metrics']['firstcal_metrics_agg_std'] = data['agg_std']
+        met = 'firstcal_metrics_good_sol_' + pol
+        d['array_metrics'][met] = data['good_sol']
+        met = 'firstcal_metrics_agg_std_' + pol
+        d['array_metrics'][met] = data['agg_std']
         for met in ['ant_z_scores', 'ant_avg', 'ant_std']:
             metric = '_'.join(['firstcal_metrics', met])
             d['ant_metrics'][metric] = []
