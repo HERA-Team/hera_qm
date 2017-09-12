@@ -224,7 +224,7 @@ def metrics2mc(filename, ftype):
     elif ftype == 'firstcal':
         from hera_qm.firstcal_metrics import load_firstcal_metrics
         data = load_firstcal_metrics(filename)
-        pol = data['pol']
+        pol = str(data['pol'])
         met = 'firstcal_metrics_good_sol_' + pol
         d['array_metrics'][met] = data['good_sol']
         met = 'firstcal_metrics_agg_std_' + pol
