@@ -9,6 +9,7 @@ from hera_mc import mc, sys_handling, cm_utils
 from astropy import time
 from matplotlib.colors import LogNorm
 from matplotlib.colors import LinearSegmentedColormap
+from pyuvdata import UVData
 
 
 parser = argparse.ArgumentParser(description='Plot auto locations and magnitudes')
@@ -16,6 +17,8 @@ parser.add_argument('-s', '--show', dest='show', action='store_true', default=Fa
                     help='Show the plot. Default: False -- i.e., just save a png')
 parser.add_argument('-l', '--log', dest='log', action='store_true', default=True,
                     help='Take 10*log10() of data before plotting. Default:True')
+parser.add_argument('files', metavar='files', type=str, nargs='*', default=[],
+                    help='Files for which to plot auto views.')
 args = parser.parse_args()
 
 if not args.show:
@@ -25,22 +28,37 @@ if not args.show:
 import matplotlib.pyplot as plt
 
 # Get auto data
-redis = redis_lib.Redis('redishost')
-keys = [k for k in redis.keys() if k.startswith('visdata')]
 autos = {}
 amps = {}
 times = {}
-for key in keys:
-    ant = int(re.findall(r'visdata://(\d+)/', key)[0])
-    pol = key[-2:]
-    autos[(ant, pol)] = np.fromstring(redis.hgetall(key).get('data'), dtype=np.float32)
-    amps[(ant, pol)] = np.median(autos[(ant, pol)])
-    if args.log:
-        autos[(ant, pol)] = 10.0 * np.log10(autos[(ant, pol)])
-        amps[(ant, pol)] = 10.0 * np.log10(amps[(ant, pol)])
-    times[(ant, pol)] = float(redis.hgetall(key).get('time', 0))
-ants = np.unique([ant for (ant, pol) in autos.keys()])
+if len(args.files) == 0:
+    # No file given, use redis db
+    redis = redis_lib.Redis('redishost')
+    keys = [k for k in redis.keys() if k.startswith('visdata')]
+    for key in keys:
+        ant = int(re.findall(r'visdata://(\d+)/', key)[0])
+        pol = key[-2:]
+        autos[(ant, pol)] = np.fromstring(redis.hgetall(key).get('data'), dtype=np.float32)
+        amps[(ant, pol)] = np.median(autos[(ant, pol)])
+        if args.log:
+            autos[(ant, pol)] = 10.0 * np.log10(autos[(ant, pol)])
+            amps[(ant, pol)] = 10.0 * np.log10(amps[(ant, pol)])
+        times[(ant, pol)] = float(redis.hgetall(key).get('time', 0))
+else:
+    uv = UVData()
+    uv.read_miriad(args.files)
+    for ant in uv.get_ants():
+        for pol in uv.get_feedpols():
+            pol = pol.lower()
+            autos[(ant, pol)] = np.mean(uv.get_data(ant, ant, pol * 2), axis=0)
+            amps[(ant, pol)] = np.median(autos[(ant, pol)])
+            if args.log:
+                autos[(ant, pol)] = 10.0 * np.log10(autos[(ant, pol)])
+                amps[(ant, pol)] = 10.0 * np.log10(amps[(ant, pol)])
+            ind1, ind2, indp = uv._key2inds((ant, ant, pol * 2))
+            times[(ant, pol)] = np.mean(uv.time_array[ind1])
 
+ants = np.unique([ant for (ant, pol) in autos.keys()])
 # Find most recent time, only keep spectra from that time
 latest = np.max(times.values())
 for key, t in times.items():
