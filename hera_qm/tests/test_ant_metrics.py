@@ -279,5 +279,31 @@ class TestAntmetricsRun(object):
         ant_metrics.ant_metrics_run(args.files, args, history)
         nt.assert_true(os.path.exists(dest_file))
 
+    def test_ant_metrics_run_nocalfile(self):
+        # get options
+        o = utils.get_metrics_OptionParser('ant_metrics')
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        opt0 = "-p xx,yy,xy,yx"
+        opt1 = "--crossCut=5"
+        opt2 = "--deadCut=5"
+        opt3 = "--extension=.ant_metrics.json"
+        opt4 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        opt5 = "--vis_format=miriad"
+        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5])
+
+        # test running with no calfile
+        xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+        dest_file = os.path.join(DATA_PATH, 'test_output',
+                                 'zen.2458002.47754.HH.uvA.ant_metrics.json')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([options, xx_file])
+        opts, args = o.parse_args(cmd.split())
+        history = cmd
+        ant_metrics.ant_metrics_run(args, opts, history)
+        nt.assert_true(os.path.exists(dest_file))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -200,7 +200,7 @@ def metrics2mc(filename, ftype):
                 d['array_metrics'][metric]: Single metric value
     """
     d = {'ant_metrics': {}, 'array_metrics': {}}
-    if ftype is 'ant':
+    if ftype == 'ant':
         from hera_qm.ant_metrics import load_antenna_metrics
         data = load_antenna_metrics(filename)
         key2cat = {'final_metrics': 'ant_metrics',
@@ -221,7 +221,7 @@ def metrics2mc(filename, ftype):
             for antpol, val in data['removal_iteration'].items():
                 d['ant_metrics'][metric].append([antpol[0], antpol[1], val])
 
-    elif ftype is 'firstcal':
+    elif ftype == 'firstcal':
         from hera_qm.firstcal_metrics import load_firstcal_metrics
         data = load_firstcal_metrics(filename)
         pol = data['pol']
@@ -237,7 +237,7 @@ def metrics2mc(filename, ftype):
         for ant in data['bad_ants']:
             d['ant_metrics'][metric].append([ant, pol, 1.])
 
-    elif ftype is 'omnical':
+    elif ftype == 'omnical':
         from pyuvdata import UVCal
         uvcal = UVCal()
         uvcal.read_calfits(filename)

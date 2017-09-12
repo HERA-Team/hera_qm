@@ -486,6 +486,7 @@ def ant_metrics_run(files, args, history):
     """
     try:
         from hera_cal.omni import aa_to_info
+        from hera_cal.utils import get_aa_from_uv
     except(ImportError):
         from nose.plugins.skip import SkipTest
         raise SkipTest('hera_cal.omni not detected. It must be installed to calculate array info')
@@ -507,12 +508,20 @@ def ant_metrics_run(files, args, history):
     if len(fullpol_file_list) == 0:
         raise AssertionError('Could not find all 4 polarizations for any files provided')
 
-    # define freqs
-    # note that redundancy calculation does not depend on this, so this is just a dummy range
-    freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
-
-    # process calfile
-    aa = aipy.cal.get_aa(args.cal, freqs)
+    if args.cal is not None:
+        # define freqs
+        # note that redundancy calculation does not depend on this, so this is just a dummy range
+        freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
+        # process calfile
+        aa = aipy.cal.get_aa(args.cal, freqs)
+    else:
+        # generate aa object from file
+        # N.B.: assumes redunancy information is the same for all files passed in
+        first_file = fullpol_file_list[0][0]
+        uvd = UVData()
+        uvd.read_miriad(first_file)
+        aa = get_aa_from_uv(uvd)
+        del uvd
     info = aa_to_info(aa, pols=[pol_list[-1][0]])
     reds = info.get_reds()
 
