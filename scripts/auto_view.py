@@ -17,6 +17,12 @@ parser.add_argument('-s', '--show', dest='show', action='store_true', default=Fa
                     help='Show the plot. Default: False -- i.e., just save a png')
 parser.add_argument('-l', '--log', dest='log', action='store_true', default=True,
                     help='Take 10*log10() of data before plotting. Default:True')
+parser.add_argument('--outpath', default='', type=str,
+                    help='Path to save output plots to. Default is same directory as file.')
+parser.add_argument('--outbase', default='', type=str,
+                    help='Base for output file names. Default is JD of data.')
+parser.add_argument('--idbaddies', dest='idbaddies', action='store_true', default=False,
+                    help='Identify potential misbehaving antennas. Default: False')
 parser.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                     help='Files for which to plot auto views.')
 args = parser.parse_args()
@@ -100,6 +106,23 @@ for ant in ants_connected:
 # TODO: Fine tune this
 goodbad = plt.get_cmap('RdYlGn')
 
+# Construct path stuff for output
+if args.outpath == '':
+    # default path is same directory as file
+    try:
+        outpath = os.path.dirname(os.path.abspath(args.files[0]))
+    except IndexError:
+        outpath = os.path.abspath(os.path.curdir)
+else:
+    outpath = args.outpath
+if args.outbase == '':
+    try:
+        basename = '.'.join(os.path.basename(args.files[0]).split('.')[0:3])
+    except IndexError:
+        basename = '%5f' % latest.jd
+else:
+    basename = args.outbase
+
 # Plot autos vs positions
 pols = {'xx': 'e', 'yy': 'n'}
 poli = {'xx': 0, 'yy': 1}
@@ -135,7 +158,7 @@ yr = antpos[ants_connected, 1].max() - antpos[ants_connected, 1].min()
 plt.xlim([antpos[ants_connected, 0].min() - 0.05 * xr, antpos[ants_connected, 0].max() + 0.2 * xr])
 plt.ylim([antpos[ants_connected, 1].min() - 0.05 * yr, antpos[ants_connected, 1].max() + 0.1 * yr])
 plt.title(str(latest.datetime) + ' UTC')
-filename = 'auto_v_pos.%5f.png' % latest.jd
+filename = os.path.join(outpath, basename + '.auto_v_pos.png')
 plt.savefig(filename)
 
 
@@ -168,7 +191,7 @@ else:
     label = 'Median Autos'
 f.colorbar(ax, cax=cbar_ax, orientation='horizontal', label=label)
 f.suptitle(str(latest.datetime) + ' UTC')
-filename = 'auto_v_rxr.%5f.png' % latest.jd
+filename = os.path.join(outpath, basename + '.auto_v_rxr.png')
 plt.savefig(filename)
 
 # Plot spectra
@@ -204,5 +227,12 @@ for ant in range(np.max(ants) + 1):
     if ant == 0:
         plt.legend(loc='best')
 f.suptitle(str(latest.datetime) + ' UTC')
-filename = 'auto_specs.%5f.png' % latest.jd
+filename = os.path.join(outpath, basename + '.auto_specs.png')
 plt.savefig(filename)
+
+# ID some potential baddies
+if args.idbaddies:
+    baddies = [str(key) for key, val in amps.items() if
+               val < 0.75 * (vmax - vmin) + vmin and key[0] in ants_connected]
+    filename = os.path.join(outpath, basename + '.baddies.txt')
+    np.savetxt(filename, baddies, fmt='%s', header='You may want to check these antennas:')
