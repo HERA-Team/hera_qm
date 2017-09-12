@@ -49,9 +49,9 @@ def test_generate_fullpol_file_list():
     nt.assert_equal(fullpol_file_list, [])
 
 
-def test_get_metrics_OptionParser():
+def test_get_metrics_ArgumentParser():
     # raise error for requesting unknown type of parser
-    nt.assert_raises(AssertionError, utils.get_metrics_OptionParser, 'fake_method')
+    nt.assert_raises(AssertionError, utils.get_metrics_ArgumentParser, 'fake_method')
 
 
 def test_metrics2mc():
