@@ -49,13 +49,13 @@ else:
     uv.read_miriad(args.files)
     for ant in uv.get_ants():
         for pol in uv.get_feedpols():
-            pol = pol.lower()
-            autos[(ant, pol)] = np.mean(uv.get_data(ant, ant, pol * 2), axis=0)
+            pol = 2 * pol.lower()
+            autos[(ant, pol)] = np.mean(uv.get_data(ant, ant, pol), axis=0)
             amps[(ant, pol)] = np.median(autos[(ant, pol)])
             if args.log:
                 autos[(ant, pol)] = 10.0 * np.log10(autos[(ant, pol)])
                 amps[(ant, pol)] = 10.0 * np.log10(amps[(ant, pol)])
-            ind1, ind2, indp = uv._key2inds((ant, ant, pol * 2))
+            ind1, ind2, indp = uv._key2inds((ant, ant, pol))
             times[(ant, pol)] = np.mean(uv.time_array[ind1])
 
 ants = np.unique([ant for (ant, pol) in autos.keys()])
