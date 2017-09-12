@@ -25,8 +25,16 @@ def get_firstcal_metrics_dict():
     """
     metrics_dict = {'firstcal_metrics_good_sol': 'Whether full firstcal solution'
                     'is good (1) or bad(0).',
+                    'firstcal_metrics_good_sol_x': 'Whether full x firstcal solution'
+                    'is good (1) or bad(0).',
+                    'firstcal_metrics_good_sol_y': 'Whether full y firstcal solution'
+                    'is good (1) or bad(0).',
                     'firstcal_metrics_agg_std': 'Aggregate standard deviation '
                     'of delay solutions',
+                    'firstcal_metrics_agg_std_x': 'Aggregate standard deviation '
+                    'of xx delay solutions',
+                    'firstcal_metrics_agg_std_y': 'Aggregate standard deviation '
+                    'of yy delay solutions',
                     'firstcal_metrics_ant_z_scores': 'Z-scores for each antenna '
                     'delay solution w.r.t. agg_std',
                     'firstcal_metrics_ant_avg': 'Average delay solution for '
@@ -723,13 +731,13 @@ class FirstCal_Metrics(object):
 
 
 # code for running firstcal_metrics on a file
-def firstcal_metrics_run(files, opts, history):
+def firstcal_metrics_run(files, args, history):
     """
     Run firstcal_metrics tests on a given set of input files.
 
     Args:
         files -- a list of files to run firstcal metrics on.
-        opts -- an optparse OptionParser instance
+        args -- parsed arguments via argparse.ArgumentParser.parse_args
     Return:
         None
 
@@ -741,19 +749,19 @@ def firstcal_metrics_run(files, opts, history):
 
     for filename in files:
         fm = FirstCal_Metrics(filename)
-        fm.run_metrics(std_cut=opts.std_cut)
+        fm.run_metrics(std_cut=args.std_cut)
         # add history
         fm.history = fm.history + history
 
         abspath = os.path.abspath(filename)
         dirname = os.path.dirname(abspath)
         basename = os.path.basename(abspath)
-        if opts.metrics_path == '':
+        if args.metrics_path == '':
             # default path is same directory as file
             metrics_path = dirname
         else:
-            metrics_path = opts.metrics_path
+            metrics_path = args.metrics_path
             print(metrics_path)
-        metrics_basename = os.path.basename(filename) + opts.extension
+        metrics_basename = os.path.basename(filename) + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
         fm.write_metrics(filename=metrics_filename)
