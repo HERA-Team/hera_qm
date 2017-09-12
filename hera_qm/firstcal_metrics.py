@@ -25,8 +25,16 @@ def get_firstcal_metrics_dict():
     """
     metrics_dict = {'firstcal_metrics_good_sol': 'Whether full firstcal solution'
                     'is good (1) or bad(0).',
+                    'firstcal_metrics_good_sol_x': 'Whether full x firstcal solution'
+                    'is good (1) or bad(0).',
+                    'firstcal_metrics_good_sol_y': 'Whether full y firstcal solution'
+                    'is good (1) or bad(0).',
                     'firstcal_metrics_agg_std': 'Aggregate standard deviation '
                     'of delay solutions',
+                    'firstcal_metrics_agg_std_x': 'Aggregate standard deviation '
+                    'of xx delay solutions',
+                    'firstcal_metrics_agg_std_y': 'Aggregate standard deviation '
+                    'of yy delay solutions',
                     'firstcal_metrics_ant_z_scores': 'Z-scores for each antenna '
                     'delay solution w.r.t. agg_std',
                     'firstcal_metrics_ant_avg': 'Average delay solution for '
