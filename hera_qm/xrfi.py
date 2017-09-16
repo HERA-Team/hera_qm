@@ -220,13 +220,16 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     return f
 
 
-def xrfi_run(files, args, history):
+def xrfi_run(files, args, history, broadcast=True, broadcast_threshold=0.):
     """
     Run an RFI-flagging algorithm on an entire file and store results in flag array.
 
     Args:
        files -- a list of files to run RFI flagging on
        args -- parsed arguments via argparse.ArgumentParser.parse_args
+       broadcast -- (bool) If True (default), broadcast flags across data if
+                    given (t, f) pixel is flagged in at least broadcast_threshold instances
+       broadcast_threshold -- Fraction of flags required to trigger a broadcast across data.
     Return:
        None
 
@@ -251,6 +254,7 @@ def xrfi_run(files, args, history):
         else:
             raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
+        temp_flags = np.zeros_like(uvd.flag_array)
         # create an iterator over data contents
         for key, d in uvd.antpairpol_iter():
             ind1, ind2, ipol = uvd._key2inds(key)
@@ -259,28 +263,42 @@ def xrfi_run(files, args, history):
             if len(ind1) > 0:
                 f = uvd.flag_array[ind1, 0, :, ipol]
                 if args.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=args.nsig_df,
-                                        nsig_dt=args.nsig_dt, nsig_all=args.nsig_all)
+                    temp_flags[ind1, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
+                                                               nsig_df=args.nsig_df,
+                                                               nsig_dt=args.nsig_dt,
+                                                               nsig_all=args.nsig_all)
                 elif args.algorithm == 'xrfi':
-                    new_f = xrfi(np.abs(d), f=f, Kt=args.kt_size, Kf=args.kf_size,
-                                 sig_init=args.sig_init, sig_adj=args.sig_adj)
+                    temp_flags[ind1, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
+                                                        Kf=args.kf_size,
+                                                        sig_init=args.sig_init,
+                                                        sig_adj=args.sig_adj)
                 else:
                     raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
-                # combine old flags and new flags
-                uvd.flag_array[ind1, 0, :, ipol] = np.logical_or(f, new_f)
             if len(ind2) > 0:
                 f = uvd.flag_array[ind2, 0, :, ipol]
                 if args.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=args.nsig_df,
-                                        nsig_dt=args.nsig_dt, nsig_all=args.nsig_all)
+                    temp_flags[ind2, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
+                                                               nsig_df=args.nsig_df,
+                                                               nsig_dt=args.nsig_dt,
+                                                               nsig_all=args.nsig_all)
                 elif args.algorithm == 'xrfi':
-                    new_f = xrfi(np.abs(d), f=f, Kt=args.kt_size, Kf=args.kf_size,
-                                 sig_init=args.sig_init, sig_adj=args.sig_adj)
+                    temp_flags[ind2, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
+                                                        Kf=args.kf_size,
+                                                        sig_init=args.sig_init,
+                                                        sig_adj=args.sig_adj)
                 else:
                     raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
-                # combine old flags and new flags
-                uvd.flag_array[ind2, 0, :, ipol] = np.logical_or(f, new_f)
 
+        if broadcast:
+            # Broadcast (t, f) pixels
+            for t in np.unique(uvd.time_array):
+                t_ind = np.where(uvd.time_array == t)
+                nf = np.mean(temp_flags[t_ind, :, :, :], axis=(0, 1, 3))
+                temp_flags[t_ind, 0, :, :] = np.logical_or(temp_flags[t_ind, 0, :, :],
+                                                           nf.reshape(1, -1, 1) >=
+                                                           broadcast_threshold)
+        # Compare old and new
+        uvd.flag_array = np.logical_or(uvd.flag_array, temp_flags)
         # append to history
         uvd.history = uvd.history + history
 
