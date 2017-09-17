@@ -232,7 +232,7 @@ plt.savefig(filename)
 
 # ID some potential baddies
 if args.idbaddies:
-    baddies = [str((key[0], pol_labels[key1])) for key, val in amps.items() if
+    baddies = [str((key[0], pol_labels[key[1]])) for key, val in amps.items() if
                val < 0.75 * (vmax - vmin) + vmin and key[0] in ants_connected]
     filename = os.path.join(outpath, basename + '.baddies.txt')
     np.savetxt(filename, baddies, fmt='%s', header='You may want to check these antennas:')
