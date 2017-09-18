@@ -220,7 +220,8 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     return f
 
 
-def xrfi_run(files, args, history, broadcast=True, broadcast_threshold=0.):
+def xrfi_run(files, args, history, broadcast=True, bl_threshold=0., freq_threshold=0.9,
+             time_threshold=0.9):
     """
     Run an RFI-flagging algorithm on an entire file and store results in flag array.
 
@@ -229,7 +230,12 @@ def xrfi_run(files, args, history, broadcast=True, broadcast_threshold=0.):
        args -- parsed arguments via argparse.ArgumentParser.parse_args
        broadcast -- (bool) If True (default), broadcast flags across data if
                     given (t, f) pixel is flagged in at least broadcast_threshold instances
-       broadcast_threshold -- Fraction of flags required to trigger a broadcast across data.
+       bl_threshold -- Fraction of flags required to trigger a broadcast across
+                       baselines. Default is 0.
+       freq_threshold -- Fraction of channels required to trigger broadcast across
+                         frequency (single time). Default is 0.9.
+       time_threshold -- Fraction of times required to trigger broadcast across
+                         time (single frequency). Default is 0.9.
     Return:
        None
 
@@ -304,7 +310,9 @@ def xrfi_run(files, args, history, broadcast=True, broadcast_threshold=0.):
             summarize_flags(uvd, sum_path)
 
         if broadcast:
-            uvd.flag_array = broadcast_flags(uvd, threshold=broadcast_threshold)
+            uvd.flag_array = broadcast_flags(uvd, bl_threshold=bl_threshold,
+                                             freq_threshold=freq_threshold,
+                                             time_threshold=time_threshold)
 
         # Compare old and new
         uvd.flag_array = np.logical_or(uvd.flag_array, pre_flags)
@@ -324,11 +332,16 @@ def xrfi_run(files, args, history, broadcast=True, broadcast_threshold=0.):
     return
 
 
-def broadcast_flags(uv, threshold=0.):
+def broadcast_flags(uv, bl_threshold=0., freq_threshold=0.9, time_threshold=0.9):
     """ Broadcast flags across baselines and polarizations if average is above threshold
     Args:
         uv -- UVData object containing flag_array to broadcast
-        threshold -- Fraction of flags over which will trigger broadcast. Default is 0.
+        bl_threshold -- Fraction of flags required to trigger a broadcast across
+                        baselines. Default is 0.
+        freq_threshold -- Fraction of channels required to trigger broadcast across
+                          frequency (single time). Default is 0.9.
+        time_threshold -- Fraction of times required to trigger broadcast across
+                          time (single frequency). Default is 0.9.
 
     Return:
         bflags -- Broadcasted flag array, same shape as uv.flag_array
@@ -337,8 +350,16 @@ def broadcast_flags(uv, threshold=0.):
     for t in np.unique(uv.time_array):
         t_ind = np.where(uv.time_array == t)[0]
         nf = np.mean(uv.flag_array[t_ind, :, :, :], axis=(0, 1, 3))
-        bflags[t_ind, 0, :, :] = np.logical_or(uv.flag_array[t_ind, 0, :, :],
-                                               nf.reshape(1, -1, 1) > threshold)
+        if nf.mean() > freq_threshold:
+            # Most frequency channels are flagged, flag entire time.
+            bflags[t_ind, 0, :, :] = True
+        else:
+            # Only flag if higher than bl_threshold
+            bflags[t_ind, 0, :, :] = np.logical_or(uv.flag_array[t_ind, 0, :, :],
+                                                   nf.reshape(1, -1, 1) > bl_threshold)
+    # Next look for high fraction across time
+    nt = np.mean(uv.flag_array, axis=(0, 1, 3))
+    bflags = np.logical_or(bflags, nt.reshape(1, 1, -1, 1) > time_threshold)
     return bflags
 
 
