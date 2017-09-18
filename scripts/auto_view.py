@@ -124,7 +124,7 @@ else:
     basename = args.outbase
 
 # Plot autos vs positions
-pols = {'xx': 'e', 'yy': 'n'}
+pol_labels = {'xx': 'E', 'yy': 'N'}
 poli = {'xx': 0, 'yy': 1}
 if args.log:
     vmin = -30
@@ -158,6 +158,16 @@ yr = antpos[ants_connected, 1].max() - antpos[ants_connected, 1].min()
 plt.xlim([antpos[ants_connected, 0].min() - 0.05 * xr, antpos[ants_connected, 0].max() + 0.2 * xr])
 plt.ylim([antpos[ants_connected, 1].min() - 0.05 * yr, antpos[ants_connected, 1].max() + 0.1 * yr])
 plt.title(str(latest.datetime) + ' UTC')
+# Add polarization key
+for pol in ['xx', 'yy']:
+    x = antpos[ants_connected, 0].min()
+    y = antpos[ants_connected, 1].max() + 3 * (poli[pol])
+    plt.scatter(x, y, c=vmax, vmin=vmin, vmax=vmax, cmap=goodbad)
+    plt.annotate(pol_labels[pol] + ' pol', xy=[x + 1, y], textcoords='data', verticalalignment='center')
+xmin = plt.gca().get_xlim()[0]
+ymax = plt.gca().get_ylim()[1]
+plt.plot([xmin, xmin + xr / 6., xmin + xr / 6.], [ymax * 3. / 4., ymax * 3. / 4., ymax], 'k')
+# Save file
 filename = os.path.join(outpath, basename + '.auto_v_pos.png')
 plt.savefig(filename)
 
@@ -184,13 +194,25 @@ for rxr in range(np.max(rxr_nums)):
 plt.xlim([-.01, .1])
 plt.subplots_adjust(bottom=0.15)
 plt.subplots_adjust(wspace=0)
-cbar_ax = f.add_axes([.14, .05, .72, .05])
+# cbar_ax = f.add_axes([.14, .05, .72, .05])
+cbar_ax = f.add_axes([.13, .05, .67, .05])
 if args.log:
     label = '10log10(Median Autos)'
 else:
     label = 'Median Autos'
 f.colorbar(ax, cax=cbar_ax, orientation='horizontal', label=label)
 f.suptitle(str(latest.datetime) + ' UTC')
+# Add polarization key
+p_ax = f.add_axes([0.82, 0.03, 0.06, 0.08])
+for pol in ['xx', 'yy']:
+    y = poli[pol]
+    plt.scatter(0, y, c=vmax, vmin=vmin, vmax=vmax, cmap=goodbad)
+    plt.annotate(pol_labels[pol] + ' pol', xy=[1, y], textcoords='data', verticalalignment='center')
+plt.xlim([-1, 4])
+plt.ylim([-1, 2])
+p_ax.set_xticks([])
+p_ax.set_yticks([])
+# Save file
 filename = os.path.join(outpath, basename + '.auto_v_rxr.png')
 plt.savefig(filename)
 
@@ -201,7 +223,6 @@ nants = len(ants)
 nx = int(np.ceil(np.log2(nants + 1)))
 ny = int(np.ceil(nants / float(nx)))
 pol_colors = {'xx': 'r', 'yy': 'b'}
-pol_labels = {'xx': 'E', 'yy': 'N'}
 for ant in range(np.max(ants) + 1):
     ax = plt.subplot(nx, ny, ant + 1)
     for pol in ['xx', 'yy']:
