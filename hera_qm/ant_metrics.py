@@ -488,13 +488,13 @@ class Antenna_Metrics():
 
 
 # code for running ant_metrics on a file
-def ant_metrics_run(files, opts, history):
+def ant_metrics_run(files, args, history):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
     Args:
        files -- a list of files to run ant metrics on. Can be any of the 4 polarizations
-       opts -- an optparse OptionParser instance
+       args -- parsed arguments via argparse.ArgumentParser.parse_args
     Return:
        None
 
@@ -507,6 +507,7 @@ def ant_metrics_run(files, opts, history):
     """
     try:
         from hera_cal.omni import aa_to_info
+        from hera_cal.utils import get_aa_from_uv
     except(ImportError):
         from nose.plugins.skip import SkipTest
         raise SkipTest('hera_cal.omni not detected. It must be installed to calculate array info')
@@ -516,32 +517,40 @@ def ant_metrics_run(files, opts, history):
         raise AssertionError('Please provide a list of visibility files')
 
     # define polarizations to look for
-    if opts.pol == '':
+    if args.pol == '':
         # default polarization list
         pol_list = ['xx', 'yy', 'xy', 'yx']
     else:
         # assumes polarizations are passed in as comma-separated list, e.g. 'xx,xy,yx,yy'
-        pol_list = opts.pol.split(',')
+        pol_list = args.pol.split(',')
 
     # generate a list of all files to be read in
     fullpol_file_list = utils.generate_fullpol_file_list(files, pol_list)
     if len(fullpol_file_list) == 0:
         raise AssertionError('Could not find all 4 polarizations for any files provided')
 
-    # define freqs
-    # note that redundancy calculation does not depend on this, so this is just a dummy range
-    freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
-
-    # process calfile
-    aa = aipy.cal.get_aa(opts.cal, freqs)
+    if args.cal is not None:
+        # define freqs
+        # note that redundancy calculation does not depend on this, so this is just a dummy range
+        freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
+        # process calfile
+        aa = aipy.cal.get_aa(args.cal, freqs)
+    else:
+        # generate aa object from file
+        # N.B.: assumes redunancy information is the same for all files passed in
+        first_file = fullpol_file_list[0][0]
+        uvd = UVData()
+        uvd.read_miriad(first_file)
+        aa = get_aa_from_uv(uvd)
+        del uvd
     info = aa_to_info(aa, pols=[pol_list[-1][0]])
     reds = info.get_reds()
 
     # do the work
     for jd_list in fullpol_file_list:
-        am = Antenna_Metrics(jd_list, reds, fileformat=opts.vis_format)
-        am.iterative_antenna_metrics_and_flagging(crossCut=opts.crossCut, deadCut=opts.deadCut,
-                                                  verbose=opts.verbose)
+        am = Antenna_Metrics(jd_list, reds, fileformat=args.vis_format)
+        am.iterative_antenna_metrics_and_flagging(crossCut=args.crossCut, deadCut=args.deadCut,
+                                                  verbose=args.verbose)
 
         # add history
         am.history = am.history + history
@@ -551,12 +560,12 @@ def ant_metrics_run(files, opts, history):
         dirname = os.path.dirname(abspath)
         basename = os.path.basename(base_filename)
         nopol_filename = re.sub('\.{}\.'.format(pol_list[0]), '.', basename)
-        if opts.metrics_path == '':
+        if args.metrics_path == '':
             # default path is same directory as file
             metrics_path = dirname
         else:
-            metrics_path = opts.metrics_path
-        metrics_basename = nopol_filename + opts.extension
+            metrics_path = args.metrics_path
+        metrics_basename = nopol_filename + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
         am.save_antenna_metrics(metrics_filename)
 
