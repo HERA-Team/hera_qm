@@ -1,3 +1,4 @@
+from __future__ import division
 import unittest
 import nose.tools as nt
 import glob
@@ -475,7 +476,7 @@ class TestBroadcast(unittest.TestCase):
         uv.read_miriad(infile)
 
         # Test baseline thresholding
-        uv.flag_array[0, 0, uv.Nfreqs / 2, 0] = True
+        uv.flag_array[0, 0, uv.Nfreqs // 2, 0] = True
         bflags = xrfi.broadcast_flags(uv, bl_threshold=0.)
         nbl = np.sum(uv.time_array == uv.time_array[0])
         self.assertEqual(bflags.sum(), nbl)
@@ -485,7 +486,7 @@ class TestBroadcast(unittest.TestCase):
 
         # Test frequency thresholding
         t_ind = np.where(uv.time_array == uv.time_array[0])[0]
-        uv.flag_array[t_ind, 0, 0:(uv.Nfreqs * 3 / 4), 0] = True
+        uv.flag_array[t_ind, 0, 0:(uv.Nfreqs * 3 // 4), 0] = True
         bflags = xrfi.broadcast_flags(uv, bl_threshold=1., freq_threshold=0.5)
         self.assertEqual(bflags.sum(), nbl * uv.Nfreqs)
 
