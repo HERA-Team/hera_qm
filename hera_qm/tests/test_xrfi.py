@@ -331,7 +331,9 @@ class TestXrfiRun(object):
         arg6 = "--nsig_df=6"
         arg7 = "--nsig_all=0"
         arg8 = "--summary"
-        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8])
+        arg9 = "--broadcast"  # Hit line here, tested thoroughly in TestBroadcast
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+                              arg8, arg9])
 
         # test running with no files
         cmd = ' '.join([arguments, ''])

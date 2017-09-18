@@ -220,22 +220,13 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     return f
 
 
-def xrfi_run(files, args, history, broadcast=True, bl_threshold=0., freq_threshold=0.9,
-             time_threshold=0.9):
+def xrfi_run(files, args, history):
     """
     Run an RFI-flagging algorithm on an entire file and store results in flag array.
 
     Args:
        files -- a list of files to run RFI flagging on
        args -- parsed arguments via argparse.ArgumentParser.parse_args
-       broadcast -- (bool) If True (default), broadcast flags across data if
-                    given (t, f) pixel is flagged in at least broadcast_threshold instances
-       bl_threshold -- Fraction of flags required to trigger a broadcast across
-                       baselines. Default is 0.
-       freq_threshold -- Fraction of channels required to trigger broadcast across
-                         frequency (single time). Default is 0.9.
-       time_threshold -- Fraction of times required to trigger broadcast across
-                         time (single frequency). Default is 0.9.
     Return:
        None
 
@@ -309,10 +300,10 @@ def xrfi_run(files, args, history, broadcast=True, bl_threshold=0., freq_thresho
             sum_path = os.path.join(dirname, sum_file)
             summarize_flags(uvd, sum_path)
 
-        if broadcast:
-            uvd.flag_array = broadcast_flags(uvd, bl_threshold=bl_threshold,
-                                             freq_threshold=freq_threshold,
-                                             time_threshold=time_threshold)
+        if args.broadcast:
+            uvd.flag_array = broadcast_flags(uvd, bl_threshold=args.bl_threshold,
+                                             freq_threshold=args.freq_threshold,
+                                             time_threshold=args.time_threshold)
 
         # Compare old and new
         uvd.flag_array = np.logical_or(uvd.flag_array, pre_flags)
