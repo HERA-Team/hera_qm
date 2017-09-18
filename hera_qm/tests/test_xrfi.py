@@ -464,5 +464,21 @@ class TestSummary(unittest.TestCase):
         self.assertEqual(data['version'], hera_qm_version_str)
 
 
+class TestBroadcast(unittest.TestCase):
+    def test_summarize_flags(self):
+        from pyuvdata import UVData
+
+        infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        uv = UVData()
+        uv.read_miriad(infile)
+        uv.flag_array[0, 0, uv.Nfreqs / 2, 0] = True
+        bflags = xrfi.broadcast_flags(uv, threshold=0.)
+        nbl = np.sum(uv.time_array == uv.time_array[0])
+        self.assertEqual(bflags.mean(), float(nbl) / (uv.Nblts * uv.Nfreqs))
+        # Check thresholding works correctly
+        bflags = xrfi.broadcast_flags(uv, threshold=0.5)
+        self.assertEqual(bflags.sum(), 1)
+
+
 if __name__ == '__main__':
     unittest.main()
