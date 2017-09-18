@@ -471,13 +471,27 @@ class TestBroadcast(unittest.TestCase):
         infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
         uv = UVData()
         uv.read_miriad(infile)
+
+        # Test baseline thresholding
         uv.flag_array[0, 0, uv.Nfreqs / 2, 0] = True
-        bflags = xrfi.broadcast_flags(uv, threshold=0.)
+        bflags = xrfi.broadcast_flags(uv, bl_threshold=0.)
         nbl = np.sum(uv.time_array == uv.time_array[0])
-        self.assertEqual(bflags.mean(), float(nbl) / (uv.Nblts * uv.Nfreqs))
+        self.assertEqual(bflags.sum(), nbl)
         # Check thresholding works correctly
-        bflags = xrfi.broadcast_flags(uv, threshold=0.5)
+        bflags = xrfi.broadcast_flags(uv, bl_threshold=0.5)
         self.assertEqual(bflags.sum(), 1)
+
+        # Test frequency thresholding
+        t_ind = np.where(uv.time_array == uv.time_array[0])[0]
+        uv.flag_array[t_ind, 0, 0:(uv.Nfreqs * 3 / 4), 0] = True
+        bflags = xrfi.broadcast_flags(uv, bl_threshold=1., freq_threshold=0.5)
+        self.assertEqual(bflags.sum(), nbl * uv.Nfreqs)
+
+        # Test time thresholding
+        uv.flag_array = np.zeros_like(uv.flag_array)
+        uv.flag_array[0:(uv.Nblts - 10), 0, 0, 0] = True
+        bflags = xrfi.broadcast_flags(uv, bl_threshold=1.)
+        self.assertEqual(bflags.sum(), uv.Nblts)
 
 
 if __name__ == '__main__':
