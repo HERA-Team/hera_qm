@@ -125,6 +125,15 @@ class TestLowLevelFunctions(unittest.TestCase):
         with self.assertRaises(KeyError):
             ant_metrics.average_abs_metrics(metric1, metric3)
 
+    def test_compute_median_auto_power_dict(self):
+        power = ant_metrics.compute_median_auto_power_dict(self.data, self.pols, self.reds)
+        for key, p in power.items():
+            testp = np.median(np.mean(np.abs(self.data.get_data(*key))**2, axis=0))
+            self.assertEqual(p, testp)
+        for key in self.data.data.keys():
+            for pol in self.data.data[key].keys():
+                self.assertIn((key[0], key[1], pol), power.keys())
+
 
 class TestAntennaMetrics(unittest.TestCase):
 
