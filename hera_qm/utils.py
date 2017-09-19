@@ -2,89 +2,105 @@ from __future__ import print_function, division, absolute_import
 import re
 import os
 import warnings
-import optparse
+import argparse
 import numpy as np
 
 
-# option-generating function for *_run wrapper functions
-def get_metrics_OptionParser(method_name):
+# argument-generating function for *_run wrapper functions
+def get_metrics_ArgumentParser(method_name):
     """
-    Function to get an OptionParser instance for working with metrics wrappers.
+    Function to get an ArgumentParser instance for working with metrics wrappers.
 
     Args:
         method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", or "xrfi"
     Returns:
-        o -- an optparse.OptionParser instance with the relevant options for the selected method
+        a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
     methods = ["ant_metrics", "firstcal_metrics", "xrfi"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
-    o = optparse.OptionParser()
+    a = argparse.ArgumentParser()
 
     if method_name == 'ant_metrics':
-        o.set_usage("ant_metrics_run.py -C [calfile] [options] *.uv")
-        o.add_option('-C', '--cal', dest='cal', type='string',
-                     help='Calibration file to be used. Must be specified.')
-        o.add_option('-p', '--pol', dest='pol', default='', type='string',
-                     help="Comma-separated list of polarizations included. Default is ''")
-        o.add_option('--crossCut', dest='crossCut', default=5, type='float',
-                     help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
-        o.add_option('--deadCut', dest='deadCut', default=5, type='float',
-                     help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
-        o.add_option('--extension', dest='extension', default='.ant_metrics.json', type='string',
-                     help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
-        o.add_option('--metrics_path', dest='metrics_path', default='', type='string',
-                     help='Path to save metrics file to. Default is same directory as file.')
-        o.add_option('--vis_format', dest='vis_format', default='miriad', type='string',
-                     help='File format for visibility files. Default is miriad.')
-        o.add_option('-q', '--quiet', action='store_false', dest='verbose', default=True,
-                     help='Silence feedback to the command line.')
+        a.prog = 'ant_metrics.py'
+        a.add_argument('-C', '--cal', type=str,
+                       help='Calibration file to be used. Must be specified.')
+        a.add_argument('-p', '--pol', default='', type=str,
+                       help="Comma-separated list of polarizations included. Default is ''")
+        a.add_argument('--crossCut', default=5.0, type=float,
+                       help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
+        a.add_argument('--deadCut', default=5.0, type=float,
+                       help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
+        a.add_argument('--extension', default='.ant_metrics.json', type=str,
+                       help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
+        a.add_argument('--metrics_path', default='', type=str,
+                       help='Path to save metrics file to. Default is same directory as file.')
+        a.add_argument('--vis_format', default='miriad', type=str,
+                       help='File format for visibility files. Default is miriad.')
+        a.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
+                       help='Silence feedback to the command line.')
+        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
+                       help='*.uv files for which to calculate ant_metrics.')
     elif method_name == 'firstcal_metrics':
-        o.set_usage("firstcal_metrics_run.py [options] *.calfits")
-        o.add_option('--std_cut', dest='std_cut', default=0.5, type='float',
-                     help='Delay standard deviation cut for good / bad determination. Default 0.5')
-        o.add_option('--extension', dest='extension', default='.firstcal_metrics.json', type='string',
-                     help='Extension to be appended to the file name. Default is ".firstcal_metrics.json"')
-        o.add_option('--metrics_path', dest='metrics_path', default='', type='string',
-                     help='Path to save metrics file to. Default is same directory as file.')
+        a.prog = 'firstcal_metrics.py'
+        a.add_argument('--std_cut', default=0.5, type=float,
+                       help='Delay standard deviation cut for good / bad determination. Default 0.5')
+        a.add_argument('--extension', default='.firstcal_metrics.json', type=str,
+                       help='Extension to be appended to the file name. Default is ".firstcal_metrics.json"')
+        a.add_argument('--metrics_path', default='', type=str,
+                       help='Path to save metrics file to. Default is same directory as file.')
+        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
+                       help='*.calfits files for which to calculate firstcal_metrics.')
     elif method_name == 'xrfi':
-        o.set_usage("xrfi_run.py [options] *.uv")
-        o.add_option('--infile_format', dest='infile_format', default='miriad', type='string',
-                     help='File format for input files. Default is miriad.')
-        o.add_option('--outfile_format', dest='outfile_format', default='miriad', type='string',
-                     help='File format for output files. Default is miriad.')
-        o.add_option('--extension', dest='extension', default='R', type='string',
-                     help='Extension to be appended to input file name. Default is "R".')
-        o.add_option('--summary', action='store_true', dest='summary', default=False,
-                     help='Run summary of RFI flags and store in npz file.')
-        o.add_option('--summary_ext', dest='summary_ext', default='.flag_summary.npz',
-                     type='string', help='Extension to be appended to input file name'
-                     ' for summary file. Default is ".flag_summary.npz"')
-        o.add_option('--xrfi_path', dest='xrfi_path', default='', type='string',
-                     help='Path to save flagged file to. Default is same directory as input file.')
-        o.add_option('--algorithm', dest='algorithm', default='xrfi_simple', type='string',
-                     help='RFI-flagging algorithm to use. Default is xrfi_simple.')
-        o.add_option('--nsig_df', dest='nsig_df', default=6, type='float',
-                     help='Number of sigma above median value to flag in f direction'
-                     ' for xrfi_simple. Default is 6.')
-        o.add_option('--nsig_dt', dest='nsig_dt', default=6, type='float',
-                     help='Number of sigma above median value to flag in t direction'
-                     ' for xrfi_simple. Default is 6.')
-        o.add_option('--nsig_all', dest='nsig_all', default=0, type='float',
-                     help='Number of overall sigma above median value to flag'
-                     ' for xrfi_simple. Default is 0 (skip).')
-        o.add_option('--kt_size', dest='kt_size', default=8, type='int',
-                     help='Size of kernel in time dimension for detrend in xrfi '
-                     'algorithm. Default is 8.')
-        o.add_option('--kf_size', dest='kf_size', default=8, type='int',
-                     help='Size of kernel in frequency dimension for detrend in '
-                     'xrfi algorithm. Default is 8.')
-        o.add_option('--sig_init', dest='sig_init', default=6, type='float',
-                     help='Starting number of sigmas to flag on. Default is 6.')
-        o.add_option('--sig_adj', dest='sig_adj', default=2, type='float',
-                     help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
-    return o
+        a.prog = 'xrfi_run.py'
+        a.add_argument('--infile_format', default='miriad', type=str,
+                       help='File format for input files. Default is miriad.')
+        a.add_argument('--outfile_format', default='miriad', type=str,
+                       help='File format for output files. Default is miriad.')
+        a.add_argument('--extension', default='R', type=str,
+                       help='Extension to be appended to input file name. Default is "R".')
+        a.add_argument('--summary', action='store_true', default=False,
+                       help='Run summary of RFI flags and store in npz file.')
+        a.add_argument('--summary_ext', default='.flag_summary.npz',
+                       type=str, help='Extension to be appended to input file name'
+                       ' for summary file. Default is ".flag_summary.npz"')
+        a.add_argument('--xrfi_path', default='', type=str,
+                       help='Path to save flagged file to. Default is same directory as input file.')
+        a.add_argument('--algorithm', default='xrfi_simple', type=str,
+                       help='RFI-flagging algorithm to use. Default is xrfi_simple.')
+        a.add_argument('--nsig_df', default=6.0, type=float, help='Number of sigma '
+                       'above median value to flag in f direction for xrfi_simple. Default is 6.')
+        a.add_argument('--nsig_dt', default=6.0, type=float,
+                       help='Number of sigma above median value to flag in t direction'
+                       ' for xrfi_simple. Default is 6.')
+        a.add_argument('--nsig_all', default=0.0, type=float,
+                       help='Number of overall sigma above median value to flag'
+                       ' for xrfi_simple. Default is 0 (skip).')
+        a.add_argument('--kt_size', default=8, type=int,
+                       help='Size of kernel in time dimension for detrend in xrfi '
+                       'algorithm. Default is 8.')
+        a.add_argument('--kf_size', default=8, type=int,
+                       help='Size of kernel in frequency dimension for detrend in '
+                       'xrfi algorithm. Default is 8.')
+        a.add_argument('--sig_init', default=6.0, type=float,
+                       help='Starting number of sigmas to flag on. Default is 6.')
+        a.add_argument('--sig_adj', default=2.0, type=float,
+                       help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
+        a.add_argument('--broadcast', action='store_true', default=False,
+                       help='Broadcast flags across data based on thresholds. Default is False.')
+        a.add_argument('--bl_threshold', default=0., type=float,
+                       help='Fraction of flags required to trigger a broadcast across'
+                       ' baselines. Default is 0.')
+        a.add_argument('--freq_threshold', default=0.9, type=float,
+                       help='Fraction of channels required to trigger broadcast across'
+                       ' frequency (single time). Default is 0.9.')
+        a.add_argument('--time_threshold', default=0.9, type=float,
+                       help='Fraction of times required to trigger broadcast across'
+                       ' time (single frequency). Default is 0.9.')
+        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
+                       help='files for which to flag RFI.')
+    return a
 
 
 def get_pol(fname):
@@ -195,7 +211,7 @@ def metrics2mc(filename, ftype):
                 d['array_metrics'][metric]: Single metric value
     """
     d = {'ant_metrics': {}, 'array_metrics': {}}
-    if ftype is 'ant':
+    if ftype == 'ant':
         from hera_qm.ant_metrics import load_antenna_metrics
         data = load_antenna_metrics(filename)
         key2cat = {'final_metrics': 'ant_metrics',
@@ -216,12 +232,14 @@ def metrics2mc(filename, ftype):
             for antpol, val in data['removal_iteration'].items():
                 d['ant_metrics'][metric].append([antpol[0], antpol[1], val])
 
-    elif ftype is 'firstcal':
+    elif ftype == 'firstcal':
         from hera_qm.firstcal_metrics import load_firstcal_metrics
         data = load_firstcal_metrics(filename)
-        pol = data['pol']
-        d['array_metrics']['firstcal_metrics_good_sol'] = data['good_sol']
-        d['array_metrics']['firstcal_metrics_agg_std'] = data['agg_std']
+        pol = str(data['pol'])
+        met = 'firstcal_metrics_good_sol_' + pol
+        d['array_metrics'][met] = data['good_sol']
+        met = 'firstcal_metrics_agg_std_' + pol
+        d['array_metrics'][met] = data['agg_std']
         for met in ['ant_z_scores', 'ant_avg', 'ant_std']:
             metric = '_'.join(['firstcal_metrics', met])
             d['ant_metrics'][metric] = []
@@ -232,7 +250,7 @@ def metrics2mc(filename, ftype):
         for ant in data['bad_ants']:
             d['ant_metrics'][metric].append([ant, pol, 1.])
 
-    elif ftype is 'omnical':
+    elif ftype == 'omnical':
         from pyuvdata import UVCal
         uvcal = UVCal()
         uvcal.read_calfits(filename)

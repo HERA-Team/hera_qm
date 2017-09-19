@@ -125,6 +125,15 @@ class TestLowLevelFunctions(unittest.TestCase):
         with self.assertRaises(KeyError):
             ant_metrics.average_abs_metrics(metric1, metric3)
 
+    def test_compute_median_auto_power_dict(self):
+        power = ant_metrics.compute_median_auto_power_dict(self.data, self.pols, self.reds)
+        for key, p in power.items():
+            testp = np.median(np.mean(np.abs(self.data.get_data(*key))**2, axis=0))
+            self.assertEqual(p, testp)
+        for key in self.data.data.keys():
+            for pol in self.data.data[key].keys():
+                self.assertIn((key[0], key[1], pol), power.keys())
+
 
 class TestAntennaMetrics(unittest.TestCase):
 
@@ -233,36 +242,50 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertIn((81, 'x'), am2.crossedAntsRemoved)
         self.assertIn((81, 'y'), am2.crossedAntsRemoved)
 
+    def test_totally_dead_ants(self):
+        am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                          fileformat='miriad')
+        am2.data.data_array[am2.data.ant_1_array == 9, :, :, :] = 0.0
+        am2.reset_summary_stats()
+        am2.find_totally_dead_ants()
+        self.assertIn((9, 'x'), am2.xants)
+        self.assertIn((9, 'y'), am2.xants)
+        self.assertIn((9, 'x'), am2.deadAntsRemoved)
+        self.assertIn((9, 'y'), am2.deadAntsRemoved)
+        self.assertEqual(am2.removalIter[(9, 'x')], -1)
+        self.assertEqual(am2.removalIter[(9, 'y')], -1)
+
 
 class TestAntmetricsRun(object):
     def test_ant_metrics_run(self):
-        # get options object
-        o = utils.get_metrics_OptionParser('ant_metrics')
+        # get argument object
+        a = utils.get_metrics_ArgumentParser('ant_metrics')
         if DATA_PATH not in sys.path:
             sys.path.append(DATA_PATH)
         calfile = 'heratest_calfile'
-        opt0 = "-C {}".format(calfile)
-        opt1 = "-p xx,yy,xy,yx"
-        opt2 = "--crossCut=5"
-        opt3 = "--deadCut=5"
-        opt4 = "--extension=.ant_metrics.json"
-        opt5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
-        opt6 = "--vis_format=miriad"
-        options = ' '.join([opt0, opt1, opt2, opt3, opt4, opt5, opt6])
+        arg0 = "-C {}".format(calfile)
+        arg1 = "-p xx,yy,xy,yx"
+        arg2 = "--crossCut=5"
+        arg3 = "--deadCut=5"
+        arg4 = "--extension=.ant_metrics.json"
+        arg5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        arg6 = "--vis_format=miriad"
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6])
 
         # test running with no files
-        cmd = ' '.join([options, ''])
-        opts, args = o.parse_args(cmd.split())
+        cmd = ' '.join([arguments, ''])
+        args = a.parse_args(cmd.split())
         history = cmd
-        nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run, args, opts, history)
+        nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run, args.files,
+                         args, history)
 
         # test running with a lone file
         lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-        cmd = ' '.join([options, lone_file])
-        opts, args = o.parse_args(cmd.split())
+        cmd = ' '.join([arguments, lone_file])
+        args = a.parse_args(cmd.split())
         history = cmd
         # this test raises a warning, then fails...
-        args = [AssertionError, ant_metrics.ant_metrics_run, args, opts, history]
+        args = [AssertionError, ant_metrics.ant_metrics_run, args.files, args, history]
         uvtest.checkWarnings(nt.assert_raises, args, nwarnings=1,
                              message='Could not find')
 
@@ -272,11 +295,37 @@ class TestAntmetricsRun(object):
                                  'zen.2457698.40355.HH.uvcA.ant_metrics.json')
         if os.path.exists(dest_file):
             os.remove(dest_file)
-        cmd = ' '.join([options, xx_file])
-        opts, args = o.parse_args(cmd.split())
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
         history = cmd
-        ant_metrics.ant_metrics_run(args, opts, history)
+        ant_metrics.ant_metrics_run(args.files, args, history)
         nt.assert_true(os.path.exists(dest_file))
+
+    def test_ant_metrics_run_nocalfile(self):
+        # get arguments
+        a = utils.get_metrics_ArgumentParser('ant_metrics')
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        arg0 = "-p xx,yy,xy,yx"
+        arg1 = "--crossCut=5"
+        arg2 = "--deadCut=5"
+        arg3 = "--extension=.ant_metrics.json"
+        arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        arg5 = "--vis_format=miriad"
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5])
+
+        # test running with no calfile
+        xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+        dest_file = os.path.join(DATA_PATH, 'test_output',
+                                 'zen.2458002.47754.HH.uvA.ant_metrics.json')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        ant_metrics.ant_metrics_run(args.files, args, history)
+        nt.assert_true(os.path.exists(dest_file))
+
 
 if __name__ == '__main__':
     unittest.main()

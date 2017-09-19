@@ -4,8 +4,9 @@ import sys
 from hera_qm import utils
 from hera_qm import xrfi
 
-o = utils.get_metrics_OptionParser('xrfi')
-opts, files = o.parse_args(sys.argv[1:])
+a = utils.get_metrics_ArgumentParser('xrfi')
+args = a.parse_args()
+files = args.files
 history = ' '.join(sys.argv)
 
-xrfi.xrfi_run(files, opts, history)
+xrfi.xrfi_run(files, args, history)

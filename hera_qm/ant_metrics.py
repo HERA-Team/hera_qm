@@ -103,6 +103,16 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
         return per_antenna_modified_z_scores(timeFreqMeans)
 
 
+def compute_median_auto_power_dict(data, pols, reds):
+    '''Computes the median over frequency of the visibility squared, averaged over time.'''
+    autoPower = {}
+    for pol in pols:
+        for bls in reds:
+            for (i, j) in bls:
+                autoPower[i, j, pol] = np.median(np.mean(np.abs(data.get_data(i, j, pol))**2, axis=0))
+    return autoPower
+
+
 def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False, crossPol=False):
     '''Calculates the extent to which baselines involving an antenna do not correlate
     with others they are nominmally redundant with.
@@ -123,14 +133,8 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
     Very small numbers are probably bad antennas.
     '''
 
-    # Precompute auto-powers to save time
-    autoPower = {}
-    for pol in pols:
-        for bls in reds:
-            for (i, j) in bls:
-                autoPower[i, j, pol] = np.median(np.sum(np.abs(data.get_data(i, j, pol))**2, axis=0))
-
     # Compute power correlations and assign them to each antenna
+    autoPower = compute_median_auto_power_dict(data, pols, reds)
     antCorrs = {(ant, antpol): 0.0 for ant in ants for antpol in antpols if
                 (ant, antpol) not in xants}
     antCounts = deepcopy(antCorrs)
@@ -146,8 +150,8 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
                         data0 = data.get_data(ant0_i, ant0_j, pol0)
                         for (ant1_i, ant1_j) in bls[n + 1:]:
                             data1 = data.get_data(ant1_i, ant1_j, pol1)
-                            corr = np.median(np.abs(np.sum(data0 * data1.conj(),
-                                                           axis=0)))
+                            corr = np.median(np.abs(np.mean(data0 * data1.conj(),
+                                                            axis=0)))
                             corr /= np.sqrt(autoPower[ant0_i, ant0_j, pol0] *
                                             autoPower[ant1_i, ant1_j, pol1])
                             antsInvolved = [(ant0_i, pol0[0]), (ant0_j, pol0[1]),
@@ -276,7 +280,7 @@ def average_abs_metrics(metrics1, metrics2):
 
     if set(metrics1.keys()) != set(metrics2.keys()):
         raise KeyError('Metrics being averaged have differnt (ant,antpol) keys.')
-    return {key: np.abs(metrics1[key] / 2) + np.abs(metrics2[key] / 2) for
+    return {key: np.nanmean([np.abs(metrics1[key]), np.abs(metrics2[key])]) for
             key in metrics1.keys()}
 
 
@@ -367,6 +371,24 @@ class Antenna_Metrics():
         self.allMetrics, self.allModzScores = [], []
         self.finalMetrics, self.finalModzScores = {}, {}
 
+    def find_totally_dead_ants(self):
+        '''Flags antennas whose median autoPower that they are involved in is 0.0.
+        These antennas are marked as dead, but they do not appear in recorded antenna
+        metrics or zscores. Their removal iteration is -1 (i.e. before iterative flagging).'''
+
+        autoPowers = compute_median_auto_power_dict(self.data, self.pols, self.reds)
+        power_list_by_ant = {(ant, antpol): [] for ant in self.ants for antpol
+                             in self.antpols if (ant, antpol) not in self.xants}
+        for (ant0, ant1, pol), power in autoPowers.items():
+            if (ant0, pol[0]) not in self.xants and (ant1, pol[1]) not in self.xants:
+                power_list_by_ant[(ant0, pol[0])].append(power)
+                power_list_by_ant[(ant1, pol[1])].append(power)
+        for key, val in power_list_by_ant.items():
+            if np.median(val) == 0:
+                self.xants.append(key)
+                self.deadAntsRemoved.append(key)
+                self.removalIter[key] = -1
+
     def _run_all_metrics(self):
         '''Designed to be run as part of AntennaMetrics.iterative_antenna_metrics_and_flagging().'''
 
@@ -403,6 +425,7 @@ class Antenna_Metrics():
         '''
 
         self.reset_summary_stats()
+        self.find_totally_dead_ants()
         self.crossCut, self.deadCut = crossCut, deadCut
 
         # Loop over
@@ -467,13 +490,13 @@ class Antenna_Metrics():
 
 
 # code for running ant_metrics on a file
-def ant_metrics_run(files, opts, history):
+def ant_metrics_run(files, args, history):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
     Args:
        files -- a list of files to run ant metrics on. Can be any of the 4 polarizations
-       opts -- an optparse OptionParser instance
+       args -- parsed arguments via argparse.ArgumentParser.parse_args
     Return:
        None
 
@@ -486,6 +509,7 @@ def ant_metrics_run(files, opts, history):
     """
     try:
         from hera_cal.omni import aa_to_info
+        from hera_cal.utils import get_aa_from_uv
     except(ImportError):
         from nose.plugins.skip import SkipTest
         raise SkipTest('hera_cal.omni not detected. It must be installed to calculate array info')
@@ -495,32 +519,40 @@ def ant_metrics_run(files, opts, history):
         raise AssertionError('Please provide a list of visibility files')
 
     # define polarizations to look for
-    if opts.pol == '':
+    if args.pol == '':
         # default polarization list
         pol_list = ['xx', 'yy', 'xy', 'yx']
     else:
         # assumes polarizations are passed in as comma-separated list, e.g. 'xx,xy,yx,yy'
-        pol_list = opts.pol.split(',')
+        pol_list = args.pol.split(',')
 
     # generate a list of all files to be read in
     fullpol_file_list = utils.generate_fullpol_file_list(files, pol_list)
     if len(fullpol_file_list) == 0:
         raise AssertionError('Could not find all 4 polarizations for any files provided')
 
-    # define freqs
-    # note that redundancy calculation does not depend on this, so this is just a dummy range
-    freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
-
-    # process calfile
-    aa = aipy.cal.get_aa(opts.cal, freqs)
+    if args.cal is not None:
+        # define freqs
+        # note that redundancy calculation does not depend on this, so this is just a dummy range
+        freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
+        # process calfile
+        aa = aipy.cal.get_aa(args.cal, freqs)
+    else:
+        # generate aa object from file
+        # N.B.: assumes redunancy information is the same for all files passed in
+        first_file = fullpol_file_list[0][0]
+        uvd = UVData()
+        uvd.read_miriad(first_file)
+        aa = get_aa_from_uv(uvd)
+        del uvd
     info = aa_to_info(aa, pols=[pol_list[-1][0]])
     reds = info.get_reds()
 
     # do the work
     for jd_list in fullpol_file_list:
-        am = Antenna_Metrics(jd_list, reds, fileformat=opts.vis_format)
-        am.iterative_antenna_metrics_and_flagging(crossCut=opts.crossCut, deadCut=opts.deadCut,
-                                                  verbose=opts.verbose)
+        am = Antenna_Metrics(jd_list, reds, fileformat=args.vis_format)
+        am.iterative_antenna_metrics_and_flagging(crossCut=args.crossCut, deadCut=args.deadCut,
+                                                  verbose=args.verbose)
 
         # add history
         am.history = am.history + history
@@ -530,12 +562,12 @@ def ant_metrics_run(files, opts, history):
         dirname = os.path.dirname(abspath)
         basename = os.path.basename(base_filename)
         nopol_filename = re.sub('\.{}\.'.format(pol_list[0]), '.', basename)
-        if opts.metrics_path == '':
+        if args.metrics_path == '':
             # default path is same directory as file
             metrics_path = dirname
         else:
-            metrics_path = opts.metrics_path
-        metrics_basename = nopol_filename + opts.extension
+            metrics_path = args.metrics_path
+        metrics_basename = nopol_filename + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
         am.save_antenna_metrics(metrics_filename)
 

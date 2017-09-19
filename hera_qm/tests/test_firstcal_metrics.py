@@ -143,21 +143,21 @@ class Test_FirstCal_Metrics(unittest.TestCase):
 
 class TestFirstcalMetricsRun(unittest.TestCase):
     def test_firstcal_metrics_run(self):
-        # get options object
-        o = utils.get_metrics_OptionParser('firstcal_metrics')
+        # get argument object
+        a = utils.get_metrics_ArgumentParser('firstcal_metrics')
         if DATA_PATH not in sys.path:
             sys.path.append(DATA_PATH)
-        opt0 = "--std_cut=0.5"
-        opt1 = "--extension=.firstcal_metrics.json"
-        opt2 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
-        options = ' '.join([opt0, opt1, opt2])
+        arg0 = "--std_cut=0.5"
+        arg1 = "--extension=.firstcal_metrics.json"
+        arg2 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        arguments = ' '.join([arg0, arg1, arg2])
 
         # Test runing with no files
-        cmd = ' '.join([options, ''])
-        opts, args = o.parse_args(cmd.split())
+        cmd = ' '.join([arguments, ''])
+        args = a.parse_args(cmd.split())
         history = cmd
         self.assertRaises(AssertionError, firstcal_metrics.firstcal_metrics_run,
-                          args, opts, history)
+                          args.files, args, history)
 
         # Test running with file
         filename = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
@@ -166,10 +166,10 @@ class TestFirstcalMetricsRun(unittest.TestCase):
                                  'firstcal_metrics.json')
         if os.path.exists(dest_file):
             os.remove(dest_file)
-        cmd = ' '.join([options, filename])
-        opts, args = o.parse_args(cmd.split())
+        cmd = ' '.join([arguments, filename])
+        args = a.parse_args(cmd.split())
         history = cmd
-        firstcal_metrics.firstcal_metrics_run(args, opts, history)
+        firstcal_metrics.firstcal_metrics_run(args.files, args, history)
         self.assertTrue(os.path.exists(dest_file))
 
 
