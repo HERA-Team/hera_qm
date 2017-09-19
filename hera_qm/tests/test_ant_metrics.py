@@ -236,15 +236,15 @@ class TestAntennaMetrics(unittest.TestCase):
     def test_totally_dead_ants(self):
         am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
                                           fileformat='miriad')
-        am2.data.data_array[am2.data.ant_1_array==9,:,:,:] = 0.0
+        am2.data.data_array[am2.data.ant_1_array == 9, :, :, :] = 0.0
         am2.reset_summary_stats()
         am2.find_totally_dead_ants()
         self.assertIn((9, 'x'), am2.xants)
         self.assertIn((9, 'y'), am2.xants)
         self.assertIn((9, 'x'), am2.deadAntsRemoved)
         self.assertIn((9, 'y'), am2.deadAntsRemoved)
-        self.assertEqual(am2.removalIter[(9,'x')], -1)
-        self.assertEqual(am2.removalIter[(9,'y')], -1)
+        self.assertEqual(am2.removalIter[(9, 'x')], -1)
+        self.assertEqual(am2.removalIter[(9, 'y')], -1)
 
 
 class TestAntmetricsRun(object):
