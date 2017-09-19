@@ -114,7 +114,11 @@ def detrend_medfilt(d, Kt=8, Kf=8):
         raise ValueError('Kernel size exceeds data.')
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
-    d_sm = medfilt2d(d, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+    if np.iscomplexobj(d):
+        d_sm_r = medfilt2d(d.real, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+        d_sm_i = medfilt2d(d.imag, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+        d_sm = d_sm_r + 1j*d_sm_i
+    else: d_sm = medfilt2d(d, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts median on same scale as average
