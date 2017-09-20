@@ -288,6 +288,23 @@ class TestBackground(Template, unittest.TestCase):
         self.mode['watershed'] = [True, True]
 
 
+class TestComplex(object):
+
+    def test_detrend_medfilt(self):
+        RFI = 50
+        snr = 10
+        nsig = 4
+        np.random.seed(0)
+        data = np.array(qmtest.noise((SIZE, SIZE)))
+        rfi = (np.random.randint(SIZE, size=RFI), np.random.randint(SIZE, size=RFI))
+        data[rfi] = snr
+        f = xrfi.detrend_medfilt(data)
+        f = np.where(f > nsig, 1, 0)
+        cf, fp = get_accuracy(f, rfi)
+        nt.assert_greater_equal(cf, 0.9)
+        nt.assert_less_equal(fp, 0.01)
+
+
 class TestXrfiRun(object):
     def test_xrfi_run_xrfi(self):
         # get argument object
