@@ -262,33 +262,20 @@ def xrfi_run(files, args, history):
         for key, d in uvd.antpairpol_iter():
             ind1, ind2, ipol = uvd._key2inds(key)
 
-            # make sure that we are selecting some number of values
-            if len(ind1) > 0:
-                f = pre_flags[ind1, 0, :, ipol]
+            for ind in [ind1, ind2]:
+                if len(ind) == 0:
+                    continue
+                f = pre_flags[ind, 0, :, ipol]
                 if args.algorithm == 'xrfi_simple':
-                    uvd.flag_array[ind1, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
-                                                                   nsig_df=args.nsig_df,
-                                                                   nsig_dt=args.nsig_dt,
-                                                                   nsig_all=args.nsig_all)
+                    uvd.flag_array[ind, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
+                                                                  nsig_df=args.nsig_df,
+                                                                  nsig_dt=args.nsig_dt,
+                                                                  nsig_all=args.nsig_all)
                 elif args.algorithm == 'xrfi':
-                    uvd.flag_array[ind1, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
-                                                            Kf=args.kf_size,
-                                                            sig_init=args.sig_init,
-                                                            sig_adj=args.sig_adj)
-                else:
-                    raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
-            if len(ind2) > 0:
-                f = pre_flags[ind2, 0, :, ipol]
-                if args.algorithm == 'xrfi_simple':
-                    uvd.flag_array[ind2, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
-                                                                   nsig_df=args.nsig_df,
-                                                                   nsig_dt=args.nsig_dt,
-                                                                   nsig_all=args.nsig_all)
-                elif args.algorithm == 'xrfi':
-                    uvd.flag_array[ind2, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
-                                                            Kf=args.kf_size,
-                                                            sig_init=args.sig_init,
-                                                            sig_adj=args.sig_adj)
+                    uvd.flag_array[ind, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
+                                                           Kf=args.kf_size,
+                                                           sig_init=args.sig_init,
+                                                           sig_adj=args.sig_adj)
                 else:
                     raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
 
