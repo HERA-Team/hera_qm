@@ -35,7 +35,7 @@ setup_args = {
     'packages': ['hera_qm'],
     'include_package_data': True,
     'scripts': ['scripts/ant_metrics_run.py', 'scripts/xrfi_run.py',
-                'scripts/firstcal_metrics_run.py'],
+                'scripts/firstcal_metrics_run.py', 'scripts/omnical_metrics_run.py'],
     'version': version.version,
     'package_data': {'hera_qm': data_files},
     'install_requires': ['astropy>=2.0'],

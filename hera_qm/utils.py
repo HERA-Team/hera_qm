@@ -12,11 +12,11 @@ def get_metrics_ArgumentParser(method_name):
     Function to get an ArgumentParser instance for working with metrics wrappers.
 
     Args:
-        method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", or "xrfi"
+        method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", "omnical_metrics", or "xrfi"
     Returns:
         a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
-    methods = ["ant_metrics", "firstcal_metrics", "xrfi"]
+    methods = ["ant_metrics", "firstcal_metrics", "xrfi", "omnical_metrics"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -52,6 +52,26 @@ def get_metrics_ArgumentParser(method_name):
                        help='Path to save metrics file to. Default is same directory as file.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.calfits files for which to calculate firstcal_metrics.')
+    elif method_name == 'omnical_metrics':
+        a.prog = 'omnical_metrics.py'
+        a.add_argument('--fc_files', metavar='fc_files', type=str, nargs='*', default=[],
+                       help='*.first.calfits files of firstcal solutions to perform omni-firstcal comparison metrics')
+        a.add_argument('--no_bandcut', action='store_true', default=False,
+                       help="flag to turn off cutting of frequency band edges before calculating metrics")
+        a.add_argument('--phs_noise_cut', type=float, default=1.5,
+                       help="set phase noise level cut. see OmniCal_Metrics.run_metrics() for details.")
+        a.add_argument('--phs_std_cut', type=float, default=0.3,
+                       help="set phase stand dev cut. see OmniCal_Metrics.run_metrics() for details.")
+        a.add_argument('--chisq_std_cut', type=float, default=5.0,
+                       help="set chisq stand dev cut. see OmniCal_Metrics.run_metrics() for details.")
+        a.add_argument('--make_plots', action='store_true', default=False,
+                       help="make .png plots of metrics")
+        a.add_argument('--extension', default='.omni_metrics.json', type=str,
+                       help='Extension to be appended to the metrics file name. Default is ".omni_metrics.json"')
+        a.add_argument('--metrics_path', default='', type=str,
+                       help='Path to save metrics file to. Default is same directory as file.')
+        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
+                       help='*.omni.calfits files for which to calculate omnical_metrics.')
     elif method_name == 'xrfi':
         a.prog = 'xrfi_run.py'
         a.add_argument('--infile_format', default='miriad', type=str,
