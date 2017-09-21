@@ -1,3 +1,4 @@
+from __future__ import division
 import unittest
 import nose.tools as nt
 import glob
@@ -287,6 +288,23 @@ class TestBackground(Template, unittest.TestCase):
         self.mode['watershed'] = [True, True]
 
 
+class TestComplex(object):
+
+    def test_detrend_medfilt(self):
+        RFI = 50
+        snr = 10
+        nsig = 4
+        np.random.seed(0)
+        data = np.array(qmtest.noise((SIZE, SIZE)))
+        rfi = (np.random.randint(SIZE, size=RFI), np.random.randint(SIZE, size=RFI))
+        data[rfi] = snr
+        f = xrfi.detrend_medfilt(data)
+        f = np.where(f > nsig, 1, 0)
+        cf, fp = get_accuracy(f, rfi)
+        nt.assert_greater_equal(cf, 0.9)
+        nt.assert_less_equal(fp, 0.01)
+
+
 class TestXrfiRun(object):
     def test_xrfi_run_xrfi(self):
         # get argument object
@@ -331,7 +349,9 @@ class TestXrfiRun(object):
         arg6 = "--nsig_df=6"
         arg7 = "--nsig_all=0"
         arg8 = "--summary"
-        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8])
+        arg9 = "--broadcast"  # Hit line here, tested thoroughly in TestBroadcast
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+                              arg8, arg9])
 
         # test running with no files
         cmd = ' '.join([arguments, ''])
@@ -462,6 +482,36 @@ class TestSummary(unittest.TestCase):
         self.assertEqual(data['freqs'].shape, (nf,))
         self.assertEqual(data['pols'], ['XX'])
         self.assertEqual(data['version'], hera_qm_version_str)
+
+
+class TestBroadcast(unittest.TestCase):
+    def test_summarize_flags(self):
+        from pyuvdata import UVData
+
+        infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        uv = UVData()
+        uv.read_miriad(infile)
+
+        # Test baseline thresholding
+        uv.flag_array[0, 0, uv.Nfreqs // 2, 0] = True
+        bflags = xrfi.broadcast_flags(uv, bl_threshold=0.)
+        nbl = np.sum(uv.time_array == uv.time_array[0])
+        self.assertEqual(bflags.sum(), nbl)
+        # Check thresholding works correctly
+        bflags = xrfi.broadcast_flags(uv, bl_threshold=0.5)
+        self.assertEqual(bflags.sum(), 1)
+
+        # Test frequency thresholding
+        t_ind = np.where(uv.time_array == uv.time_array[0])[0]
+        uv.flag_array[t_ind, 0, 0:(uv.Nfreqs * 3 // 4), 0] = True
+        bflags = xrfi.broadcast_flags(uv, bl_threshold=1., freq_threshold=0.5)
+        self.assertEqual(bflags.sum(), nbl * uv.Nfreqs)
+
+        # Test time thresholding
+        uv.flag_array = np.zeros_like(uv.flag_array)
+        uv.flag_array[0:(uv.Nblts - 10), 0, 0, 0] = True
+        bflags = xrfi.broadcast_flags(uv, bl_threshold=1.)
+        self.assertEqual(bflags.sum(), uv.Nblts)
 
 
 if __name__ == '__main__':

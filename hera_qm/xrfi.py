@@ -114,7 +114,12 @@ def detrend_medfilt(d, Kt=8, Kf=8):
         raise ValueError('Kernel size exceeds data.')
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
-    d_sm = medfilt2d(d, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+    if np.iscomplexobj(d):
+        d_sm_r = medfilt2d(d.real, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+        d_sm_i = medfilt2d(d.imag, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+        d_sm = d_sm_r + 1j * d_sm_i
+    else:
+        d_sm = medfilt2d(d, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts median on same scale as average
@@ -251,40 +256,42 @@ def xrfi_run(files, args, history):
         else:
             raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
+        pre_flags = np.copy(uvd.flag_array)
+        uvd.flag_array = np.zeros_like(uvd.flag_array)
         # create an iterator over data contents
         for key, d in uvd.antpairpol_iter():
             ind1, ind2, ipol = uvd._key2inds(key)
 
             # make sure that we are selecting some number of values
             if len(ind1) > 0:
-                f = uvd.flag_array[ind1, 0, :, ipol]
+                f = pre_flags[ind1, 0, :, ipol]
                 if args.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=args.nsig_df,
-                                        nsig_dt=args.nsig_dt, nsig_all=args.nsig_all)
+                    uvd.flag_array[ind1, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
+                                                                   nsig_df=args.nsig_df,
+                                                                   nsig_dt=args.nsig_dt,
+                                                                   nsig_all=args.nsig_all)
                 elif args.algorithm == 'xrfi':
-                    new_f = xrfi(np.abs(d), f=f, Kt=args.kt_size, Kf=args.kf_size,
-                                 sig_init=args.sig_init, sig_adj=args.sig_adj)
+                    uvd.flag_array[ind1, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
+                                                            Kf=args.kf_size,
+                                                            sig_init=args.sig_init,
+                                                            sig_adj=args.sig_adj)
                 else:
                     raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
-                # combine old flags and new flags
-                uvd.flag_array[ind1, 0, :, ipol] = np.logical_or(f, new_f)
             if len(ind2) > 0:
-                f = uvd.flag_array[ind2, 0, :, ipol]
+                f = pre_flags[ind2, 0, :, ipol]
                 if args.algorithm == 'xrfi_simple':
-                    new_f = xrfi_simple(np.abs(d), f=f, nsig_df=args.nsig_df,
-                                        nsig_dt=args.nsig_dt, nsig_all=args.nsig_all)
+                    uvd.flag_array[ind2, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
+                                                                   nsig_df=args.nsig_df,
+                                                                   nsig_dt=args.nsig_dt,
+                                                                   nsig_all=args.nsig_all)
                 elif args.algorithm == 'xrfi':
-                    new_f = xrfi(np.abs(d), f=f, Kt=args.kt_size, Kf=args.kf_size,
-                                 sig_init=args.sig_init, sig_adj=args.sig_adj)
+                    uvd.flag_array[ind2, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
+                                                            Kf=args.kf_size,
+                                                            sig_init=args.sig_init,
+                                                            sig_adj=args.sig_adj)
                 else:
                     raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
-                # combine old flags and new flags
-                uvd.flag_array[ind2, 0, :, ipol] = np.logical_or(f, new_f)
 
-        # append to history
-        uvd.history = uvd.history + history
-
-        # save output when we're done
         if args.xrfi_path == '':
             # default to the same directory
             abspath = os.path.abspath(fn)
@@ -292,6 +299,23 @@ def xrfi_run(files, args, history):
         else:
             dirname = args.xrfi_path
         basename = os.path.basename(fn)
+
+        if args.summary:
+            sum_file = ''.join([basename, args.summary_ext])
+            sum_path = os.path.join(dirname, sum_file)
+            summarize_flags(uvd, sum_path)
+
+        if args.broadcast:
+            uvd.flag_array = broadcast_flags(uvd, bl_threshold=args.bl_threshold,
+                                             freq_threshold=args.freq_threshold,
+                                             time_threshold=args.time_threshold)
+
+        # Compare old and new
+        uvd.flag_array = np.logical_or(uvd.flag_array, pre_flags)
+        # append to history
+        uvd.history = uvd.history + history
+
+        # save output when we're done
         filename = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, filename)
         if args.outfile_format == 'miriad':
@@ -301,11 +325,38 @@ def xrfi_run(files, args, history):
         else:
             raise ValueError('Unrecognized output file format ' + str(args.outfile_format))
 
-        if args.summary:
-            sum_file = ''.join([basename, args.summary_ext])
-            sum_path = os.path.join(dirname, sum_file)
-            summarize_flags(uvd, sum_path)
     return
+
+
+def broadcast_flags(uv, bl_threshold=0., freq_threshold=0.9, time_threshold=0.9):
+    """ Broadcast flags across baselines and polarizations if average is above threshold
+    Args:
+        uv -- UVData object containing flag_array to broadcast
+        bl_threshold -- Fraction of flags required to trigger a broadcast across
+                        baselines. Default is 0.
+        freq_threshold -- Fraction of channels required to trigger broadcast across
+                          frequency (single time). Default is 0.9.
+        time_threshold -- Fraction of times required to trigger broadcast across
+                          time (single frequency). Default is 0.9.
+
+    Return:
+        bflags -- Broadcasted flag array, same shape as uv.flag_array
+    """
+    bflags = np.zeros_like(uv.flag_array)
+    for t in np.unique(uv.time_array):
+        t_ind = np.where(uv.time_array == t)[0]
+        nf = np.mean(uv.flag_array[t_ind, :, :, :], axis=(0, 1, 3))
+        if nf.mean() > freq_threshold:
+            # Most frequency channels are flagged, flag entire time.
+            bflags[t_ind, 0, :, :] = True
+        else:
+            # Only flag if higher than bl_threshold
+            bflags[t_ind, 0, :, :] = np.logical_or(uv.flag_array[t_ind, 0, :, :],
+                                                   nf.reshape(1, -1, 1) > bl_threshold)
+    # Next look for high fraction across time
+    nt = np.mean(uv.flag_array, axis=(0, 1, 3))
+    bflags = np.logical_or(bflags, nt.reshape(1, 1, -1, 1) > time_threshold)
+    return bflags
 
 
 def summarize_flags(uv, outfile):

@@ -107,6 +107,17 @@ def get_metrics_ArgumentParser(method_name):
                        help='Starting number of sigmas to flag on. Default is 6.')
         a.add_argument('--sig_adj', default=2.0, type=float,
                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
+        a.add_argument('--broadcast', action='store_true', default=False,
+                       help='Broadcast flags across data based on thresholds. Default is False.')
+        a.add_argument('--bl_threshold', default=0., type=float,
+                       help='Fraction of flags required to trigger a broadcast across'
+                       ' baselines. Default is 0.')
+        a.add_argument('--freq_threshold', default=0.9, type=float,
+                       help='Fraction of channels required to trigger broadcast across'
+                       ' frequency (single time). Default is 0.9.')
+        a.add_argument('--time_threshold', default=0.9, type=float,
+                       help='Fraction of times required to trigger broadcast across'
+                       ' time (single frequency). Default is 0.9.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='files for which to flag RFI.')
     return a
