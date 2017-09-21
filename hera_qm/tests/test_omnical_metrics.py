@@ -143,6 +143,19 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.assertRaises(Exception, self.OM.plot_chisq_metric)
         self.OM.run_metrics()
 
+    def test_plot_chisq_tavg(self):
+        self.OM.run_metrics(firstcal_file=self.fc_file)
+        fname = os.path.join(self.OM.filedir, 'chisq_tavg.png')
+        # test execution
+        if os.path.isfile(fname):
+            os.remove(fname)
+        self.OM.plot_chisq_tavg(fname=fname, save=True)
+        self.assertTrue(os.path.isfile(fname))
+        os.remove(fname)
+        self.OM.plot_chisq_tavg(ants=self.OM.ant_array[:2], fname=fname, save=True)
+        self.assertTrue(os.path.isfile(fname))
+        os.remove(fname)
+
     def test_plot_gains(self):
         self.OM.run_metrics(firstcal_file=self.fc_file)
         fname = os.path.join(self.OM.filedir, 'gains.png')
@@ -153,6 +166,13 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
         self.OM.plot_gains(plot_type='amp', fname=fname, save=True)
+        self.assertEqual(os.path.isfile(fname), True)
+        os.remove(fname)
+        # divide_fc = True
+        self.OM.plot_gains(plot_type='phs', fname=fname, save=True, divide_fc=True)
+        self.assertEqual(os.path.isfile(fname), True)
+        os.remove(fname)
+        self.OM.plot_gains(plot_type='amp', fname=fname, save=True, divide_fc=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
         # plot w/ fname and outpath
