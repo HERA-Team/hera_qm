@@ -81,9 +81,9 @@ db = mc.connect_to_mc_db(mcargs)
 session = db.sessionmaker()
 h = sys_handling.Handling(session)
 stations_conn = h.get_all_fully_connected_at_date(at_date=latest)
-antpos = np.zeros((np.max(ants), 2))
+antpos = np.zeros((np.max(ants) + 1, 2))
 ants_connected = []
-antnames = ["" for x in range(np.max(ants))]
+antnames = ["" for x in range(np.max(ants) + 1)]
 for stn in stations_conn:
     ants_connected.append(stn['antenna_number'])
     antpos[stn['antenna_number'], :] = [stn['easting'], stn['northing']]
