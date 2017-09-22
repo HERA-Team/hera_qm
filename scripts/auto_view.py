@@ -92,9 +92,9 @@ array_center = np.mean(antpos[antpos[:, 0] != 0, :], axis=0)
 antpos -= array_center
 
 # Get receiverator and PAM info
-receiverators = ["" for x in range(np.max(ants))]
-rxr_nums = np.zeros(np.max(ants), dtype=int)
-pams = ["" for x in range(np.max(ants))]
+receiverators = ["" for x in range(np.max(ants) + 1)]
+rxr_nums = np.zeros(np.max(ants) + 1, dtype=int)
+pams = ["" for x in range(np.max(ants) + 1)]
 for ant in ants_connected:
     pinfo = h.get_pam_info(antnames[ant], latest)
     receiverators[ant] = pinfo['e'][0][:-1]
