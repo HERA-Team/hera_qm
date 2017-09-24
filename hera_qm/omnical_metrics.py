@@ -71,6 +71,20 @@ def load_omnical_metrics(filename):
 
     return metrics
 
+def load_firstcal_gains(fc_file):
+    """
+    load firstcal delays and turn into phase gains
+
+    fc_file : str
+        path to firstcal .calfits file
+    """
+    uvf = UVCal()
+    uvf.read_calfits(fc_file)
+    freqs = uvf.freq_array.squeeze()
+    firstcal_delays = np.moveaxis(uvf.delay_array, 2, 3)[:, 0, :, :, :]
+    firstcal_gains = np.array(map(lambda x: np.exp(-2j*np.pi*freqs.reshape(1,-1,1)*x), firstcal_delays))
+    return firstcal_delays, firstcal_gains
+
 def plot_phs_metric(metrics, plot_type='std', ax=None, save=False, fname=None, outpath=None, **kwargs):
     """
     Plot omnical phase metric
@@ -89,7 +103,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False, fname=None, o
         'ft' plots the phase noise level
         see self.phs_FT_metric for details
 
-    ax : matplotli axis object
+    ax : matplotlib axis object
 
     save : bool, default=False
         if True, save image as a png
@@ -256,6 +270,7 @@ class OmniCal_Metrics(object):
         self.filename    = os.path.basename(omni_calfits)
         self.version_str = hera_qm_version_str
         self.history     = ''
+        self.firstcal_file = None
 
         # Instantiate Data Object
         self.uv = UVCal()
@@ -277,6 +292,7 @@ class OmniCal_Metrics(object):
 
         # Assign total chisq array
         self.chisq = np.moveaxis(self.uv.quality_array, 2, 3)[:, 0, :, :, :]
+        self.chisq_tavg = np.median(self.chisq, axis=1)
 
     def run_metrics(self, firstcal_file=None, cut_band=True, phs_noise_cut=1.0,
                           phs_std_cut=0.3, chisq_std_cut=5.0):
@@ -318,9 +334,6 @@ class OmniCal_Metrics(object):
         else:
             self.band = np.arange(self.Nfreqs)
 
-        # Get time averaged chisq for each antenna
-        self.chisq_tavg = np.median(self.chisq, axis=1)
-
         # Get robust standard deviation of chisq for each antenna
         chisq_ant_std       = np.sqrt(np.array(map(astats.biweight_midvariance, self.chisq[:, :, self.band, :])))
         chisq_ant_std_loc   = astats.biweight_location(chisq_ant_std)
@@ -333,19 +346,9 @@ class OmniCal_Metrics(object):
         # convert to dictionaries
         chisq_ant_std = OrderedDict(zip(self.ant_array, chisq_ant_std))
 
-        if firstcal_file is not None:
+        if firstcal_file is not None and hasattr(self, 'firstcal_gains') == False:
             # load fc gain solutions
-            uvfc = UVCal()
-            uvfc.read_calfits(firstcal_file)
-
-            # check Nants_data is same as omnical
-            if uvfc.Nants_data != self.Nants:
-                raise Exception("Nants_data for firstcal file is not the same as omnical file.")
-
-            # turn firstcal delay into phase
-            self.firstcal_delays = np.moveaxis(uvfc.delay_array, 2, 3)[:, 0, :, :, :]
-            self.firstcal_gains = np.array(map(lambda x: np.exp(-2j*np.pi*self.freqs.reshape(1,-1,1)*x), \
-                                                    self.firstcal_delays))
+            self.firstcal_delays, self.firstcal_gains = load_firstcal_gains(firstcal_file)
 
             # get gain difference between omnical and firstcal gain solutions
             self.gain_diff = self.omni_gains * self.firstcal_gains.conj()
@@ -356,7 +359,7 @@ class OmniCal_Metrics(object):
 
             # run phs std metric
             (ant_phs_std, tot_phs_std, phs_std_bad_ants, 
-            phs_std_good_sol) = self.phs_std_metric(np.angle(self.gain_diff), phs_std_cut=phs_std_cut,)
+            phs_std_good_sol) = self.phs_std_metric(np.angle(self.gain_diff), phs_std_cut=phs_std_cut)
 
         # initialize metrics
         metrics                        = OrderedDict()
