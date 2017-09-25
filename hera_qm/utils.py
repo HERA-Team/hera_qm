@@ -69,6 +69,18 @@ def get_metrics_ArgumentParser(method_name):
                        help='Path to save flagged file to. Default is same directory as input file.')
         a.add_argument('--algorithm', default='xrfi_simple', type=str,
                        help='RFI-flagging algorithm to use. Default is xrfi_simple.')
+        a.add_argument('--flag_data', default=True, type=bool, help='Run algorithm '
+                       'on full set of data.')
+        a.add_argument('--model_file', default=None, type=str, help='Model visibility '
+                       'file to flag on.')
+        a.add_argument('--model_file_format', default='uvfits', type=str,
+                       help='File format for input files. Default is uvfits.')
+        a.add_argument('--calfits_file', default=None, type=str, help='Calfits file '
+                       'to use to flag on gains and/or chisquared values.')
+        a.add_argument('--flag_gains', default=True, type=bool, help='Run algorithm '
+                       'on gain solutions. Requires calfits_file. Default is True.')
+        a.add_argument('--flag_chisq', default=True, type=bool, help='Run algorithm '
+                       'on chi squared values. Requires calfits_file. Default is True.')
         a.add_argument('--nsig_df', default=6.0, type=float, help='Number of sigma '
                        'above median value to flag in f direction for xrfi_simple. Default is 6.')
         a.add_argument('--nsig_dt', default=6.0, type=float,
@@ -87,17 +99,15 @@ def get_metrics_ArgumentParser(method_name):
                        help='Starting number of sigmas to flag on. Default is 6.')
         a.add_argument('--sig_adj', default=2.0, type=float,
                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
-        a.add_argument('--broadcast', action='store_true', default=False,
-                       help='Broadcast flags across data based on thresholds. Default is False.')
-        a.add_argument('--bl_threshold', default=0., type=float,
+        a.add_argument('--px_threshold', default=0.2, type=float,
                        help='Fraction of flags required to trigger a broadcast across'
-                       ' baselines. Default is 0.')
-        a.add_argument('--freq_threshold', default=0.9, type=float,
+                       ' baselines. Default is 0.2.')
+        a.add_argument('--freq_threshold', default=0.5, type=float,
                        help='Fraction of channels required to trigger broadcast across'
-                       ' frequency (single time). Default is 0.9.')
-        a.add_argument('--time_threshold', default=0.9, type=float,
+                       ' frequency (single time). Default is 0.5.')
+        a.add_argument('--time_threshold', default=0.05, type=float,
                        help='Fraction of times required to trigger broadcast across'
-                       ' time (single frequency). Default is 0.9.')
+                       ' time (single frequency). Default is 0.05.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='files for which to flag RFI.')
     return a
