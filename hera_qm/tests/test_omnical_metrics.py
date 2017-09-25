@@ -25,20 +25,20 @@ class Test_OmniCal_Metrics(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.OM.Nants, 16)
         self.assertEqual(self.OM.filename, 'zen.2457555.42443.xx.HH.uvcA.good.omni.calfits')
-        self.assertEqual(self.OM.omni_gains.shape, (16, 3, 1024, 1))
+        self.assertEqual(self.OM.omni_gains.shape, (16, 3, 1024))
 
     def test_run_metrics(self):
         # no fc file
         self.OM.run_metrics()
         self.assertIs(self.OM.metrics['ant_phs_noise'], None)
-        self.assertAlmostEqual(self.OM.metrics['chisq_ant_std_loc'], 0.16368077864231928)
+        self.assertAlmostEqual(self.OM.metrics['chisq_ant_std_loc'], 0.16388136721862939)
         self.assertIs(type(self.OM.metrics), OrderedDict)
         # no cut band
-        self.OM.run_metrics(cut_band=False)
+        self.OM.run_metrics(cut_edges=False)
         # fc file
         self.OM.run_metrics(firstcal_file=self.fc_file)
-        self.assertAlmostEqual(self.OM.metrics['tot_phs_noise'], 0.32104988077232272)
-        self.assertAlmostEqual(self.OM.metrics['tot_phs_std'], 0.050937336291433551)
+        self.assertAlmostEqual(self.OM.metrics['tot_phs_noise'], 0.30112354535515562)
+        self.assertAlmostEqual(self.OM.metrics['tot_phs_std'], 0.051011338121665986)
 
     def test_write_load_metrics(self):
         # Run metrics
@@ -91,6 +91,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM.plot_phs_metric(plot_type='ft', fname=fname, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # plot w/ fname and outpath
         self.OM.plot_phs_metric(plot_type='std', fname=fname, save=True, outpath=self.OM.filedir)
         self.assertEqual(os.path.isfile(fname), True)
@@ -98,6 +99,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM.plot_phs_metric(plot_type='ft', fname=fname, save=True, outpath=self.OM.filedir)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # plot w/o fname
         fname = os.path.join(self.OM.filedir, self.OM.filename+'.phs_std.png')
         self.OM.plot_phs_metric(plot_type='std', save=True)
@@ -107,9 +109,11 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM.plot_phs_metric(plot_type='ft', save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # plot feeding ax object
         fig,ax = plt.subplots()
         self.OM.plot_phs_metric(ax=ax)
+        plt.close()
         plt.close()
         # exception
         del self.OM.metrics
@@ -125,15 +129,18 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM.plot_chisq_metric(fname=fname, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # plot w/ fname and outpath
         self.OM.plot_chisq_metric(fname=fname, save=True, outpath=self.OM.filedir)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # plot w/o fname
         fname = os.path.join(self.OM.filedir, self.OM.filename+'.chisq_std.png')
         self.OM.plot_chisq_metric(plot_type='std', save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # plot feeding ax object
         fig,ax = plt.subplots()
         self.OM.plot_chisq_metric(ax=ax)
@@ -155,6 +162,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM.plot_chisq_tavg(ants=self.OM.ant_array[:2], fname=fname, save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
+        plt.close()
 
     def test_plot_gains(self):
         self.OM.run_metrics(firstcal_file=self.fc_file)
@@ -168,6 +176,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM.plot_gains(plot_type='amp', fname=fname, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # divide_fc = True
         self.OM.plot_gains(plot_type='phs', fname=fname, save=True, divide_fc=True)
         self.assertEqual(os.path.isfile(fname), True)
@@ -175,28 +184,34 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM.plot_gains(plot_type='amp', fname=fname, save=True, divide_fc=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # plot w/ fname and outpath
         self.OM.plot_gains(plot_type='phs', fname=fname, save=True, outpath=self.OM.filedir)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # plot w/o fname
         fname = os.path.join(self.OM.filedir, self.OM.filename+'.gain_phs.png')
         self.OM.plot_gains(plot_type='phs', save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         fname = os.path.join(self.OM.filedir, self.OM.filename+'.gain_amp.png')
         self.OM.plot_gains(plot_type='amp', save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
         # plot feeding ax object
         fig,ax = plt.subplots()
         self.OM.plot_gains(ax=ax)
+        plt.close()
         plt.close()
         # plot feeding ants
         fname = os.path.join(self.OM.filedir, 'gains.png')
         self.OM.plot_gains(ants=self.OM.ant_array[:2], fname=fname, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
 
     def test_plot_metrics(self):
         # test exception
@@ -219,6 +234,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         os.remove(fname1)
         os.remove(fname2)
         os.remove(fname3)
+        plt.close()
 
 class Test_OmniCalMetrics_Run(unittest.TestCase):
     def setUp(self):

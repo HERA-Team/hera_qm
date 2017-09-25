@@ -271,22 +271,25 @@ def metrics2mc(filename, ftype):
             d['ant_metrics'][metric].append([ant, pol, 1.])
 
     elif ftype == 'omnical':
-        from pyuvdata import UVCal
-        uvcal = UVCal()
-        uvcal.read_calfits(filename)
-        pol_dict = {-5: 'x', -6: 'y'}
-        d['ant_metrics']['omnical_quality'] = []
-        for pi, pol in enumerate(uvcal.jones_array):
-            try:
-                pol = pol_dict[pol]
-            except KeyError:
-                raise ValueError('Invalid polarization for ant_metrics in M&C.')
-            for ai, ant in enumerate(uvcal.ant_array):
-                val = np.median(uvcal.quality_array[ai, 0, :, :, pi], axis=0)
-                val = np.mean(val)
-                d['ant_metrics']['omnical_quality'].append([ant, pol, val])
-        if uvcal.total_quality_array is not None:
-            d['array_metrics']['omnical_total_quality'] = np.mean(uvcal.total_quality_array)
+        from hera_qm.omnical_metrics import load_omnical_metrics
+        data = load_omnical_metrics(filename)
+        pol = str(data['pol'])
+
+        # pack array metrics
+        cat = 'omnical_metrics_'
+        for met in ['tot_chisq', 'tot_phs_noise', 'tot_phs_std', 'phs_noise_good_sol', 'phs_std_good_sol']:
+          catmet = cat + met
+          d['array_metrics'][catmet] = data[met]
+
+        # pack antenna metrics
+        cat = 'omnical_metrics_'
+        for met in ['chisq_ant_avg', 'ant_phs_noise', 'ant_phs_std']:
+          catmet = cat + met
+          d['ant_metrics'][catmet] = [[a, pol, data[met][a]] for a in data[met]]
+
+        for met in ['chisq_bad_ants', 'phs_noise_bad_ants', 'phs_std_bad_ants']:
+          catmet = cat + met
+          d['ant_metrics'][catmet] = [[a, pol, 1.] for a in data[met]]
 
     else:
         raise ValueError('Metric file type ' + ftype + ' is not recognized.')

@@ -1,6 +1,3 @@
-"""
-OmniCal Metrics
-"""
 import matplotlib.pyplot as plt
 import numpy as np
 from pyuvdata import UVCal
@@ -15,19 +12,30 @@ import copy
 import os
 from scipy.signal import medfilt
 
+
 def get_omnical_metrics_dict():
     """ Simple function that returns dictionary with metric names as keys and
     their descriptions as values. This is used by hera_mc to populate the table
     of metrics and their descriptions.
 
     Returns:
-    metrics_dict -- Dictionary with metric names as keys and descriptions as values.
+    metrics_dict : dictionary
+        metric names as keys and descriptions as values.
     """
-    metrics_dict = {'omnical_quality': 'Quality of cal solution (chi-squared) '
-                    'for each antenna.',
-                    'omnical_total_quality': 'Quality of overall cal solution '
-                    '(chi-squared) across entire array.'}
+    metrics_dict = {'tot_chisq': 'average of chi-square for all antennas',
+                    'tot_phs_noise': 'average of phase noise power across all antennas',
+                    'tot_phs_std': 'average of phase standard deviation across all antennas',
+                    'phs_noise_good_sol': 'determination of good solution for phase noise metric',
+                    'phs_std_good_sol': 'determination of good solution for phase std metric',
+                    'chisq_ant_avg': 'average chisquare value for each antenna averaged '
+                    'over frequency and time',
+                    'ant_phs_noise': 'phase noise power for each antenna',
+                    'ant_phs_std': 'phase standard deviation for each antenna',
+                    'chisq_bad_ants': 'list of bad antennas from chisq metric',
+                    'phs_noise_bad_ants': 'list of bad antennas from phs noise metric',
+                    'phs_std_bad_ants': 'list of bad antennas from phs std metric'}
     return metrics_dict
+
 
 def load_omnical_metrics(filename):
     """
@@ -71,6 +79,7 @@ def load_omnical_metrics(filename):
 
     return metrics
 
+
 def load_firstcal_gains(fc_file):
     """
     load firstcal delays and turn into phase gains
@@ -81,11 +90,13 @@ def load_firstcal_gains(fc_file):
     uvf = UVCal()
     uvf.read_calfits(fc_file)
     freqs = uvf.freq_array.squeeze()
-    firstcal_delays = np.moveaxis(uvf.delay_array, 2, 3)[:, 0, :, :, :]
-    firstcal_gains = np.array(map(lambda x: np.exp(-2j*np.pi*freqs.reshape(1,-1,1)*x), firstcal_delays))
+    firstcal_delays = np.moveaxis(uvf.delay_array, 2, 3)[:, 0, :, :, 0]
+    firstcal_gains = np.array(map(lambda x: np.exp(-2j * np.pi * freqs.reshape(1, -1) * x), firstcal_delays))
     return firstcal_delays, firstcal_gains
 
-def plot_phs_metric(metrics, plot_type='std', ax=None, save=False, fname=None, outpath=None, **kwargs):
+
+def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
+                    fname=None, outpath=None, **kwargs):
     """
     Plot omnical phase metric
 
@@ -126,7 +137,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False, fname=None, o
         ant_phs_std = np.array(metrics['ant_phs_std'].values())
         phs_std_cut = metrics['phs_std_cut']
         tot_phs_std = metrics['tot_phs_std']
-        ymax = np.max([ant_phs_std.max()*1.1, phs_std_cut*1.2])
+        ymax = np.max([ant_phs_std.max() * 1.1, phs_std_cut * 1.2])
 
         # make grid and plot points
         ax.grid(True)
@@ -152,7 +163,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False, fname=None, o
         phs_noise_cut = metrics['phs_noise_cut']
         tot_phs_noise = metrics['tot_phs_noise']
         ymax = np.max([ant_phs_noise.max()*1.1, phs_noise_cut*1.2])
-   
+
         # make grid and plot points
         ax.grid(True)
         ax.plot(ant_phs_noise, marker='o', color='k', linestyle='', markersize=5)
@@ -213,13 +224,14 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None, **
     # get y data
     yloc = metrics['chisq_ant_std_loc']
     ysig = metrics['chisq_ant_std_scale']
-    ycut = yloc + metrics['chisq_std_cut']*ysig
+    ycut = yloc + metrics['chisq_std_cut'] * ysig
     chisq_ant_std = np.array(metrics['chisq_ant_std'].values())
-    ymax = np.max([chisq_ant_std.max()*1.2, ycut+ysig])
+    ymax = np.max([chisq_ant_std.max() * 1.2, ycut + ysig])
 
     # make grid and plots
     ax.grid(True)
-    p1 = ax.axhspan(yloc - ysig, yloc + ysig, color='green', alpha=0.1)
+    p1 = ax.axhspan(yloc - ysig, yloc + ysig,
+                    color='green', alpha=0.1)
     p2 = ax.axhline(yloc, color='steelblue')
     p3 = ax.axhline(ycut, color='darkred')
     p4 = ax.axhspan(ycut, ymax, color='darkred', alpha=0.2)
@@ -252,9 +264,9 @@ class OmniCal_Metrics(object):
     and running metrics on them.
     """
 
-    jones2pol = {-5:'XX',-6:'YY',-7:'XY',-8:'YX'}
+    jones2pol = {-5: 'XX', -6: 'YY', -7: 'XY', -8: 'YX'}
 
-    def __init__(self, omni_calfits):
+    def __init__(self, omni_calfits, history=''):
         """
         Omnical Metrics initialization
 
@@ -263,13 +275,16 @@ class OmniCal_Metrics(object):
         omni_calfits : str
             calfits file output from omnical, typically
             ending in *.omni.calfits
+
+        history : str
+            history string
         """
         # Get file info and other relevant metadata
-        self.filedir     = os.path.dirname(omni_calfits)
-        self.filestem    = '.'.join(os.path.basename(omni_calfits).split('.')[:-1])
-        self.filename    = os.path.basename(omni_calfits)
+        self.filedir = os.path.dirname(omni_calfits)
+        self.filestem = '.'.join(os.path.basename(omni_calfits).split('.')[:-1])
+        self.filename = os.path.basename(omni_calfits)
         self.version_str = hera_qm_version_str
-        self.history     = ''
+        self.history = history
         self.firstcal_file = None
 
         # Instantiate Data Object
@@ -277,25 +292,24 @@ class OmniCal_Metrics(object):
         self.uv.read_calfits(omni_calfits)
 
         # Get relevant metadata
-        self.Nants  = self.uv.Nants_data
-        self.freqs  = self.uv.freq_array.squeeze()
+        self.Nants = self.uv.Nants_data
+        self.freqs = self.uv.freq_array.squeeze()
         self.Nfreqs = len(self.freqs)
-        self.jones  = self.uv.jones_array
-        self.pols   = np.array(map(lambda x: self.jones2pol[x], self.jones))
-        self.Npols  = self.uv.Njones
-        self.times  = self.uv.time_array
+        self.jones = self.uv.jones_array[0]
+        self.pol = self.jones2pol[self.jones]
+        self.times = self.uv.time_array
         self.Ntimes = self.uv.Ntimes
         self.ant_array = self.uv.ant_array
 
         # Get omnical gains, move time axis in front of freq axis
-        self.omni_gains = np.moveaxis(self.uv.gain_array, 2, 3)[:, 0, :, :, :]
+        self.omni_gains = np.moveaxis(self.uv.gain_array, 2, 3)[:, 0, :, :, 0]
 
         # Assign total chisq array
-        self.chisq = np.moveaxis(self.uv.quality_array, 2, 3)[:, 0, :, :, :]
+        self.chisq = np.moveaxis(self.uv.quality_array, 2, 3)[:, 0, :, :, 0]
         self.chisq_tavg = np.median(self.chisq, axis=1)
 
-    def run_metrics(self, firstcal_file=None, cut_band=True, phs_noise_cut=1.0,
-                          phs_std_cut=0.3, chisq_std_cut=5.0):
+    def run_metrics(self, firstcal_file=None, cut_edges=True, Ncut=100,
+                    phs_noise_cut=1.0, phs_std_cut=0.3, chisq_std_cut=5.0):
         """
         run omnical metrics
 
@@ -305,9 +319,13 @@ class OmniCal_Metrics(object):
             path to a FirstCal *.calfits file
             if fed, it will perform firstcal comparison metrics
 
-        cut_band : bool, defaul=True
+        cut_edges : bool, defaul=True
             cut bandpass edges before metrics.
-            if True, cuts 0:102 and 922:1024 channels from band
+            if True, cuts Ncut number of channels from each band edge
+
+        Ncut : int, default=100
+            number of frequency channels to cut from bandpass edges before
+            calculating metrics
 
         phs_noise_cut : float, default=1.0
             cut in phase noise level w.r.t. frequency for
@@ -321,32 +339,25 @@ class OmniCal_Metrics(object):
 
         chisq_std_cut : float, default=5.0
             sets the cut in chisq variablity for good/bad determination.
-            the cut is the standard deviation of the chisq per-antenna times
-            chisq_std_cut, which means chisq_std_cut is like a "sigma" threshold
-            for each antenna's chisq variability.
+            the cut is the standard deviation of the
+            chisq per-antenna times chisq_std_cut, which means
+            chisq_std_cut is like a "sigma" threshold for each antenna's
+            chisq variability.
         """
         # assign fc filename
         self.firstcal_file = firstcal_file
 
         # select freq channels
-        if cut_band == True:
-            self.band = np.arange(self.Nfreqs/10, self.Nfreqs - self.Nfreqs/10)
+        if cut_edges is True:
+            self.band = np.arange(Ncut, self.Nfreqs - Ncut)
         else:
             self.band = np.arange(self.Nfreqs)
 
-        # Get robust standard deviation of chisq for each antenna
-        chisq_ant_std       = np.sqrt(np.array(map(astats.biweight_midvariance, self.chisq[:, :, self.band, :])))
-        chisq_ant_std_loc   = astats.biweight_location(chisq_ant_std)
-        chisq_ant_std_scale = np.sqrt(astats.biweight_midvariance(chisq_ant_std))
+        # get chisq metrics
+        (tot_chisq, chisq_ant_avg, chisq_ant_std, chisq_ant_std_loc,
+         chisq_ant_std_scale, chisq_bad_ants) = self.chisq_metric(self.chisq, chisq_std_cut=chisq_std_cut)
 
-        # Pick out "bad" antennas from chisq_std_cut, which is a cut in the standard deviation
-        # of the chisq fluctuations across time, frequency and polarizations
-        chisq_bad_ants = self.ant_array[np.where((chisq_ant_std-chisq_ant_std_loc) > chisq_ant_std_scale * chisq_std_cut)]
-
-        # convert to dictionaries
-        chisq_ant_std = OrderedDict(zip(self.ant_array, chisq_ant_std))
-
-        if firstcal_file is not None and hasattr(self, 'firstcal_gains') == False:
+        if firstcal_file is not None:
             # load fc gain solutions
             self.firstcal_delays, self.firstcal_gains = load_firstcal_gains(firstcal_file)
 
@@ -355,61 +366,65 @@ class OmniCal_Metrics(object):
 
             # run phs FT metric
             (ant_phs_noise, tot_phs_noise, phs_noise_bad_ants,
-            phs_noise_good_sol) = self.phs_FT_metric(np.angle(self.gain_diff), phs_noise_cut=phs_noise_cut)
+            phs_noise_good_sol) = self.phs_FT_metric(np.angle(self.gain_diff),
+                                                     phs_noise_cut=phs_noise_cut)
 
             # run phs std metric
-            (ant_phs_std, tot_phs_std, phs_std_bad_ants, 
-            phs_std_good_sol) = self.phs_std_metric(np.angle(self.gain_diff), phs_std_cut=phs_std_cut)
+            (ant_phs_std, tot_phs_std, phs_std_bad_ants,
+            phs_std_good_sol) = self.phs_std_metric(np.angle(self.gain_diff),
+                                                    phs_std_cut=phs_std_cut)
 
         # initialize metrics
-        metrics                        = OrderedDict()
+        metrics = OrderedDict()
 
-        metrics['chisq_ant_std']       = chisq_ant_std
-        metrics['chisq_ant_std_loc']   = chisq_ant_std_loc
+        metrics['tot_chisq'] = tot_chisq
+        metrics['chisq_ant_avg'] = chisq_ant_avg
+        metrics['chisq_ant_std'] = chisq_ant_std
+        metrics['chisq_ant_std_loc'] = chisq_ant_std_loc
         metrics['chisq_ant_std_scale'] = chisq_ant_std_scale
-        metrics['chisq_bad_ants']      = chisq_bad_ants
-        metrics['chisq_std_cut']       = chisq_std_cut
+        metrics['chisq_bad_ants'] = chisq_bad_ants
+        metrics['chisq_std_cut'] = chisq_std_cut
 
-        metrics['freqs']               = self.freqs
-        metrics['Nfreqs']              = self.Nfreqs
-        metrics['cut_band']            = cut_band
-        metrics['band']                = self.band
-        metrics['ant_array']           = self.ant_array
-        metrics['jones']               = self.jones
-        metrics['pols']                = self.pols
-        metrics['Npols']               = self.Npols
-        metrics['times']               = self.times
-        metrics['Ntimes']              = self.Ntimes
-        metrics['Nants']               = self.Nants
+        metrics['freqs'] = self.freqs
+        metrics['Nfreqs'] = self.Nfreqs
+        metrics['cut_edges'] = cut_edges
+        metrics['Ncut'] = Ncut
+        metrics['band'] = self.band
+        metrics['ant_array'] = self.ant_array
+        metrics['jones'] = self.jones
+        metrics['pol'] = self.pol
+        metrics['times'] = self.times
+        metrics['Ntimes'] = self.Ntimes
+        metrics['Nants'] = self.Nants
 
-        metrics['version']             = self.version_str
-        metrics['history']             = self.history
-        metrics['filename']            = self.filename
-        metrics['filestem']            = self.filestem
-        metrics['filedir']             = self.filedir
+        metrics['version'] = self.version_str
+        metrics['history'] = self.history
+        metrics['filename'] = self.filename
+        metrics['filestem'] = self.filestem
+        metrics['filedir'] = self.filedir
 
-        metrics['ant_phs_noise']       = None
-        metrics['tot_phs_noise']       = None
-        metrics['phs_noise_bad_ants']  = None
-        metrics['phs_noise_good_sol']  = None
-        metrics['phs_noise_cut']       = None
-        metrics['ant_phs_std']         = None
-        metrics['tot_phs_std']         = None
-        metrics['phs_std_bad_ants']    = None
-        metrics['phs_std_good_sol']    = None
-        metrics['phs_std_cut']         = None
+        metrics['ant_phs_noise'] = None
+        metrics['tot_phs_noise'] = None
+        metrics['phs_noise_bad_ants'] = None
+        metrics['phs_noise_good_sol'] = None
+        metrics['phs_noise_cut'] = None
+        metrics['ant_phs_std'] = None
+        metrics['tot_phs_std'] = None
+        metrics['phs_std_bad_ants'] = None
+        metrics['phs_std_good_sol'] = None
+        metrics['phs_std_cut'] = None
 
         if firstcal_file is not None:
-            metrics['ant_phs_noise']       = ant_phs_noise
-            metrics['tot_phs_noise']       = tot_phs_noise
-            metrics['phs_noise_bad_ants']  = phs_noise_bad_ants
-            metrics['phs_noise_good_sol']  = phs_noise_good_sol
-            metrics['phs_noise_cut']       = phs_noise_cut
-            metrics['ant_phs_std']         = ant_phs_std
-            metrics['tot_phs_std']         = tot_phs_std
-            metrics['phs_std_bad_ants']    = phs_std_bad_ants
-            metrics['phs_std_good_sol']    = phs_std_good_sol
-            metrics['phs_std_cut']         = phs_std_cut
+            metrics['ant_phs_noise'] = ant_phs_noise
+            metrics['tot_phs_noise'] = tot_phs_noise
+            metrics['phs_noise_bad_ants'] = phs_noise_bad_ants
+            metrics['phs_noise_good_sol'] = phs_noise_good_sol
+            metrics['phs_noise_cut'] = phs_noise_cut
+            metrics['ant_phs_std'] = ant_phs_std
+            metrics['tot_phs_std'] = tot_phs_std
+            metrics['phs_std_bad_ants'] = phs_std_bad_ants
+            metrics['phs_std_good_sol'] = phs_std_good_sol
+            metrics['phs_std_cut'] = phs_std_cut
 
         self.metrics = metrics
 
@@ -470,26 +485,53 @@ class OmniCal_Metrics(object):
         """
         self.metrics = load_omnical_metrics(filename)
 
+    def chisq_metric(self, chisq, chisq_std_cut=5.0, return_dict=True):
+        """
+        chi square metrics
+
+
+        """
+        # Get robust standard deviation of chisq for each antenna
+        tot_chisq = astats.biweight_location(chisq[:, :, self.band])
+        chisq_ant_avg = np.array(map(astats.biweight_location, chisq[:, :, self.band]))
+        chisq_ant_std = np.sqrt(np.array(map(astats.biweight_midvariance, chisq[:, :, self.band])))
+        chisq_ant_std_loc = astats.biweight_location(chisq_ant_std)
+        chisq_ant_std_scale = np.sqrt(astats.biweight_midvariance(chisq_ant_std))
+
+        # Pick out "bad" antennas from chisq_std_cut, which is a cut in
+        # the standard deviation of the chisq fluctuations across time,
+        # frequency
+        chisq_bad_ants = self.ant_array[np.where((chisq_ant_std - chisq_ant_std_loc) > chisq_ant_std_scale * chisq_std_cut)]
+
+        # convert to dictionaries
+        if return_dict is True:
+            chisq_ant_std = OrderedDict(zip(self.ant_array, chisq_ant_std))
+            chisq_ant_avg = OrderedDict(zip(self.ant_array, chisq_ant_avg))
+
+        return (tot_chisq, chisq_ant_avg, chisq_ant_std, chisq_ant_std_loc,
+                chisq_ant_std_scale, chisq_bad_ants)
+
     def phs_FT_metric(self, phs_diff, phs_noise_cut=1.0, return_dict=True):
         """
-        Takes the square of the real-valued FT of the phase difference between
-        omnical and fistcal solutions and uses it to assess noise level across freq
+        Takes the square of the real-valued FT of the phase
+        difference between omnical and fistcal solutions and uses it
+        to assess noise level across freq
 
         Input:
         ------
-        phs_diff : ndarray, dtype=float, shape=(Nants, Ntimes, Nfreqs, Npols)
+        phs_diff : ndarray, shape=(Nants, Ntimes, Nfreqs)
             real ndarray containing difference between omnical gain phases
             and firstcal gain phases
 
         phs_noise_cut : float, default=1.0
             phase noise level cut.
-            the noise level is estimated by taking the absolute value of the 
-            real-valued fourier transform of the omnical gain phase - firstcal
-            gain phase, taking a median filter across the modes, and then taking 
-            the median of the last 100 modes. 
+            the noise level is estimated by taking the absolute value of
+            the real-valued fourier transform of the omnical gain
+            phase - firstcal gain phase, taking a median filter across
+            the modes, and then taking the median of the last 100 modes.
 
         return_dict : bool
-            return per-antenna output as dictionary with antenna name as key
+            return antenna output as dictionary with antenna name as key
 
         Output:
         -------
@@ -507,21 +549,26 @@ class OmniCal_Metrics(object):
             the entire solution.
         """
         # take rfft
-        rfft = medfilt(np.abs(np.fft.rfft(phs_diff[:, :, self.band, :], axis=2)), kernel_size=(1, 1, 15, 1))
+        freq_smooth = int(self.Nfreqs / 70)
+        if freq_smooth % 2 == 0:
+            freq_smooth += 1
+        rfft = medfilt(np.abs(np.fft.rfft(phs_diff[:, :, self.band], axis=2)), kernel_size=(1, 1, freq_smooth))
 
         # Get phase noise
-        phs_noise = np.median(rfft[:, :, -100:, :], axis=2)
+        freq_width = int(self.Nfreqs/100)
+        phs_noise = np.median(rfft[:, :, -freq_width:], axis=2)
 
         # Calculate metrics
-        ant_phs_noise   = np.array(map(np.median, phs_noise))
-        tot_phs_noise   = np.median(ant_phs_noise)
-        phs_noise_bad_ants  = self.ant_array[np.where(ant_phs_noise > phs_noise_cut)]
-        phs_noise_good_sol  = tot_phs_noise < phs_noise_cut
+        ant_phs_noise = np.array(map(np.median, phs_noise))
+        tot_phs_noise = np.median(ant_phs_noise)
+        phs_noise_bad_ants = self.ant_array[np.where(ant_phs_noise > phs_noise_cut)]
+        phs_noise_good_sol = tot_phs_noise < phs_noise_cut
 
-        if return_dict == True:
+        if return_dict is True:
             ant_phs_noise = OrderedDict(zip(self.ant_array, ant_phs_noise))
 
-        return ant_phs_noise, tot_phs_noise, phs_noise_bad_ants, phs_noise_good_sol
+        return (ant_phs_noise, tot_phs_noise,
+                phs_noise_bad_ants, phs_noise_good_sol)
 
     def phs_std_metric(self, phs_diff, phs_std_cut=0.3, return_dict=True):
         """
@@ -530,7 +577,7 @@ class OmniCal_Metrics(object):
 
         Input:
         ------
-        phs_diff : ndarray, dtype=complex, shape=(Nants, Ntimes, Nfreqs, Npols)
+        phs_diff : ndarray, dtype=complex, shape=(Nants, Ntimes, Nfreqs)
             complex ndarray containing omnical gains divided by firstcal gains
 
         phs_std_cut : float, default=0.5
@@ -538,7 +585,7 @@ class OmniCal_Metrics(object):
 
         return_dict : bool
             return per-antenna output as dictionary with antenna name as key
-    
+
         Output:
         -------
         ant_phs_std : ndarray, shape=(Nants,)
@@ -554,14 +601,14 @@ class OmniCal_Metrics(object):
             boolean with metric's good / bad determination of entire solution
         """
         # take robust standard deviation
-        ant_phs_std = np.sqrt(np.array(map(astats.biweight_midvariance, phs_diff[:, :, self.band, :])))
+        ant_phs_std = np.sqrt(np.array(map(astats.biweight_midvariance, phs_diff[:, :, self.band])))
         tot_phs_std = np.median(ant_phs_std)
 
         # get goodness of variability
         phs_std_bad_ants = self.ant_array[np.where(ant_phs_std > phs_std_cut)]
         phs_std_good_sol = tot_phs_std < phs_std_cut
 
-        if return_dict == True:
+        if return_dict is True:
             ant_phs_std = OrderedDict(zip(self.ant_array, ant_phs_std))
 
         return ant_phs_std, tot_phs_std, phs_std_bad_ants, phs_std_good_sol
@@ -584,12 +631,13 @@ class OmniCal_Metrics(object):
             path to place file in
             will default to location of *omni.calfits file
         """
-        if hasattr(self, 'metrics') == False:
-            raise Exception("Must run self.run_metrics() before plotting routines...")
+        if hasattr(self, 'metrics') is False:
+            raise Exception("Must run self.run_metrics() before plotting...")
 
         plot_chisq_metric(self.metrics, ax=ax, save=save, fname=fname, **kwargs)
 
-    def plot_phs_metric(self, plot_type='std', ax=None, save=False, fname=None, outpath=None, **kwargs):
+    def plot_phs_metric(self, plot_type='std', ax=None, save=False,
+                        fname=None, outpath=None, **kwargs):
         """
         Plot omnical phase metric
 
@@ -616,16 +664,17 @@ class OmniCal_Metrics(object):
             path to place file in
             will default to location of *omni.calfits file
         """
-        if hasattr(self, 'metrics') == False:
+        if hasattr(self, 'metrics') is False:
             raise Exception("Must run self.run_metrics() before plotting routines...")
 
         if self.firstcal_file is None:
             raise Exception("Must supply firstcal_file in order to plot phase metrics...")
 
-        plot_phs_metric(self.metrics, plot_type=plot_type, ax=ax, save=save, fname=fname, outpath=outpath, **kwargs)
+        plot_phs_metric(self.metrics, plot_type=plot_type, ax=ax,
+                        save=save, fname=fname, outpath=outpath, **kwargs)
 
-    def plot_gains(self, ants=None, time_index=0, jones_index=0, divide_fc=False, plot_type='phs', ax=None,
-                         save=False, fname=None, outpath=None):
+    def plot_gains(self, ants=None, time_index=0, divide_fc=False,
+                   plot_type='phs', ax=None, save=False, fname=None, outpath=None):
         """
         Plot omnical gain solutions for each antenna
 
@@ -635,9 +684,6 @@ class OmniCal_Metrics(object):
             list of ant numbers to plot
         time_index : int, default=0
             index of time array
-
-        jones_index : int, default=0
-            index of jones (polarization) array
 
         plot_type : str, default='phs', options=['phs', 'amp']
 
@@ -666,15 +712,16 @@ class OmniCal_Metrics(object):
         if ants is None:
             ants = np.arange(self.Nants)
         else:
-            ants = np.array(map(lambda x: np.where(self.ant_array==x)[0][0], ants))
+            ants = np.array(map(lambda x: np.where(self.ant_array == x)[0][0], ants))
 
         if plot_type == 'phs':
             # make grid and plot
             ax.grid(True)
-            gains = self.omni_gains[ants, time_index, :, jones_index].T.copy()
-            if divide_fc == True:
-                gains /= self.firstcal_gains[ants, time_index, :, jones_index].T
-            p = np.array(ax.plot(self.freqs/1e6, np.angle(gains), marker='o', markersize=3, alpha=0.75, linestyle='')).ravel()
+            gains = self.omni_gains[ants, time_index, :].T.copy()
+            if divide_fc is True:
+                gains /= self.firstcal_gains[ants, time_index, :].T
+            p = np.array(ax.plot(self.freqs/1e6, np.angle(gains),
+                                 marker='o', markersize=3, alpha=0.75, linestyle='')).ravel()
 
             # axes
             ax.set_xlabel('frequency [MHz]', fontsize=14)
@@ -687,10 +734,11 @@ class OmniCal_Metrics(object):
         elif plot_type == 'amp':
             # make grid and plot
             ax.grid(True)
-            gains = self.omni_gains[ants, time_index, :, jones_index].T.copy()
-            if divide_fc == True:
-                gains /= self.firstcal_gains[ants, time_index, :, jones_index].T
-            p = np.array(ax.plot(self.freqs/1e6, np.abs(gains), marker='o', markersize=3, alpha=0.75, linestyle='')).ravel()
+            gains = self.omni_gains[ants, time_index, :].T.copy()
+            if divide_fc is True:
+                gains /= self.firstcal_gains[ants, time_index, :].T
+            p = np.array(ax.plot(self.freqs/1e6, np.abs(gains), marker='o',
+                                 markersize=3, alpha=0.75, linestyle='')).ravel()
 
             # axes
             ax.set_xlabel('frequency [MHz]', fontsize=14)
@@ -709,7 +757,7 @@ class OmniCal_Metrics(object):
                 fname = os.path.join(outpath, fname)
             fig.savefig(fname, bbox_inches='tight')
 
-    def plot_chisq_tavg(self, ants=None, jones_index=0, ax=None, save=False, fname=None, outpath=None):
+    def plot_chisq_tavg(self, ants=None, ax=None, save=False, fname=None, outpath=None):
         """
         Plot Omnical chi-square averaged over time
 
@@ -717,9 +765,6 @@ class OmniCal_Metrics(object):
         ------
         ants : list
             list of ant numbers to plot
-
-        jones_index : int, default=0
-            index of jones (polarization) array
 
         ax : matplotlib axis object
 
@@ -743,15 +788,15 @@ class OmniCal_Metrics(object):
         if ants is None:
             ants = np.arange(self.Nants)
         else:
-            ants = np.array(map(lambda x: np.where(self.ant_array==x)[0][0], ants))
+            ants = np.array(map(lambda x: np.where(self.ant_array == x)[0][0], ants))
 
         # make grid and plots
         ax.grid(True)
-        p = ax.plot(self.freqs/1e6, self.chisq_tavg[ants, :, jones_index].T)
+        p = ax.plot(self.freqs / 1e6, self.chisq_tavg[ants, :].T)
         ax.set_xlabel('frequency [MHz]', fontsize=14)
         ax.set_ylabel('chi-square avg over time', fontsize=14)
-        ax.set_ylim(0, self.metrics['chisq_ant_std_loc']+self.metrics['chisq_ant_std_scale']*30)
-        ax.set_title("{0} : {1} pol".format(self.filename, self.pols[jones_index]))
+        ax.set_ylim(0, self.metrics['chisq_ant_std_loc'] + self.metrics['chisq_ant_std_scale'] * 30)
+        ax.set_title("{0} : {1} pol".format(self.filename, self.pol))
 
         ax = ax.figure.add_axes([0.99, 0.1, 0.02, 0.8])
         ax.axis('off')
@@ -777,9 +822,10 @@ class OmniCal_Metrics(object):
         self.plot_phs_metric(plot_type='std', save=True)
         self.plot_phs_metric(plot_type='ft', save=True)
 
+
 def omnical_metrics_run(files, args, history):
     """
-    Run OmniCal Metrics on a set of input files. It will produce 
+    Run OmniCal Metrics on a set of input files. It will produce
     a JSON file containing result of metrics
 
     Input:
@@ -796,16 +842,20 @@ def omnical_metrics_run(files, args, history):
         raise AssertionError('Please provide a list of calfits files')
 
     for i, filename in enumerate(files):
-        om = OmniCal_Metrics(filename)
+        om = OmniCal_Metrics(filename, history=history)
         if len(args.fc_files) > 0:
-            om.run_metrics(firstcal_file=args.fc_files[i], cut_band=args.no_bandcut==False,
-                phs_noise_cut=args.phs_noise_cut, phs_std_cut=args.phs_std_cut, chisq_std_cut=args.chisq_std_cut)
+            om.run_metrics(firstcal_file=args.fc_files[i],
+                           cut_edges=args.no_bandcut is False,
+                           phs_noise_cut=args.phs_noise_cut,
+                           phs_std_cut=args.phs_std_cut,
+                           chisq_std_cut=args.chisq_std_cut)
         else:
-            om.run_metrics(cut_band=args.no_bandcut==False,
-                phs_noise_cut=args.phs_noise_cut, phs_std_cut=args.phs_std_cut, chisq_std_cut=args.chisq_std_cut)
+            om.run_metrics(cut_edges=args.no_bandcut is False,
+                           phs_noise_cut=args.phs_noise_cut,
+                           phs_std_cut=args.phs_std_cut,
+                           chisq_std_cut=args.chisq_std_cut)
 
-        om.history = om.history + history
-        if args.make_plots == True:
+        if args.make_plots is True:
             om.plot_metrics()
 
         abspath = os.path.abspath(filename)
@@ -820,4 +870,3 @@ def omnical_metrics_run(files, args, history):
         metrics_basename = os.path.basename(filename) + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
         om.write_metrics(filename=metrics_filename)
-
