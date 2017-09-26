@@ -237,7 +237,7 @@ def xrfi_run(files, args, history):
     Return:
        None
 
-    This function will take in a series of data file and optionally a cal file and
+    This function will take in a series of data files and optionally a cal file and
     model visibility file, and run an RFI-flagging algorithm to identify contaminated
     observations. Each set of flagging will be stored, as well as compressed versions.
     A union of all flagging sets will be stored in the data file flag_array.
@@ -353,6 +353,17 @@ def xrfi_run(files, args, history):
 
 
 def vis_flag(uv, args):
+    """
+    Run an RFI-flagging algorithm on visibility data.
+
+    Args:
+        uv -- a UVData object containing visibility data to flag on.
+        args -- parsed arguments via argparse.ArgumentParser.parse_args
+    Return:
+        flag_array -- boolean array of flags, same shape as uv.data_array
+    """
+    if not isinstance(uv, UVData):
+        raise ValueError('First argument to vis_flags must be a UVData object.')
     flag_array = np.zeros_like(uv.flag_array)
     for key, d in uv.antpairpol_iter():
         ind1, ind2, ipol = uv._key2inds(key)
@@ -375,6 +386,21 @@ def vis_flag(uv, args):
 
 
 def cal_flag(uvc, args):
+    """
+    Run an RFI-flagging algorithm on calibration solutions and quality_array.
+
+    Args:
+        uvc -- a UVCal object containing calibration output to flag on.
+                Must have cal_type=='gain'
+        args -- parsed arguments via argparse.ArgumentParser.parse_args
+    Return:
+        flag_array -- boolean array of flags, same shape as uvc.gain_array
+    """
+    if not isinstance(uvc, UVCal):
+        raise ValueError('First argument to cal_flags must be a UVCal object.')
+    if uvc.cal_type != 'gain':
+        raise ValueError('UVCal object must have cal_type=="gain".')
+
     if args.flag_gains:
         g_flags = np.zeros_like(uvc.flag_array)
     else:
@@ -417,8 +443,22 @@ def cal_flag(uvc, args):
 
 
 def flags2waterfall(uv, flag_array=None):
+    """
+    Convert a flag array to a 2D waterfall of dimensions (Ntimes, Nfreqs).
+    Args:
+        uv -- A UVData or UVCal object which defines the times and frequencies,
+              and supplies the flag_array to convert (if flag_array not specified)
+        flag_array -- Optional flag array to convert instead of uv.flag_array.
+                      Must have same dimensions as uv.flag_array.
+    Returns:
+        waterfall -- 2D waterfall of averaged flags, for example fraction of baselines
+                     which are flagged for every time and frequency (in case of UVData input)
+                     Size is (Ntimes, Nfreqs).
+    """
     if flag_array is None:
         flag_array = uv.flag_array
+    if uv.flag_array.shape != flag_array.shape:
+        raise ValueError('Flag array must align with UVData or UVCal object.')
 
     if isinstance(uv, UVCal):
         waterfall = np.mean(flag_array, axis=(0, 1, 4)).T
@@ -434,6 +474,16 @@ def flags2waterfall(uv, flag_array=None):
 
 
 def waterfall2flags(waterfall, uv):
+    """
+    Broadcasts a 2D waterfall of dimensions (Ntimes, Nfreqs) to a full flag array,
+    defined by a UVData or UVCal object.
+    Args:
+        waterfall -- 2D waterfall of flags of size (Ntimes, Nfreqs).
+        uv -- A UVData or UVCal object which defines the times and frequencies.
+    Returns:
+        flag_array -- Flag array of dimensions defined by uv which copies the values
+                      of waterfall across the extra dimensions (baselines/antennas, pols)
+    """
     if isinstance(uv, UVCal):
         flag_array = np.tile(waterfall.T[np.new_axis, np.new_axis, :, :, np.new_axis],
                              (uv.Nants_data, uv.Nspws, 1, 1, uv.Njones))
