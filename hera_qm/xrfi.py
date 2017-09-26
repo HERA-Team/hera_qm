@@ -280,10 +280,10 @@ def xrfi_run(files, args, history):
                 (np.all(uvd.freq_array == uvc.freq_array))):
             raise ValueError('Time and frequency axes of model vis file must match'
                              'the data file.')
-        m_flag = vis_flag(uvm, args)
-        m_waterfall = flags2waterfall(uvm, flag_array=m_flag)
+        m_flag_array = vis_flag(uvm, args)
+        m_waterfall = flags2waterfall(uvm, flag_array=m_flag_array)
     else:
-        m_flag = np.array([False])  # This will act as array of Falses in logical ORs.
+        m_flag_array = np.array([False])  # This will act as array of Falses in logical ORs.
         m_wf = np.array([[False]])  # Waterfalls need two dimensions
     m_wf_t = threshold_flags(m_wf, px_threshold=args.px_threshold,
                              freq_threshold=args.freq_threshold,
@@ -314,7 +314,7 @@ def xrfi_run(files, args, history):
 
     # Combine all our waterfalls, apply to full data set
     wf_full = d_wf_t + m_wf_t + g_wf_t + x_wf_t
-    uvd.flag_array += waterfall2flags(wf_full) + d_flag_array
+    uvd.flag_array += waterfall2flags(wf_full, uvd) + d_flag_array
 
     # append to history
     uvd.history = uvd.history + history
@@ -322,11 +322,11 @@ def xrfi_run(files, args, history):
     # save output when we're done
     if args.xrfi_path == '':
         # default to the same directory
-        abspath = os.path.abspath(fn)
+        abspath = os.path.abspath(files[0])
         dirname = os.path.dirname(abspath)
     else:
         dirname = args.xrfi_path
-    basename = os.path.basename(fn)
+    basename = os.path.basename(files[0])
     filename = ''.join([basename, args.extension])
     outpath = os.path.join(dirname, filename)
     if args.outfile_format == 'miriad':
@@ -516,7 +516,7 @@ def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.0
     tseries = np.nanmean(wf, axis=1)
     wf_t[tseries > freq_threshold, :] = True
     wf_t[wf > px_threshold] = True
-    return wfb
+    return wf_t
 
 
 def summarize_flags(uv, outfile, flag_array=None):
