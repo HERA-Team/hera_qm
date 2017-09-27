@@ -226,40 +226,37 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     return f
 
 
-def xrfi_run(files, args, history):
+def xrfi_run(filename, args, history):
     """
-    Run an RFI-flagging algorithm on a series of data and store results in flag array.
+    Run an RFI-flagging algorithm on a single data file, and optionally calibration files,
+    and store results in npz files.
 
     Args:
-       files -- a list of files to run RFI flagging on. Assumed to be multiple
-                polarizations from the same observation.
+       filename -- Data file to run RFI flagging on. Single polarization is assumed.
        args -- parsed arguments via argparse.ArgumentParser.parse_args
+       history -- history string to include in files
     Return:
        None
 
-    This function will take in a series of data files and optionally a cal file and
+    This function will take in a data file and optionally a cal file and
     model visibility file, and run an RFI-flagging algorithm to identify contaminated
     observations. Each set of flagging will be stored, as well as compressed versions.
-    A union of all flagging sets will be stored in the data file flag_array.
     """
     # make sure we were given files to process
-    if len(files) == 0:
-        raise AssertionError('Please provide a list of visibility files')
+    if len(filename) == 0:
+        raise AssertionError('Please provide a visibility file')
     uvd = UVData()
     if args.infile_format == 'miriad':
-        uvd.read_miriad(files)
+        uvd.read_miriad(filename)
     elif args.infile_format == 'uvfits':
-        uvd.read_uvfits(files)
+        uvd.read_uvfits(filename)
     elif args.infile_format == 'fhd':
-        uvd.read_fhd(files)
+        uvd.read_fhd(filename)
     else:
         raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
     # Flag on based full data set
-    if args.flag_data:
-        d_flag_array = vis_flag(uvd, args)
-    else:
-        d_flag_array = np.zeros_like(uvd.flag_array, dtype=bool)
+    d_flag_array = vis_flag(uvd, args)
     d_wf = flags2waterfall(uvd, flag_array=d_flag_array)
     d_wf_t = threshold_flags(d_wf, px_threshold=args.px_threshold,
                              freq_threshold=args.freq_threshold,
@@ -282,12 +279,9 @@ def xrfi_run(files, args, history):
                              'the data file.')
         m_flag_array = vis_flag(uvm, args)
         m_waterfall = flags2waterfall(uvm, flag_array=m_flag_array)
-    else:
-        m_flag_array = np.array([False])  # This will act as array of Falses in logical ORs.
-        m_wf = np.array([[False]])  # Waterfalls need two dimensions
-    m_wf_t = threshold_flags(m_wf, px_threshold=args.px_threshold,
-                             freq_threshold=args.freq_threshold,
-                             time_threshold=args.time_threshold)
+        m_wf_t = threshold_flags(m_wf, px_threshold=args.px_threshold,
+                                 freq_threshold=args.freq_threshold,
+                                 time_threshold=args.time_threshold)
 
     # Flag on gain solutions and chisquared values
     if args.calfits_file is not None:
@@ -300,48 +294,39 @@ def xrfi_run(files, args, history):
         g_flag, x_flag = cal_flag(uvc, args)
         g_wf = flags2waterfall(uvc, flag_array=g_flag)
         x_wf = flags2waterfall(uvc, flag_array=x_flag)
-    else:
-        g_flag = np.array([False])
-        g_wf = np.array([[False]])
-        x_flag = np.array([False])
-        x_wf = np.array([[False]])
-    g_wf_t = threshold_flags(g_wf, px_threshold=args.px_threshold,
-                             freq_threshold=args.freq_threshold,
-                             time_threshold=args.time_threshold)
-    x_wf_t = threshold_flags(x_wf, px_threshold=args.px_threshold,
-                             freq_threshold=args.freq_threshold,
-                             time_threshold=args.time_threshold)
-
-    # Combine all our waterfalls, apply to full data set
-    wf_full = d_wf_t + m_wf_t + g_wf_t + x_wf_t
-    uvd.flag_array += waterfall2flags(wf_full, uvd) + d_flag_array
+        g_wf_t = threshold_flags(g_wf, px_threshold=args.px_threshold,
+                                 freq_threshold=args.freq_threshold,
+                                 time_threshold=args.time_threshold)
+        x_wf_t = threshold_flags(x_wf, px_threshold=args.px_threshold,
+                                 freq_threshold=args.freq_threshold,
+                                 time_threshold=args.time_threshold)
 
     # append to history
-    uvd.history = uvd.history + history
+    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
 
     # save output when we're done
     if args.xrfi_path == '':
         # default to the same directory
-        abspath = os.path.abspath(files[0])
+        abspath = os.path.abspath(filename)
         dirname = os.path.dirname(abspath)
     else:
         dirname = args.xrfi_path
-    basename = os.path.basename(files[0])
-    filename = ''.join([basename, args.extension])
-    outpath = os.path.join(dirname, filename)
-    if args.outfile_format == 'miriad':
-        uvd.write_miriad(outpath)
-    elif args.outfile_format == 'uvfits':
-        uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
-    else:
-        raise ValueError('Unrecognized output file format ' + str(args.outfile_format))
-
-    # Save the intermediate flag arrays
-    aux_flag_file = ''.join([basename, '.aux_flags.npz'])
-    aux_flag_path = os.path.join(dirname, aux_flag_file)
-    np.savez(aux_flag_file, d_flag_array=d_flag_array, d_wf_t=d_wf_t,
-             m_flag_array=m_flag_array, m_wf_t=m_wf_t, g_flag_array=g_flag_array,
-             g_wf_t=g_wf_t, x_flag_array=x_flag_array, x_wf_t=x_wf_t)
+    basename = os.path.basename(filename)
+    outfile = ''.join([basename, args.extension])
+    outpath = os.path.join(dirname, outfile)
+    np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, history=history)
+    if args.model_file is not None:
+        outfile = ''.join([os.path.basename(args.model_file), args.extension])
+        outpath = os.path.join(dirname, outfile)
+        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, history=history)
+    if args.calfits_file is not None:
+        # Save flags from gains and chisquareds in separate files
+        outfile = ''.join([os.path.basename(args.calfits_file), '.g', args.extension])
+        outpath = os.path.join(dirname, outfile)
+        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, history=history)
+        outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
+        outpath = os.path.join(dirname, outfile)
+        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, history=history)
 
     if args.summary:
         sum_file = ''.join([basename, args.summary_ext])
@@ -401,14 +386,8 @@ def cal_flag(uvc, args):
     if uvc.cal_type != 'gain':
         raise ValueError('UVCal object must have cal_type=="gain".')
 
-    if args.flag_gains:
-        g_flags = np.zeros_like(uvc.flag_array)
-    else:
-        g_flags = np.array([False])
-    if args.flag_chisq:
-        x_flags = np.zeros_like(uvc.flag_array)
-    else:
-        x_flags = np.array([False])
+    g_flags = np.zeros_like(uvc.flag_array)
+    x_flags = np.zeros_like(uvc.flag_array)
 
     for ai in range(uvc.Nants_data):
         for pi in range(uvc.Njones):
@@ -416,27 +395,23 @@ def cal_flag(uvc, args):
             # expected time, freq
             f = uvc.flag_array[ai, 0, :, :, pi].T
             if args.algorithm == 'xrfi_simple':
-                if args.flag_gains:
-                    d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
-                    g_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
-                                                           nsig_dt=args.nsig_dt,
-                                                           nsig_all=args.nsig_all).T
-                if args.flag_chisq:
-                    d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
-                    x_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
-                                                           nsig_dt=args.nsig_dt,
-                                                           nsig_all=args.nsig_all).T
+                d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
+                g_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
+                                                       nsig_dt=args.nsig_dt,
+                                                       nsig_all=args.nsig_all).T
+                d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
+                x_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
+                                                       nsig_dt=args.nsig_dt,
+                                                       nsig_all=args.nsig_all).T
             elif args.algorithm == 'xrfi':
-                if args.flag_gains:
-                    d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
-                    g_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
-                                                    Kf=args.kf_size, sig_init=args.sig_init,
-                                                    sig_adj=args.sig_adj).T
-                if args.flag_chisq:
-                    d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
-                    x_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
-                                                    Kf=args.kf_size, sig_init=args.sig_init,
-                                                    sig_adj=args.sig_adj).T
+                d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
+                g_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
+                                                Kf=args.kf_size, sig_init=args.sig_init,
+                                                sig_adj=args.sig_adj).T
+                d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
+                x_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
+                                                Kf=args.kf_size, sig_init=args.sig_init,
+                                                sig_adj=args.sig_adj).T
             else:
                 raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
     return g_flags, x_flags
@@ -578,3 +553,79 @@ def summarize_flags(uv, outfile, flag_array=None):
              tstd=tstd, tmedian=tmedian, fmax=fmax, fmin=fmin, fmean=fmean,
              fstd=fstd, fmedian=fmedian, freqs=freqs, times=times, pols=pols,
              version=hera_qm_version_str)
+
+
+def xrfi_apply(filename, args, history):
+    """
+    Read in a flag array and optionally several waterfall flags, and insert into
+    a data file.
+
+    Args:
+        filename -- Data file in which update flag array.
+        args -- parsed arguments via argparse.ArgumentParser.parse_args
+        history -- history string to include in files
+    Return:
+        None
+    """
+    # make sure we were given files to process
+    if len(filename) == 0:
+        raise AssertionError('Please provide a visibility file')
+    uvd = UVData()
+    if args.infile_format == 'miriad':
+        uvd.read_miriad(filename)
+    elif args.infile_format == 'uvfits':
+        uvd.read_uvfits(filename)
+    elif args.infile_format == 'fhd':
+        uvd.read_fhd(filename)
+    else:
+        raise ValueError('Unrecognized input file format ' + str(args.infile_format))
+
+    # Read in flag file
+    waterfalls = []
+    flag_history = ''
+    if args.flag_file is not None:
+        d = np.load(args.flag_file)
+        flag_array = d['flag_array']
+        flag_history += d['history']
+        try:
+            # Flag file itself may contain a waterfall
+            waterfalls.append(d['waterfall'])
+        except KeyError:
+            pass
+    else:
+        flag_array = np.array([False])
+
+    # Read in waterfalls
+    if args.waterfalls is not None:
+        for wfile in args.waterfalls.split(','):
+            d = np.load(wfile)
+            waterfalls.append(d['waterfall'])
+            if d['history'] not in flag_history:
+                # Several files may come from same command. Cut down on repeated info.
+                flag_history += d['history']
+
+    if len(waterfalls) > 0:
+        wf_full = sum(waterfalls).astype(bool)  # Union all waterfalls
+        flag_array += waterfall2flags(wf_full, uvd)  # Combine with flag array
+
+    # Finally, add the flag array to the flag array in the data
+    uvd.flag_array += flag_array
+    # append to history
+    uvd.history = uvd.history + flag_history + history
+
+    # save output when we're done
+    if args.xrfi_path == '':
+        # default to the same directory
+        abspath = os.path.abspath(filename)
+        dirname = os.path.dirname(abspath)
+    else:
+        dirname = args.xrfi_path
+    basename = os.path.basename(filename)
+    outfile = ''.join([basename, args.extension])
+    outpath = os.path.join(dirname, outfile)
+    if args.outfile_format == 'miriad':
+        uvd.write_miriad(outpath)
+    elif args.outfile_format == 'uvfits':
+        uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
+    else:
+        raise ValueError('Unrecognized output file format ' + str(args.outfile_format))

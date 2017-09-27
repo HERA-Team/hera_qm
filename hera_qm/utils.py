@@ -16,7 +16,7 @@ def get_metrics_ArgumentParser(method_name):
     Returns:
         a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
-    methods = ["ant_metrics", "firstcal_metrics", "xrfi"]
+    methods = ["ant_metrics", "firstcal_metrics", "xrfi_run", "xrfi_apply"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -52,35 +52,27 @@ def get_metrics_ArgumentParser(method_name):
                        help='Path to save metrics file to. Default is same directory as file.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.calfits files for which to calculate firstcal_metrics.')
-    elif method_name == 'xrfi':
+    elif method_name == 'xrfi_run':
         a.prog = 'xrfi_run.py'
         a.add_argument('--infile_format', default='miriad', type=str,
                        help='File format for input files. Default is miriad.')
-        a.add_argument('--outfile_format', default='miriad', type=str,
-                       help='File format for output files. Default is miriad.')
-        a.add_argument('--extension', default='R', type=str,
-                       help='Extension to be appended to input file name. Default is "R".')
+        a.add_argument('--extension', default='.flags.npz', type=str,
+                       help='Extension to be appended to input file name. Default is ".flags.npz".')
         a.add_argument('--summary', action='store_true', default=False,
                        help='Run summary of RFI flags and store in npz file.')
         a.add_argument('--summary_ext', default='.flag_summary.npz',
                        type=str, help='Extension to be appended to input file name'
                        ' for summary file. Default is ".flag_summary.npz"')
         a.add_argument('--xrfi_path', default='', type=str,
-                       help='Path to save flagged file to. Default is same directory as input file.')
+                       help='Path to save flag files to. Default is same directory as input file.')
         a.add_argument('--algorithm', default='xrfi_simple', type=str,
                        help='RFI-flagging algorithm to use. Default is xrfi_simple.')
-        a.add_argument('--flag_data', default=True, type=bool, help='Run algorithm '
-                       'on full set of data.')
         a.add_argument('--model_file', default=None, type=str, help='Model visibility '
                        'file to flag on.')
         a.add_argument('--model_file_format', default='uvfits', type=str,
                        help='File format for input files. Default is uvfits.')
         a.add_argument('--calfits_file', default=None, type=str, help='Calfits file '
                        'to use to flag on gains and/or chisquared values.')
-        a.add_argument('--flag_gains', default=True, type=bool, help='Run algorithm '
-                       'on gain solutions. Requires calfits_file. Default is True.')
-        a.add_argument('--flag_chisq', default=True, type=bool, help='Run algorithm '
-                       'on chi squared values. Requires calfits_file. Default is True.')
         a.add_argument('--nsig_df', default=6.0, type=float, help='Number of sigma '
                        'above median value to flag in f direction for xrfi_simple. Default is 6.')
         a.add_argument('--nsig_dt', default=6.0, type=float,
@@ -108,8 +100,25 @@ def get_metrics_ArgumentParser(method_name):
         a.add_argument('--time_threshold', default=0.05, type=float,
                        help='Fraction of times required to trigger broadcast across'
                        ' time (single frequency). Default is 0.05.')
-        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
-                       help='files for which to flag RFI.')
+        a.add_argument('filename', metavar='filename', type=str, nargs=1, default=[],
+                       help='file for which to flag RFI (only one file allowed).')
+    elif method_name == 'xrfi_apply':
+        a.prog = 'xrfi_apply.py'
+        a.add_argument('--infile_format', default='miriad', type=str,
+                       help='File format for input files. Default is miriad.')
+        a.add_argument('--xrfi_path', default='', type=str,
+                       help='Path to save output to. Default is same directory as input file.')
+        a.add_argument('--outfile_format', default='miriad', type=str,
+                       help='File format for output files. Default is miriad.')
+        a.add_argument('--extension', default='R', type=str,
+                       help='Extension to be appended to input file name. Default is "R".')
+        a.add_argument('--flag_file', default=None, type=str, help='npz file '
+                       'containing full flag array to insert into data file.')
+        a.add_argument('--waterfalls', default=None, type=str, help='comma separated '
+                       'list of npz files containing waterfalls of flags to broadcast '
+                       'to full flag array and union with flag array in flag_file.')
+        a.add_argument('filename', metavar='filename', type=str, nargs=1, default=[],
+                       help='file for which to flag RFI (only one file allowed).')
     return a
 
 
