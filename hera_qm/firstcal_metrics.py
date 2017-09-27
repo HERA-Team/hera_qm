@@ -312,12 +312,33 @@ class FirstCal_Metrics(object):
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_file)
 
+        if len(self.UVC.jones_array) > 1:
+            raise ValueError('Sorry, only single pol firstcal solutions are '
+                             'currently supported.')
+        pol_dict = {-5: 'x', -6: 'y'}
+        try:
+            self.pol = pol_dict[self.UVC.jones_array[0]]
+        except KeyError:
+            raise ValueError('Sorry, only calibration polarizations "x" and '
+                             '"y" are currently supported.')
+
+        # Get the firstcal.rotated_antenna.metric file
+        if self.UVC.cal_type == 'gain':
+            with open(calfits_file + '.rotated_metric.json') as rot_file:
+                rmetric = json.load(rot_file)
+            self.delays = np.array([rmetric['delays'][str(ai) + self.pol] for ai in self.UVC.ant_array]).squeeze()
+            self.rotated_antennas = { int(k[:-1]): k[-1] for k in rmetric['rotated_antennas'] }
+            
+            
+        elif self.UVC.cal_type == 'delay':
+            self.delays = self.UVC.delay_array.squeeze()
+
         # get file prefix
         self.fc_filename = calfits_file.split('/')[-1]
         self.fc_filestem = '.'.join(self.fc_filename.split('.')[:-1])
 
         # Calculate median delay
-        self.delays = self.UVC.delay_array.squeeze() * 1e9
+        self.delays = self.delays * 1e9
         self.delay_avgs = np.median(self.delays, axis=1)
         self.delay_offsets = (self.delays.T - self.delay_avgs).T
 
@@ -330,16 +351,6 @@ class FirstCal_Metrics(object):
         self.ants = self.UVC.ant_array
         self.version_str = hera_qm_version_str
         self.history = ''
-
-        if len(self.UVC.jones_array) > 1:
-            raise ValueError('Sorry, only single pol firstcal solutions are '
-                             'currently supported.')
-        pol_dict = {-5: 'x', -6: 'y'}
-        try:
-            self.pol = pol_dict[self.UVC.jones_array[0]]
-        except KeyError:
-            raise ValueError('Sorry, only calibration polarizations "x" and '
-                             '"y" are currently supported.')
 
     def run_metrics(self, std_cut=0.5):
         """
@@ -406,6 +417,10 @@ class FirstCal_Metrics(object):
         metrics['frac_JD'] = self.frac_JD
         metrics['std_cut'] = std_cut
         metrics['pol'] = self.pol
+        try:
+            metrics['rotated_antennas'] = self.rotated_antennas
+        except AttributeError:
+            metrics['rotated_antennas'] = None 
         if self.history != '':
             metrics['history'] = self.history
         self.metrics = metrics
