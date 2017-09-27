@@ -5,7 +5,6 @@ import warnings
 import argparse
 import numpy as np
 
-
 # argument-generating function for *_run wrapper functions
 def get_metrics_ArgumentParser(method_name):
     """
@@ -54,16 +53,18 @@ def get_metrics_ArgumentParser(method_name):
                        help='*.calfits files for which to calculate firstcal_metrics.')
     elif method_name == 'omnical_metrics':
         a.prog = 'omnical_metrics.py'
-        a.add_argument('--fc_files', metavar='fc_files', type=str, nargs='*', default=[],
-                       help='*.first.calfits files of firstcal solutions to perform omni-firstcal comparison metrics')
+        a.add_argument('--fc_files', metavar='fc_files', type=str, default=None,
+                       help='[optional] *.first.calfits files of firstcal solutions to perform omni-firstcal comparison metrics.'
+                       ' If multiple pols exist in a single *.omni.calfits file, feed .pol.first.calfits fcfiles as comma-delimited.'
+                       ' If operating on multiple .omni.calfits files, feed separate comma-delimited fcfiles as vertical bar-delimited.'
+                       ' Ex1: omnical_metrics_run.py --fc_files=zen.xx.first.calfits,zen.yy.first.calfits zen.omni.calfits'
+                       ' Ex2: omnical_metrics_run.py --fc_files=zen1.xx.first.calfits,zen1.yy.first.calfits|zen2.xx.first.calfits,zen2.yy.first.calfits zen1.omni.calfits zen2.omni.calfits')
         a.add_argument('--no_bandcut', action='store_true', default=False,
                        help="flag to turn off cutting of frequency band edges before calculating metrics")
-        a.add_argument('--phs_noise_cut', type=float, default=1.5,
-                       help="set phase noise level cut. see OmniCal_Metrics.run_metrics() for details.")
         a.add_argument('--phs_std_cut', type=float, default=0.3,
-                       help="set phase stand dev cut. see OmniCal_Metrics.run_metrics() for details.")
-        a.add_argument('--chisq_std_cut', type=float, default=5.0,
-                       help="set chisq stand dev cut. see OmniCal_Metrics.run_metrics() for details.")
+                       help="set gain phase stand dev cut. see OmniCal_Metrics.run_metrics() for details.")
+        a.add_argument('--chisq_std_zscore_cut', type=float, default=4.0,
+                       help="set chisq stand dev. zscore cut. see OmniCal_Metrics.run_metrics() for details.")
         a.add_argument('--make_plots', action='store_true', default=False,
                        help="make .png plots of metrics")
         a.add_argument('--extension', default='.omni_metrics.json', type=str,
@@ -272,26 +273,47 @@ def metrics2mc(filename, ftype):
 
     elif ftype == 'omnical':
         from hera_qm.omnical_metrics import load_omnical_metrics
-        data = load_omnical_metrics(filename)
-        pol = str(data['pol'])
+        full_mets = load_omnical_metrics(filename)
+        pols = full_mets.keys()
 
-        # pack array metrics
-        cat = 'omnical_metrics_'
-        for met in ['tot_chisq', 'tot_phs_noise', 'tot_phs_std', 'phs_noise_good_sol', 'phs_std_good_sol']:
-          catmet = cat + met
-          d['array_metrics'][catmet] = data[met]
+        # iterate over polarizations (e.g. XX, YY, XY, YX)
+        for i, pol in enumerate(pols):
+            # unpack metrics from full_mets
+            metrics = full_mets[pol]
 
-        # pack antenna metrics
-        cat = 'omnical_metrics_'
-        for met in ['chisq_ant_avg', 'ant_phs_noise', 'ant_phs_std']:
-          catmet = cat + met
-          d['ant_metrics'][catmet] = [[a, pol, data[met][a]] for a in data[met]]
+            # pack array metrics
+            cat = 'omnical_metrics_'
+            for met in ['chisq_tot_avg', 'chisq_good_sol', 'ant_phs_std_max', 'ant_phs_std_good_sol']:
+                catmet = cat + met + '_{}'.format(pol)
+                try:
+                    if metrics[met] is None:
+                        continue
+                    d['array_metrics'][catmet] = metrics[met]
+                except:
+                    pass
 
-        for met in ['chisq_bad_ants', 'phs_noise_bad_ants', 'phs_std_bad_ants']:
-          catmet = cat + met
-          d['ant_metrics'][catmet] = [[a, pol, 1.] for a in data[met]]
+            # pack antenna metrics, only uses auto pol (i.e. XX or YY)
+            if pol not in ['XX', 'YY']:
+                continue
+            cat = 'omnical_metrics_'
+            for met in ['chisq_ant_avg', 'chisq_ant_std', 'ant_phs_std']:
+                catmet = cat + met
+                try:
+                    if metrics[met] is None:
+                        continue
+                    d['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]]
+                except:
+                    pass
 
     else:
         raise ValueError('Metric file type ' + ftype + ' is not recognized.')
 
     return d
+
+
+
+
+
+
+
+
