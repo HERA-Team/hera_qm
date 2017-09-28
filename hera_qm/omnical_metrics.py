@@ -91,6 +91,61 @@ def load_omnical_metrics(filename):
 
     return metrics
 
+def write_metrics(metrics, filename=None, filetype='json'):
+    """
+    Write metrics to file after running self.run_metrics()
+
+    Input:
+    ------
+    metrics : dictionary
+        Omnical_Metrics.run_metrics() output
+
+    filename : str, default=None
+        filename to write out, will use filename by default
+
+    filetype : str, default='json', option=['json', 'pkl']
+        specify file format of output metrics file
+    """
+    # get pols
+    pols = metrics.keys()
+
+    if filename is None:
+        filename = os.path.join(metrics[pols[0]]['filedir'], metrics[pols[0]]['filestem'] + '.omni_metrics')
+
+    # write to file
+    if filetype == 'json':
+        if filename.split('.')[-1] != 'json':
+            filename += '.json'
+
+        # change ndarrays to lists
+        metrics_out = copy.deepcopy(metrics)
+        # loop over pols
+        for h, pol in enumerate(metrics_out.keys()):
+            # loop over keys
+            for i, k in enumerate(metrics_out[pol].keys()):
+                if type(metrics_out[pol][k]) is np.ndarray:
+                    metrics_out[pol][k] = metrics_out[pol][k].tolist()
+                elif type(metrics_out[pol][k]) is OrderedDict:
+                    # loop over keys
+                    for j in metrics_out[pol][k].keys():
+                        if type(metrics_out[pol][k][j]) is np.ndarray:
+                            # check for complex
+                            if metrics_out[pol][k][j].dtype.type == np.complex128:
+                                metrics_out[pol][k][j] = metrics_out[pol][k][j].astype(np.str)
+                            metrics_out[pol][k][j] = metrics_out[pol][k][j].tolist()
+                elif type(metrics_out[pol][k]) is np.bool_:
+                    metrics_out[pol][k] = bool(metrics_out[pol][k])
+
+        with open(filename, 'w') as f:
+            json.dump(metrics_out, f, indent=4)
+
+    elif filetype == 'pkl':
+        if filename.split('.')[-1] != 'pkl':
+            filename += '.pkl'
+        with open(filename, 'wb') as f:
+            outp = pkl.Pickler(f)
+            outp.dump(metrics)
+
 
 def load_firstcal_gains(fc_file):
     """
@@ -207,7 +262,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
             fname = os.path.join(metrics['filedir'], fname)
         else:
             fname = os.path.join(outpath, fname)
-        if custom_ax == True:
+        if custom_ax == False:
             fig.savefig(fname, bbox_inches='tight')
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
@@ -277,7 +332,7 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
             fname = os.path.join(metrics['filedir'], fname)
         else:
             fname = os.path.join(outpath, fname)
-        if custom_ax == True:
+        if custom_ax == False:
             fig.savefig(fname, bbox_inches='tight')
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
@@ -435,59 +490,6 @@ class OmniCal_Metrics(object):
             full_metrics[pol] = metrics
 
         return full_metrics
-
-
-    def write_metrics(self, metrics, filename=None, filetype='json'):
-        """
-        Write metrics to file after running self.run_metrics()
-
-        Input:
-        ------
-        metrics : dictionary
-            Omnical_Metrics.run_metrics() output
-
-        filename : str, default=None
-            filename to write out, will use filename by default
-
-        filetype : str, default='json', option=['json', 'pkl']
-            specify file format of output metrics file
-        """
-        if filename is None:
-            filename = os.path.join(self.filedir, self.filestem + '.omni_metrics')
-
-        # write to file
-        if filetype == 'json':
-            if filename.split('.')[-1] != 'json':
-                filename += '.json'
-
-            # change ndarrays to lists
-            metrics_out = copy.deepcopy(metrics)
-            # loop over pols
-            for h, pol in enumerate(metrics_out.keys()):
-                # loop over keys
-                for i, k in enumerate(metrics_out[pol].keys()):
-                    if type(metrics_out[pol][k]) is np.ndarray:
-                        metrics_out[pol][k] = metrics_out[pol][k].tolist()
-                    elif type(metrics_out[pol][k]) is OrderedDict:
-                        # loop over keys
-                        for j in metrics_out[pol][k].keys():
-                            if type(metrics_out[pol][k][j]) is np.ndarray:
-                                # check for complex
-                                if metrics_out[pol][k][j].dtype.type == np.complex128:
-                                    metrics_out[pol][k][j] = metrics_out[pol][k][j].astype(np.str)
-                                metrics_out[pol][k][j] = metrics_out[pol][k][j].tolist()
-                    elif type(metrics_out[pol][k]) is np.bool_:
-                        metrics_out[pol][k] = bool(metrics_out[pol][k])
-
-            with open(filename, 'w') as f:
-                json.dump(metrics_out, f, indent=4)
-
-        elif filetype == 'pkl':
-            if filename.split('.')[-1] != 'pkl':
-                filename += '.pkl'
-            with open(filename, 'wb') as f:
-                outp = pkl.Pickler(f)
-                outp.dump(metrics)
 
     def load_firstcal_gains(self, fc_files):
         """
@@ -731,7 +733,7 @@ class OmniCal_Metrics(object):
                 fname = os.path.join(self.filedir, fname)
             else:
                 fname = os.path.join(outpath, fname)
-            if custom_ax == True:
+            if custom_ax == False:
                 fig.savefig(fname, bbox_inches='tight')
             else:
                 ax.figure.savefig(fname, bbox_inches='tight')
@@ -797,7 +799,7 @@ class OmniCal_Metrics(object):
                 fname = os.path.join(self.filedir, fname)
             else:
                 fname = os.path.join(outpath, fname)
-        if custom_ax == True:
+        if custom_ax == False:
             fig.savefig(fname, bbox_inches='tight')
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
@@ -808,7 +810,11 @@ class OmniCal_Metrics(object):
         plot all metrics
 
         metrics : dictionary
+            a nested polarization dictionary from within a
             Omnical_Metrics.run_metrics() dictionary output
+            ex:
+            full_metrics = Omnical_Metrics.run_metrics()
+            plot_metrics(full_metrics['XX'])
 
         """
         # plot chisq metric
@@ -841,17 +847,19 @@ def omnical_metrics_run(files, args, history):
         om = OmniCal_Metrics(filename, history=history)
         if args.fc_files is not None:
             fc_files = map(lambda x: x.split(','), args.fc_files.split('|'))
-            metrics = om.run_metrics(fcfiles=fc_files[i],
-                                     cut_edges=args.no_bandcut is False,
-                                     phs_std_cut=args.phs_std_cut,
-                                     chisq_std_zscore_cut=args.chisq_std_zscore_cut)
+            full_metrics = om.run_metrics(fcfiles=fc_files[i],
+                                          cut_edges=args.no_bandcut is False,
+                                          phs_std_cut=args.phs_std_cut,
+                                          chisq_std_zscore_cut=args.chisq_std_zscore_cut)
         else:
-            metrics = om.run_metrics(cut_edges=args.no_bandcut is False,
-                                     phs_std_cut=args.phs_std_cut,
-                                     chisq_std_zscore_cut=args.chisq_std_zscore_cut)
+            full_metrics = om.run_metrics(cut_edges=args.no_bandcut is False,
+                                          phs_std_cut=args.phs_std_cut,
+                                          chisq_std_zscore_cut=args.chisq_std_zscore_cut)
 
-        if args.make_plots is True:
-            om.plot_metrics(metrics)
+        # iterate over pols
+        for p, pol in enumerate(full_metrics.keys()):
+            if args.make_plots is True:
+                om.plot_metrics(full_metrics[pol])
 
         abspath = os.path.abspath(filename)
         dirname = os.path.dirname(abspath)
@@ -864,4 +872,4 @@ def omnical_metrics_run(files, args, history):
             print(metrics_path)
         metrics_basename = os.path.basename(filename) + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
-        om.write_metrics(metrics, filename=metrics_filename)
+        write_metrics(full_metrics, filename=metrics_filename)

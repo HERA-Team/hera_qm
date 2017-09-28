@@ -79,10 +79,9 @@ def test_metrics2mc():
     d = utils.metrics2mc(filename, ftype='omnical')
     nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
     om = 'omnical_metrics_'
-    nt.assert_equal(set(d['array_metrics'].keys()), set([om+'tot_chisq', om+'tot_phs_noise', om+'tot_phs_std',
-                                                         om+'phs_noise_good_sol', om+'phs_std_good_sol']))
-    nt.assert_equal(set(d['ant_metrics'].keys()), set([om+'chisq_ant_avg', om+'ant_phs_noise', om+'ant_phs_std',
-                                                       om+'chisq_bad_ants', om+'phs_noise_bad_ants', om+'phs_std_bad_ants']))
+    nt.assert_equal(set(d['array_metrics'].keys()), set([om+'chisq_tot_avg_XX', om+'chisq_good_sol_XX',
+                                                         om+'ant_phs_std_max_XX', om+'ant_phs_std_good_sol_XX']))
+    nt.assert_equal(set(d['ant_metrics'].keys()), set([om+'chisq_ant_avg', om+'chisq_ant_std', om+'ant_phs_std']))
     # Hit the exceptions
     nt.assert_raises(ValueError, utils.metrics2mc, filename, ftype='foo')
 

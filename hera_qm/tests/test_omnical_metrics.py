@@ -17,141 +17,193 @@ class Test_OmniCal_Metrics(unittest.TestCase):
 
     def setUp(self):
         self.fc_file = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
+        self.fc_fileyy = os.path.join(DATA_PATH, 'zen.2457555.42443.yy.HH.uvcA.first.calfits')
         self.oc_file = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.good.omni.calfits')
+        self.ov_file = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.good.vis.uvfits')
         self.out_dir = os.path.join(DATA_PATH, 'test_output')
         self.OM = omnical_metrics.OmniCal_Metrics(self.oc_file)
-        self.OM.run_metrics()
 
     def test_init(self):
         self.assertEqual(self.OM.Nants, 16)
         self.assertEqual(self.OM.filename, 'zen.2457555.42443.xx.HH.uvcA.good.omni.calfits')
-        self.assertEqual(self.OM.omni_gains.shape, (16, 3, 1024))
+        self.assertEqual(self.OM.omni_gains.shape, (16, 3, 1024, 1))
+
+    def test_load_firstcal_gains(self):
+        firstcal_delays, firstcal_gains, fc_pols = omnical_metrics.load_firstcal_gains(self.fc_file)
+        self.assertEqual(firstcal_delays.shape, (16, 3, 1, 1))
+        self.assertEqual(firstcal_gains.shape, (16, 3, 1024, 1))
+        self.assertEqual(fc_pols[0], -5)
+
+    def test_omni_load_firstcal_gains(self):
+        # test execution
+        try:
+            del self.gain_diff
+        except:
+            pass
+        self.OM.load_firstcal_gains(self.fc_file)
+        self.assertTrue(hasattr(self.OM, 'gain_diff'))
+        # test exception
+        self.assertRaises(ValueError, self.OM.load_firstcal_gains, self.fc_fileyy)
 
     def test_run_metrics(self):
         # no fc file
-        self.OM.run_metrics()
-        self.assertIs(self.OM.metrics['ant_phs_noise'], None)
-        self.assertAlmostEqual(self.OM.metrics['chisq_ant_std_loc'], 0.16388136721862939)
-        self.assertIs(type(self.OM.metrics), OrderedDict)
+        full_metrics = self.OM.run_metrics()
+        metrics = full_metrics['XX']
+        self.assertIs(metrics['ant_phs_std'], None)
+        self.assertAlmostEqual(metrics['chisq_ant_std_loc'], 0.16388136721862939)
+        self.assertEqual(len(full_metrics), 1)
+        self.assertEqual(len(metrics), 36)
+        self.assertIs(type(full_metrics), OrderedDict)
+        self.assertIs(type(metrics), OrderedDict)
         # no cut band
-        self.OM.run_metrics(cut_edges=False)
-        # fc file
-        self.OM.run_metrics(firstcal_file=self.fc_file)
-        self.assertAlmostEqual(self.OM.metrics['tot_phs_noise'], 0.30112354535515562)
-        self.assertAlmostEqual(self.OM.metrics['tot_phs_std'], 0.051011338121665986)
+        full_metrics = self.OM.run_metrics(cut_edges=False)
+        metrics = full_metrics['XX']
+        self.assertIs(metrics['ant_phs_std'], None)
+        self.assertAlmostEqual(metrics['chisq_ant_std_loc'], 0.17478741554780153)
+        self.assertEqual(len(full_metrics), 1)
+        self.assertEqual(len(metrics), 36)
+        self.assertIs(type(full_metrics), OrderedDict)
+        self.assertIs(type(metrics), OrderedDict)
+        # use fc file
+        full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
+        metrics = full_metrics['XX']
+        self.assertAlmostEqual(metrics['ant_phs_std_max'], 0.11506173603408311)
+        self.assertEqual(len(metrics['ant_phs_std']), 16)
 
     def test_write_load_metrics(self):
         # Run metrics
-        nkeys = len(self.OM.metrics.keys())
+        full_metrics = self.OM.run_metrics()
+        metrics = full_metrics['XX']
+        nkeys = len(metrics.keys())
         outfile = os.path.join(self.out_dir, 'omnical_metrics.json')
         if os.path.isfile(outfile):
             os.remove(outfile)
         # write json
-        self.OM.write_metrics(filename=outfile, filetype='json')
+        omnical_metrics.write_metrics(full_metrics, filename=outfile, filetype='json')
         self.assertTrue(os.path.isfile(outfile))
         # load json
-        self.OM.load_metrics(filename=outfile)
-        self.assertEqual(len(self.OM.metrics.keys()), nkeys)
+        full_metrics_loaded = omnical_metrics.load_omnical_metrics(outfile)
+        metrics_loaded = full_metrics_loaded['XX']
+        self.assertEqual(len(metrics_loaded.keys()), nkeys)
         # erase
         os.remove(outfile)
         outfile = os.path.join(self.out_dir, 'omnical_metrics.pkl')
         if os.path.isfile(outfile):
             os.remove(outfile)
         # write pkl
-        self.OM.write_metrics(filename=outfile, filetype='pkl')
+        omnical_metrics.write_metrics(full_metrics, filename=outfile, filetype='pkl')
         self.assertTrue(os.path.isfile(outfile))
         # load
-        self.OM.load_metrics(filename=outfile)
-        self.assertEqual(len(self.OM.metrics.keys()), nkeys)
+        full_metrics_loaded = omnical_metrics.load_omnical_metrics(outfile)
+        metrics_loaded = full_metrics_loaded['XX']
+        self.assertEqual(len(metrics_loaded.keys()), nkeys)
         ## check exceptions
         # load filetype
         os.remove(outfile)
         _ = open(outfile+'.wtf', 'a').close()
-        self.assertRaises(IOError, self.OM.load_metrics, filename=outfile+'.wtf')
+        self.assertRaises(IOError, omnical_metrics.load_omnical_metrics, filename=outfile+'.wtf')
         os.remove(outfile+'.wtf')
         # write w/o filename
-        self.OM.run_metrics()
         outfile = os.path.join(self.OM.filedir, self.OM.filestem+'.omni_metrics.json')
-        self.OM.write_metrics(filetype='json')
+        omnical_metrics.write_metrics(full_metrics, filetype='json')
         os.remove(outfile)
         outfile = os.path.join(self.OM.filedir, self.OM.filestem+'.omni_metrics.pkl')
-        self.OM.write_metrics(filetype='pkl')
+        omnical_metrics.write_metrics(full_metrics, filetype='pkl')
         os.remove(outfile)
 
-
     def test_plot_phs_metrics(self):
-        self.OM.run_metrics(firstcal_file=self.fc_file)
+        # run metrics w/ fc file
+        full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
+        metrics = full_metrics['XX']
+        # plot w/ fname, w/o outpath
         fname = os.path.join(self.OM.filedir, 'phs.png')
         if os.path.isfile(fname):
             os.remove(fname)
-        # plot w/ fname
-        self.OM.plot_phs_metric(plot_type='std', fname=fname, save=True)
+        omnical_metrics.plot_phs_metric(metrics, plot_type='std', fname=fname, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
-        self.OM.plot_phs_metric(plot_type='ft', fname=fname, save=True)
+        omnical_metrics.plot_phs_metric(metrics, plot_type='ft', fname=fname, save=True)
+        self.assertEqual(os.path.isfile(fname), True)
+        os.remove(fname)
+        omnical_metrics.plot_phs_metric(metrics, plot_type='hist', fname=fname, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
         plt.close()
         # plot w/ fname and outpath
-        self.OM.plot_phs_metric(plot_type='std', fname=fname, save=True, outpath=self.OM.filedir)
+        omnical_metrics.plot_phs_metric(metrics, plot_type='std', fname=fname, save=True, outpath=self.OM.filedir)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
-        self.OM.plot_phs_metric(plot_type='ft', fname=fname, save=True, outpath=self.OM.filedir)
+        omnical_metrics.plot_phs_metric(metrics, plot_type='hist', fname=fname, save=True, outpath=self.OM.filedir)
+        self.assertEqual(os.path.isfile(fname), True)
+        os.remove(fname)
+        omnical_metrics.plot_phs_metric(metrics, plot_type='ft', fname=fname, save=True, outpath=self.OM.filedir)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
         plt.close()
         # plot w/o fname
         fname = os.path.join(self.OM.filedir, self.OM.filename+'.phs_std.png')
-        self.OM.plot_phs_metric(plot_type='std', save=True)
+        if os.path.isfile(fname):
+            os.remove(fname)
+        omnical_metrics.plot_phs_metric(metrics, plot_type='std', save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
         fname = os.path.join(self.OM.filedir, self.OM.filename+'.phs_ft.png')
-        self.OM.plot_phs_metric(plot_type='ft', save=True)
+        if os.path.isfile(fname):
+            os.remove(fname)
+        omnical_metrics.plot_phs_metric(metrics, plot_type='ft', save=True)
+        self.assertEqual(os.path.isfile(fname), True)
+        os.remove(fname)
+        fname = os.path.join(self.OM.filedir, self.OM.filename+'.phs_hist.png')
+        if os.path.isfile(fname):
+            os.remove(fname)
+        omnical_metrics.plot_phs_metric(metrics, plot_type='hist', save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
         plt.close()
         # plot feeding ax object
         fig,ax = plt.subplots()
-        self.OM.plot_phs_metric(ax=ax)
-        plt.close()
+        fname = os.path.join(self.OM.filedir, 'phs.png')
+        if os.path.isfile(fname):
+            os.remove(fname)
+        omnical_metrics.plot_phs_metric(metrics, fname='phs.png', ax=ax, save=True)
+        self.assertTrue(os.path.isfile(fname))
+        os.remove(fname)
         plt.close()
         # exception
-        del self.OM.metrics
-        self.assertRaises(Exception, self.OM.plot_phs_metric)
+        del self.OM.omni_gains
+        self.assertRaises(Exception, self.OM.plot_gains)
         self.OM.run_metrics()
 
     def test_plot_chisq_metrics(self):
-        self.OM.run_metrics(firstcal_file=self.fc_file)
+        full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
+        metrics = full_metrics['XX']
         fname = os.path.join(self.OM.filedir, 'chisq.png')
         if os.path.isfile(fname):
             os.remove(fname)
         # plot w/ fname
-        self.OM.plot_chisq_metric(fname=fname, save=True)
+        omnical_metrics.plot_chisq_metric(metrics, fname=fname, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
         plt.close()
         # plot w/ fname and outpath
-        self.OM.plot_chisq_metric(fname=fname, save=True, outpath=self.OM.filedir)
+        omnical_metrics.plot_chisq_metric(metrics, fname=fname, save=True, outpath=self.OM.filedir)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
         plt.close()
         # plot w/o fname
         fname = os.path.join(self.OM.filedir, self.OM.filename+'.chisq_std.png')
-        self.OM.plot_chisq_metric(plot_type='std', save=True)
+        omnical_metrics.plot_chisq_metric(metrics, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
         plt.close()
         # plot feeding ax object
         fig,ax = plt.subplots()
-        self.OM.plot_chisq_metric(ax=ax)
+        omnical_metrics.plot_chisq_metric(metrics, ax=ax)
         plt.close()
-        # exception
-        del self.OM.metrics
-        self.assertRaises(Exception, self.OM.plot_chisq_metric)
-        self.OM.run_metrics()
+
 
     def test_plot_chisq_tavg(self):
-        self.OM.run_metrics(firstcal_file=self.fc_file)
+        self.OM.run_metrics(fcfiles=self.fc_file)
         fname = os.path.join(self.OM.filedir, 'chisq_tavg.png')
         # test execution
         if os.path.isfile(fname):
@@ -165,7 +217,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         plt.close()
 
     def test_plot_gains(self):
-        self.OM.run_metrics(firstcal_file=self.fc_file)
+        self.OM.run_metrics(fcfiles=self.fc_file)
         fname = os.path.join(self.OM.filedir, 'gains.png')
         if os.path.isfile(fname):
             os.remove(fname)
@@ -214,20 +266,16 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         plt.close()
 
     def test_plot_metrics(self):
-        # test exception
-        del self.OM.metrics
-        self.assertRaises(Exception, self.OM.plot_metrics)
-        self.OM.run_metrics()
-        self.assertRaises(Exception, self.OM.plot_metrics)
         # test execution
-        self.OM.run_metrics(firstcal_file=self.fc_file)
+        full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
+        metrics = full_metrics['XX']
         fname1 = os.path.join(self.OM.filedir, self.OM.filename+'.chisq_std.png')
         fname2 = os.path.join(self.OM.filedir, self.OM.filename+'.phs_std.png')
         fname3 = os.path.join(self.OM.filedir, self.OM.filename+'.phs_ft.png')
         for f in [fname1, fname2, fname3]:
             if os.path.isfile(f) == True:
                 os.remove(f)
-        self.OM.plot_metrics()
+        self.OM.plot_metrics(metrics)
         self.assertEqual(os.path.isfile(fname1), True)
         self.assertEqual(os.path.isfile(fname2), True)
         self.assertEqual(os.path.isfile(fname3), True)
@@ -262,6 +310,9 @@ class Test_OmniCalMetrics_Run(unittest.TestCase):
         cmd = ' '.join([arguments, self.oc_file])
         args = a.parse_args(cmd.split())
         history = cmd
+        outfile = self.oc_file+'.omni_metrics.json'
+        if os.path.isfile(outfile):
+            os.remove(outfile)
         omnical_metrics.omnical_metrics_run(args.files, args, history)
         outfile = self.oc_file+'.omni_metrics.json'
         self.assertTrue(os.path.isfile(outfile))
@@ -272,8 +323,10 @@ class Test_OmniCalMetrics_Run(unittest.TestCase):
         cmd = ' '.join([arguments, self.oc_file])
         args = a.parse_args(cmd.split())
         history = cmd
-        omnical_metrics.omnical_metrics_run(args.files, args, history)
         outfile = self.oc_file+'.omni.json'
+        if os.path.isfile(outfile):
+            os.remove(outfile)
+        omnical_metrics.omnical_metrics_run(args.files, args, history)
         self.assertTrue(os.path.isfile(outfile))
         os.remove(outfile)
 
@@ -282,24 +335,27 @@ class Test_OmniCalMetrics_Run(unittest.TestCase):
         cmd = ' '.join([arguments, self.oc_file])
         args = a.parse_args(cmd.split())
         history = cmd
-        omnical_metrics.omnical_metrics_run(args.files, args, history)
         outfile = os.path.join(self.out_dir, self.oc_basename+'.omni_metrics.json')
+        if os.path.isfile(outfile):
+            os.remove(outfile)
+        omnical_metrics.omnical_metrics_run(args.files, args, history)
         self.assertTrue(os.path.isfile(outfile))
         os.remove(outfile)
 
         # test w/ options
-        arguments = '--fc_file={0} --no_bandcut --phs_noise_cut=0.5 --phs_std_cut=0.5 '\
-                        '--chisq_std_cut=5.0'.format(self.fc_file)
+        arguments = '--fc_files={0} --no_bandcut --phs_std_cut=0.5 --chisq_std_zscore_cut=4.0'.format(self.fc_file)
         cmd = ' '.join([arguments, self.oc_file])
         args = a.parse_args(cmd.split())
         history = cmd
-        omnical_metrics.omnical_metrics_run(args.files, args, history)
         outfile = self.oc_file + '.omni_metrics.json'
+        if os.path.isfile(outfile):
+            os.remove(outfile)
+        omnical_metrics.omnical_metrics_run(args.files, args, history)
         self.assertTrue(os.path.isfile(outfile))
         os.remove(outfile)
 
         # test make plots
-        arguments = '--fc_file={0} --make_plots'.format(self.fc_file)
+        arguments = '--fc_files={0} --make_plots'.format(self.fc_file)
         cmd = ' '.join([arguments, self.oc_file])
         args = a.parse_args(cmd.split())
         history = cmd
@@ -308,14 +364,18 @@ class Test_OmniCalMetrics_Run(unittest.TestCase):
         outpng1 = self.oc_file + '.chisq_std.png'
         outpng2 = self.oc_file + '.phs_std.png'
         outpng3 = self.oc_file + '.phs_ft.png'
+        outpng4 = self.oc_file + '.phs_hist.png'
         self.assertTrue(os.path.isfile(outfile))
         self.assertTrue(os.path.isfile(outpng1))
         self.assertTrue(os.path.isfile(outpng2))
         self.assertTrue(os.path.isfile(outpng3))
+        self.assertTrue(os.path.isfile(outpng4))
         os.remove(outfile)
         os.remove(outpng1)
         os.remove(outpng2)
         os.remove(outpng3)
+        os.remove(outpng4)
+
 
 
 if __name__ == "__main__":
