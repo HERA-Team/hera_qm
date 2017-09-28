@@ -26,6 +26,7 @@ install:
   - source activate test-environment
   - conda install astropy
   - conda install -c conda-forge aipy
+  - conda install ephem
   - pip install coveralls
   - pip install git+https://github.com/HERA-Team/pyuvdata.git
   - pip install git+https://github.com/HERA-Team/omnical.git
