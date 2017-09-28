@@ -326,8 +326,8 @@ class FirstCal_Metrics(object):
         if self.UVC.cal_type == 'gain':
             with open(calfits_file + '.rotated_metric.json') as rot_file:
                 rmetric = json.load(rot_file)
-            self.delays = np.array([rmetric['delays'][str(ai) + self.pol] for ai in self.UVC.ant_array]).squeeze()
-            self.rotated_antennas = { int(k[:-1]): k[-1] for k in rmetric['rotated_antennas'] }
+            self.delays = np.array([rmetric['delays'][str(ai)] for ai in self.UVC.ant_array]).squeeze()
+            self.rotated_antennas = { int(k): self.pol for k in rmetric['rotated_antennas'] }
             
             
         elif self.UVC.cal_type == 'delay':
