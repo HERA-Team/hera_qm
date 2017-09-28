@@ -276,8 +276,8 @@ def xrfi_run(filename, args, history):
             uvm.read_fhd(args.model_file)
         else:
             raise ValueError('Unrecognized input file format ' + str(args.model_file_format))
-        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array)) and
-                np.allclose(uvd.freq_array, uvm.freq_array)):
+        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5) and
+                np.allclose(uvd.freq_array, uvm.freq_array, atol=1.)):
             raise ValueError('Time and frequency axes of model vis file must match'
                              'the data file.')
         m_flag_array = vis_flag(uvm, args)
@@ -290,8 +290,8 @@ def xrfi_run(filename, args, history):
     if args.calfits_file is not None:
         uvc = UVCal()
         uvc.read_calfits(args.calfits_file)
-        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array)) and
-                np.allclose(uvd.freq_array, uvc.freq_array)):
+        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5) and
+                np.allclose(uvd.freq_array, uvc.freq_array, atol=1.)):
             raise ValueError('Time and frequency axes of calfits file must match'
                              'the data file.')
         g_flag_array, x_flag_array = cal_flag(uvc, args)
@@ -433,6 +433,9 @@ def flags2waterfall(uv, flag_array=None):
                      which are flagged for every time and frequency (in case of UVData input)
                      Size is (Ntimes, Nfreqs).
     """
+    if not isinstance(uv, (UVData, UVCal)):
+        raise ValueError('flags2waterfall() requires a UVData or UVCal object as '
+                         'the first argument.')
     if flag_array is None:
         flag_array = uv.flag_array
     if uv.flag_array.shape != flag_array.shape:
@@ -440,14 +443,12 @@ def flags2waterfall(uv, flag_array=None):
 
     if isinstance(uv, UVCal):
         waterfall = np.mean(flag_array, axis=(0, 1, 4)).T
-    elif isinstance(uv, UVData):
+    else:
         waterfall = np.zeros((uv.Ntimes, uv.Nfreqs))
         for i, t in enumerate(np.unique(uv.time_array)):
             waterfall[i, :] = np.mean(uv.flag_array[uv.time_array == t, 0, :, :],
                                       axis=(0, 2))
-    else:
-        raise ValueError('flags2waterfall() requires a UVData or UVCal object as '
-                         'the first argument.')
+
     return waterfall
 
 
@@ -463,7 +464,7 @@ def waterfall2flags(waterfall, uv):
                       of waterfall across the extra dimensions (baselines/antennas, pols)
     """
     if isinstance(uv, UVCal):
-        flag_array = np.tile(waterfall.T[np.new_axis, np.new_axis, :, :, np.new_axis],
+        flag_array = np.tile(waterfall.T[np.newaxis, np.newaxis, :, :, np.newaxis],
                              (uv.Nants_data, uv.Nspws, 1, 1, uv.Njones))
     elif isinstance(uv, UVData):
         flag_array = np.zeros_like(uv.flag_array)
@@ -573,6 +574,9 @@ def xrfi_apply(filename, args, history):
     # make sure we were given files to process
     if len(filename) == 0:
         raise AssertionError('Please provide a visibility file')
+    if len(filename) > 1:
+        raise AssertionError('xrfi_apply currently only takes a single data file.')
+    filename = filename[0]
     uvd = UVData()
     if args.infile_format == 'miriad':
         uvd.read_miriad(filename)
