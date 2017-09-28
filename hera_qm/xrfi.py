@@ -276,8 +276,8 @@ def xrfi_run(filename, args, history):
             uvm.read_fhd(args.model_file)
         else:
             raise ValueError('Unrecognized input file format ' + str(args.model_file_format))
-        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5) and
-                np.allclose(uvd.freq_array, uvm.freq_array, atol=1.)):
+        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5, rtol=0) and
+                np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
             raise ValueError('Time and frequency axes of model vis file must match'
                              'the data file.')
         m_flag_array = vis_flag(uvm, args)
@@ -290,8 +290,8 @@ def xrfi_run(filename, args, history):
     if args.calfits_file is not None:
         uvc = UVCal()
         uvc.read_calfits(args.calfits_file)
-        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5) and
-                np.allclose(uvd.freq_array, uvc.freq_array, atol=1.)):
+        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5, rtol=0) and
+                np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
             raise ValueError('Time and frequency axes of calfits file must match'
                              'the data file.')
         g_flag_array, x_flag_array = cal_flag(uvc, args)
