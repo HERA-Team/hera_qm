@@ -63,6 +63,7 @@ else:
                 amps[(ant, pol)] = 10.0 * np.log10(amps[(ant, pol)])
             ind1, ind2, indp = uv._key2inds((ant, ant, pol))
             times[(ant, pol)] = np.mean(uv.time_array[ind1])
+    del(uv)
 
 ants = np.unique([ant for (ant, pol) in autos.keys()])
 # Find most recent time, only keep spectra from that time
