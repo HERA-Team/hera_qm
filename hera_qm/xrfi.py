@@ -589,7 +589,7 @@ def xrfi_apply(filename, args, history):
     if args.flag_file is not None:
         d = np.load(args.flag_file)
         flag_array = d['flag_array']
-        flag_history += d['history']
+        flag_history += str(d['history'])
         try:
             # Flag file itself may contain a waterfall
             waterfalls.append(d['waterfall'])
@@ -603,9 +603,9 @@ def xrfi_apply(filename, args, history):
         for wfile in args.waterfalls.split(','):
             d = np.load(wfile)
             waterfalls.append(d['waterfall'])
-            if d['history'] not in flag_history:
+            if str(d['history']) not in flag_history:
                 # Several files may come from same command. Cut down on repeated info.
-                flag_history += d['history']
+                flag_history += str(d['history'])
 
     if len(waterfalls) > 0:
         wf_full = sum(waterfalls).astype(bool)  # Union all waterfalls

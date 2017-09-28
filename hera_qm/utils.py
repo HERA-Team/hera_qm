@@ -117,7 +117,7 @@ def get_metrics_ArgumentParser(method_name):
         a.add_argument('--waterfalls', default=None, type=str, help='comma separated '
                        'list of npz files containing waterfalls of flags to broadcast '
                        'to full flag array and union with flag array in flag_file.')
-        a.add_argument('filename', metavar='filename', type=str, nargs=1, default=[],
+        a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
                        help='file for which to flag RFI (only one file allowed).')
     return a
 

@@ -439,9 +439,10 @@ class TestXrfiRun(object):
         # test writing to same directory
         arg0 = "--infile_format=miriad"
         arg1 = "--algorithm=xrfi_simple"
-        arguments = ' '.join([arg0, arg1])
+        arg2 = "--extension=.testflags.npz"
+        arguments = ' '.join([arg0, arg1, arg2])
         xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-        dest_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.flags.npz')
+        dest_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.testflags.npz')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, xx_file])
@@ -452,39 +453,38 @@ class TestXrfiRun(object):
         os.remove(dest_file)
 
 
-# class TestXrfiApply(object):
-#     def test_xrfi_run_xrfi(self):
-#         # get argument object
-#         a = utils.get_metrics_ArgumentParser('xrfi')
-#         arg0 = "--infile_format=miriad"
-#         arg1 = "--outfile_format=miriad"
-#         arg2 = "--extension=R"
-#         arg3 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
-#         arg4 = "--algorithm=xrfi"
-#         arg5 = "--kt_size=2"
-#         arg6 = "--kf_size=2"
-#         arg7 = "--sig_init=6"
-#         arg8 = "--sig_adj=2"
-#         arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8])
+class TestXrfiApply(object):
+    def test_xrfi_apply(self):
+        # get argument object
+        a = utils.get_metrics_ArgumentParser('xrfi_apply')
+        arg0 = "--infile_format=miriad"
+        arg1 = "--outfile_format=miriad"
+        arg2 = "--extension=R"
+        arg3 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        flag_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.flags.npz')
+        arg4 = "--flag_file=" + flag_file
+        wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.npz')
+        wf_file2 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.x.flags.npz')
+        arg5 = "--waterfalls=" + wf_file1 + "," + wf_file2
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5])
+
+        # test running with no files
+        cmd = ' '.join([arguments, ''])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        nt.assert_raises(AssertionError, xrfi.xrfi_apply, args.filename, args, history)
+
+        # test running on our test data
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        dest_file = os.path.join(DATA_PATH, 'test_output', 'zen.2457698.40355.xx.HH.uvcAAR')
+        if os.path.exists(dest_file):
+            shutil.rmtree(dest_file)
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        xrfi.xrfi_apply(args.filename, args, cmd)
+        nt.assert_true(os.path.exists(dest_file))
 #
-#         # test running with no files
-#         cmd = ' '.join([arguments, ''])
-#         args = a.parse_args(cmd.split())
-#         history = cmd
-#         nt.assert_raises(AssertionError, xrfi.xrfi_run, args.files, args, history)
-#
-#         # test running on our test data
-#         xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-#         dest_file = os.path.join(DATA_PATH, 'test_output', 'zen.2457698.40355.xx.HH.uvcAAR')
-#         if os.path.exists(dest_file):
-#             shutil.rmtree(dest_file)
-#         cmd = ' '.join([arguments, xx_file])
-#         args = a.parse_args(cmd.split())
-#         history = cmd
-#         xrfi.xrfi_run(args.files, args, cmd)
-#         nt.assert_true(os.path.exists(dest_file))
-#
-#         # TODO: test cal/model files
 #
 #     def test_xrfi_run_xrfi_simple(self):
 #         # get argument object
