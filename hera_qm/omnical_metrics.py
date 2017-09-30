@@ -166,10 +166,12 @@ def load_firstcal_gains(fc_file):
     uvf = UVCal()
     uvf.read_calfits(fc_file)
     freqs = uvf.freq_array.squeeze()
-    firstcal_delays = np.moveaxis(uvf.delay_array, 2, 3)[:, 0, :, :, :]
-    firstcal_gains = np.array(map(lambda x: np.exp(-2j * np.pi * freqs.reshape(1, -1, 1) * x), firstcal_delays))
+    fc_gains = np.moveaxis(uvf.gain_array, 2, 3)[:, 0, :, :, :]
+    d_nu = np.mean(freqs[1:]-freqs[:-1])
+    d_phi = np.abs(np.mean(np.angle(fc_gains)[:, :, 1:, :] - np.angle(fc_gains)[:, :, :-1, :], axis=2))
+    fc_delays = (d_phi / d_nu)/(2*np.pi)
     fc_pols = uvf.jones_array
-    return firstcal_delays, firstcal_gains, fc_pols
+    return fc_delays, fc_gains, fc_pols
 
 
 def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
@@ -512,11 +514,11 @@ class OmniCal_Metrics(object):
             # convert to 'xy' pol convention and then select omni_pol from fc_pols
             fc_pols = map(lambda x: self.jones2pol[x], fc_pols)
             if pol not in fc_pols:
-                raise ValueError("omni_pol={0} not in list of pols from firstcal_file={1]".format(pol, fcfile))
+                raise ValueError("omni_pol={0} not in list of pols from firstcal_file={1}".format(pol, fcfile))
             fc_pol_index = fc_pols.index(pol)
-            firstcal_delays.append(fc_delays[:, :, :, fc_pol_index])
+            firstcal_delays.append(fc_delays[:, :, fc_pol_index])
             firstcal_gains.append(fc_gains[:, :, :, fc_pol_index])
-        self.firstcal_delays = np.moveaxis(np.array(firstcal_delays), 0, 3)
+        self.firstcal_delays = np.moveaxis(np.array(firstcal_delays), 0, 2)
         self.firstcal_gains = np.moveaxis(np.array(firstcal_gains), 0, 3)
         self.gain_diff = self.omni_gains / self.firstcal_gains
 

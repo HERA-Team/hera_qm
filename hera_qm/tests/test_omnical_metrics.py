@@ -1,6 +1,3 @@
-"""
-Test Omnical Metrics
-"""
 import matplotlib.pyplot as plt
 import numpy as np
 from hera_qm import omnical_metrics
@@ -30,7 +27,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
 
     def test_load_firstcal_gains(self):
         firstcal_delays, firstcal_gains, fc_pols = omnical_metrics.load_firstcal_gains(self.fc_file)
-        self.assertEqual(firstcal_delays.shape, (16, 3, 1, 1))
+        self.assertEqual(firstcal_delays.shape, (16, 3, 1))
         self.assertEqual(firstcal_gains.shape, (16, 3, 1024, 1))
         self.assertEqual(fc_pols[0], -5)
 

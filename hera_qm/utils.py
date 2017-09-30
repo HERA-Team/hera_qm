@@ -301,7 +301,12 @@ def metrics2mc(filename, ftype):
                 try:
                     if metrics[met] is None:
                         continue
-                    d['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]]
+                    # if catmet already exists extend it
+                    if catmet in d['ant_metrics']:
+                        d['ant_metrics'][catmet].extend([[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]])
+                    # if not, assign it
+                    else:
+                        d['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]]
                 except:
                     pass
 
