@@ -15,7 +15,7 @@ import sys
 class Test_FirstCal_Metrics(unittest.TestCase):
 
     def setUp(self):
-        infile = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+        infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
         self.FC = firstcal_metrics.FirstCal_Metrics(infile)
         self.out_dir = os.path.join(DATA_PATH, 'test_output')
 
@@ -170,9 +170,9 @@ class TestFirstcalMetricsRun(unittest.TestCase):
                           args.files, args, history)
 
         # Test running with file
-        filename = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+        filename = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2457678.16694.yy.HH.uvc.good.first.calfits.' +
+                                 'zen.2457555.50099.yy.HH.uvcA.first.calfits.' +
                                  'firstcal_metrics.json')
         if os.path.exists(dest_file):
             os.remove(dest_file)

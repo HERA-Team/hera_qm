@@ -73,7 +73,7 @@ def test_metrics2mc():
     firstcal_ant_metrics -= {'firstcal_metrics_good_sol_x', 'firstcal_metrics_good_sol',
                              'firstcal_metrics_agg_std_x', 'firstcal_metrics_agg_std'}
     nt.assert_equal(set(d['ant_metrics']), firstcal_ant_metrics)
-    filename = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+    filename = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
     d = utils.metrics2mc(filename, ftype='omnical')
     nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
     nt.assert_equal(d['array_metrics'].keys(), ['omnical_total_quality'])
@@ -81,7 +81,7 @@ def test_metrics2mc():
     # Hit the exceptions
     nt.assert_raises(ValueError, utils.metrics2mc, filename, ftype='foo')
     uvcal = UVCal()
-    infile = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+    infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
     outfile = os.path.join(DATA_PATH, 'test_output', 'bad_omni.calfits')
     uvcal.read_calfits(infile)
     uvcal.jones_array[0] = -7  # Not allowed polarization
