@@ -44,6 +44,8 @@ def get_metrics_ArgumentParser(method_name):
                        help='*.uv files for which to calculate ant_metrics.')
     elif method_name == 'firstcal_metrics':
         a.prog = 'firstcal_metrics.py'
+        a.add_argument('--rotant_files', type=str, nargs='*', default=[],
+                       help='comma-delimited *.rotated_ants.json files corresponding to *.calfits files.')
         a.add_argument('--std_cut', default=0.5, type=float,
                        help='Delay standard deviation cut for good / bad determination. Default 0.5')
         a.add_argument('--extension', default='.firstcal_metrics.json', type=str,
@@ -248,6 +250,10 @@ def metrics2mc(filename, ftype):
         metric = 'firstcal_metrics_bad_ants'
         d['ant_metrics'][metric] = []
         for ant in data['bad_ants']:
+            d['ant_metrics'][metric].append([ant, pol, 1.])
+        metric = 'firstcal_metrics_rot_ants'
+        d['ant_metrics'][metric] = []
+        for ant in data['rot_ants']:
             d['ant_metrics'][metric].append([ant, pol, 1.])
 
     elif ftype == 'omnical':

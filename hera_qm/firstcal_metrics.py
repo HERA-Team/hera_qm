@@ -42,7 +42,9 @@ def get_firstcal_metrics_dict():
                     'firstcal_metrics_ant_std': 'Standard deviation of each '
                     'antennas delay solution across time.',
                     'firstcal_metrics_bad_ants': 'Antennas flagged as bad due '
-                    'to large variation in delay solution.'}
+                    'to large variation in delay solution.',
+                    'firstcal_metrics_rot_ants': 'Antennas flagged as being '
+                    'rotated by 180 degrees.'}
     return metrics_dict
 
 
@@ -294,8 +296,8 @@ class FirstCal_Metrics(object):
         self.delay_avgs : ndarray, shape=(N_ant,)
             median delay solutions across time [nanosec]
 
-        self.delay_offsets : ndarray, shape=(N_ant, N_times)
-            firstcal delay solution offsets from time average [nanosec]
+        self.delay_fluctuations : ndarray, shape=(N_ant, N_times)
+            firstcal delay solution fluctuations from time average [nanosec]
 
         self.frac_JD : ndarray, shape=(N_times,)
             ndarray containing time-stamps of each integration
@@ -324,23 +326,20 @@ class FirstCal_Metrics(object):
 
         # Get the firstcal.rotated_antenna.metric file
         if self.UVC.cal_type == 'gain':
-            with open(calfits_file + '.rotated_metric.json') as rot_file:
-                rmetric = json.load(rot_file)
-            self.delays = np.array([rmetric['delays'][str(ai)] for ai in self.UVC.ant_array]).squeeze()
-            self.rotated_antennas = { int(k): self.pol for k in rmetric['rotated_antennas'] }
-            
-            
+            freqs = self.UVC.freq_array.squeeze()
+            fc_gains = np.moveaxis(self.UVC.gain_array, 2, 3)[:, 0, :, :, 0]
+            fc_phi = np.unwrap(np.angle(fc_gains))
+            d_nu = np.mean(np.diff(freqs))
+            d_phi = np.mean(fc_phi[:, :, 1:] - fc_phi[:, :, :-1], axis=2)
+            self.delays = (d_phi / d_nu)/(-2*np.pi)
+
         elif self.UVC.cal_type == 'delay':
             self.delays = self.UVC.delay_array.squeeze()
 
         # get file prefix
-        self.fc_filename = calfits_file.split('/')[-1]
+        self.fc_basename = os.path.basename(calfits_file)
+        self.fc_filename = calfits_file
         self.fc_filestem = '.'.join(self.fc_filename.split('.')[:-1])
-
-        # Calculate median delay
-        self.delays = self.delays * 1e9
-        self.delay_avgs = np.median(self.delays, axis=1)
-        self.delay_offsets = (self.delays.T - self.delay_avgs).T
 
         # get other relevant arrays
         self.times = self.UVC.time_array
@@ -352,13 +351,23 @@ class FirstCal_Metrics(object):
         self.version_str = hera_qm_version_str
         self.history = ''
 
-    def run_metrics(self, std_cut=0.5):
+        # Calculate avg delay solution and subtract to get delay_fluctuations
+        self.delays = self.delays * 1e9
+        self.delay_avgs = np.median(self.delays, axis=1)
+        self.delay_fluctuations = (self.delays.T - self.delay_avgs).T
+
+
+    def run_metrics(self, rotant_json=None, std_cut=0.5):
         """
         Run all metrics, put them in "metrics" dictionary
         and attach metrics to class
 
         Input:
         ------
+        rotant_json : str, default=None
+            a filename for a json containing rotated antenna metric
+            to be propagated into firstcal metric file
+
         std_cut : float, default=0.5
             delay stand. dev cut for good / bad determination
 
@@ -417,12 +426,23 @@ class FirstCal_Metrics(object):
         metrics['frac_JD'] = self.frac_JD
         metrics['std_cut'] = std_cut
         metrics['pol'] = self.pol
-        try:
-            metrics['rotated_antennas'] = self.rotated_antennas
-        except AttributeError:
-            metrics['rotated_antennas'] = None 
+
+        # try to load rotated antenna metric
+        if rotant_json is not None:
+            try:
+                with open(rotant_json) as rot_file:
+                    rmetric = json.load(rot_file)
+                self.rotated_antennas = np.array(rmetric['rotated_antennas']).astype(np.int).tolist()
+                metrics['rot_ants'] = self.rotated_antennas
+            except IOError:
+                print("couldn't load {0}".format(rotant_json))
+                metrics['rot_ants'] = None
+        else:
+            metrics['rot_ants'] = None
+
         if self.history != '':
             metrics['history'] = self.history
+
         self.metrics = metrics
 
     def write_metrics(self, filename=None, filetype='json'):
@@ -528,12 +548,12 @@ class FirstCal_Metrics(object):
         """
         # calculate standard deviations
         ant_avg = self.delay_avgs
-        ant_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets, axis=1))
-        time_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets, axis=0))
-        agg_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets))
+        ant_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations, axis=1))
+        time_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations, axis=0))
+        agg_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations))
 
         # calculate z-scores
-        z_scores = self.delay_offsets / agg_std
+        z_scores = self.delay_fluctuations / agg_std
         ant_z_scores = np.median(np.abs(z_scores), axis=1)
 
         # convert to ordered dict if desired
@@ -578,7 +598,7 @@ class FirstCal_Metrics(object):
         plot_type : str, [default='both']
             specify which type of plot to make
             'solution' for full delay solution
-            'offset' for just offset from avg
+            'fluctuation' for just flucutations from avg
             'both' for both
 
         ax : list, [default=None]
@@ -651,19 +671,19 @@ class FirstCal_Metrics(object):
             if plot_type == 'both':
                 ax = axes
 
-        # plot delay offset
-        if (plot_type == 'both') or (plot_type == 'offset'):
+        # plot delay fluctuation
+        if (plot_type == 'both') or (plot_type == 'fluctuation'):
             if plot_type == 'both':
                 axes = ax
                 ax = axes[1]
             plabel = []
             ax.grid(True, zorder=0)
             for i, index in enumerate(plot_ants):
-                p, = ax.plot(self.frac_JD, self.delay_offsets[index],
+                p, = ax.plot(self.frac_JD, self.delay_fluctuations[index],
                              marker='.', c=cm[i], **plt_kwargs)
                 plabel.append(p)
             ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
-            ax.set_ylabel('delay offset [ns]', fontsize=14)
+            ax.set_ylabel('delay fluctuation [ns]', fontsize=14)
             if plot_type == 'both':
                 ax = axes
 
@@ -762,9 +782,13 @@ def firstcal_metrics_run(files, args, history):
     if len(files) == 0:
         raise AssertionError('Please provide a list of calfits files')
 
-    for filename in files:
+    for i, filename in enumerate(files):
         fm = FirstCal_Metrics(filename)
-        fm.run_metrics(std_cut=args.std_cut)
+        try:
+            fm.run_metrics(rotant_json=args.rotant_files[i])
+        except:
+            fm.run_metrics(std_cut=args.std_cut)
+            
         # add history
         fm.history = fm.history + history
 
