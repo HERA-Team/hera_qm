@@ -171,6 +171,7 @@ class TestFirstcalMetricsRun(unittest.TestCase):
         history = cmd
         firstcal_metrics.firstcal_metrics_run(args.files, args, history)
         self.assertTrue(os.path.exists(dest_file))
+        os.remove(dest_file)
 
 
 if __name__ == "__main__":
