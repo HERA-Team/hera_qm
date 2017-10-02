@@ -600,6 +600,34 @@ class TestXrfiApply(object):
         history = cmd
         nt.assert_raises(ValueError, xrfi.xrfi_apply, args.filename, args, cmd)
 
+        # array size checks
+        arg0 = "--infile_format=miriad"
+        arg1 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        flag_file = os.path.join(DATA_PATH, 'test_output', 'bad.flags.npz')
+        np.savez(flag_file, flag_array=np.zeros((3, 4)))
+        arg2 = "--flag_file=" + flag_file
+        arguments = ' '.join([arg0, arg1, arg2])
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        # Flag array wrong size
+        nt.assert_raises(ValueError, xrfi.xrfi_apply, args.filename, args, cmd)
+        os.remove(flag_file)
+
+        flag_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.flags.npz')
+        arg2 = "--flag_file=" + flag_file
+        wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.npz')
+        wf_file2 = os.path.join(DATA_PATH, 'test_output', 'bad_wf.npz')
+        np.savez(wf_file2, waterfall=np.zeros((3, 4)))
+        arg3 = "--waterfalls=" + wf_file1 + "," + wf_file2
+        arguments = ' '.join([arg0, arg1, arg2, arg3])
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        # Waterfall wrong size
+        nt.assert_raises(ValueError, xrfi.xrfi_apply, args.filename, args, cmd)
+        os.remove(wf_file2)
+
 
 class TestSummary(unittest.TestCase):
     def test_summarize_flags(self):
