@@ -340,6 +340,7 @@ class TestXrfiRun(object):
         history = cmd
         xrfi.xrfi_run(args.filename, args, cmd)
         nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
 
     def test_xrfi_run_xrfi_simple(self):
         # get argument object
@@ -372,8 +373,12 @@ class TestXrfiRun(object):
         xrfi.xrfi_run(args.filename, args, cmd)
         nt.assert_true(os.path.exists(dest_file))
         nt.assert_true(os.path.exists(sum_file))
+        os.remove(dest_file)
+        os.remove(sum_file)
 
     def test_xrfi_run_model_and_cal(self):
+        from pyuvdata import UVData
+
         # get argument object
         a = utils.get_metrics_ArgumentParser('xrfi_run')
         arg0 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
@@ -403,6 +408,25 @@ class TestXrfiRun(object):
         xrfi.xrfi_run(args.filename, args, cmd)
         for f in dest_files:
             nt.assert_true(os.path.exists(f))
+            os.remove(f)
+
+        # Test model_file_format
+        uv = UVData()
+        uv.read_uvfits(model_file)
+        model_file = os.path.join(DATA_PATH, 'test_output',
+                                  'zen.2457698.40355.xx.HH.uvc.vis')
+        uv.write_miriad(model_file, clobber=True)
+        dest_file = model_file + '.flags.npz'
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        arg2 = "--model_file=" + model_file
+        arg4 = "--model_file_format=miriad"
+        cmd = ' '.join([arg0, arg1, arg2, arg4, xx_file])
+        args = a.parse_args(cmd.split())
+        xrfi.xrfi_run(args.filename, args, cmd)
+        nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
+        shutil.rmtree(model_file)
 
     def test_xrfi_run_model_and_cal_errors(self):
         from pyuvdata import UVData
@@ -417,11 +441,6 @@ class TestXrfiRun(object):
         arg3 = "--calfits_file=" + calfits_file
         xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
         arguments = ' '.join([arg0, arg1, arg2, arg3])
-
-        arg4 = "--model_file_format=miriad"
-        cmd = ' '.join([arguments, arg4, xx_file])
-        args = a.parse_args(cmd.split())
-        nt.assert_raises(RuntimeError, xrfi.xrfi_run, args.filename, args, cmd)
 
         arg4 = "--model_file_format=fhd"
         cmd = ' '.join([arguments, arg4, xx_file])
@@ -449,11 +468,8 @@ class TestXrfiRun(object):
         uv.select(times=uv.time_array[0])
         bad_model_file = os.path.join(DATA_PATH, 'test_output', 'bad_model.uvfits')
         uv.write_uvfits(bad_model_file)
-        arg2 = "--model_file=" + bad_model_file
-        arguments = ' '.join([arg0, arg1, arg2, arg3])
-        cmd = ' '.join([arguments, xx_file])
-        args = a.parse_args(cmd.split())
         nt.assert_raises(ValueError, xrfi.xrfi_run, args.filename, args, cmd)
+        os.remove(bad_model_file)
 
     def test_xrfi_run_errors(self):
         # test code to read different file formats
@@ -541,6 +557,7 @@ class TestXrfiApply(object):
         history = cmd
         xrfi.xrfi_apply(args.filename, args, cmd)
         nt.assert_true(os.path.exists(dest_file))
+        shutil.rmtree(dest_file)  # clean up
 
         # uvfits output
         arg1 = "--outfile_format=uvfits"
@@ -554,6 +571,7 @@ class TestXrfiApply(object):
         history = cmd
         xrfi.xrfi_apply(args.filename, args, cmd)
         nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
 
     def test_xrfi_apply_errors(self):
         # test code to read different file formats
@@ -616,6 +634,7 @@ class TestSummary(unittest.TestCase):
         self.assertEqual(data['freqs'].shape, (nf,))
         self.assertEqual(data['pols'], ['XX'])
         self.assertEqual(data['version'], hera_qm_version_str)
+        os.remove(outfile)  # cleanup
 
 
 class TestVisFlag(object):
@@ -753,6 +772,14 @@ class TestWaterfall2Flags(object):
             nt.assert_true(np.all(wf == flags[ai, 0, :, :, 0].T))
 
     def test_waterfall2flags_errors(self):
+        from pyuvdata import UVData
+
+        uv = UVData()
+        uv.read_uvfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvc.vis.uvfits'))
+
+        # Waterfall must have dims (uv.Ntimes, uv.Nfreqs)
+        wf = np.zeros((2, 2))
+        nt.assert_raises(ValueError, xrfi.waterfall2flags, wf, uv)
 
         # Second argument must be UVData or UVCal object
         nt.assert_raises(ValueError, xrfi.waterfall2flags, np.array([4, 5]), 5)

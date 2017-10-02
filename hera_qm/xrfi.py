@@ -232,7 +232,7 @@ def xrfi_run(filename, args, history):
     and store results in npz files.
 
     Args:
-       filename -- Data file to run RFI flagging on. Single polarization is assumed.
+       filename -- Data file to run RFI flagging on.
        args -- parsed arguments via argparse.ArgumentParser.parse_args
        history -- history string to include in files
     Return:
@@ -423,6 +423,8 @@ def cal_flag(uvc, args):
 def flags2waterfall(uv, flag_array=None):
     """
     Convert a flag array to a 2D waterfall of dimensions (Ntimes, Nfreqs).
+    Averages over baselines and polarizations (in the case of visibility data),
+    or antennas and jones parameters (in case of calibrationd data).
     Args:
         uv -- A UVData or UVCal object which defines the times and frequencies,
               and supplies the flag_array to convert (if flag_array not specified)
@@ -463,6 +465,11 @@ def waterfall2flags(waterfall, uv):
         flag_array -- Flag array of dimensions defined by uv which copies the values
                       of waterfall across the extra dimensions (baselines/antennas, pols)
     """
+    if not isinstance(uv, (UVData, UVCal)):
+        raise ValueError('waterfall2flags() requires a UVData or UVCal object as '
+                         'the second argument.')
+    if waterfall.shape != (uv.Ntimes, uv.Nfreqs):
+        raise ValueError('Waterfall dimensions do not match data. Cannot broadcast.')
     if isinstance(uv, UVCal):
         flag_array = np.tile(waterfall.T[np.newaxis, np.newaxis, :, :, np.newaxis],
                              (uv.Nants_data, uv.Nspws, 1, 1, uv.Njones))
@@ -470,9 +477,7 @@ def waterfall2flags(waterfall, uv):
         flag_array = np.zeros_like(uv.flag_array)
         for i, t in enumerate(np.unique(uv.time_array)):
             flag_array[uv.time_array == t, :, :, :] = waterfall[i, np.newaxis, :, np.newaxis]
-    else:
-        raise ValueError('waterfall2flags() requires a UVData or UVCal object as '
-                         'the second argument.')
+
     return flag_array
 
 
@@ -593,6 +598,9 @@ def xrfi_apply(filename, args, history):
     if args.flag_file is not None:
         d = np.load(args.flag_file)
         flag_array = d['flag_array']
+        if flag_array.shape != uvd.flag_array.shape:
+            raise ValueError('Flag array in ' + args.flag_file + ' does not match '
+                             'shape of flag array in data file ' + filename + '.')
         flag_history += str(d['history'])
         try:
             # Flag file itself may contain a waterfall
@@ -600,12 +608,14 @@ def xrfi_apply(filename, args, history):
         except KeyError:
             pass
     else:
-        flag_array = np.array([False])
+        flag_array = np.zeros_like(uvd.flag_array)
 
     # Read in waterfalls
     if args.waterfalls is not None:
         for wfile in args.waterfalls.split(','):
             d = np.load(wfile)
+            if (len(waterfalls) > 0 and d['waterfall'].shape != waterfalls[0].shape):
+                raise ValueError('Not all waterfalls have the same shape, cannot combine.')
             waterfalls.append(d['waterfall'])
             if str(d['history']) not in flag_history:
                 # Several files may come from same command. Cut down on repeated info.
@@ -631,8 +641,10 @@ def xrfi_apply(filename, args, history):
     outfile = ''.join([basename, args.extension])
     outpath = os.path.join(dirname, outfile)
     if args.outfile_format == 'miriad':
-        uvd.write_miriad(outpath)
+        uvd.write_miriad(outpath, clobber=args.overwrite)
     elif args.outfile_format == 'uvfits':
+        if os.path.exists(outpath) and not args.overwrite:
+            raise ValueError('File exists: skipping')
         uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
     else:
         raise ValueError('Unrecognized output file format ' + str(args.outfile_format))

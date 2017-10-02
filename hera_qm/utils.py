@@ -93,7 +93,7 @@ def get_metrics_ArgumentParser(method_name):
                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
         a.add_argument('--px_threshold', default=0.2, type=float,
                        help='Fraction of flags required to trigger a broadcast across'
-                       ' baselines. Default is 0.2.')
+                       ' baselines for a given (time, frequency) pixel. Default is 0.2.')
         a.add_argument('--freq_threshold', default=0.5, type=float,
                        help='Fraction of channels required to trigger broadcast across'
                        ' frequency (single time). Default is 0.5.')
@@ -112,6 +112,8 @@ def get_metrics_ArgumentParser(method_name):
                        help='File format for output files. Default is miriad.')
         a.add_argument('--extension', default='R', type=str,
                        help='Extension to be appended to input file name. Default is "R".')
+        a.add_argument('--overwrite', action='store_true', default=False,
+                       help='Option to overwrite output file if it already exists.')
         a.add_argument('--flag_file', default=None, type=str, help='npz file '
                        'containing full flag array to insert into data file.')
         a.add_argument('--waterfalls', default=None, type=str, help='comma separated '
