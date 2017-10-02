@@ -5,18 +5,17 @@ import warnings
 import argparse
 import numpy as np
 
-
 # argument-generating function for *_run wrapper functions
 def get_metrics_ArgumentParser(method_name):
     """
     Function to get an ArgumentParser instance for working with metrics wrappers.
 
     Args:
-        method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", or "xrfi"
+        method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", "omnical_metrics", or "xrfi"
     Returns:
         a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
-    methods = ["ant_metrics", "firstcal_metrics", "xrfi"]
+    methods = ["ant_metrics", "firstcal_metrics", "xrfi", "omnical_metrics"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -52,6 +51,28 @@ def get_metrics_ArgumentParser(method_name):
                        help='Path to save metrics file to. Default is same directory as file.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.calfits files for which to calculate firstcal_metrics.')
+    elif method_name == 'omnical_metrics':
+        a.prog = 'omnical_metrics.py'
+        a.add_argument('--fc_files', metavar='fc_files', type=str, default=None,
+                       help='[optional] *.first.calfits files of firstcal solutions to perform omni-firstcal comparison metrics.'
+                       ' If multiple pols exist in a single *.omni.calfits file, feed .pol.first.calfits fcfiles as comma-delimited.'
+                       ' If operating on multiple .omni.calfits files, feed separate comma-delimited fcfiles as vertical bar-delimited.'
+                       ' Ex1: omnical_metrics_run.py --fc_files=zen.xx.first.calfits,zen.yy.first.calfits zen.omni.calfits'
+                       ' Ex2: omnical_metrics_run.py --fc_files=zen1.xx.first.calfits,zen1.yy.first.calfits|zen2.xx.first.calfits,zen2.yy.first.calfits zen1.omni.calfits zen2.omni.calfits')
+        a.add_argument('--no_bandcut', action='store_true', default=False,
+                       help="flag to turn off cutting of frequency band edges before calculating metrics")
+        a.add_argument('--phs_std_cut', type=float, default=0.3,
+                       help="set gain phase stand dev cut. see OmniCal_Metrics.run_metrics() for details.")
+        a.add_argument('--chisq_std_zscore_cut', type=float, default=4.0,
+                       help="set chisq stand dev. zscore cut. see OmniCal_Metrics.run_metrics() for details.")
+        a.add_argument('--make_plots', action='store_true', default=False,
+                       help="make .png plots of metrics")
+        a.add_argument('--extension', default='.omni_metrics.json', type=str,
+                       help='Extension to be appended to the metrics file name. Default is ".omni_metrics.json"')
+        a.add_argument('--metrics_path', default='', type=str,
+                       help='Path to save metrics file to. Default is same directory as file.')
+        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
+                       help='*.omni.calfits files for which to calculate omnical_metrics.')
     elif method_name == 'xrfi':
         a.prog = 'xrfi_run.py'
         a.add_argument('--infile_format', default='miriad', type=str,
@@ -251,24 +272,53 @@ def metrics2mc(filename, ftype):
             d['ant_metrics'][metric].append([ant, pol, 1.])
 
     elif ftype == 'omnical':
-        from pyuvdata import UVCal
-        uvcal = UVCal()
-        uvcal.read_calfits(filename)
-        pol_dict = {-5: 'x', -6: 'y'}
-        d['ant_metrics']['omnical_quality'] = []
-        for pi, pol in enumerate(uvcal.jones_array):
-            try:
-                pol = pol_dict[pol]
-            except KeyError:
-                raise ValueError('Invalid polarization for ant_metrics in M&C.')
-            for ai, ant in enumerate(uvcal.ant_array):
-                val = np.median(uvcal.quality_array[ai, 0, :, :, pi], axis=0)
-                val = np.mean(val)
-                d['ant_metrics']['omnical_quality'].append([ant, pol, val])
-        if uvcal.total_quality_array is not None:
-            d['array_metrics']['omnical_total_quality'] = np.mean(uvcal.total_quality_array)
+        from hera_qm.omnical_metrics import load_omnical_metrics
+        full_mets = load_omnical_metrics(filename)
+        pols = full_mets.keys()
+
+        # iterate over polarizations (e.g. XX, YY, XY, YX)
+        for i, pol in enumerate(pols):
+            # unpack metrics from full_mets
+            metrics = full_mets[pol]
+
+            # pack array metrics
+            cat = 'omnical_metrics_'
+            for met in ['chisq_tot_avg', 'chisq_good_sol', 'ant_phs_std_max', 'ant_phs_std_good_sol']:
+                catmet = cat + met + '_{}'.format(pol)
+                try:
+                    if metrics[met] is None:
+                        continue
+                    d['array_metrics'][catmet] = metrics[met]
+                except:
+                    pass
+
+            # pack antenna metrics, only uses auto pol (i.e. XX or YY)
+            if pol not in ['XX', 'YY']:
+                continue
+            cat = 'omnical_metrics_'
+            for met in ['chisq_ant_avg', 'chisq_ant_std', 'ant_phs_std']:
+                catmet = cat + met
+                try:
+                    if metrics[met] is None:
+                        continue
+                    # if catmet already exists extend it
+                    if catmet in d['ant_metrics']:
+                        d['ant_metrics'][catmet].extend([[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]])
+                    # if not, assign it
+                    else:
+                        d['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]]
+                except:
+                    pass
 
     else:
         raise ValueError('Metric file type ' + ftype + ' is not recognized.')
 
     return d
+
+
+
+
+
+
+
+
