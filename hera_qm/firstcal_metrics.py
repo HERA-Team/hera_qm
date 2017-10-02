@@ -326,18 +326,34 @@ class FirstCal_Metrics(object):
 
         # Get the firstcal.rotated_antenna.metric file
         if self.UVC.cal_type == 'gain':
+            # get delays
             freqs = self.UVC.freq_array.squeeze()
             fc_gains = np.moveaxis(self.UVC.gain_array, 2, 3)[:, 0, :, :, 0]
             fc_phi = np.unwrap(np.angle(fc_gains))
-            d_nu = np.mean(np.diff(freqs))
-            d_phi = np.mean(fc_phi[:, :, 1:] - fc_phi[:, :, :-1], axis=2)
-            self.delays = (d_phi / d_nu)/(-2*np.pi)
+            d_nu = np.median(np.diff(freqs))
+            d_phi = np.median(fc_phi[:, :, 1:] - fc_phi[:, :, :-1], axis=2)
+            gain_slope = (d_phi / d_nu)
+            self.delays = gain_slope / (-2*np.pi)
+            self.gains = fc_gains
+
+            self.gain_slope = gain_slope
+            self.fc_phi = fc_phi
+
+            # get delay offsets at nu = 0 Hz
+            self.offset = (fc_phi[:, :, 0] - gain_slope * freqs[0]) % (2*np.pi)
+            self.offset = (self.offset + 0.01) % (2*np.pi)
+            self.offset = self.offset % (2*np.pi)
+            self.rot_ants = self.ants[self.offset > ]
 
         elif self.UVC.cal_type == 'delay':
             self.delays = self.UVC.delay_array.squeeze()
+            self.delay_offsets = None
+            self.rot_ants = None
+            self.gains = None
+            self.offset = None
 
         # get file prefix
-        self.fc_basename = os.path.basename(calfits_file)
+        self.fc_basename = os.path.basenam   e(calfits_file)
         self.fc_filename = calfits_file
         self.fc_filestem = '.'.join(self.fc_filename.split('.')[:-1])
 
