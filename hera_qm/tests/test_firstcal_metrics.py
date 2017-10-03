@@ -139,7 +139,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         os.remove(fname)
 
     def test_rotated_metrics(self):
-        infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
+        infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.bad.first.calfits')
         FC = firstcal_metrics.FirstCal_Metrics(infile)
         FC.run_metrics(std_cut=0.5)
         out_dir = os.path.join(DATA_PATH, 'test_output')
