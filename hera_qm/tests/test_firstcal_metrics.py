@@ -15,15 +15,13 @@ import sys
 class Test_FirstCal_Metrics(unittest.TestCase):
 
     def setUp(self):
-        infile = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+        infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
         self.FC = firstcal_metrics.FirstCal_Metrics(infile)
         self.out_dir = os.path.join(DATA_PATH, 'test_output')
 
     def test_init(self):
-        self.assertEqual(self.FC.Nants, 18)
-        self.assertEqual(len(self.FC.delays), 18)
-        self.assertEqual(self.FC.fc_filename, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
-        self.assertEqual(self.FC.fc_filestem, 'zen.2457678.16694.yy.HH.uvc.good.first')
+        self.assertEqual(self.FC.Nants, 17)
+        self.assertEqual(len(self.FC.delays), 17)
 
     def test_run_metrics(self):
         self.FC.run_metrics(std_cut=1.0)
@@ -37,15 +35,15 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertIn(9, self.FC.metrics['ant_z_scores'])
         self.assertEqual(str, type(self.FC.metrics['version']))
         self.assertAlmostEqual(1.0, self.FC.metrics['std_cut'])
-        self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.088757931322363717)
+        self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.067636930049849539)
         self.assertEqual('y', self.FC.metrics['pol'])
 
         # Test bad ants detection
-        self.FC.delay_offsets[0, :] *= 10
+        self.FC.delay_fluctuations[0, :] *= 1000
         self.FC.run_metrics()
-        self.assertIn(self.FC.ants[0], self.FC.metrics['bad_ants'])
+        self.assertEqual(self.FC.ants[0], self.FC.metrics['bad_ants'])
         # Test bad full solution
-        self.FC.delay_offsets[1:, :] *= 10
+        self.FC.delay_fluctuations[1:, :] *= 10
         self.FC.run_metrics()
         self.assertEqual(self.FC.metrics['good_sol'], False)
 
@@ -97,7 +95,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.plot_delays(fname=fname, save=True, plot_type='solution')
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        self.FC.plot_delays(fname=fname, save=True, plot_type='offset')
+        self.FC.plot_delays(fname=fname, save=True, plot_type='fluctuation')
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
 
@@ -140,6 +138,16 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
 
+    def test_rotated_metrics(self):
+        infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.bad.first.calfits')
+        FC = firstcal_metrics.FirstCal_Metrics(infile)
+        FC.run_metrics(std_cut=0.5)
+        out_dir = os.path.join(DATA_PATH, 'test_output')
+        # test pickup of rotant key
+        self.assertIn('rot_ants', FC.metrics.keys())
+        # test rotants is correct
+        self.assertEqual([43], FC.metrics['rot_ants'])
+
 
 class TestFirstcalMetricsRun(unittest.TestCase):
     def test_firstcal_metrics_run(self):
@@ -147,6 +155,7 @@ class TestFirstcalMetricsRun(unittest.TestCase):
         a = utils.get_metrics_ArgumentParser('firstcal_metrics')
         if DATA_PATH not in sys.path:
             sys.path.append(DATA_PATH)
+
         arg0 = "--std_cut=0.5"
         arg1 = "--extension=.firstcal_metrics.json"
         arg2 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
@@ -160,9 +169,9 @@ class TestFirstcalMetricsRun(unittest.TestCase):
                           args.files, args, history)
 
         # Test running with file
-        filename = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+        filename = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2457678.16694.yy.HH.uvc.good.first.calfits.' +
+                                 'zen.2457555.50099.yy.HH.uvcA.first.calfits.' +
                                  'firstcal_metrics.json')
         if os.path.exists(dest_file):
             os.remove(dest_file)
@@ -172,6 +181,20 @@ class TestFirstcalMetricsRun(unittest.TestCase):
         firstcal_metrics.firstcal_metrics_run(args.files, args, history)
         self.assertTrue(os.path.exists(dest_file))
         os.remove(dest_file)
+
+        # test w/ rotant json
+        infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
+        outfile = infile+'.firstcal_metrics.json'
+        rotant_json = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits.rotated_metric.json')
+        cmd = '--rotant_files={0} {1}'.format(rotant_json, infile)
+        args = a.parse_args(cmd.split())
+        if os.path.isfile(outfile):
+            os.remove(outfile)
+        firstcal_metrics.firstcal_metrics_run(args.files, args, history)
+        self.assertTrue(os.path.isfile(outfile))
+        # test rotant key exists
+        metrics = firstcal_metrics.load_firstcal_metrics(outfile)
+        self.assertIn('rot_ants', metrics.keys())
 
 
 if __name__ == "__main__":
