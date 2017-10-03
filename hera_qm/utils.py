@@ -274,8 +274,10 @@ def metrics2mc(filename, ftype):
             d['ant_metrics'][metric].append([ant, pol, 1.])
         metric = 'firstcal_metrics_rot_ants'
         d['ant_metrics'][metric] = []
-        for ant in data['rot_ants']:
-            d['ant_metrics'][metric].append([ant, pol, 1.])
+
+        if data['rot_ants'] is not None:
+            for ant in data['rot_ants']:
+                d['ant_metrics'][metric].append([ant, pol, 1.])
 
     elif ftype == 'omnical':
         from hera_qm.omnical_metrics import load_omnical_metrics
