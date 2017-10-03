@@ -266,6 +266,9 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
             fname = os.path.join(outpath, fname)
         if custom_ax == False:
             fig.savefig(fname, bbox_inches='tight')
+
+            # close figure
+            plt.close(fig)
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
@@ -336,6 +339,9 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
             fname = os.path.join(outpath, fname)
         if custom_ax == False:
             fig.savefig(fname, bbox_inches='tight')
+
+            # close figure
+            plt.close(fig)
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
@@ -737,6 +743,9 @@ class OmniCal_Metrics(object):
                 fname = os.path.join(outpath, fname)
             if custom_ax == False:
                 fig.savefig(fname, bbox_inches='tight')
+
+                # close figure
+                plt.close(fig)
             else:
                 ax.figure.savefig(fname, bbox_inches='tight')
 
@@ -803,6 +812,9 @@ class OmniCal_Metrics(object):
                 fname = os.path.join(outpath, fname)
         if custom_ax == False:
             fig.savefig(fname, bbox_inches='tight')
+
+            # close figure
+            plt.close(fig)
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
