@@ -275,9 +275,13 @@ def metrics2mc(filename, ftype):
         metric = 'firstcal_metrics_rot_ants'
         d['ant_metrics'][metric] = []
 
-        if data['rot_ants'] is not None:
-            for ant in data['rot_ants']:
-                d['ant_metrics'][metric].append([ant, pol, 1.])
+        try:
+            if data['rot_ants'] is not None:
+                for ant in data['rot_ants']:
+                    d['ant_metrics'][metric].append([ant, pol, 1.])
+        except KeyError:
+            # Old files simply did not have rot_ants
+            pass
 
     elif ftype == 'omnical':
         from hera_qm.omnical_metrics import load_omnical_metrics
@@ -322,11 +326,3 @@ def metrics2mc(filename, ftype):
         raise ValueError('Metric file type ' + ftype + ' is not recognized.')
 
     return d
-
-
-
-
-
-
-
-
