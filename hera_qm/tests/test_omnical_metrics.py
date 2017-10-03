@@ -14,9 +14,9 @@ class Test_OmniCal_Metrics(unittest.TestCase):
 
     def setUp(self):
         self.fc_file = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
+        self.fc_file_bad = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.bad.first.calfits')
         self.fc_fileyy = os.path.join(DATA_PATH, 'zen.2457555.42443.yy.HH.uvcA.first.calfits')
         self.oc_file = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.good.omni.calfits')
-        self.ov_file = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.good.vis.uvfits')
         self.out_dir = os.path.join(DATA_PATH, 'test_output')
         self.OM = omnical_metrics.OmniCal_Metrics(self.oc_file)
 
@@ -64,7 +64,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         # use fc file
         full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
         metrics = full_metrics['XX']
-        self.assertAlmostEqual(metrics['ant_phs_std_max'], 0.11506173603408311)
+        self.assertAlmostEqual(metrics['ant_phs_std_max'], 0.11512433778673592)
         self.assertEqual(len(metrics['ant_phs_std']), 16)
 
     def test_write_load_metrics(self):
@@ -283,11 +283,11 @@ class Test_OmniCal_Metrics(unittest.TestCase):
 
 class Test_OmniCalMetrics_Run(unittest.TestCase):
     def setUp(self):
-        self.fc_file     = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
-        self.oc_file     = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.good.omni.calfits')
+        self.fc_file = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
+        self.oc_file = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.good.omni.calfits')
         self.oc_filedir  = os.path.dirname(self.oc_file)
         self.oc_basename = os.path.basename(self.oc_file)
-        self.out_dir     = os.path.join(DATA_PATH, 'test_output')
+        self.out_dir = os.path.join(DATA_PATH, 'test_output')
 
     def test_firstcal_metrics_run(self):
         # get arg parse
