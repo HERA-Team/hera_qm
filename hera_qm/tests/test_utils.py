@@ -55,12 +55,15 @@ def test_get_metrics_ArgumentParser():
 
 
 def test_metrics2mc():
+    # test ant metrics
     filename = os.path.join(DATA_PATH, 'example_ant_metrics.json')
     d = utils.metrics2mc(filename, ftype='ant')
     nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
     nt.assert_equal(len(d['array_metrics']), 0)
     ant_metrics_list = get_ant_metrics_dict()
     nt.assert_equal(set(d['ant_metrics'].keys()), set(ant_metrics_list.keys()))
+
+    # test firstcal metrics
     filename = os.path.join(DATA_PATH, 'example_firstcal_metrics.json')
     d = utils.metrics2mc(filename, ftype='firstcal')
     nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
@@ -73,21 +76,21 @@ def test_metrics2mc():
     firstcal_ant_metrics -= {'firstcal_metrics_good_sol_x', 'firstcal_metrics_good_sol',
                              'firstcal_metrics_agg_std_x', 'firstcal_metrics_agg_std'}
     nt.assert_equal(set(d['ant_metrics']), firstcal_ant_metrics)
-    filename = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
+
+    # test omnical metrics
+    filename = os.path.join(DATA_PATH, 'example_omnical_metrics.json')
     d = utils.metrics2mc(filename, ftype='omnical')
     nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
-    nt.assert_equal(d['array_metrics'].keys(), ['omnical_total_quality'])
-    nt.assert_equal(d['ant_metrics'].keys(), ['omnical_quality'])
+    om = 'omnical_metrics_'
+    nt.assert_equal(set(d['array_metrics'].keys()), set([om+'chisq_tot_avg_XX', om+'chisq_good_sol_XX',
+                                                         om+'chisq_tot_avg_YY', om+'chisq_good_sol_YY',
+                                                         om+'ant_phs_std_max_XX', om+'ant_phs_std_good_sol_XX',
+                                                         om+'ant_phs_std_max_YY', om+'ant_phs_std_good_sol_YY']))
+    nt.assert_equal(set(d['ant_metrics'].keys()), set([om+'chisq_ant_avg', om+'chisq_ant_std', om+'ant_phs_std']))
+    nt.assert_equal(len(d['ant_metrics'][om+'chisq_ant_avg']), 32)
+
     # Hit the exceptions
     nt.assert_raises(ValueError, utils.metrics2mc, filename, ftype='foo')
-    uvcal = UVCal()
-    infile = os.path.join(DATA_PATH, 'zen.2457678.16694.yy.HH.uvc.good.first.calfits')
-    outfile = os.path.join(DATA_PATH, 'test_output', 'bad_omni.calfits')
-    uvcal.read_calfits(infile)
-    uvcal.jones_array[0] = -7  # Not allowed polarization
-    uvcal.write_calfits(outfile, clobber=True)
-    nt.assert_raises(ValueError, utils.metrics2mc, outfile, ftype='omnical')
-    os.remove(outfile)
 
 
 def test_get_metrics_dict():

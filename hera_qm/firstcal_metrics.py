@@ -42,7 +42,9 @@ def get_firstcal_metrics_dict():
                     'firstcal_metrics_ant_std': 'Standard deviation of each '
                     'antennas delay solution across time.',
                     'firstcal_metrics_bad_ants': 'Antennas flagged as bad due '
-                    'to large variation in delay solution.'}
+                    'to large variation in delay solution.',
+                    'firstcal_metrics_rot_ants': 'Antennas flagged as being '
+                    'rotated by 180 degrees.'}
     return metrics_dict
 
 
@@ -294,8 +296,8 @@ class FirstCal_Metrics(object):
         self.delay_avgs : ndarray, shape=(N_ant,)
             median delay solutions across time [nanosec]
 
-        self.delay_offsets : ndarray, shape=(N_ant, N_times)
-            firstcal delay solution offsets from time average [nanosec]
+        self.delay_fluctuations : ndarray, shape=(N_ant, N_times)
+            firstcal delay solution fluctuations from time average [nanosec]
 
         self.frac_JD : ndarray, shape=(N_times,)
             ndarray containing time-stamps of each integration
@@ -312,14 +314,20 @@ class FirstCal_Metrics(object):
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_file)
 
-        # get file prefix
-        self.fc_filename = calfits_file.split('/')[-1]
-        self.fc_filestem = '.'.join(self.fc_filename.split('.')[:-1])
+        if len(self.UVC.jones_array) > 1:
+            raise ValueError('Sorry, only single pol firstcal solutions are '
+                             'currently supported.')
+        pol_dict = {-5: 'x', -6: 'y'}
+        try:
+            self.pol = pol_dict[self.UVC.jones_array[0]]
+        except KeyError:
+            raise ValueError('Sorry, only calibration polarizations "x" and '
+                             '"y" are currently supported.')
 
-        # Calculate median delay
-        self.delays = self.UVC.delay_array.squeeze() * 1e9
-        self.delay_avgs = np.median(self.delays, axis=1)
-        self.delay_offsets = (self.delays.T - self.delay_avgs).T
+        # get file prefix
+        self.fc_basename = os.path.basename(calfits_file)
+        self.fc_filename = calfits_file
+        self.fc_filestem = '.'.join(self.fc_filename.split('.')[:-1])
 
         # get other relevant arrays
         self.times = self.UVC.time_array
@@ -331,15 +339,33 @@ class FirstCal_Metrics(object):
         self.version_str = hera_qm_version_str
         self.history = ''
 
-        if len(self.UVC.jones_array) > 1:
-            raise ValueError('Sorry, only single pol firstcal solutions are '
-                             'currently supported.')
-        pol_dict = {-5: 'x', -6: 'y'}
-        try:
-            self.pol = pol_dict[self.UVC.jones_array[0]]
-        except KeyError:
-            raise ValueError('Sorry, only calibration polarizations "x" and '
-                             '"y" are currently supported.')
+        # Get the firstcal delays and/or gains and/or rotated antennas
+        if self.UVC.cal_type == 'gain':
+            # get delays
+            freqs = self.UVC.freq_array.squeeze()
+            fc_gains = np.moveaxis(self.UVC.gain_array, 2, 3)[:, 0, :, :, 0]
+            fc_phi = np.unwrap(np.angle(fc_gains))
+            d_nu = np.median(np.diff(freqs))
+            d_phi = np.median(fc_phi[:, :, 1:] - fc_phi[:, :, :-1], axis=2)
+            gain_slope = (d_phi / d_nu)
+            self.delays = gain_slope / (-2*np.pi)
+            self.gains = fc_gains
+
+            # get delay offsets at nu = 0 Hz, and then get rotated antennas
+            self.offsets = fc_phi[:, :, 0] - gain_slope * freqs[0]
+            self.rot_ants = np.unique(map(lambda x: self.ants[x], (np.isclose(np.pi, np.abs(self.offsets) % (2 * np.pi), atol=1.0)).T)).tolist()
+
+        elif self.UVC.cal_type == 'delay':
+            self.delays = self.UVC.delay_array.squeeze()
+            self.gains = None
+            self.offsets = None
+            self.rot_ants = None
+
+        # Calculate avg delay solution and subtract to get delay_fluctuations
+        self.delays = self.delays * 1e9
+        self.delay_avgs = np.median(self.delays, axis=1)
+        self.delay_fluctuations = (self.delays.T - self.delay_avgs).T
+
 
     def run_metrics(self, std_cut=0.5):
         """
@@ -406,8 +432,11 @@ class FirstCal_Metrics(object):
         metrics['frac_JD'] = self.frac_JD
         metrics['std_cut'] = std_cut
         metrics['pol'] = self.pol
+        metrics['rot_ants'] = self.rot_ants
+
         if self.history != '':
             metrics['history'] = self.history
+
         self.metrics = metrics
 
     def write_metrics(self, filename=None, filetype='json'):
@@ -436,6 +465,7 @@ class FirstCal_Metrics(object):
             metrics_out['frac_JD'] = list(metrics_out['frac_JD'])
             metrics_out['times'] = list(metrics_out['times'])
             metrics_out['ants'] = list(metrics_out['ants'])
+            metrics_out['rot_ants'] = list(metrics_out['rot_ants'])
             for k in metrics_out['z_scores'].keys():
                 metrics_out['z_scores'][k] = list(metrics_out['z_scores'][k])
 
@@ -513,12 +543,12 @@ class FirstCal_Metrics(object):
         """
         # calculate standard deviations
         ant_avg = self.delay_avgs
-        ant_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets, axis=1))
-        time_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets, axis=0))
-        agg_std = np.sqrt(astats.biweight_midvariance(self.delay_offsets))
+        ant_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations, axis=1))
+        time_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations, axis=0))
+        agg_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations))
 
         # calculate z-scores
-        z_scores = self.delay_offsets / agg_std
+        z_scores = self.delay_fluctuations / agg_std
         ant_z_scores = np.median(np.abs(z_scores), axis=1)
 
         # convert to ordered dict if desired
@@ -563,7 +593,7 @@ class FirstCal_Metrics(object):
         plot_type : str, [default='both']
             specify which type of plot to make
             'solution' for full delay solution
-            'offset' for just offset from avg
+            'fluctuation' for just flucutations from avg
             'both' for both
 
         ax : list, [default=None]
@@ -636,19 +666,19 @@ class FirstCal_Metrics(object):
             if plot_type == 'both':
                 ax = axes
 
-        # plot delay offset
-        if (plot_type == 'both') or (plot_type == 'offset'):
+        # plot delay fluctuation
+        if (plot_type == 'both') or (plot_type == 'fluctuation'):
             if plot_type == 'both':
                 axes = ax
                 ax = axes[1]
             plabel = []
             ax.grid(True, zorder=0)
             for i, index in enumerate(plot_ants):
-                p, = ax.plot(self.frac_JD, self.delay_offsets[index],
+                p, = ax.plot(self.frac_JD, self.delay_fluctuations[index],
                              marker='.', c=cm[i], **plt_kwargs)
                 plabel.append(p)
             ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
-            ax.set_ylabel('delay offset [ns]', fontsize=14)
+            ax.set_ylabel('delay fluctuation [ns]', fontsize=14)
             if plot_type == 'both':
                 ax = axes
 
@@ -747,9 +777,10 @@ def firstcal_metrics_run(files, args, history):
     if len(files) == 0:
         raise AssertionError('Please provide a list of calfits files')
 
-    for filename in files:
+    for i, filename in enumerate(files):
         fm = FirstCal_Metrics(filename)
         fm.run_metrics(std_cut=args.std_cut)
+            
         # add history
         fm.history = fm.history + history
 

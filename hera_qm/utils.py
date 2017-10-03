@@ -5,18 +5,17 @@ import warnings
 import argparse
 import numpy as np
 
-
 # argument-generating function for *_run wrapper functions
 def get_metrics_ArgumentParser(method_name):
     """
     Function to get an ArgumentParser instance for working with metrics wrappers.
 
     Args:
-        method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", or "xrfi"
+        method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", "omnical_metrics", or "xrfi"
     Returns:
         a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
-    methods = ["ant_metrics", "firstcal_metrics", "xrfi"]
+    methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_run", "xrfi_apply"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -44,6 +43,8 @@ def get_metrics_ArgumentParser(method_name):
                        help='*.uv files for which to calculate ant_metrics.')
     elif method_name == 'firstcal_metrics':
         a.prog = 'firstcal_metrics.py'
+        a.add_argument('--rotant_files', type=str, nargs='*', default=[],
+                       help='comma-delimited *.rotated_ants.json files corresponding to *.calfits files.')
         a.add_argument('--std_cut', default=0.5, type=float,
                        help='Delay standard deviation cut for good / bad determination. Default 0.5')
         a.add_argument('--extension', default='.firstcal_metrics.json', type=str,
@@ -52,23 +53,49 @@ def get_metrics_ArgumentParser(method_name):
                        help='Path to save metrics file to. Default is same directory as file.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.calfits files for which to calculate firstcal_metrics.')
-    elif method_name == 'xrfi':
+    elif method_name == 'omnical_metrics':
+        a.prog = 'omnical_metrics.py'
+        a.add_argument('--fc_files', metavar='fc_files', type=str, default=None,
+                       help='[optional] *.first.calfits files of firstcal solutions to perform omni-firstcal comparison metrics.'
+                       ' If multiple pols exist in a single *.omni.calfits file, feed .pol.first.calfits fcfiles as comma-delimited.'
+                       ' If operating on multiple .omni.calfits files, feed separate comma-delimited fcfiles as vertical bar-delimited.'
+                       ' Ex1: omnical_metrics_run.py --fc_files=zen.xx.first.calfits,zen.yy.first.calfits zen.omni.calfits'
+                       ' Ex2: omnical_metrics_run.py --fc_files=zen1.xx.first.calfits,zen1.yy.first.calfits|zen2.xx.first.calfits,zen2.yy.first.calfits zen1.omni.calfits zen2.omni.calfits')
+        a.add_argument('--no_bandcut', action='store_true', default=False,
+                       help="flag to turn off cutting of frequency band edges before calculating metrics")
+        a.add_argument('--phs_std_cut', type=float, default=0.3,
+                       help="set gain phase stand dev cut. see OmniCal_Metrics.run_metrics() for details.")
+        a.add_argument('--chisq_std_zscore_cut', type=float, default=4.0,
+                       help="set chisq stand dev. zscore cut. see OmniCal_Metrics.run_metrics() for details.")
+        a.add_argument('--make_plots', action='store_true', default=False,
+                       help="make .png plots of metrics")
+        a.add_argument('--extension', default='.omni_metrics.json', type=str,
+                       help='Extension to be appended to the metrics file name. Default is ".omni_metrics.json"')
+        a.add_argument('--metrics_path', default='', type=str,
+                       help='Path to save metrics file to. Default is same directory as file.')
+        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
+                       help='*.omni.calfits files for which to calculate omnical_metrics.')
+    elif method_name == 'xrfi_run':
         a.prog = 'xrfi_run.py'
         a.add_argument('--infile_format', default='miriad', type=str,
                        help='File format for input files. Default is miriad.')
-        a.add_argument('--outfile_format', default='miriad', type=str,
-                       help='File format for output files. Default is miriad.')
-        a.add_argument('--extension', default='R', type=str,
-                       help='Extension to be appended to input file name. Default is "R".')
+        a.add_argument('--extension', default='.flags.npz', type=str,
+                       help='Extension to be appended to input file name. Default is ".flags.npz".')
         a.add_argument('--summary', action='store_true', default=False,
                        help='Run summary of RFI flags and store in npz file.')
         a.add_argument('--summary_ext', default='.flag_summary.npz',
                        type=str, help='Extension to be appended to input file name'
                        ' for summary file. Default is ".flag_summary.npz"')
         a.add_argument('--xrfi_path', default='', type=str,
-                       help='Path to save flagged file to. Default is same directory as input file.')
+                       help='Path to save flag files to. Default is same directory as input file.')
         a.add_argument('--algorithm', default='xrfi_simple', type=str,
                        help='RFI-flagging algorithm to use. Default is xrfi_simple.')
+        a.add_argument('--model_file', default=None, type=str, help='Model visibility '
+                       'file to flag on.')
+        a.add_argument('--model_file_format', default='uvfits', type=str,
+                       help='File format for input files. Default is uvfits.')
+        a.add_argument('--calfits_file', default=None, type=str, help='Calfits file '
+                       'to use to flag on gains and/or chisquared values.')
         a.add_argument('--nsig_df', default=6.0, type=float, help='Number of sigma '
                        'above median value to flag in f direction for xrfi_simple. Default is 6.')
         a.add_argument('--nsig_dt', default=6.0, type=float,
@@ -87,19 +114,36 @@ def get_metrics_ArgumentParser(method_name):
                        help='Starting number of sigmas to flag on. Default is 6.')
         a.add_argument('--sig_adj', default=2.0, type=float,
                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
-        a.add_argument('--broadcast', action='store_true', default=False,
-                       help='Broadcast flags across data based on thresholds. Default is False.')
-        a.add_argument('--bl_threshold', default=0., type=float,
+        a.add_argument('--px_threshold', default=0.2, type=float,
                        help='Fraction of flags required to trigger a broadcast across'
-                       ' baselines. Default is 0.')
-        a.add_argument('--freq_threshold', default=0.9, type=float,
+                       ' baselines for a given (time, frequency) pixel. Default is 0.2.')
+        a.add_argument('--freq_threshold', default=0.5, type=float,
                        help='Fraction of channels required to trigger broadcast across'
-                       ' frequency (single time). Default is 0.9.')
-        a.add_argument('--time_threshold', default=0.9, type=float,
+                       ' frequency (single time). Default is 0.5.')
+        a.add_argument('--time_threshold', default=0.05, type=float,
                        help='Fraction of times required to trigger broadcast across'
-                       ' time (single frequency). Default is 0.9.')
-        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
-                       help='files for which to flag RFI.')
+                       ' time (single frequency). Default is 0.05.')
+        a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
+                       help='file for which to flag RFI (only one file allowed).')
+    elif method_name == 'xrfi_apply':
+        a.prog = 'xrfi_apply.py'
+        a.add_argument('--infile_format', default='miriad', type=str,
+                       help='File format for input files. Default is miriad.')
+        a.add_argument('--xrfi_path', default='', type=str,
+                       help='Path to save output to. Default is same directory as input file.')
+        a.add_argument('--outfile_format', default='miriad', type=str,
+                       help='File format for output files. Default is miriad.')
+        a.add_argument('--extension', default='R', type=str,
+                       help='Extension to be appended to input file name. Default is "R".')
+        a.add_argument('--overwrite', action='store_true', default=False,
+                       help='Option to overwrite output file if it already exists.')
+        a.add_argument('--flag_file', default=None, type=str, help='npz file '
+                       'containing full flag array to insert into data file.')
+        a.add_argument('--waterfalls', default=None, type=str, help='comma separated '
+                       'list of npz files containing waterfalls of flags to broadcast '
+                       'to full flag array and union with flag array in flag_file.')
+        a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
+                       help='file for which to flag RFI (only one file allowed).')
     return a
 
 
@@ -249,24 +293,55 @@ def metrics2mc(filename, ftype):
         d['ant_metrics'][metric] = []
         for ant in data['bad_ants']:
             d['ant_metrics'][metric].append([ant, pol, 1.])
+        metric = 'firstcal_metrics_rot_ants'
+        d['ant_metrics'][metric] = []
+
+        try:
+            if data['rot_ants'] is not None:
+                for ant in data['rot_ants']:
+                    d['ant_metrics'][metric].append([ant, pol, 1.])
+        except KeyError:
+            # Old files simply did not have rot_ants
+            pass
 
     elif ftype == 'omnical':
-        from pyuvdata import UVCal
-        uvcal = UVCal()
-        uvcal.read_calfits(filename)
-        pol_dict = {-5: 'x', -6: 'y'}
-        d['ant_metrics']['omnical_quality'] = []
-        for pi, pol in enumerate(uvcal.jones_array):
-            try:
-                pol = pol_dict[pol]
-            except KeyError:
-                raise ValueError('Invalid polarization for ant_metrics in M&C.')
-            for ai, ant in enumerate(uvcal.ant_array):
-                val = np.median(uvcal.quality_array[ai, 0, :, :, pi], axis=0)
-                val = np.mean(val)
-                d['ant_metrics']['omnical_quality'].append([ant, pol, val])
-        if uvcal.total_quality_array is not None:
-            d['array_metrics']['omnical_total_quality'] = np.mean(uvcal.total_quality_array)
+        from hera_qm.omnical_metrics import load_omnical_metrics
+        full_mets = load_omnical_metrics(filename)
+        pols = full_mets.keys()
+
+        # iterate over polarizations (e.g. XX, YY, XY, YX)
+        for i, pol in enumerate(pols):
+            # unpack metrics from full_mets
+            metrics = full_mets[pol]
+
+            # pack array metrics
+            cat = 'omnical_metrics_'
+            for met in ['chisq_tot_avg', 'chisq_good_sol', 'ant_phs_std_max', 'ant_phs_std_good_sol']:
+                catmet = cat + met + '_{}'.format(pol)
+                try:
+                    if metrics[met] is None:
+                        continue
+                    d['array_metrics'][catmet] = metrics[met]
+                except:
+                    pass
+
+            # pack antenna metrics, only uses auto pol (i.e. XX or YY)
+            if pol not in ['XX', 'YY']:
+                continue
+            cat = 'omnical_metrics_'
+            for met in ['chisq_ant_avg', 'chisq_ant_std', 'ant_phs_std']:
+                catmet = cat + met
+                try:
+                    if metrics[met] is None:
+                        continue
+                    # if catmet already exists extend it
+                    if catmet in d['ant_metrics']:
+                        d['ant_metrics'][catmet].extend([[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]])
+                    # if not, assign it
+                    else:
+                        d['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]]
+                except:
+                    pass
 
     else:
         raise ValueError('Metric file type ' + ftype + ' is not recognized.')

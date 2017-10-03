@@ -24,6 +24,9 @@ hera_qm/data/test_output
 
 # Script Output
 *metrics.json
+!example_firstcal_metrics.json
+!example_omnical_metrics.json
+!example_ant_metrics.json
 *.ipynb_checkpoints
 hera_qm/GIT_INFO
 hera_qm/data/test_output/ant_metrics_output.json

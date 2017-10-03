@@ -222,14 +222,16 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertIn((81, 'x'), am.deadAntsRemoved)
         self.assertIn((81, 'y'), am.deadAntsRemoved)
 
-        am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
-        loaded = ant_metrics.load_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
+        outfile = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.json')
+        am.save_antenna_metrics(outfile)
+        loaded = ant_metrics.load_antenna_metrics(outfile)
         # json names for summary statistics
         jsonStats = ['xants', 'crossed_ants', 'dead_ants', 'removal_iteration',
                      'final_metrics', 'all_metrics', 'final_mod_z_scores', 'all_mod_z_scores',
                      'cross_pol_z_cut', 'dead_ant_z_cut', 'datafile_list', 'reds', 'version']
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
             self.assertEqual(loaded[jsonStat], getattr(am, stat))
+        os.remove(outfile)
 
     def test_cross_detection(self):
         am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
@@ -300,6 +302,7 @@ class TestAntmetricsRun(object):
         history = cmd
         ant_metrics.ant_metrics_run(args.files, args, history)
         nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
 
     def test_ant_metrics_run_nocalfile(self):
         # get arguments
@@ -325,6 +328,7 @@ class TestAntmetricsRun(object):
         history = cmd
         ant_metrics.ant_metrics_run(args.files, args, history)
         nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
 
 
 if __name__ == '__main__':
