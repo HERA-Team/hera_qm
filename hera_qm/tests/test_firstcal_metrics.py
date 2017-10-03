@@ -140,9 +140,8 @@ class Test_FirstCal_Metrics(unittest.TestCase):
 
     def test_rotated_metrics(self):
         infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
-        rotant_json = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits.rotated_metric.json')
         FC = firstcal_metrics.FirstCal_Metrics(infile)
-        FC.run_metrics(rotant_json=rotant_json, std_cut=0.5)
+        FC.run_metrics(std_cut=0.5)
         out_dir = os.path.join(DATA_PATH, 'test_output')
         # test pickup of rotant key
         self.assertIn('rot_ants', FC.metrics.keys())
