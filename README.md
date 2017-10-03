@@ -63,6 +63,15 @@ for a given time. Included are functions for plotting firstcal delay solutions,
 running the firstcal metrics, plotting the metrics, and writing them to file.
 An example of using this module is in `scripts/firstcal_metrics.ipynb`.
 
+### omnical_metrics
+A module to calculate metrics based on omnical solutions. Currently, these metrics
+aim to identify discontinuities in the phase solutions of the gains and model visibilities,
+as well as outliers in the antenna-based chi-square output from omnical. Routines for 
+calculating the metrics, writing them to file, and plotting the metrics (as well as the
+gain solutions and model visibilities) are included. For an example of how to use these
+metrics see `scripts/omnical_metrics_example.ipynb`. The metrics themselves are detailed
+there as well as in the doc-strings of the source code in `hera_qm.Omnical_Metrics.run_metrics()`.
+
 ### xrfi
 This module contains several algorithms for radio frequency interference (RFI)
 detection and flagging. `xrfi.xrfi` provides the most robust RFI excision we currently have.

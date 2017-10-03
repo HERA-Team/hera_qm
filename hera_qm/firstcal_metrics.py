@@ -324,36 +324,8 @@ class FirstCal_Metrics(object):
             raise ValueError('Sorry, only calibration polarizations "x" and '
                              '"y" are currently supported.')
 
-        # Get the firstcal.rotated_antenna.metric file
-        if self.UVC.cal_type == 'gain':
-            # get delays
-            freqs = self.UVC.freq_array.squeeze()
-            fc_gains = np.moveaxis(self.UVC.gain_array, 2, 3)[:, 0, :, :, 0]
-            fc_phi = np.unwrap(np.angle(fc_gains))
-            d_nu = np.median(np.diff(freqs))
-            d_phi = np.median(fc_phi[:, :, 1:] - fc_phi[:, :, :-1], axis=2)
-            gain_slope = (d_phi / d_nu)
-            self.delays = gain_slope / (-2*np.pi)
-            self.gains = fc_gains
-
-            self.gain_slope = gain_slope
-            self.fc_phi = fc_phi
-
-            # get delay offsets at nu = 0 Hz
-            self.offset = (fc_phi[:, :, 0] - gain_slope * freqs[0]) % (2*np.pi)
-            self.offset = (self.offset + 0.01) % (2*np.pi)
-            self.offset = self.offset % (2*np.pi)
-            self.rot_ants = self.ants[self.offset > ]
-
-        elif self.UVC.cal_type == 'delay':
-            self.delays = self.UVC.delay_array.squeeze()
-            self.delay_offsets = None
-            self.rot_ants = None
-            self.gains = None
-            self.offset = None
-
         # get file prefix
-        self.fc_basename = os.path.basenam   e(calfits_file)
+        self.fc_basename = os.path.basename(calfits_file)
         self.fc_filename = calfits_file
         self.fc_filestem = '.'.join(self.fc_filename.split('.')[:-1])
 
@@ -367,23 +339,43 @@ class FirstCal_Metrics(object):
         self.version_str = hera_qm_version_str
         self.history = ''
 
+        # Get the firstcal delays and/or gains and/or rotated antennas
+        if self.UVC.cal_type == 'gain':
+            # get delays
+            freqs = self.UVC.freq_array.squeeze()
+            fc_gains = np.moveaxis(self.UVC.gain_array, 2, 3)[:, 0, :, :, 0]
+            fc_phi = np.unwrap(np.angle(fc_gains))
+            d_nu = np.median(np.diff(freqs))
+            d_phi = np.median(fc_phi[:, :, 1:] - fc_phi[:, :, :-1], axis=2)
+            gain_slope = (d_phi / d_nu)
+            self.delays = gain_slope / (-2*np.pi)
+            self.gains = fc_gains
+
+            # get delay offsets at nu = 0 Hz, and get rotated antennas
+            offsets = (fc_phi[:, :, 0] - gain_slope * freqs[0]) % (2*np.pi)
+            self.offsets = (offsets + 0.01) % (2*np.pi)
+            self.offsets = offsets % (2*np.pi)
+            self.rot_ants = np.unique(map(lambda x: self.ants[x], (offsets > 3).T))
+
+        elif self.UVC.cal_type == 'delay':
+            self.delays = self.UVC.delay_array.squeeze()
+            self.gains = None
+            self.offsets = None
+            self.rot_ants = None
+
         # Calculate avg delay solution and subtract to get delay_fluctuations
         self.delays = self.delays * 1e9
         self.delay_avgs = np.median(self.delays, axis=1)
         self.delay_fluctuations = (self.delays.T - self.delay_avgs).T
 
 
-    def run_metrics(self, rotant_json=None, std_cut=0.5):
+    def run_metrics(self, std_cut=0.5):
         """
         Run all metrics, put them in "metrics" dictionary
         and attach metrics to class
 
         Input:
         ------
-        rotant_json : str, default=None
-            a filename for a json containing rotated antenna metric
-            to be propagated into firstcal metric file
-
         std_cut : float, default=0.5
             delay stand. dev cut for good / bad determination
 
@@ -442,19 +434,7 @@ class FirstCal_Metrics(object):
         metrics['frac_JD'] = self.frac_JD
         metrics['std_cut'] = std_cut
         metrics['pol'] = self.pol
-
-        # try to load rotated antenna metric
-        if rotant_json is not None:
-            try:
-                with open(rotant_json) as rot_file:
-                    rmetric = json.load(rot_file)
-                self.rotated_antennas = np.array(rmetric['rotated_antennas']).astype(np.int).tolist()
-                metrics['rot_ants'] = self.rotated_antennas
-            except IOError:
-                print("couldn't load {0}".format(rotant_json))
-                metrics['rot_ants'] = None
-        else:
-            metrics['rot_ants'] = None
+        metrics['rot_ants'] = self.rot_ants
 
         if self.history != '':
             metrics['history'] = self.history
@@ -800,10 +780,7 @@ def firstcal_metrics_run(files, args, history):
 
     for i, filename in enumerate(files):
         fm = FirstCal_Metrics(filename)
-        try:
-            fm.run_metrics(rotant_json=args.rotant_files[i])
-        except:
-            fm.run_metrics(std_cut=args.std_cut)
+        fm.run_metrics(std_cut=args.std_cut)
             
         # add history
         fm.history = fm.history + history
