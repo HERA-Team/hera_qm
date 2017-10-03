@@ -351,11 +351,9 @@ class FirstCal_Metrics(object):
             self.delays = gain_slope / (-2*np.pi)
             self.gains = fc_gains
 
-            # get delay offsets at nu = 0 Hz, and get rotated antennas
-            offsets = (fc_phi[:, :, 0] - gain_slope * freqs[0]) % (2*np.pi)
-            self.offsets = (offsets + 0.01) % (2*np.pi)
-            self.offsets = offsets % (2*np.pi)
-            self.rot_ants = np.unique(map(lambda x: self.ants[x], (offsets > 3).T))
+            # get delay offsets at nu = 0 Hz, and then get rotated antennas
+            self.offsets = np.abs(fc_phi[:, :, 0] - gain_slope * freqs[0])
+            self.rot_ants = np.unique(map(lambda x: self.ants[x], (np.isclose(np.pi, self.offsets % (2 * np.pi), atol=1.0)).T))
 
         elif self.UVC.cal_type == 'delay':
             self.delays = self.UVC.delay_array.squeeze()
