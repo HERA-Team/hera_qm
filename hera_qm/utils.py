@@ -15,7 +15,7 @@ def get_metrics_ArgumentParser(method_name):
     Returns:
         a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
-    methods = ["ant_metrics", "firstcal_metrics", "xrfi", "omnical_metrics"]
+    methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_run", "xrfi_apply"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -75,23 +75,27 @@ def get_metrics_ArgumentParser(method_name):
                        help='Path to save metrics file to. Default is same directory as file.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.omni.calfits files for which to calculate omnical_metrics.')
-    elif method_name == 'xrfi':
+    elif method_name == 'xrfi_run':
         a.prog = 'xrfi_run.py'
         a.add_argument('--infile_format', default='miriad', type=str,
                        help='File format for input files. Default is miriad.')
-        a.add_argument('--outfile_format', default='miriad', type=str,
-                       help='File format for output files. Default is miriad.')
-        a.add_argument('--extension', default='R', type=str,
-                       help='Extension to be appended to input file name. Default is "R".')
+        a.add_argument('--extension', default='.flags.npz', type=str,
+                       help='Extension to be appended to input file name. Default is ".flags.npz".')
         a.add_argument('--summary', action='store_true', default=False,
                        help='Run summary of RFI flags and store in npz file.')
         a.add_argument('--summary_ext', default='.flag_summary.npz',
                        type=str, help='Extension to be appended to input file name'
                        ' for summary file. Default is ".flag_summary.npz"')
         a.add_argument('--xrfi_path', default='', type=str,
-                       help='Path to save flagged file to. Default is same directory as input file.')
+                       help='Path to save flag files to. Default is same directory as input file.')
         a.add_argument('--algorithm', default='xrfi_simple', type=str,
                        help='RFI-flagging algorithm to use. Default is xrfi_simple.')
+        a.add_argument('--model_file', default=None, type=str, help='Model visibility '
+                       'file to flag on.')
+        a.add_argument('--model_file_format', default='uvfits', type=str,
+                       help='File format for input files. Default is uvfits.')
+        a.add_argument('--calfits_file', default=None, type=str, help='Calfits file '
+                       'to use to flag on gains and/or chisquared values.')
         a.add_argument('--nsig_df', default=6.0, type=float, help='Number of sigma '
                        'above median value to flag in f direction for xrfi_simple. Default is 6.')
         a.add_argument('--nsig_dt', default=6.0, type=float,
@@ -110,19 +114,36 @@ def get_metrics_ArgumentParser(method_name):
                        help='Starting number of sigmas to flag on. Default is 6.')
         a.add_argument('--sig_adj', default=2.0, type=float,
                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
-        a.add_argument('--broadcast', action='store_true', default=False,
-                       help='Broadcast flags across data based on thresholds. Default is False.')
-        a.add_argument('--bl_threshold', default=0., type=float,
+        a.add_argument('--px_threshold', default=0.2, type=float,
                        help='Fraction of flags required to trigger a broadcast across'
-                       ' baselines. Default is 0.')
-        a.add_argument('--freq_threshold', default=0.9, type=float,
+                       ' baselines for a given (time, frequency) pixel. Default is 0.2.')
+        a.add_argument('--freq_threshold', default=0.5, type=float,
                        help='Fraction of channels required to trigger broadcast across'
-                       ' frequency (single time). Default is 0.9.')
-        a.add_argument('--time_threshold', default=0.9, type=float,
+                       ' frequency (single time). Default is 0.5.')
+        a.add_argument('--time_threshold', default=0.05, type=float,
                        help='Fraction of times required to trigger broadcast across'
-                       ' time (single frequency). Default is 0.9.')
-        a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
-                       help='files for which to flag RFI.')
+                       ' time (single frequency). Default is 0.05.')
+        a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
+                       help='file for which to flag RFI (only one file allowed).')
+    elif method_name == 'xrfi_apply':
+        a.prog = 'xrfi_apply.py'
+        a.add_argument('--infile_format', default='miriad', type=str,
+                       help='File format for input files. Default is miriad.')
+        a.add_argument('--xrfi_path', default='', type=str,
+                       help='Path to save output to. Default is same directory as input file.')
+        a.add_argument('--outfile_format', default='miriad', type=str,
+                       help='File format for output files. Default is miriad.')
+        a.add_argument('--extension', default='R', type=str,
+                       help='Extension to be appended to input file name. Default is "R".')
+        a.add_argument('--overwrite', action='store_true', default=False,
+                       help='Option to overwrite output file if it already exists.')
+        a.add_argument('--flag_file', default=None, type=str, help='npz file '
+                       'containing full flag array to insert into data file.')
+        a.add_argument('--waterfalls', default=None, type=str, help='comma separated '
+                       'list of npz files containing waterfalls of flags to broadcast '
+                       'to full flag array and union with flag array in flag_file.')
+        a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
+                       help='file for which to flag RFI (only one file allowed).')
     return a
 
 

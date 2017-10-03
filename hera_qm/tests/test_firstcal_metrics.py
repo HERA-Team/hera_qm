@@ -180,6 +180,7 @@ class TestFirstcalMetricsRun(unittest.TestCase):
         history = cmd
         firstcal_metrics.firstcal_metrics_run(args.files, args, history)
         self.assertTrue(os.path.exists(dest_file))
+        os.remove(dest_file)
 
         # test w/ rotant json
         infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
