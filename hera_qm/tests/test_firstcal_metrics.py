@@ -148,6 +148,12 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         # test rotants is correct
         self.assertEqual([43], FC.metrics['rot_ants'])
 
+    def test_delay_smoothing(self):
+        infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
+        FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=False)
+        self.assertEqual(FC.delay_fluctuations[0,0], 0.043740587980040324)
+        FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=True)
+        self.assertEqual(FC.delay_fluctuations[0,0], 0.024669144881121999)
 
 class TestFirstcalMetricsRun(unittest.TestCase):
     def test_firstcal_metrics_run(self):
