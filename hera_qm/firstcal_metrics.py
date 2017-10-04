@@ -13,6 +13,12 @@ import json
 import cPickle as pkl
 import copy
 import os
+try:
+    from sklearn import gaussian_process as gp
+    sklearn_import = True
+except ImportError:
+    raise Warning("Could not import sklearn")
+    sklearn_import = False
 
 
 def get_firstcal_metrics_dict():
@@ -279,12 +285,22 @@ class FirstCal_Metrics(object):
     Currently only supports single polarization solutions.
     """
 
-    def __init__(self, calfits_file):
+    # sklearn import statement
+    sklearn_import = sklearn_import
+
+    def __init__(self, calfits_files, use_gp=True):
         """
         Input:
         ------
-        calfits_file : str
+        calfits_files : str or list
             filename for a *.first.calfits file
+            or a list of .first.calfits files (time-ordered)
+            of the same polarization
+
+        use_gp : bool, default=True
+            use gaussian process model to 
+            subtract underlying smooth delay solution
+            behavior over time from fluctuations
 
         Result:
         -------
@@ -312,7 +328,7 @@ class FirstCal_Metrics(object):
         """
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
-        self.UVC.read_calfits(calfits_file)
+        self.UVC.read_calfits(calfits_files)
 
         if len(self.UVC.jones_array) > 1:
             raise ValueError('Sorry, only single pol firstcal solutions are '
@@ -325,6 +341,10 @@ class FirstCal_Metrics(object):
                              '"y" are currently supported.')
 
         # get file prefix
+        if type(calfits_files) is list:
+            calfits_file = calfits_files[0]
+        else:
+            calfits_file = calfits_files
         self.fc_basename = os.path.basename(calfits_file)
         self.fc_filename = calfits_file
         self.fc_filestem = '.'.join(self.fc_filename.split('.')[:-1])
@@ -366,6 +386,32 @@ class FirstCal_Metrics(object):
         self.delay_avgs = np.median(self.delays, axis=1)
         self.delay_fluctuations = (self.delays.T - self.delay_avgs).T
 
+        # use gaussian process model to subtract underlying mean function
+        if use_gp is True and self.sklearn_import is True:
+            # initialize GP kernel.
+            # RBF is a squared exponential kernel with a minimum length_scale_bound of 0.01 JD, meaning
+            # the GP solution won't have time fluctuations quicker than ~0.01 JD, which will preserve 
+            # short time fluctuations. WhiteKernel is a Gaussian white noise component with a fiducial
+            # noise level of 0.01 nanoseconds. Both of these are hyperparameters that are fit for via
+            # a gradient descent algorithm in the GP.fit() routine, so length_scale=0.2 and
+            # noise_level=0.01 are just initial conditions and are not the final hyperparameter solution
+            kernel = gp.kernels.RBF(length_scale=0.2, length_scale_bounds=(0.01, 1.0)) + gp.kernels.WhiteKernel(noise_level=0.01)
+            x = self.frac_JD.reshape(-1, 1)
+            self.delay_smooths = []
+            # iterate over each antenna
+            for i in range(self.Nants):
+                # get ydata
+                y = copy.copy(self.delay_fluctuations[i])
+                # scale by std
+                ystd = np.sqrt(astats.biweight_midvariance(y))
+                y /= ystd
+                # fit GP and remove from delay fluctuations
+                GP = gp.GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
+                GP.fit(x, y)
+                ymodel = GP.predict(x).ravel() * ystd
+                self.delay_fluctuations[i] -= ymodel
+                self.delay_smooths.append(ymodel)
+            self.delay_smooths = np.array(self.delay_smooths)
 
     def run_metrics(self, std_cut=0.5):
         """
@@ -575,7 +621,7 @@ class FirstCal_Metrics(object):
         return ant_avg, ant_std, time_std, agg_std, z_scores, ant_z_scores
 
     def plot_delays(self, ants=None, plot_type='both', cmap='nipy_spectral', ax=None, save=False, fname=None,
-                    plt_kwargs={'markersize': 8, 'alpha': 0.75}):
+                    plt_kwargs={'markersize': 5, 'alpha': 0.75}):
         """
         plot delay solutions from a calfits file
         plot either
