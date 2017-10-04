@@ -188,20 +188,6 @@ class TestFirstcalMetricsRun(unittest.TestCase):
         self.assertTrue(os.path.exists(dest_file))
         os.remove(dest_file)
 
-        # test w/ rotant json
-        infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
-        outfile = infile+'.firstcal_metrics.json'
-        rotant_json = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits.rotated_metric.json')
-        cmd = '--rotant_files={0} {1}'.format(rotant_json, infile)
-        args = a.parse_args(cmd.split())
-        if os.path.isfile(outfile):
-            os.remove(outfile)
-        firstcal_metrics.firstcal_metrics_run(args.files, args, history)
-        self.assertTrue(os.path.isfile(outfile))
-        # test rotant key exists
-        metrics = firstcal_metrics.load_firstcal_metrics(outfile)
-        self.assertIn('rot_ants', metrics.keys())
-
 
 if __name__ == "__main__":
     unittest.main()
