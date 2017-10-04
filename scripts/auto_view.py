@@ -40,37 +40,10 @@ amps = {}
 times = {}
 if len(args.files) == 0:
     # No file given, use redis db
-    # Get CM info
-    from hera_mc import mc, sys_handling, cm_utils
-    mcparser = mc.get_mc_argument_parser()
-    mcargs = mcparser.parse_args(args=[])  # args=[] to throw away command line arguments
-    db = mc.connect_to_mc_db(mcargs)
-    session = db.sessionmaker()
-    h = sys_handling.Handling(session)
-    cminfo = h.get_cminfo_correlator()
-    # get antenna map
-    antmap = {}  # This will need to change with new correlator. But so will everything else.
-    for kn, k in enumerate(cminfo['correlator_inputs']):
-        pol = k[0]
-        # k is ("DfFAC", "DfFAC"), where F is '1'..'8', A is 'A'..'H', and C is
-        # '1'..'4'. The two entries are for the X and Y pols
-
-        # Convert pol to fx input number.
-        f = int(pol[2]) - 1         # read F and convert to zero-indexed numbering
-        a = ord(pol[3]) - ord('A')  # read A and convert to zero-indexed numbering
-        c = int(pol[4]) - 1         # read C and convert to zero-indexed numbering
-        fxin = 32 * f + 4 * a + c
-
-        # Store in antmap dict
-        antmap[fxin] = cminfo['antenna_numbers'][kn]
-
     redis = redis_lib.Redis('redishost')
     keys = [k for k in redis.keys() if k.startswith('visdata')]
     for key in keys:
-        try:
-            ant = antmap[int(re.findall(r'visdata://(\d+)/', key)[0])]
-        except KeyError:
-            ant = -1 * int(re.findall(r'visdata://(\d+)/', key)[0])
+        ant = int(re.findall(r'visdata://(\d+)/', key)[0])
         pol = key[-2:]
         autos[(ant, pol)] = np.fromstring(redis.hgetall(key).get('data'), dtype=np.float32)
         amps[(ant, pol)] = np.median(autos[(ant, pol)])
