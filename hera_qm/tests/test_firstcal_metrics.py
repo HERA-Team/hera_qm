@@ -35,7 +35,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertIn(9, self.FC.metrics['ant_z_scores'])
         self.assertEqual(str, type(self.FC.metrics['version']))
         self.assertAlmostEqual(1.0, self.FC.metrics['std_cut'])
-        self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.067636930049849539)
+        self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.044662349588061437)
         self.assertEqual('y', self.FC.metrics['pol'])
 
         # Test bad ants detection
@@ -43,7 +43,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.run_metrics()
         self.assertEqual(self.FC.ants[0], self.FC.metrics['bad_ants'])
         # Test bad full solution
-        self.FC.delay_fluctuations[1:, :] *= 10
+        self.FC.delay_fluctuations[1:, :] *= 1000
         self.FC.run_metrics()
         self.assertEqual(self.FC.metrics['good_sol'], False)
 
@@ -154,6 +154,14 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         # test rotants is correct
         self.assertEqual([43], FC.metrics['rot_ants'])
 
+    def test_delay_smoothing(self):
+        infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
+        np.random.seed(0)
+        FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=False)
+        self.assertAlmostEqual(FC.delay_fluctuations[0,0], 0.043740587980040324, delta=0.000001)
+        np.random.seed(0)
+        FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=True)
+        self.assertAlmostEqual(FC.delay_fluctuations[0,0], 0.024669144881121961, delta=0.000001)
 
 class TestFirstcalMetricsRun(unittest.TestCase):
     def test_firstcal_metrics_run(self):
@@ -187,20 +195,6 @@ class TestFirstcalMetricsRun(unittest.TestCase):
         firstcal_metrics.firstcal_metrics_run(args.files, args, history)
         self.assertTrue(os.path.exists(dest_file))
         os.remove(dest_file)
-
-        # test w/ rotant json
-        infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits')
-        outfile = infile+'.firstcal_metrics.json'
-        rotant_json = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits.rotated_metric.json')
-        cmd = '--rotant_files={0} {1}'.format(rotant_json, infile)
-        args = a.parse_args(cmd.split())
-        if os.path.isfile(outfile):
-            os.remove(outfile)
-        firstcal_metrics.firstcal_metrics_run(args.files, args, history)
-        self.assertTrue(os.path.isfile(outfile))
-        # test rotant key exists
-        metrics = firstcal_metrics.load_firstcal_metrics(outfile)
-        self.assertIn('rot_ants', metrics.keys())
 
 
 if __name__ == "__main__":
