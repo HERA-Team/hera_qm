@@ -35,7 +35,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertIn(9, self.FC.metrics['ant_z_scores'])
         self.assertEqual(str, type(self.FC.metrics['version']))
         self.assertAlmostEqual(1.0, self.FC.metrics['std_cut'])
-        self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.067636930049849539)
+        self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.044662349588061437)
         self.assertEqual('y', self.FC.metrics['pol'])
 
         # Test bad ants detection
@@ -43,7 +43,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.run_metrics()
         self.assertEqual(self.FC.ants[0], self.FC.metrics['bad_ants'])
         # Test bad full solution
-        self.FC.delay_fluctuations[1:, :] *= 10
+        self.FC.delay_fluctuations[1:, :] *= 1000
         self.FC.run_metrics()
         self.assertEqual(self.FC.metrics['good_sol'], False)
 
@@ -153,7 +153,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=False)
         self.assertEqual(FC.delay_fluctuations[0,0], 0.043740587980040324)
         FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=True)
-        self.assertEqual(FC.delay_fluctuations[0,0], 0.024669144881121999)
+        self.assertEqual(FC.delay_fluctuations[0,0], 0.024669144881121961)
 
 class TestFirstcalMetricsRun(unittest.TestCase):
     def test_firstcal_metrics_run(self):
