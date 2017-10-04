@@ -42,9 +42,9 @@ if len(args.files) == 0:
     # No file given, use redis db
     # Get CM info
     from hera_mc import mc, sys_handling, cm_utils
-    parser = mc.get_mc_argument_parser()
-    args = parser.parse_args(args=[])  # args=[] to throw away command line arguments
-    db = mc.connect_to_mc_db(args)
+    mcparser = mc.get_mc_argument_parser()
+    mcargs = mcparser.parse_args(args=[])  # args=[] to throw away command line arguments
+    db = mc.connect_to_mc_db(mcargs)
     session = db.sessionmaker()
     h = sys_handling.Handling(session)
     cminfo = h.get_cminfo_correlator()
