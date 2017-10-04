@@ -780,8 +780,9 @@ class FirstCal_Metrics(object):
         if hasattr(self, 'metrics') == False:
             raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
                             "in order to plot delay z_scores")
-        plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
+        fig = plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
                      save=save, kwargs=kwargs, plot_abs=plot_abs)
+        return fig
 
     def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         """
@@ -810,7 +811,8 @@ class FirstCal_Metrics(object):
         if hasattr(self, 'metrics') == False:
             raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
                             "in order to plot delay stds")
-        plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
+        fig = plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
+        return fig
 
 
 # code for running firstcal_metrics on a file
