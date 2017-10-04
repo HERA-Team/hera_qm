@@ -169,6 +169,8 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
             fname = metrics['fc_filestem'] + '.stds.png'
         fig.savefig(fname, bbox_inches='tight')
 
+    if custom_ax is False:
+        return fig
 
 def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6),
                  save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
@@ -277,6 +279,8 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
             fname = metrics['fc_filestem'] + '.zscrs.png'
         fig.savefig(fname, bbox_inches='tight')
 
+    if custom_ax is False:
+        return fig
 
 class FirstCal_Metrics(object):
     """
@@ -740,6 +744,9 @@ class FirstCal_Metrics(object):
             if fname is None:
                 fname = self.fc_filestem + '.dlys.png'
             fig.savefig(fname, bbox_inches='tight')
+
+        if custom_ax is False:
+            return fig
 
     def plot_zscores(self, fname=None, plot_type='full', ax=None, figsize=(10, 6),
                      save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
