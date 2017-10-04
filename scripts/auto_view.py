@@ -9,7 +9,8 @@ from hera_mc import mc, sys_handling, cm_utils
 from astropy import time
 from matplotlib.colors import LogNorm
 from matplotlib.colors import LinearSegmentedColormap
-from pyuvdata import UVData
+import pyuvdata.utils as uvutils
+import aipy.miriad as apm
 
 
 parser = argparse.ArgumentParser(description='Plot auto locations and magnitudes')
@@ -51,19 +52,29 @@ if len(args.files) == 0:
             amps[(ant, pol)] = 10.0 * np.log10(amps[(ant, pol)])
         times[(ant, pol)] = float(redis.hgetall(key).get('time', 0))
 else:
-    uv = UVData()
-    uv.read_miriad(args.files)
-    for ant in uv.get_ants():
-        for pol in uv.get_feedpols():
-            pol = 2 * pol.lower()
-            autos[(ant, pol)] = np.mean(uv.get_data(ant, ant, pol), axis=0)
-            amps[(ant, pol)] = np.median(autos[(ant, pol)])
-            if args.log:
-                autos[(ant, pol)] = 10.0 * np.log10(autos[(ant, pol)])
-                amps[(ant, pol)] = 10.0 * np.log10(amps[(ant, pol)])
-            ind1, ind2, indp = uv._key2inds((ant, ant, pol))
-            times[(ant, pol)] = np.mean(uv.time_array[ind1])
-    del(uv)
+    counts = {}
+    for f in args.files:
+        uvd = apm.UV(f)
+        pol = uvutils.polnum2str(uvd['pol']).lower()
+        uvd.select('auto', 1, 1)
+        for (uvw, t, (i, j)), d, f in uvd.all(raw=True):
+            try:
+                counts[(i, pol)] += 1
+                autos[(i, pol)] += d
+                times[(i, pol)] += t
+            except KeyError:
+                counts[(i, pol)] = 1
+                autos[(i, pol)] = d
+                times[(i, pol)] = t
+    for key in autos.keys():
+        autos[key] /= counts[key]
+        times[key] /= counts[key]
+        amps[key] = np.median(autos[key])
+        if args.log:
+            autos[key] = 10.0 * np.log10(autos[key])
+            amps[key] = 10.0 * np.log10(amps[key])
+    del(uvd)
+    del(counts)
 
 ants = np.unique([ant for (ant, pol) in autos.keys()])
 # Find most recent time, only keep spectra from that time
