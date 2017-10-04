@@ -67,7 +67,10 @@ if len(args.files) == 0:
     redis = redis_lib.Redis('redishost')
     keys = [k for k in redis.keys() if k.startswith('visdata')]
     for key in keys:
-        ant = antmap[int(re.findall(r'visdata://(\d+)/', key)[0])]
+        try:
+            ant = antmap[int(re.findall(r'visdata://(\d+)/', key)[0])]
+        except KeyError:
+            ant = -1 * int(re.findall(r'visdata://(\d+)/', key)[0])
         pol = key[-2:]
         autos[(ant, pol)] = np.fromstring(redis.hgetall(key).get('data'), dtype=np.float32)
         amps[(ant, pol)] = np.median(autos[(ant, pol)])
