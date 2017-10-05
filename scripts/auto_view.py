@@ -250,7 +250,7 @@ for ai, ant in enumerate(ants):
     plt.text(0.8, 0.8, str(ant), fontsize=12, transform=ax.transAxes, color=lcolor)
     # Axis stuff
     ax.axes.get_xaxis().set_ticklabels([])
-    if ant % ny:
+    if ai % ny:
         ax.axes.get_yaxis().set_ticklabels([])
     else:
         if args.log:
