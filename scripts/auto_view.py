@@ -299,15 +299,15 @@ def plot_rms(data, POL='xx'):
         if i in ants_connected:
             lcolor = 'r'
         else:
-            lcolor = 'k'
-        plt.text(0.8, 0.8, str(i), fontsize=12, transform=ax.transAxes, color=lcolor)
+            lcolor = 'b'
+        plt.text(0.5, 0.8, str(i), fontsize=12, transform=ax.transAxes, color=lcolor)
         ax.get_yaxis().set_visible(False)
         if cnt < (N - 1) * M:
             ax.get_xaxis().set_ticklabels([])
         else:
             plt.xlabel(r'$V_{\rm rms}$ [bits]')
         plt.grid()
-    f.suptitle(str(latest.datetime) + ' UTC')
+    f.suptitle(str(latest.datetime) + ' UTC' + '    {0}'.format(POL))
     plt.tight_layout(rect=(0,0,1,.95))
 
 
