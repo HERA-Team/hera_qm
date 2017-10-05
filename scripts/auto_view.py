@@ -235,8 +235,9 @@ nants = len(ants)
 nx = int(np.ceil(np.log2(nants + 1)))
 ny = int(np.ceil(nants / float(nx)))
 pol_colors = {'xx': 'r', 'yy': 'b'}
-for ant in range(np.max(ants) + 1):
-    ax = plt.subplot(nx, ny, ant + 1)
+ants = np.sort(ants)
+for ai, ant in enumerate(ants):
+    ax = plt.subplot(nx, ny, ai + 1)
     for pol in ['xx', 'yy']:
         try:
             plt.plot(autos[(ant, pol)], pol_colors[pol], label=pol_labels[pol])
@@ -249,7 +250,7 @@ for ant in range(np.max(ants) + 1):
     plt.text(0.8, 0.8, str(ant), fontsize=12, transform=ax.transAxes, color=lcolor)
     # Axis stuff
     ax.axes.get_xaxis().set_ticklabels([])
-    if ant % ny:
+    if ai % ny:
         ax.axes.get_yaxis().set_ticklabels([])
     else:
         if args.log:
@@ -257,7 +258,7 @@ for ant in range(np.max(ants) + 1):
         else:
             ax.set_ylabel('linear')
     ax.set_ylim([vmin, 1.3 * vmax])
-    if ant == 0:
+    if ai == 0:
         plt.legend(loc='best')
 f.suptitle(str(latest.datetime) + ' UTC')
 filename = os.path.join(outpath, basename + '.auto_specs.png')
