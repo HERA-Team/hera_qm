@@ -258,7 +258,7 @@ for ai, ant in enumerate(ants):
         else:
             ax.set_ylabel('linear')
     ax.set_ylim([vmin, 1.3 * vmax])
-    if ant == 0:
+    if ai == 0:
         plt.legend(loc='best')
 f.suptitle(str(latest.datetime) + ' UTC')
 filename = os.path.join(outpath, basename + '.auto_specs.png')
