@@ -38,6 +38,8 @@ import matplotlib.pyplot as plt
 autos = {}
 amps = {}
 times = {}
+if args.log:
+    autos_raw = {}
 if len(args.files) == 0:
     # No file given, use redis db
     redis = redis_lib.Redis('redishost')
@@ -48,6 +50,7 @@ if len(args.files) == 0:
         autos[(ant, pol)] = np.fromstring(redis.hgetall(key).get('data'), dtype=np.float32)
         amps[(ant, pol)] = np.median(autos[(ant, pol)])
         if args.log:
+            autos_raw[(ant, pol)] = autos[(ant, pol)]
             autos[(ant, pol)] = 10.0 * np.log10(autos[(ant, pol)])
             amps[(ant, pol)] = 10.0 * np.log10(amps[(ant, pol)])
         times[(ant, pol)] = float(redis.hgetall(key).get('time', 0))
@@ -71,6 +74,7 @@ else:
         times[key] /= counts[key]
         amps[key] = np.median(autos[key])
         if args.log:
+            autos_raw[key] = autos[key]
             autos[key] = 10.0 * np.log10(autos[key])
             amps[key] = 10.0 * np.log10(amps[key])
     del(uvd)
@@ -135,53 +139,53 @@ if args.outbase == '':
 else:
     basename = args.outbase
 
-# Plot autos vs positions
-pol_labels = {'xx': 'E', 'yy': 'N'}
-poli = {'xx': 0, 'yy': 1}
-if args.log:
-    vmin = -30
-    vmax = 15
-else:
-    vmin = 0
-    vmax = 12
-f = plt.figure(figsize=(10, 8))
-for ant in ants_connected:
-    for pol in ['xx', 'yy']:
-        try:
-            if not np.isnan(amps[(ant, pol)]):
-                ax = plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
-                                 c=amps[(ant, pol)], vmin=vmin, vmax=vmax, cmap=goodbad)
-            else:
-                plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
-                            marker='x', color='k')
-        except KeyError:
-            plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
-                        marker='x', color='k')
-    text = (str(ant) + '\n' + pams[ant] + '\n' + receiverators[ant])
-    plt.annotate(text, xy=antpos[ant, 0:2] + [1, 0], textcoords='data',
-                 verticalalignment='center')
-if args.log:
-    label = '10log10(Median Autos)'
-else:
-    label = 'Median Autos'
-plt.colorbar(ax, label=label)
-xr = antpos[ants_connected, 0].max() - antpos[ants_connected, 0].min()
-yr = antpos[ants_connected, 1].max() - antpos[ants_connected, 1].min()
-plt.xlim([antpos[ants_connected, 0].min() - 0.05 * xr, antpos[ants_connected, 0].max() + 0.2 * xr])
-plt.ylim([antpos[ants_connected, 1].min() - 0.05 * yr, antpos[ants_connected, 1].max() + 0.1 * yr])
-plt.title(str(latest.datetime) + ' UTC')
-# Add polarization key
-for pol in ['xx', 'yy']:
-    x = antpos[ants_connected, 0].min()
-    y = antpos[ants_connected, 1].max() + 3 * (poli[pol])
-    plt.scatter(x, y, c=vmax, vmin=vmin, vmax=vmax, cmap=goodbad)
-    plt.annotate(pol_labels[pol] + ' pol', xy=[x + 1, y], textcoords='data', verticalalignment='center')
-xmin = plt.gca().get_xlim()[0]
-ymax = plt.gca().get_ylim()[1]
-plt.plot([xmin, xmin + xr / 6., xmin + xr / 6.], [ymax * 3. / 4., ymax * 3. / 4., ymax], 'k')
-# Save file
-filename = os.path.join(outpath, basename + '.auto_v_pos.png')
-plt.savefig(filename)
+# # Plot autos vs positions
+# pol_labels = {'xx': 'E', 'yy': 'N'}
+# poli = {'xx': 0, 'yy': 1}
+# if args.log:
+#     vmin = -30
+#     vmax = 15
+# else:
+#     vmin = 0
+#     vmax = 12
+# f = plt.figure(figsize=(10, 8))
+# for ant in ants_connected:
+#     for pol in ['xx', 'yy']:
+#         try:
+#             if not np.isnan(amps[(ant, pol)]):
+#                 ax = plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
+#                                  c=amps[(ant, pol)], vmin=vmin, vmax=vmax, cmap=goodbad)
+#             else:
+#                 plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
+#                             marker='x', color='k')
+#         except KeyError:
+#             plt.scatter(antpos[ant, 0], antpos[ant, 1] + 3 * (poli[pol] - 0.5),
+#                         marker='x', color='k')
+#     text = (str(ant) + '\n' + pams[ant] + '\n' + receiverators[ant])
+#     plt.annotate(text, xy=antpos[ant, 0:2] + [1, 0], textcoords='data',
+#                  verticalalignment='center')
+# if args.log:
+#     label = '10log10(Median Autos)'
+# else:
+#     label = 'Median Autos'
+# plt.colorbar(ax, label=label)
+# xr = antpos[ants_connected, 0].max() - antpos[ants_connected, 0].min()
+# yr = antpos[ants_connected, 1].max() - antpos[ants_connected, 1].min()
+# plt.xlim([antpos[ants_connected, 0].min() - 0.05 * xr, antpos[ants_connected, 0].max() + 0.2 * xr])
+# plt.ylim([antpos[ants_connected, 1].min() - 0.05 * yr, antpos[ants_connected, 1].max() + 0.1 * yr])
+# plt.title(str(latest.datetime) + ' UTC')
+# # Add polarization key
+# for pol in ['xx', 'yy']:
+#     x = antpos[ants_connected, 0].min()
+#     y = antpos[ants_connected, 1].max() + 3 * (poli[pol])
+#     plt.scatter(x, y, c=vmax, vmin=vmin, vmax=vmax, cmap=goodbad)
+#     plt.annotate(pol_labels[pol] + ' pol', xy=[x + 1, y], textcoords='data', verticalalignment='center')
+# xmin = plt.gca().get_xlim()[0]
+# ymax = plt.gca().get_ylim()[1]
+# plt.plot([xmin, xmin + xr / 6., xmin + xr / 6.], [ymax * 3. / 4., ymax * 3. / 4., ymax], 'k')
+# # Save file
+# filename = os.path.join(outpath, basename + '.auto_v_pos.png')
+# plt.savefig(filename)
 
 
 # Autos v rxr
@@ -262,6 +266,53 @@ for ant in range(np.max(ants) + 1):
 f.suptitle(str(latest.datetime) + ' UTC')
 filename = os.path.join(outpath, basename + '.auto_specs.png')
 plt.savefig(filename)
+
+
+# Plot rms values at input of ADC's
+def plot_rms(data, POL='xx'):
+    """Plots rms values at input to ADC's by looking at the autos.
+
+    Args:
+        data (dict): Dictionary of auto's.
+        POL (str): String of polarization."""
+    CHUNK = 256
+    BINS = 24
+    rmscolors = 'bgrcmy'
+    N = np.ceil(np.sqrt(len(data)))
+    M = np.ceil(len(data) / float(N))
+    bins = np.logspace(-2, 4, BINS, base=2.)
+    ants = [i for (i, _) in data]
+    ants.sort()
+    for cnt, i in enumerate(ants):
+        ax = plt.subplot(N, M, cnt + 1)
+        for j, ch in enumerate(xrange(0, 1024, CHUNK)):
+            d = data[i, POL][:, ch:ch + CHUNK].flatten()
+            h, b = np.histogram(np.sqrt(d / 2), bins)
+            h = 10**np.log10(h + .1)
+            b = 0.5 * (b[1:] + b[:-1])
+            ax.fill_between(np.log2(b), h, .1, where=h > .1, color=rmscolors[j], alpha=.5)
+        bounds = np.where(bins < 2**0, d.size, np.where(bins > 2**2, d.size, 0))
+        ax.fill_between(np.log2(bins), bounds, .1, where=bounds > .1, color='black', alpha=.6)
+        ax.set_yscale('log')
+        plt.xlim(-2, 3)
+        plt.ylim(d.size / 1e2, d.size)
+        plt.title(str(i) + POL)
+        ax.get_yaxis().set_visible(False)
+        if cnt < (N - 1) * M:
+            ax.get_xaxis().set_ticklabels([])
+        else:
+            plt.xlabel(r'$V_{\rm rms}$ [bits]')
+        plt.grid()
+    plt.tight_layout()
+
+
+for pol in ['xx', 'yy']:
+    if args.log:
+        plot_rms(autos_raw, POL=pol)
+    else:
+        plot_rms(autos, POL=pol)
+    filename = os.path.join(outpath, basename + '.{0}.auto_rms_values.png'.format(pol))
+    plt.savefig(filename)
 
 # ID some potential baddies
 if args.idbaddies:
