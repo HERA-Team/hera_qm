@@ -68,13 +68,15 @@ def test_metrics2mc():
     d = utils.metrics2mc(filename, ftype='firstcal')
     nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
     firstcal_array_metrics = set(['firstcal_metrics_agg_std_y',
-                                  'firstcal_metrics_good_sol_y'])
+                                  'firstcal_metrics_good_sol_y',
+                                  'firstcal_metrics_max_std_y'])
     nt.assert_equal(set(d['array_metrics'].keys()), firstcal_array_metrics)
     firstcal_metrics_list = get_firstcal_metrics_dict()
     firstcal_ant_metrics = set(firstcal_metrics_list.keys()) - firstcal_array_metrics
     # remove others not in this data file
     firstcal_ant_metrics -= {'firstcal_metrics_good_sol_x', 'firstcal_metrics_good_sol',
-                             'firstcal_metrics_agg_std_x', 'firstcal_metrics_agg_std'}
+                             'firstcal_metrics_agg_std_x', 'firstcal_metrics_agg_std',
+                             'firstcal_metrics_max_std_x'}
     nt.assert_equal(set(d['ant_metrics']), firstcal_ant_metrics)
 
     # test omnical metrics
