@@ -298,12 +298,13 @@ class FirstCal_Metrics(object):
         ------
         calfits_files : str or list
             filename for a *.first.calfits file
-            or a list of .first.calfits files
+            or a list of .first.calfits files (time-ordered)
+            of the same polarization
 
         use_gp : bool, default=True
             use gaussian process model to 
-            subtract underlying delay solution
-            behavior from fluctuations
+            subtract underlying smooth delay solution
+            behavior over time from fluctuations
 
         Result:
         -------
@@ -391,9 +392,17 @@ class FirstCal_Metrics(object):
 
         # use gaussian process model to subtract underlying mean function
         if use_gp is True and self.sklearn_import is True:
+	    # initialize GP kernel.		
+	    # RBF is a squared exponential kernel with a minimum length_scale_bound of 0.01 JD, meaning		
+	    # the GP solution won't have time fluctuations quicker than ~0.01 JD, which will preserve 		
+	    # short time fluctuations. WhiteKernel is a Gaussian white noise component with a fiducial		
+	    # noise level of 0.01 nanoseconds. Both of these are hyperparameters that are fit for via		
+	    # a gradient descent algorithm in the GP.fit() routine, so length_scale=0.2 and		
+	    # noise_level=0.01 are just initial conditions and are not the final hyperparameter solution
             kernel = gp.kernels.RBF(length_scale=0.2, length_scale_bounds=(0.01, 1.0)) + gp.kernels.WhiteKernel(noise_level=0.01)
             x = self.frac_JD.reshape(-1, 1)
             self.delay_smooths = []
+            # iterate over each antenna
             for i in range(self.Nants):
                 # get ydata
                 y = copy.copy(self.delay_fluctuations[i])
