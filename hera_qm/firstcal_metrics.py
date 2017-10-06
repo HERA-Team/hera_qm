@@ -17,7 +17,7 @@ try:
     from sklearn import gaussian_process as gp
     sklearn_import = True
 except ImportError:
-    raise Warning("Could not import sklearn")
+    print "could not import sklearn"
     sklearn_import = False
 
 
