@@ -265,6 +265,8 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
+    if custom_ax is False:
+        return fig
 
 def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
                       plot_kwargs={'marker': 'o', 'color': 'k', 'linestyle': '', 'markersize': 6}):
@@ -335,7 +337,8 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
-
+    if custom_ax is False:
+        return fig
 
 class OmniCal_Metrics(object):
     """
@@ -735,6 +738,9 @@ class OmniCal_Metrics(object):
             else:
                 ax.figure.savefig(fname, bbox_inches='tight')
 
+        if custom_ax is False:
+            return fig
+
 
     def plot_chisq_tavg(self, pol_index=0, ants=None, ax=None, save=False, fname=None, outpath=None):
         """
@@ -801,6 +807,8 @@ class OmniCal_Metrics(object):
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
+        if custom_ax is False:
+            return fig
 
     def plot_metrics(self, metrics):
         """
