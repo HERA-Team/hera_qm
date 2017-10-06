@@ -37,6 +37,10 @@ def get_firstcal_metrics_dict():
                     'is good (1) or bad(0).',
                     'firstcal_metrics_agg_std': 'Aggregate standard deviation '
                     'of delay solutions',
+                    'firstcal_metrics_max_std_x': 'Maximum antenna standard deviation '
+                    'of xx delay solutions',
+                    'firstcal_metrics_max_std_y': 'Maximum antenna standard deviation '
+                    'of yy delay solutions',
                     'firstcal_metrics_agg_std_x': 'Aggregate standard deviation '
                     'of xx delay solutions',
                     'firstcal_metrics_agg_std_y': 'Aggregate standard deviation '
@@ -169,6 +173,8 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
             fname = metrics['fc_filestem'] + '.stds.png'
         fig.savefig(fname, bbox_inches='tight')
 
+    if custom_ax is False:
+        return fig
 
 def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6),
                  save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
@@ -277,6 +283,8 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
             fname = metrics['fc_filestem'] + '.zscrs.png'
         fig.savefig(fname, bbox_inches='tight')
 
+    if custom_ax is False:
+        return fig
 
 class FirstCal_Metrics(object):
     """
@@ -379,7 +387,7 @@ class FirstCal_Metrics(object):
             self.delays = self.UVC.delay_array.squeeze()
             self.gains = None
             self.offsets = None
-            self.rot_ants = None
+            self.rot_ants = []
 
         # Calculate avg delay solution and subtract to get delay_fluctuations
         self.delays = self.delays * 1e9
@@ -388,13 +396,13 @@ class FirstCal_Metrics(object):
 
         # use gaussian process model to subtract underlying mean function
         if use_gp is True and self.sklearn_import is True:
-            # initialize GP kernel.
-            # RBF is a squared exponential kernel with a minimum length_scale_bound of 0.01 JD, meaning
-            # the GP solution won't have time fluctuations quicker than ~0.01 JD, which will preserve 
-            # short time fluctuations. WhiteKernel is a Gaussian white noise component with a fiducial
-            # noise level of 0.01 nanoseconds. Both of these are hyperparameters that are fit for via
-            # a gradient descent algorithm in the GP.fit() routine, so length_scale=0.2 and
-            # noise_level=0.01 are just initial conditions and are not the final hyperparameter solution
+	    # initialize GP kernel.		
+	    # RBF is a squared exponential kernel with a minimum length_scale_bound of 0.01 JD, meaning		
+	    # the GP solution won't have time fluctuations quicker than ~0.01 JD, which will preserve 		
+	    # short time fluctuations. WhiteKernel is a Gaussian white noise component with a fiducial		
+	    # noise level of 0.01 nanoseconds. Both of these are hyperparameters that are fit for via		
+	    # a gradient descent algorithm in the GP.fit() routine, so length_scale=0.2 and		
+	    # noise_level=0.01 are just initial conditions and are not the final hyperparameter solution
             kernel = gp.kernels.RBF(length_scale=0.2, length_scale_bounds=(0.01, 1.0)) + gp.kernels.WhiteKernel(noise_level=0.01)
             x = self.frac_JD.reshape(-1, 1)
             self.delay_smooths = []
@@ -412,6 +420,7 @@ class FirstCal_Metrics(object):
                 self.delay_fluctuations[i] -= ymodel
                 self.delay_smooths.append(ymodel)
             self.delay_smooths = np.array(self.delay_smooths)
+
 
     def run_metrics(self, std_cut=0.5):
         """
@@ -444,12 +453,12 @@ class FirstCal_Metrics(object):
             all antennas, then averaged over time
         """
         # Calculate std and zscores
-        (ant_avg, ant_std, time_std, agg_std,
+        (ant_avg, ant_std, time_std, agg_std, max_std,
          z_scores, ant_z_scores) = self.delay_std(return_dict=True)
 
         # Given delay standard dev. cut, find "bad" ants
         # also determine if full solultion is bad
-        if agg_std > std_cut:
+        if max_std > std_cut:
             good_sol = False
         else:
             good_sol = True
@@ -470,6 +479,7 @@ class FirstCal_Metrics(object):
         metrics['ant_std'] = ant_std
         metrics['time_std'] = time_std
         metrics['agg_std'] = agg_std
+	metrics['max_std'] = max_std
         metrics['times'] = self.times
         metrics['version'] = self.version_str
         metrics['fc_filename'] = self.fc_filename
@@ -561,7 +571,7 @@ class FirstCal_Metrics(object):
 
         Output:
         --------
-        return ant_avg, ant_std, time_std, agg_std, z_scores
+        return ant_avg, ant_std, time_std, agg_std, max_std, z_scores
 
         ant_avg : ndarray, shape=(N_ants,)
             average delay solution across time for each antenna
@@ -578,6 +588,9 @@ class FirstCal_Metrics(object):
             aggregate standard deviation of delay solutions
             across all antennas and all times
 
+	max_std : float
+            maximum antenna standard deviation of delay solutions
+
         z_scores : ndarray, shape=(N_ant, N_times)
             z_scores (standard scores) for each (antenna, time)
             delay solution w.r.t. agg_std
@@ -592,6 +605,7 @@ class FirstCal_Metrics(object):
         ant_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations, axis=1))
         time_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations, axis=0))
         agg_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations))
+        max_std = np.max(ant_std)
 
         # calculate z-scores
         z_scores = self.delay_fluctuations / agg_std
@@ -618,7 +632,7 @@ class FirstCal_Metrics(object):
             z_scores = z_scores_d
             ant_z_scores = ant_z_scores_d
 
-        return ant_avg, ant_std, time_std, agg_std, z_scores, ant_z_scores
+        return ant_avg, ant_std, time_std, agg_std, max_std, z_scores, ant_z_scores
 
     def plot_delays(self, ants=None, plot_type='both', cmap='nipy_spectral', ax=None, save=False, fname=None,
                     plt_kwargs={'markersize': 5, 'alpha': 0.75}):
@@ -741,6 +755,9 @@ class FirstCal_Metrics(object):
                 fname = self.fc_filestem + '.dlys.png'
             fig.savefig(fname, bbox_inches='tight')
 
+        if custom_ax is False:
+            return fig
+
     def plot_zscores(self, fname=None, plot_type='full', ax=None, figsize=(10, 6),
                      save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
         """
@@ -773,8 +790,9 @@ class FirstCal_Metrics(object):
         if hasattr(self, 'metrics') == False:
             raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
                             "in order to plot delay z_scores")
-        plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
+        fig = plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
                      save=save, kwargs=kwargs, plot_abs=plot_abs)
+        return fig
 
     def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         """
@@ -803,7 +821,8 @@ class FirstCal_Metrics(object):
         if hasattr(self, 'metrics') == False:
             raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
                             "in order to plot delay stds")
-        plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
+        fig = plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
+        return fig
 
 
 # code for running firstcal_metrics on a file

@@ -152,26 +152,22 @@ def load_firstcal_gains(fc_file):
     load firstcal delays and turn into phase gains
 
     fc_file : str
-        path to firstcal .calfits file
+        path to firstcal .calfits file (single polarization)
 
     jones2pol : dict
         dictionary containing jones integers as keys and 
         X-Y pols as values
 
-    getpol : str, options=['XX', 'XY', 'YX', 'YY']
-        string containing the pol of data you want to extract
-        needs a jones2pol dictionary to work
-
     """
     uvf = UVCal()
     uvf.read_calfits(fc_file)
     freqs = uvf.freq_array.squeeze()
-    fc_gains = np.moveaxis(uvf.gain_array, 2, 3)[:, 0, :, :, :]
+    fc_gains = np.moveaxis(uvf.gain_array, 2, 3)[:, 0, :, :, 0]
     d_nu = np.mean(freqs[1:]-freqs[:-1])
-    d_phi = np.abs(np.mean(np.angle(fc_gains)[:, :, 1:, :] - np.angle(fc_gains)[:, :, :-1, :], axis=2))
+    d_phi = np.abs(np.mean(np.angle(fc_gains)[:, :, 1:] - np.angle(fc_gains)[:, :, :-1], axis=2))
     fc_delays = (d_phi / d_nu)/(2*np.pi)
-    fc_pols = uvf.jones_array
-    return fc_delays, fc_gains, fc_pols
+    fc_pol = uvf.jones_array[0]
+    return fc_delays, fc_gains, fc_pol
 
 
 def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
@@ -269,6 +265,8 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
+    if custom_ax is False:
+        return fig
 
 def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
                       plot_kwargs={'marker': 'o', 'color': 'k', 'linestyle': '', 'markersize': 6}):
@@ -339,7 +337,8 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
-
+    if custom_ax is False:
+        return fig
 
 class OmniCal_Metrics(object):
     """
@@ -495,31 +494,30 @@ class OmniCal_Metrics(object):
 
     def load_firstcal_gains(self, fc_files):
         """
-        wrapper for omnical_metrics.load_firstcal_gains
+        wrapper for omnical_metrics.load_firstcal_gains.
         attach firstcal_delays and firstcal_gains to class
         and calculate gain_diff
         fc_files : list, dtype=str
             list of paths to firstcal files
         """
-        # check if fcfiles is a a str, if so change to list
+        # check if fcfiles is a str, if so change to list
         if type(fc_files) is str:
             fc_files = [fc_files]
 
         firstcal_delays = []
         firstcal_gains = []
-        for i, pol in enumerate(self.pols):
-            fcfile = fc_files[i]
-            fc_delays, fc_gains, fc_pols = load_firstcal_gains(fcfile)
-
+        pol_sort = []
+        for i, fcfile in enumerate(fc_files):
+            fc_delays, fc_gains, fc_pol = load_firstcal_gains(fcfile)
             # convert to 'xy' pol convention and then select omni_pol from fc_pols
-            fc_pols = map(lambda x: self.jones2pol[x], fc_pols)
-            if pol not in fc_pols:
-                raise ValueError("omni_pol={0} not in list of pols from firstcal_file={1}".format(pol, fcfile))
-            fc_pol_index = fc_pols.index(pol)
-            firstcal_delays.append(fc_delays[:, :, fc_pol_index])
-            firstcal_gains.append(fc_gains[:, :, :, fc_pol_index])
-        self.firstcal_delays = np.moveaxis(np.array(firstcal_delays), 0, 2)
-        self.firstcal_gains = np.moveaxis(np.array(firstcal_gains), 0, 3)
+            fc_pol = self.jones2pol[fc_pol]
+            if fc_pol not in self.pols:
+                raise ValueError("firstcal_pol={} not in list of omnical pols={}".format(fc_pol, self.pols))
+            pol_sort.append(list(self.pols).index(fc_pol))
+            firstcal_delays.append(fc_delays)
+            firstcal_gains.append(fc_gains)
+        self.firstcal_delays = np.moveaxis(np.array(firstcal_delays), 0, 2)[:, :, pol_sort]
+        self.firstcal_gains = np.moveaxis(np.array(firstcal_gains), 0, 3)[:, :, :, pol_sort]
         self.gain_diff = self.omni_gains / self.firstcal_gains
 
     def chisq_metric(self, chisq, chisq_std_zscore_cut=4.0, return_dict=True):
@@ -740,6 +738,9 @@ class OmniCal_Metrics(object):
             else:
                 ax.figure.savefig(fname, bbox_inches='tight')
 
+        if custom_ax is False:
+            return fig
+
 
     def plot_chisq_tavg(self, pol_index=0, ants=None, ax=None, save=False, fname=None, outpath=None):
         """
@@ -806,6 +807,8 @@ class OmniCal_Metrics(object):
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
+        if custom_ax is False:
+            return fig
 
     def plot_metrics(self, metrics):
         """

@@ -36,6 +36,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertEqual(str, type(self.FC.metrics['version']))
         self.assertAlmostEqual(1.0, self.FC.metrics['std_cut'])
         self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.044662349588061437)
+        self.assertAlmostEqual(self.FC.metrics['max_std'], 0.089829821120782846)
         self.assertEqual('y', self.FC.metrics['pol'])
 
         # Test bad ants detection
@@ -107,6 +108,10 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
         plt.close()
+        # check return figs
+        fig = self.FC.plot_delays()
+        self.assertTrue(fig is not None)
+        plt.close()
 
     def test_plot_zscores(self):
         # check exception
@@ -125,6 +130,10 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
         plt.close()
+        # check return fig
+        fig = self.FC.plot_zscores()
+        self.assertTrue(fig is not None)
+        plt.close()
 
     def test_plot_stds(self):
         # check exception
@@ -142,6 +151,10 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.plot_stds(fname=fname, xaxis='time', save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
+        plt.close()
+        # check return fig
+        fig = self.FC.plot_stds()
+        self.assertTrue(fig is not None)
         plt.close()
 
     def test_rotated_metrics(self):

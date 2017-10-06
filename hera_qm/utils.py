@@ -282,6 +282,8 @@ def metrics2mc(filename, ftype):
         d['array_metrics'][met] = data['good_sol']
         met = 'firstcal_metrics_agg_std_' + pol
         d['array_metrics'][met] = data['agg_std']
+        met = 'firstcal_metrics_max_std_' + pol
+        d['array_metrics'][met] = data['max_std']
         for met in ['ant_z_scores', 'ant_avg', 'ant_std']:
             metric = '_'.join(['firstcal_metrics', met])
             d['ant_metrics'][metric] = []
