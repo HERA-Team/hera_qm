@@ -170,6 +170,10 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         del self.OM.omni_gains
         self.assertRaises(Exception, self.OM.plot_gains)
         self.OM.run_metrics()
+        # check return figs
+        fig = omnical_metrics.plot_phs_metric(metrics)
+        self.assertTrue(fig is not None)
+        plt.close()
 
     def test_plot_chisq_metrics(self):
         full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
@@ -197,7 +201,10 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         fig,ax = plt.subplots()
         omnical_metrics.plot_chisq_metric(metrics, ax=ax)
         plt.close()
-
+        # check return figs
+        fig = omnical_metrics.plot_chisq_metric(metrics)
+        self.assertTrue(fig is not None)
+        plt.close()
 
     def test_plot_chisq_tavg(self):
         self.OM.run_metrics(fcfiles=self.fc_file)
@@ -212,6 +219,11 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
         plt.close()
+        # check return figs
+        fig = self.OM.plot_chisq_tavg()
+        self.assertTrue(fig is not None)
+        plt.close()
+
 
     def test_plot_gains(self):
         self.OM.run_metrics(fcfiles=self.fc_file)
@@ -260,6 +272,10 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM.plot_gains(ants=self.OM.ant_array[:2], fname=fname, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
+        # check return figs
+        fig = self.OM.plot_gains()
+        self.assertTrue(fig is not None)
         plt.close()
 
     def test_plot_metrics(self):
