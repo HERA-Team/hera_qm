@@ -17,7 +17,7 @@ try:
     from sklearn import gaussian_process as gp
     sklearn_import = True
 except ImportError:
-    raise Warning("Could not import sklearn")
+    print "could not import sklearn"
     sklearn_import = False
 
 
@@ -173,6 +173,8 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
             fname = metrics['fc_filestem'] + '.stds.png'
         fig.savefig(fname, bbox_inches='tight')
 
+    if custom_ax is False:
+        return fig
 
 def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6),
                  save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
@@ -281,6 +283,8 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
             fname = metrics['fc_filestem'] + '.zscrs.png'
         fig.savefig(fname, bbox_inches='tight')
 
+    if custom_ax is False:
+        return fig
 
 class FirstCal_Metrics(object):
     """
@@ -751,6 +755,9 @@ class FirstCal_Metrics(object):
                 fname = self.fc_filestem + '.dlys.png'
             fig.savefig(fname, bbox_inches='tight')
 
+        if custom_ax is False:
+            return fig
+
     def plot_zscores(self, fname=None, plot_type='full', ax=None, figsize=(10, 6),
                      save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
         """
@@ -783,8 +790,9 @@ class FirstCal_Metrics(object):
         if hasattr(self, 'metrics') == False:
             raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
                             "in order to plot delay z_scores")
-        plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
+        fig = plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
                      save=save, kwargs=kwargs, plot_abs=plot_abs)
+        return fig
 
     def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         """
@@ -813,7 +821,8 @@ class FirstCal_Metrics(object):
         if hasattr(self, 'metrics') == False:
             raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
                             "in order to plot delay stds")
-        plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
+        fig = plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
+        return fig
 
 
 # code for running firstcal_metrics on a file

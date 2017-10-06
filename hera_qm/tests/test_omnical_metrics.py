@@ -21,15 +21,15 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM = omnical_metrics.OmniCal_Metrics(self.oc_file)
 
     def test_init(self):
-        self.assertEqual(self.OM.Nants, 16)
+        self.assertEqual(self.OM.Nants, 17)
         self.assertEqual(self.OM.filename, 'zen.2457555.42443.xx.HH.uvcA.good.omni.calfits')
-        self.assertEqual(self.OM.omni_gains.shape, (16, 3, 1024, 1))
+        self.assertEqual(self.OM.omni_gains.shape, (17, 3, 1024, 1))
 
     def test_load_firstcal_gains(self):
-        firstcal_delays, firstcal_gains, fc_pols = omnical_metrics.load_firstcal_gains(self.fc_file)
-        self.assertEqual(firstcal_delays.shape, (16, 3, 1))
-        self.assertEqual(firstcal_gains.shape, (16, 3, 1024, 1))
-        self.assertEqual(fc_pols[0], -5)
+        firstcal_delays, firstcal_gains, fc_pol = omnical_metrics.load_firstcal_gains(self.fc_file)
+        self.assertEqual(firstcal_delays.shape, (17, 3))
+        self.assertEqual(firstcal_gains.shape, (17, 3, 1024))
+        self.assertEqual(fc_pol, -5)
 
     def test_omni_load_firstcal_gains(self):
         # test execution
@@ -42,12 +42,26 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         # test exception
         self.assertRaises(ValueError, self.OM.load_firstcal_gains, self.fc_fileyy)
 
+    def test_multiple_pol_fc_pickup(self):
+        fc_files = [os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.first.calfits'), os.path.join(DATA_PATH, 'zen.2457555.42443.yy.HH.uvcA.first.calfits')]
+        oc_file = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
+        OM = omnical_metrics.OmniCal_Metrics(oc_file)
+        OM.load_firstcal_gains(fc_files)
+        # make sure 'XX' pol first, then 'YY' pol
+        self.assertAlmostEqual(OM.firstcal_delays[0, 0, 0], 1.0918842818239246e-09)
+        # reverse pol and repeat 
+        OM.load_firstcal_gains(fc_files[::-1])
+        self.assertAlmostEqual(OM.firstcal_delays[0, 0, 0], 1.0918842818239246e-09)
+        # hit exception
+        OM.pols[0] = 'XY'
+        self.assertRaises(ValueError, OM.load_firstcal_gains, fc_files)
+
     def test_run_metrics(self):
         # no fc file
         full_metrics = self.OM.run_metrics()
         metrics = full_metrics['XX']
         self.assertIs(metrics['ant_phs_std'], None)
-        self.assertAlmostEqual(metrics['chisq_ant_std_loc'], 0.16388136721862939)
+        self.assertAlmostEqual(metrics['chisq_ant_std_loc'], 0.16499103579233421)
         self.assertEqual(len(full_metrics), 1)
         self.assertEqual(len(metrics), 36)
         self.assertIs(type(full_metrics), OrderedDict)
@@ -56,7 +70,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         full_metrics = self.OM.run_metrics(cut_edges=False)
         metrics = full_metrics['XX']
         self.assertIs(metrics['ant_phs_std'], None)
-        self.assertAlmostEqual(metrics['chisq_ant_std_loc'], 0.17478741554780153)
+        self.assertAlmostEqual(metrics['chisq_ant_std_loc'], 0.17762839199226452)
         self.assertEqual(len(full_metrics), 1)
         self.assertEqual(len(metrics), 36)
         self.assertIs(type(full_metrics), OrderedDict)
@@ -64,8 +78,8 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         # use fc file
         full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
         metrics = full_metrics['XX']
-        self.assertAlmostEqual(metrics['ant_phs_std_max'], 0.11512433778673592)
-        self.assertEqual(len(metrics['ant_phs_std']), 16)
+        self.assertAlmostEqual(metrics['ant_phs_std_max'], 0.11690779502486655)
+        self.assertEqual(len(metrics['ant_phs_std']), 17)
 
     def test_write_load_metrics(self):
         # Run metrics
@@ -170,6 +184,10 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         del self.OM.omni_gains
         self.assertRaises(Exception, self.OM.plot_gains)
         self.OM.run_metrics()
+        # check return figs
+        fig = omnical_metrics.plot_phs_metric(metrics)
+        self.assertTrue(fig is not None)
+        plt.close()
 
     def test_plot_chisq_metrics(self):
         full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
@@ -197,7 +215,10 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         fig,ax = plt.subplots()
         omnical_metrics.plot_chisq_metric(metrics, ax=ax)
         plt.close()
-
+        # check return figs
+        fig = omnical_metrics.plot_chisq_metric(metrics)
+        self.assertTrue(fig is not None)
+        plt.close()
 
     def test_plot_chisq_tavg(self):
         self.OM.run_metrics(fcfiles=self.fc_file)
@@ -212,6 +233,11 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
         plt.close()
+        # check return figs
+        fig = self.OM.plot_chisq_tavg()
+        self.assertTrue(fig is not None)
+        plt.close()
+
 
     def test_plot_gains(self):
         self.OM.run_metrics(fcfiles=self.fc_file)
@@ -260,6 +286,10 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.OM.plot_gains(ants=self.OM.ant_array[:2], fname=fname, save=True)
         self.assertEqual(os.path.isfile(fname), True)
         os.remove(fname)
+        plt.close()
+        # check return figs
+        fig = self.OM.plot_gains()
+        self.assertTrue(fig is not None)
         plt.close()
 
     def test_plot_metrics(self):

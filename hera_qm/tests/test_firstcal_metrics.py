@@ -108,6 +108,10 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
         plt.close()
+        # check return figs
+        fig = self.FC.plot_delays()
+        self.assertTrue(fig is not None)
+        plt.close()
 
     def test_plot_zscores(self):
         # check exception
@@ -126,6 +130,10 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
         plt.close()
+        # check return fig
+        fig = self.FC.plot_zscores()
+        self.assertTrue(fig is not None)
+        plt.close()
 
     def test_plot_stds(self):
         # check exception
@@ -143,6 +151,10 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.plot_stds(fname=fname, xaxis='time', save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
+        plt.close()
+        # check return fig
+        fig = self.FC.plot_stds()
+        self.assertTrue(fig is not None)
         plt.close()
 
     def test_rotated_metrics(self):
