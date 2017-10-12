@@ -258,10 +258,15 @@ def xrfi_run(filename, args, history):
     else:
         raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
-    # Flag on based full data set
+    # Flag on full data set
     d_flag_array = vis_flag(uvd, args)
-    d_wf = flags2waterfall(uvd, flag_array=d_flag_array)
-    d_wf_t = threshold_flags(d_wf, px_threshold=args.px_threshold,
+
+    # Make a "normalized waterfall" to account for data already flagged in file
+    d_wf_tot = flags2waterfall(uvd, flag_array=d_flag_array)
+    d_wf_prior = flags2waterfall(uvd, flag_array=uvd.flag_array)
+    unit_flags = np.ones_like(d_wf_prior)
+    d_wf_norm = (d_wf_tot - d_wf_prior) / (unit_flags - d_wf_prior)
+    d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
                              freq_threshold=args.freq_threshold,
                              time_threshold=args.time_threshold)
 
