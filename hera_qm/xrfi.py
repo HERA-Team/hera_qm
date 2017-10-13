@@ -131,6 +131,29 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     return f[Kt:-Kt, Kf:-Kf]
 
 
+def flag_xants(uvd, xants):
+    """Flag visibilities containing specified antennas.
+
+    Args:
+        uvd (UVData object): visibilities to be flagged
+        xants (list of ints): antennas to flag
+    Returns:
+        uvd: UVData object, with flag_array set to True for all
+             visibilities containing xants
+    """
+    # check that we got a UVData object
+    if not isinstance(uvd, UVData):
+        raise ValueError("First argument to flag_xants must be a UVData object")
+    # loop over all antennas in data
+    all_ants = uvd.get_ants()
+    for ant in all_ants:
+        # loop over list of excluded antennas to form baseline pairs
+        for xant in xants:
+            blts = uvd.antpair2ind(ant, xant)
+            uvd.flag_array[blts, :, :, :] = True
+    return uvd
+
+
 #############################################################################
 # RFI flagging algorithms
 #############################################################################
@@ -257,6 +280,15 @@ def xrfi_run(filename, args, history):
         uvd.read_fhd(filename)
     else:
         raise ValueError('Unrecognized input file format ' + str(args.infile_format))
+
+    # Compute list of excluded antennas
+    if args.ex_ants != '' or args.metrics_json != '':
+        # import function from hera_cal
+        from hera_cal.omni import process_ex_ants
+        xants = process_ex_ants(args.ex_ants, args.metrics_json)
+
+        # Flag the visibilities corresponding to the specified antennas
+        uvd = flag_xants(uvd, xants)
 
     # Flag on full data set
     d_flag_array = vis_flag(uvd, args)

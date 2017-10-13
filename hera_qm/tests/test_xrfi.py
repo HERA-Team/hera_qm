@@ -519,6 +519,30 @@ class TestXrfiRun(object):
         # clean up
         os.remove(dest_file)
 
+    def test_xrfi_run_exants(self):
+        # get argument object
+        a = utils.get_metrics_ArgumentParser('xrfi_run')
+        arg0 = "--infile_format=miriad"
+        arg1 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+        arg2 = "--algorithm=xrfi_simple"
+        arg3 = "--nsig_dt=6"
+        arg4 = "--nsig_df=6"
+        arg5 = "--nsig_all=0"
+        arg6 = "--ex_ants=72"
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6])
+
+        # test running on our test data
+        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        dest_file = os.path.join(DATA_PATH, 'test_output', 'zen.2457698.40355.xx.HH.uvcAA.flags.npz')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
+        xrfi.xrfi_run(args.filename, args, cmd)
+        nt.assert_true(os.path.exists(dest_file))
+        # clean up
+        os.remove(dest_file)
+
 
 class TestXrfiApply(object):
     def test_xrfi_apply(self):
@@ -829,6 +853,32 @@ class TestThresholdFlags(object):
         wf_t = xrfi.threshold_flags(wf, freq_threshold=.4 / Nf)
         nt.assert_true(wf_t.sum() == Nf)
 
+
+class TestFlagXants(object):
+    def test_flag_xants(self):
+        # Raise an error by passing in something besides a UVData object
+        nt.assert_raises(ValueError, xrfi.flag_xants, 7, [0])
+
+        # Read in a data file and flag some antennas
+        from pyuvdata import UVData
+        infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        uv = UVData()
+        uv.read_miriad(infile)
+
+        # Make sure nothing is flagged
+        uv.flag_array[:, :, :, :] = False
+
+        # Specify list of antennas to flag
+        all_ants = uv.get_ants()
+        xants = all_ants[:2]
+        uv = xrfi.flag_xants(uv, xants)
+
+        # Check that the list of xants was flagged for all visibilities
+        for xant in xants:
+            for ant in all_ants:
+                blts = uv.antpair2ind(ant, xant)
+                flags = uv.flag_array[blts, :, :, :]
+                nt.assert_true(np.allclose(flags, True))
 
 if __name__ == '__main__':
     unittest.main()
