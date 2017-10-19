@@ -540,7 +540,7 @@ def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.0
     return wf_t
 
 
-def summarize_flags(uv, outfile, flag_array=None):
+def summarize_flags(uv, outfile, flag_array=None, prior_flags=None):
     """ Collapse several dimensions of a UVData flag array to summarize.
     Args:
         uv -- UVData object containing flag_array to be summarized
@@ -570,14 +570,23 @@ def summarize_flags(uv, outfile, flag_array=None):
     """
     import pyuvdata.utils as uvutils
 
+    if flag_array is None:
+        flag_array = uv.flag_array
+    if prior_flags is None:
+        prior_flags = np.zeros_like(flag_array)
     # Average across bls for given time
     waterfall = np.zeros((uv.Ntimes, uv.Nfreqs, uv.Npols))
+    prior_wf = np.zeros_like(waterfall)
+    unit_wf = np.ones_like(prior_wf)
     waterfall_weight = np.zeros(uv.Ntimes)
     times = np.unique(uv.time_array)
     for ti, time in enumerate(times):
-        ind = np.where(uv.time_array == time)
+        ind = np.where(uv.time_array == time)[0]
         waterfall_weight[ti] = len(ind)
-        waterfall[ti, :, :] = np.mean(uv.flag_array[ind, 0, :, :])
+        waterfall[ti, :, :] = np.mean(flag_array[ind, 0, :, :], axis=0)
+        prior_wf[ti, :, :] = np.mean(prior_flags[ind, 0, :, :], axis=0)
+    # Normalize waterfall to account for data already flagged in file
+    waterfall = (waterfall - prior_wf) / (unit_wf - prior_wf)
     # Calculate stats across time
     tmax = np.max(waterfall, axis=0)
     tmin = np.min(waterfall, axis=0)
