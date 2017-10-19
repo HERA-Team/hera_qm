@@ -546,6 +546,7 @@ def summarize_flags(uv, outfile, flag_array=None, prior_flags=None):
         uv -- UVData object containing flag_array to be summarized
         outfile -- filename for output npz file
         flag_array -- (optional) use alternative flag_array (rather than uv.flag_array).
+        prior_flags -- (optional) exclude prior flag array when calculating averages.
 
     Return:
         Writes an npz file to disk containing summary info. The keys are:
