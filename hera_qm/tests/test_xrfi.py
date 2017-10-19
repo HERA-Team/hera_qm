@@ -688,6 +688,28 @@ class TestSummary(unittest.TestCase):
         self.assertEqual(data['version'], hera_qm_version_str)
         os.remove(outfile)  # cleanup
 
+    def test_summarize_flags_with_prior(self):
+        from hera_qm.version import hera_qm_version_str
+        from pyuvdata import UVData
+
+        infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+        uv = UVData()
+        uv.read_miriad(infile)
+        outfile = os.path.join(DATA_PATH, 'test_output', 'rfi_summary.npz')
+        if os.path.exists(outfile):
+            os.remove(outfile)
+        prior_flags = np.zeros_like(uv.flag_array)
+        prior_flags[0, 0, 100, 0] = True
+        flags = np.zeros_like(uv.flag_array)
+        flags[0, 0, 100, 0] = True
+        flags[:, 0, 101, 0] = True
+        xrfi.summarize_flags(uv, outfile, flag_array=flags, prior_flags=prior_flags)
+        self.assertTrue(os.path.exists(outfile))
+        data = np.load(outfile)
+        self.assertTrue((data['waterfall'][:, 100, 0] == 0).all())
+        self.assertTrue((data['waterfall'][:, 101, 0] == 1).all())
+        os.remove(outfile)  # cleanup
+
 
 class TestVisFlag(object):
     def test_vis_flag(self):
