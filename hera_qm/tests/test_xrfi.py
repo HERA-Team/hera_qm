@@ -689,7 +689,6 @@ class TestSummary(unittest.TestCase):
         os.remove(outfile)  # cleanup
 
     def test_summarize_flags_with_prior(self):
-        from hera_qm.version import hera_qm_version_str
         from pyuvdata import UVData
 
         infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
