@@ -177,12 +177,12 @@ plt.title(str(latest.datetime) + ' UTC')
 # Add polarization key
 for pol in ['xx', 'yy']:
     x = antpos[ants_connected, 0].min()
-    y = antpos[ants_connected, 1].max() + 3 * (poli[pol])
+    y = antpos[ants_connected, 1].min() + 3 * (poli[pol])
     plt.scatter(x, y, c=vmax, vmin=vmin, vmax=vmax, cmap=goodbad)
     plt.annotate(pol_labels[pol] + ' pol', xy=[x + 1, y], textcoords='data', verticalalignment='center')
 xmin = plt.gca().get_xlim()[0]
-ymax = plt.gca().get_ylim()[1]
-plt.plot([xmin, xmin + xr / 6., xmin + xr / 6.], [ymax * 3. / 4., ymax * 3. / 4., ymax], 'k')
+ymin = plt.gca().get_ylim()[0]
+plt.plot([xmin, xmin + xr / 6., xmin + xr / 6.], [ymin * 3. / 4., ymin * 3. / 4., ymin], 'k')
 # Save file
 filename = os.path.join(outpath, basename + '.auto_v_pos.png')
 plt.savefig(filename)
