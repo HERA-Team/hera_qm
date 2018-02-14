@@ -188,7 +188,7 @@ def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
         prevx, prevy = x.size, y.size
         for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             xp, yp = (x + dx).clip(0, f1.shape[0] - 1), (y + dy).clip(0, f1.shape[1] - 1)
-            i = np.where(f1[xp, yp] > sig_adj)[0]  # if sigma > 'sigl'
+            i = np.where(d[xp, yp] > sig_adj)[0]  # if sigma > 'sigl'
             f1.mask[xp[i], yp[i]] = 1
             x, y = np.where(f1.mask)
     return f1.mask
