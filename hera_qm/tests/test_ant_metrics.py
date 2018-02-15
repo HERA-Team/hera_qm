@@ -272,7 +272,8 @@ class TestAntmetricsRun(object):
         arg4 = "--extension=.ant_metrics.json"
         arg5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
         arg6 = "--vis_format=miriad"
-        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6])
+        arg7 = "--alwaysDeadCut=10"
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
 
         # test running with no files
         cmd = ' '.join([arguments, ''])
@@ -315,7 +316,8 @@ class TestAntmetricsRun(object):
         arg3 = "--extension=.ant_metrics.json"
         arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
         arg5 = "--vis_format=miriad"
-        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5])
+        arg6 = "--alwaysDeadCut=10"
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6])
 
         # test running with no calfile
         xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
