@@ -416,18 +416,20 @@ class Antenna_Metrics():
         self.allMetrics.append(metrics)
         self.allModzScores.append(modzScores)
 
-    def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5, verbose=False):
+    def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5, alwaysDeadCut=10, verbose=False):
         '''Runs all four metrics (two for dead antennas two for cross-polarized antennas) and saves
         the results internally to this this antenna metrics object.
 
         Arguments:
         crossCut -- Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas".
         deadCut -- Modified z-score cut for most likely dead antenna. Default 5 "sigmas".
+        alwaysDeadCut -- Modified z-score cut for antennas that are definitely dead. Default 10 "sigmas".
+            These are all thrown away at once without waiting to iteratively throw away only the worst offender.
         '''
 
         self.reset_summary_stats()
         self.find_totally_dead_ants()
-        self.crossCut, self.deadCut = crossCut, deadCut
+        self.crossCut, self.deadCut, self.alwaysDeadCut = crossCut, deadCut, alwaysDeadCut
 
         # Loop over
         for n in range(len(self.antpols) * len(self.ants)):
@@ -454,11 +456,16 @@ class Antenna_Metrics():
                     if verbose:
                         print('On iteration', n, 'we flag', (worstCrossAnt[0], antpol))
             elif worstDeadCutRatio > worstCrossCutRatio and worstDeadCutRatio > 1.0:
-                self.xants.append(worstDeadAnt)
-                self.deadAntsRemoved.append(worstDeadAnt)
-                self.removalIter[worstDeadAnt] = n
-                if verbose:
-                    print('On iteration', n, 'we flag', worstDeadAnt)
+                dead_ants = set([worstDeadAnt])
+                for ant,metric in deadMetrics.items():
+                    if metric > alwaysDeadCut:
+                        dead_ants.add(ant)
+                for dead_ant in dead_ants:
+                    self.xants.append(dead_ant)
+                    self.deadAntsRemoved.append(dead_ant)
+                    self.removalIter[dead_ant] = n
+                    if verbose:
+                        print('On iteration', n, 'we flag', dead_ant)
             else:
                 break
 
@@ -479,6 +486,7 @@ class Antenna_Metrics():
         allMetricsData['removal_iteration'] = str(self.removalIter)
         allMetricsData['cross_pol_z_cut'] = str(self.crossCut)
         allMetricsData['dead_ant_z_cut'] = str(self.deadCut)
+        allMetricsData['always_dead_ant_z_cut'] = str(self.alwaysDeadCut)
         allMetricsData['datafile_list'] = str(self.dataFileList)
         allMetricsData['reds'] = str(self.reds)
         allMetricsData['version'] = self.version_str
@@ -553,7 +561,7 @@ def ant_metrics_run(files, args, history):
     for jd_list in fullpol_file_list:
         am = Antenna_Metrics(jd_list, reds, fileformat=args.vis_format)
         am.iterative_antenna_metrics_and_flagging(crossCut=args.crossCut, deadCut=args.deadCut,
-                                                  verbose=args.verbose)
+                                                  alwaysDeadCut=args.alwaysDeadCut, verbose=args.verbose)
 
         # add history
         am.history = am.history + history
