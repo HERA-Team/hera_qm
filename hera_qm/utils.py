@@ -31,6 +31,9 @@ def get_metrics_ArgumentParser(method_name):
                        help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
         a.add_argument('--deadCut', default=5.0, type=float,
                        help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
+        a.add_argument('--alwaysDeadCut', default=1.0, type=float,
+                       help='Modified z-score cut for antennas that are definitely dead. Default 10 "sigmas".'
+                            'These are all thrown away at once without waiting to iteratively throw away only the worst offender.')
         a.add_argument('--extension', default='.ant_metrics.json', type=str,
                        help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
         a.add_argument('--metrics_path', default='', type=str,
