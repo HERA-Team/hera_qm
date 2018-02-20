@@ -289,7 +289,7 @@ def load_antenna_metrics(metricsJSONFile):
 
     with open(metricsJSONFile, 'r') as infile:
         jsonMetrics = json.load(infile)
-    gvars = {'nan': np.nan}
+    gvars = {'nan': np.nan, 'inf': np.inf, '-inf': -np.inf}
     return {key: (eval(str(val), gvars) if (key != 'version' and key != 'history') else str(val)) for
             key, val in jsonMetrics.items()}
 
