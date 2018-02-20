@@ -101,8 +101,12 @@ antpos = np.zeros((np.max(ants) + 1, 2))
 ants_connected = []
 antnames = ["" for x in range(np.max(ants) + 1)]
 for stn in stations_conn:
+    # make sure that antenna in cminfo is in data file
+    try:
+        antpos[stn['antenna_number'], :] = [stn['easting'], stn['northing']]
+    except IndexError:
+        continue
     ants_connected.append(stn['antenna_number'])
-    antpos[stn['antenna_number'], :] = [stn['easting'], stn['northing']]
     antnames[stn['antenna_number']] = stn['station_name']
 array_center = np.mean(antpos[antpos[:, 0] != 0, :], axis=0)
 antpos -= array_center
