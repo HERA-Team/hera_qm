@@ -198,7 +198,7 @@ class TestDenseScatter(Template, unittest.TestCase):
             return
         self.rfi_gen = rfi_gen
         self.ans['detrend_deriv'] = [(.33, .33, .33), (.1, .1, .1)]
-        self.ans['xrfi_simple'] = [(.90, .90), (.1, .1)]
+        self.ans['xrfi_simple'] = [(.85, .85), (.1, .1)]
         self.mode['detrend_deriv'] = [False, False, False]
         self.mode['detrend_medminfilt'] = [False, False, False, True]
         self.mode['watershed'] = [False, True]
@@ -282,7 +282,7 @@ class TestBackground(Template, unittest.TestCase):
         self.ans['detrend_deriv'] = [(.83, .83, .83), (.1, .1, .1)]
         self.ans['detrend_medminfilt'] = [(.2, .2, .3, 0.), (.1, .1, .1, .8)]
         self.ans['xrfi'] = (.7, .1)
-        self.ans['xrfi_simple'] = [(.90, .90), (.1, .1)]
+        self.ans['xrfi_simple'] = [(.85, .85), (.1, .1)]
         self.mode['detrend_deriv'] = [False, False, True]
         self.mode['detrend_medminfilt'] = [False, False, False, True]
         self.mode['watershed'] = [True, True]
