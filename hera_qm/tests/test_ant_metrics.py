@@ -7,6 +7,7 @@ import pyuvdata.tests as uvtest
 from hera_qm import utils
 import os
 import sys
+import json
 
 
 class fake_data():
@@ -133,6 +134,33 @@ class TestLowLevelFunctions(unittest.TestCase):
         for key in self.data.data.keys():
             for pol in self.data.data[key].keys():
                 self.assertIn((key[0], key[1], pol), power.keys())
+
+    def test_load_antenna_metrics(self):
+        # load a metrics file and check some values
+        metrics_file = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+        metrics = ant_metrics.load_antenna_metrics(metrics_file)
+        self.assertAlmostEqual(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')], 0.17529333517595402)
+        self.assertAlmostEqual(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')], 0.17529333517595402)
+        self.assertAlmostEqual(metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')], 0.7012786080508268)
+
+        # change some values to FPE values, and write it out
+        metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')] = np.nan
+        metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')] = np.inf
+        metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')] = -np.inf
+        for key in metrics.keys():
+            metrics[key] = str(metrics[key])
+        outpath = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.json')
+        with open(outpath, 'w') as outfile:
+            json.dump(metrics, outfile, indent=4)
+
+        # test reading it back in, and that the values agree
+        metrics_new = ant_metrics.load_antenna_metrics(outpath)
+        self.assertTrue(np.isnan(metrics_new['final_mod_z_scores']['meanVijXPol'][(72, 'x')]))
+        self.assertEqual(metrics_new['final_mod_z_scores']['meanVijXPol'][(72, 'y')], np.inf)
+        self.assertEqual(metrics_new['final_mod_z_scores']['meanVijXPol'][(31, 'y')], -np.inf)
+
+        # clean up after ourselves
+        os.remove(outpath)
 
 
 class TestAntennaMetrics(unittest.TestCase):
