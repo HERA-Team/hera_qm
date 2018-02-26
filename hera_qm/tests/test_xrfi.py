@@ -10,6 +10,7 @@ import pylab as plt
 import hera_qm.tests as qmtest
 from inspect import getargspec
 import pyuvdata.tests as uvtest
+from pyuvdata import UVData
 import hera_qm.utils as utils
 from hera_qm.data import DATA_PATH
 
@@ -342,6 +343,20 @@ class TestXrfiRun(object):
         nt.assert_true(os.path.exists(dest_file))
         os.remove(dest_file)
 
+        # test running with UVData object
+        uv = UVData()
+        uv.read_miriad(xx_file)
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        xrfi.xrfi_run(uv, args, cmd)
+        nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
+
+        # Test missing filename
+        cmd = ' '.join([arguments])
+        args = a.parse_args(cmd.split())
+        nt.assert_raises(AssertionError, xrfi.xrfi_run, uv, args, cmd)
+
     def test_xrfi_run_xrfi_simple(self):
         # get argument object
         a = utils.get_metrics_ArgumentParser('xrfi_run')
@@ -377,7 +392,6 @@ class TestXrfiRun(object):
         os.remove(sum_file)
 
     def test_xrfi_run_model_and_cal(self):
-        from pyuvdata import UVData
 
         # get argument object
         a = utils.get_metrics_ArgumentParser('xrfi_run')
@@ -429,7 +443,6 @@ class TestXrfiRun(object):
         shutil.rmtree(model_file)
 
     def test_xrfi_run_model_and_cal_errors(self):
-        from pyuvdata import UVData
 
         # get argument object
         a = utils.get_metrics_ArgumentParser('xrfi_run')
@@ -656,7 +669,6 @@ class TestXrfiApply(object):
 class TestSummary(unittest.TestCase):
     def test_summarize_flags(self):
         from hera_qm.version import hera_qm_version_str
-        from pyuvdata import UVData
 
         infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
         uv = UVData()
@@ -689,7 +701,6 @@ class TestSummary(unittest.TestCase):
         os.remove(outfile)  # cleanup
 
     def test_summarize_flags_with_prior(self):
-        from pyuvdata import UVData
 
         infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
         uv = UVData()
@@ -712,7 +723,6 @@ class TestSummary(unittest.TestCase):
 
 class TestVisFlag(object):
     def test_vis_flag(self):
-        from pyuvdata import UVData
 
         a = utils.get_metrics_ArgumentParser('xrfi_run')
         args = a.parse_args([''])
@@ -787,7 +797,6 @@ class TestCalFlag(object):
 
 class TestFlags2Waterfall(object):
     def test_flags2waterfall(self):
-        from pyuvdata import UVData
         from pyuvdata import UVCal
 
         uv = UVData()
@@ -808,7 +817,6 @@ class TestFlags2Waterfall(object):
         nt.assert_equal(wf.shape, (uvc.Ntimes, uvc.Nfreqs))
 
     def test_flags2waterfall_errors(self):
-        from pyuvdata import UVData
 
         # First argument must be UVData or UVCal object
         nt.assert_raises(ValueError, xrfi.flags2waterfall, 5)
@@ -821,7 +829,6 @@ class TestFlags2Waterfall(object):
 
 class TestWaterfall2Flags(object):
     def test_waterfall2flags(self):
-        from pyuvdata import UVData
         from pyuvdata import UVCal
 
         uv = UVData()
@@ -845,7 +852,6 @@ class TestWaterfall2Flags(object):
             nt.assert_true(np.all(wf == flags[ai, 0, :, :, 0].T))
 
     def test_waterfall2flags_errors(self):
-        from pyuvdata import UVData
 
         uv = UVData()
         uv.read_uvfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvc.vis.uvfits'))
@@ -881,7 +887,6 @@ class TestFlagXants(object):
         nt.assert_raises(ValueError, xrfi.flag_xants, 7, [0])
 
         # Read in a data file and flag some antennas
-        from pyuvdata import UVData
         infile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
         uv = UVData()
         uv.read_miriad(infile)
