@@ -249,37 +249,44 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     return f
 
 
-def xrfi_run(filename, args, history):
+def xrfi_run(indata, args, history):
     """
     Run an RFI-flagging algorithm on a single data file, and optionally calibration files,
     and store results in npz files.
 
     Args:
-       filename -- Data file to run RFI flagging on.
+       indata -- Either UVData object or data file to run RFI flagging on.
        args -- parsed arguments via argparse.ArgumentParser.parse_args
        history -- history string to include in files
     Return:
        None
 
-    This function will take in a data file and optionally a cal file and
+    This function will take in a UVData object or  data file and optionally a cal file and
     model visibility file, and run an RFI-flagging algorithm to identify contaminated
     observations. Each set of flagging will be stored, as well as compressed versions.
     """
-    # make sure we were given files to process
-    if len(filename) == 0:
-        raise AssertionError('Please provide a visibility file')
-    if len(filename) > 1:
-        raise AssertionError('xrfi_run currently only takes a single data file.')
-    filename = filename[0]
-    uvd = UVData()
-    if args.infile_format == 'miriad':
-        uvd.read_miriad(filename)
-    elif args.infile_format == 'uvfits':
-        uvd.read_uvfits(filename)
-    elif args.infile_format == 'fhd':
-        uvd.read_fhd(filename)
+    if isinstance(indata, UVData):
+        uvd = indata
+        if len(args.filename) == 0:
+            raise AssertionError('Please provide a filename to go with UVData object.')
+        else:
+            filename = args.filename[0]
     else:
-        raise ValueError('Unrecognized input file format ' + str(args.infile_format))
+        # make sure we were given files to process
+        if len(indata) == 0:
+            raise AssertionError('Please provide a visibility file or UVData object')
+        if len(indata) > 1:
+            raise AssertionError('xrfi_run currently only takes a single data file.')
+        filename = indata[0]
+        uvd = UVData()
+        if args.infile_format == 'miriad':
+            uvd.read_miriad(filename)
+        elif args.infile_format == 'uvfits':
+            uvd.read_uvfits(filename)
+        elif args.infile_format == 'fhd':
+            uvd.read_fhd(filename)
+        else:
+            raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
     # Compute list of excluded antennas
     if args.ex_ants != '' or args.metrics_json != '':
