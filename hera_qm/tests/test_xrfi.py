@@ -901,17 +901,18 @@ class TestFlagXants(object):
                 flags = uv.flag_array[blts, :, :, :]
                 nt.assert_true(np.allclose(flags, True))
 
+
 class TestInputFlagWatershed(object):
     def test_input_flag(self):
         # create some fake data for input to watershed
-        SIZE=10
+        SIZE = 10
         sigmas = np.ones((SIZE, SIZE))
         sigmas[:, 3] = 7
         sigmas[1::2, 5:7] = 3
         # create some input flags
         input_flags = np.zeros((SIZE, SIZE), dtype=bool)
         input_flags[:, 4] = 1
-        
+
         # flag using watershed
         w_input_flags = xrfi.watershed_flag(sigmas, f=input_flags)
 
@@ -919,9 +920,9 @@ class TestInputFlagWatershed(object):
         flag_check = np.zeros((SIZE, SIZE), dtype=bool)
         flag_check[:, 3:4] = 1
         flag_check[1::2, 5:7] = 1
-        
-        nt.assert_equal(w_input_flags, flag_check)
-        
+
+        nt.assert_true(np.all(w_input_flags == flag_check))
+
 
 if __name__ == '__main__':
     unittest.main()
