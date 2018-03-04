@@ -918,9 +918,8 @@ class TestInputFlagWatershed(object):
 
         # create array to test against
         flag_check = np.zeros((SIZE, SIZE), dtype=bool)
-        flag_check[:, 3:4] = 1
+        flag_check[:, 3:5] = 1
         flag_check[1::2, 5:7] = 1
-
         nt.assert_true(np.all(w_input_flags == flag_check))
 
 
