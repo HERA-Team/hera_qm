@@ -702,3 +702,7 @@ def xrfi_apply(filename, args, history):
         uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
     else:
         raise ValueError('Unrecognized output file format ' + str(args.outfile_format))
+    if args.output_npz:
+        # Save an npz with the final flag array and waterfall
+        outpath = outpath + args.out_npz_ext
+        np.savez(outpath, flag_array=uvd.flag_array, history=flag_history + history)
