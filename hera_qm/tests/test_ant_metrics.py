@@ -75,14 +75,20 @@ class TestLowLevelFunctions(unittest.TestCase):
                (2, 'x'): 0.536, (2, 'y'): 0.623, (3, 'x'): 0.567, (3, 'y'): 0.502,
                (99, 'x'): np.NaN, (99, 'y'): np.NaN}
         for key, val in ref.items():
-            self.assertAlmostEqual(val, red_corr[key], places=3)
+            if np.isnan(val):
+                self.assertTrue(np.isnan(red_corr[key]))
+            else:
+                self.assertAlmostEqual(val, red_corr[key], places=3)
         zs = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
                                           ants, self.reds)
         ref = {(0, 'x'): -1.445, (0, 'y'): -0.516, (1, 'x'): 1.088, (1, 'y'): -0.833,
                (2, 'x'): -0.261, (2, 'y'): 6.033, (3, 'x'): 0.261, (3, 'y'): 0.516,
                (99, 'x'): np.NaN, (99, 'y'): np.NaN}
         for key, val in ref.items():
-            self.assertAlmostEqual(val, zs[key], places=3)
+            if np.isnan(val):
+                self.assertTrue(np.isnan(red_corr[key]))
+            else:
+                self.assertAlmostEqual(val, red_corr[key], places=3)
 
     def test_mean_Vij_cross_pol_metrics(self):
         mean_Vij_cross_pol = ant_metrics.mean_Vij_cross_pol_metrics(self.data, self.pols,
