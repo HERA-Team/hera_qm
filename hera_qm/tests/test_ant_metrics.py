@@ -70,14 +70,14 @@ class TestLowLevelFunctions(unittest.TestCase):
         ants = copy.copy(self.ants)
         ants.append(99)
         red_corr = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
-                                                self.ants, self.reds, rawMetric=True)
+                                                ants, self.reds, rawMetric=True)
         ref = {(0, 'x'): 0.468, (0, 'y'): 0.479, (1, 'x'): 0.614, (1, 'y'): 0.472,
                (2, 'x'): 0.536, (2, 'y'): 0.623, (3, 'x'): 0.567, (3, 'y'): 0.502,
                (99, 'x'): np.NaN, (99, 'y'): np.NaN}
         for key, val in ref.items():
             self.assertAlmostEqual(val, red_corr[key], places=3)
         zs = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
-                                          self.ants, self.reds)
+                                          ants, self.reds)
         ref = {(0, 'x'): -1.445, (0, 'y'): -0.516, (1, 'x'): 1.088, (1, 'y'): -0.833,
                (2, 'x'): -0.261, (2, 'y'): 6.033, (3, 'x'): 0.261, (3, 'y'): 0.516,
                (99, 'x'): np.NaN, (99, 'y'): np.NaN}
