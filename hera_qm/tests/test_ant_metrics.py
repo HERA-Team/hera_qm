@@ -86,9 +86,9 @@ class TestLowLevelFunctions(unittest.TestCase):
                (99, 'x'): np.NaN, (99, 'y'): np.NaN}
         for key, val in ref.items():
             if np.isnan(val):
-                self.assertTrue(np.isnan(red_corr[key]))
+                self.assertTrue(np.isnan(zs[key]))
             else:
-                self.assertAlmostEqual(val, red_corr[key], places=3)
+                self.assertAlmostEqual(val, zs[key], places=3)
 
     def test_mean_Vij_cross_pol_metrics(self):
         mean_Vij_cross_pol = ant_metrics.mean_Vij_cross_pol_metrics(self.data, self.pols,
