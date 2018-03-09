@@ -2,13 +2,12 @@
 
 import sys
 from hera_qm import utils as qm_utils
-from hera_cal import utils as cal_utils
 from hera_qm import xrfi
 from hera_cal import delay_filter
 from hera_cal import io
 
 ax = qm_utils.get_metrics_ArgumentParser('xrfi_run')
-ad = cal_utils.get_cal_ArgumentParser('delay_filter')
+ad = delay_filter.delay_filter_argparser()
 args_x = ax.parse_known_args()
 args_d = ad.parse_known_args()
 filename = args_x.filename
