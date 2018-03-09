@@ -268,7 +268,9 @@ def xrfi_run(indata, args, history):
     if isinstance(indata, UVData):
         uvd = indata
         if len(args.filename) == 0:
-            raise AssertionError('Please provide a filename to go with UVData object.')
+            raise AssertionError('Please provide a filename to go with UVData object. '
+                                 'The filename is used in conjunction with "extension" '
+                                 'to determine the output filename.')
         else:
             filename = args.filename[0]
     else:
@@ -678,6 +680,8 @@ def xrfi_apply(filename, args, history):
     if len(waterfalls) > 0:
         wf_full = sum(waterfalls).astype(bool)  # Union all waterfalls
         flag_array += waterfall2flags(wf_full, uvd)  # Combine with flag array
+    else:
+        wf_full = None
 
     # Finally, add the flag array to the flag array in the data
     uvd.flag_array += flag_array
@@ -705,4 +709,5 @@ def xrfi_apply(filename, args, history):
     if args.output_npz:
         # Save an npz with the final flag array and waterfall
         outpath = outpath + args.out_npz_ext
-        np.savez(outpath, flag_array=uvd.flag_array, history=flag_history + history)
+        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full,
+                 history=flag_history + history)
