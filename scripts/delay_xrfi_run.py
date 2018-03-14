@@ -5,11 +5,12 @@ from hera_qm import utils as qm_utils
 from hera_qm import xrfi
 from hera_cal import delay_filter
 from hera_cal import io
+from pyuvdata import UVData
 
 ax = qm_utils.get_metrics_ArgumentParser('xrfi_run')
 ad = delay_filter.delay_filter_argparser()
-args_x = ax.parse_known_args()
-args_d = ad.parse_known_args()
+args_x = ax.parse_known_args()[0]
+args_d = ad.parse_known_args()[0]
 filename = args_x.filename
 history = ' '.join(sys.argv)
 
