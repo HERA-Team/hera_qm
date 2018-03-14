@@ -135,7 +135,6 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
 
     # Compute power correlations and assign them to each antenna
     autoPower = compute_median_auto_power_dict(data, pols, reds)
-    red_ants = list(set([ant for r in reds for bl in r for ant in bl]))
     antCorrs = {(ant, antpol): 0.0 for ant in ants for antpol in antpols if
                 (ant, antpol) not in xants}
     antCounts = deepcopy(antCorrs)
