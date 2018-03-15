@@ -808,6 +808,13 @@ class TestFlags2Waterfall(object):
         nt.assert_almost_equal(np.mean(wf), np.mean(uv.flag_array))
         nt.assert_equal(wf.shape, (uv.Ntimes, uv.Nfreqs))
 
+        # Test external flag_array
+        uv.flag_array = np.zeros_like(uv.flag_array)
+        f = np.random.randint(0, 2, size=uv.flag_array.shape, dtype=bool)
+        wf = xrfi.flags2waterfall(uv, flag_array=f)
+        nt.assert_almost_equal(np.mean(wf), np.mean(f))
+        nt.assert_equal(wf.shape, (uv.Ntimes, uv.Nfreqs))
+
         uvc = UVCal()
         uvc.read_calfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits'))
 

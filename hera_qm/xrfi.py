@@ -494,7 +494,7 @@ def flags2waterfall(uv, flag_array=None):
     else:
         waterfall = np.zeros((uv.Ntimes, uv.Nfreqs))
         for i, t in enumerate(np.unique(uv.time_array)):
-            waterfall[i, :] = np.mean(uv.flag_array[uv.time_array == t, 0, :, :],
+            waterfall[i, :] = np.mean(flag_array[uv.time_array == t, 0, :, :],
                                       axis=(0, 2))
 
     return waterfall
