@@ -5,6 +5,7 @@ from pyuvdata import UVData
 from pyuvdata import UVCal
 from hera_qm.version import hera_qm_version_str
 import json
+import warnings
 
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
@@ -265,7 +266,12 @@ def xrfi_run(indata, args, history):
     model visibility file, and run an RFI-flagging algorithm to identify contaminated
     observations. Each set of flagging will be stored, as well as compressed versions.
     """
-    if isinstance(indata, UVData):
+    if indata is None:
+        if (args.model_file is None) and (args.calfits_fils is None):
+            raise AssertionError('Must provide at least one of: filename, '
+                                 'model_file, or calfits_file.')
+        warnings.warn('indata is none, not flagging on any data visibilities.')
+    elif isinstance(indata, UVData):
         uvd = indata
         if len(args.filename) == 0:
             raise AssertionError('Please provide a filename to go with UVData object. '
@@ -300,16 +306,17 @@ def xrfi_run(indata, args, history):
         uvd = flag_xants(uvd, xants)
 
     # Flag on full data set
-    d_flag_array = vis_flag(uvd, args)
+    if indata is not None:
+        d_flag_array = vis_flag(uvd, args)
 
-    # Make a "normalized waterfall" to account for data already flagged in file
-    d_wf_tot = flags2waterfall(uvd, flag_array=d_flag_array)
-    d_wf_prior = flags2waterfall(uvd, flag_array=uvd.flag_array)
-    unit_flags = np.ones_like(d_wf_prior)
-    d_wf_norm = (d_wf_tot - d_wf_prior) / (unit_flags - d_wf_prior)
-    d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
-                             freq_threshold=args.freq_threshold,
-                             time_threshold=args.time_threshold)
+        # Make a "normalized waterfall" to account for data already flagged in file
+        d_wf_tot = flags2waterfall(uvd, flag_array=d_flag_array)
+        d_wf_prior = flags2waterfall(uvd, flag_array=uvd.flag_array)
+        unit_flags = np.ones_like(d_wf_prior)
+        d_wf_norm = (d_wf_tot - d_wf_prior) / (unit_flags - d_wf_prior)
+        d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
+                                 freq_threshold=args.freq_threshold,
+                                 time_threshold=args.time_threshold)
 
     # Flag on model visibilities
     if args.model_file is not None:
@@ -360,10 +367,11 @@ def xrfi_run(indata, args, history):
         dirname = os.path.dirname(abspath)
     else:
         dirname = args.xrfi_path
-    basename = os.path.basename(filename)
-    outfile = ''.join([basename, args.extension])
-    outpath = os.path.join(dirname, outfile)
-    np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, history=history)
+    if indata is not None:
+        basename = os.path.basename(filename)
+        outfile = ''.join([basename, args.extension])
+        outpath = os.path.join(dirname, outfile)
+        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, history=history)
     if args.model_file is not None:
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
@@ -377,7 +385,7 @@ def xrfi_run(indata, args, history):
         outpath = os.path.join(dirname, outfile)
         np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, history=history)
 
-    if args.summary:
+    if (args.summary) and (indata is not None):
         sum_file = ''.join([basename, args.summary_ext])
         sum_path = os.path.join(dirname, sum_file)
         # Summarize using one of the raw flag arrays
