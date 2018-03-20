@@ -325,6 +325,9 @@ class TestXrfiRun(object):
         history = cmd
         nt.assert_raises(AssertionError, xrfi.xrfi_run, args.filename, args, history)
 
+        # test running with filename as None
+        nt.assert_raises(AssertionError, xrfi.xrfi_run, None, args, history)
+
         # test running with too many files
         cmd = ' '.join([arguments, 'file1', 'file2'])
         args = a.parse_args(cmd.split())
@@ -420,6 +423,28 @@ class TestXrfiRun(object):
         cmd = ' '.join([arguments, xx_file])
         args = a.parse_args(cmd.split())
         xrfi.xrfi_run(args.filename, args, cmd)
+        for f in dest_files:
+            nt.assert_true(os.path.exists(f))
+            os.remove(f)
+
+        # test running without a filename
+        dest_files = []
+        dest_files.append(os.path.join(DATA_PATH, 'test_output',
+                                       'zen.2457698.40355.xx.HH.uvc.vis.uvfits.flags.npz'))
+        dest_files.append(os.path.join(DATA_PATH, 'test_output',
+                                       'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.npz'))
+        dest_files.append(os.path.join(DATA_PATH, 'test_output',
+                                       'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.x.flags.npz'))
+        for f in dest_files:
+            if os.path.exists(f):
+                os.remove(f)
+        cmd = ' '.join([arguments, ''])
+        args = a.parse_args(cmd.split())
+        nt.assert_true
+        # Note we need to implement this checkWarnings, but right now there are
+        # calfits warnings that are machine specific. TODO.
+        # uvtest.checkWarnings(xrfi.xrfi_run, [None, args, cmd], nwarnings=1, message='indata is none,')
+        xrfi.xrfi_run(None, args, cmd)
         for f in dest_files:
             nt.assert_true(os.path.exists(f))
             os.remove(f)

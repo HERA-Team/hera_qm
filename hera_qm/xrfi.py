@@ -267,7 +267,7 @@ def xrfi_run(indata, args, history):
     observations. Each set of flagging will be stored, as well as compressed versions.
     """
     if indata is None:
-        if (args.model_file is None) and (args.calfits_fils is None):
+        if (args.model_file is None) and (args.calfits_file is None):
             raise AssertionError('Must provide at least one of: filename, '
                                  'model_file, or calfits_file.')
         warnings.warn('indata is none, not flagging on any data visibilities.')
@@ -329,10 +329,11 @@ def xrfi_run(indata, args, history):
             uvm.read_fhd(args.model_file)
         else:
             raise ValueError('Unrecognized input file format ' + str(args.model_file_format))
-        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5, rtol=0) and
-                np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
-            raise ValueError('Time and frequency axes of model vis file must match'
-                             'the data file.')
+        if indata is not None:
+            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5, rtol=0) and
+                    np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
+                raise ValueError('Time and frequency axes of model vis file must match'
+                                 'the data file.')
         m_flag_array = vis_flag(uvm, args)
         m_waterfall = flags2waterfall(uvm, flag_array=m_flag_array)
         m_wf_t = threshold_flags(m_waterfall, px_threshold=args.px_threshold,
@@ -343,10 +344,11 @@ def xrfi_run(indata, args, history):
     if args.calfits_file is not None:
         uvc = UVCal()
         uvc.read_calfits(args.calfits_file)
-        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5, rtol=0) and
-                np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
-            raise ValueError('Time and frequency axes of calfits file must match'
-                             'the data file.')
+        if indata is not None:
+            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5, rtol=0) and
+                    np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
+                raise ValueError('Time and frequency axes of calfits file must match'
+                                 'the data file.')
         g_flag_array, x_flag_array = cal_flag(uvc, args)
         g_waterfall = flags2waterfall(uvc, flag_array=g_flag_array)
         x_waterfall = flags2waterfall(uvc, flag_array=x_flag_array)
