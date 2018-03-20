@@ -177,7 +177,7 @@ xr = antpos[ants_connected, 0].max() - antpos[ants_connected, 0].min()
 yr = antpos[ants_connected, 1].max() - antpos[ants_connected, 1].min()
 plt.xlim([antpos[ants_connected, 0].min() - 0.05 * xr, antpos[ants_connected, 0].max() + 0.2 * xr])
 plt.ylim([antpos[ants_connected, 1].min() - 0.05 * yr, antpos[ants_connected, 1].max() + 0.1 * yr])
-plt.title(str(latest.datetime) + ' UTC')
+plt.title(str(latest.datetime) + ' UTC; JD='+str(latest.jd))
 # Add polarization key
 for pol in ['xx', 'yy']:
     x = antpos[ants_connected, 0].min()
@@ -268,7 +268,7 @@ for ai, ant in enumerate(ants):
     ax.set_ylim([vmin, 1.3 * vmax])
     if ai == 0:
         plt.legend(loc='best')
-f.suptitle(str(latest.datetime) + ' UTC')
+f.suptitle(str(latest.datetime) + ' UTC; JD='+str(latest.jd))
 filename = os.path.join(outpath, basename + '.auto_specs.png')
 plt.savefig(filename)
 
@@ -312,7 +312,7 @@ def plot_rms(data, POL='xx'):
         else:
             plt.xlabel(r'$V_{\rm rms}$ [bits]')
         plt.grid()
-    f.suptitle(str(latest.datetime) + ' UTC' + '    {0}'.format(POL))
+    f.suptitle(str(latest.datetime) + ' UTC' + '    {0}'.format(POL)+ '; JD='+str(latest.jd))
     plt.tight_layout(rect=(0,0,1,.95))
 
 
