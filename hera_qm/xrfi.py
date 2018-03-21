@@ -368,35 +368,37 @@ def xrfi_run(indata, args, history):
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
 
     # save output when we're done
-    if args.xrfi_path == '':
-        # default to the same directory
-        abspath = os.path.abspath(filename)
-        dirname = os.path.dirname(abspath)
-    else:
+    if args.xrfi_path != '':
+        # If explicitly given output path, use it. Otherwise use path from data.
         dirname = args.xrfi_path
     if indata is not None:
+        if args.xrfi_path == '':
+            dirname = os.path.dirname(os.path.abspath(filename))
         basename = os.path.basename(filename)
         outfile = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, outfile)
         np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, history=history)
+        if (args.summary):
+            sum_file = ''.join([basename, args.summary_ext])
+            sum_path = os.path.join(dirname, sum_file)
+            # Summarize using one of the raw flag arrays
+            summarize_flags(uvd, sum_path, flag_array=d_flag_array)
     if args.model_file is not None:
+        if args.xrfi_path == '':
+            dirname = os.path.dirname(abspath)
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
         np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, history=history)
     if args.calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
+        if args.xrfi_path == '':
+            dirname = os.path.dirname(os.path.abspath(args.calfits_file))
         outfile = ''.join([os.path.basename(args.calfits_file), '.g', args.extension])
         outpath = os.path.join(dirname, outfile)
         np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, history=history)
         outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
         outpath = os.path.join(dirname, outfile)
         np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, history=history)
-
-    if (args.summary) and (indata is not None):
-        sum_file = ''.join([basename, args.summary_ext])
-        sum_path = os.path.join(dirname, sum_file)
-        # Summarize using one of the raw flag arrays
-        summarize_flags(uvd, sum_path, flag_array=d_flag_array)
 
     return
 
