@@ -287,18 +287,19 @@ def xrfi_run(indata, args, history):
                                      'model_file, or calfits_file.')
             indata = None
             warnings.warn('indata is none, not flagging on any data visibilities.')
-        if len(indata) > 1:
+        elif len(indata) > 1:
             raise AssertionError('xrfi_run currently only takes a single data file.')
-        filename = indata[0]
-        uvd = UVData()
-        if args.infile_format == 'miriad':
-            uvd.read_miriad(filename)
-        elif args.infile_format == 'uvfits':
-            uvd.read_uvfits(filename)
-        elif args.infile_format == 'fhd':
-            uvd.read_fhd(filename)
         else:
-            raise ValueError('Unrecognized input file format ' + str(args.infile_format))
+            filename = indata[0]
+            uvd = UVData()
+            if args.infile_format == 'miriad':
+                uvd.read_miriad(filename)
+            elif args.infile_format == 'uvfits':
+                uvd.read_uvfits(filename)
+            elif args.infile_format == 'fhd':
+                uvd.read_fhd(filename)
+            else:
+                raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
     # Compute list of excluded antennas
     if args.ex_ants != '' or args.metrics_json != '':
