@@ -282,7 +282,11 @@ def xrfi_run(indata, args, history):
     else:
         # make sure we were given files to process
         if len(indata) == 0:
-            raise AssertionError('Please provide a visibility file or UVData object')
+            if (args.model_file is None) and (args.calfits_file is None):
+                raise AssertionError('Must provide at least one of: filename, '
+                                     'model_file, or calfits_file.')
+            indata = None
+            warnings.warn('indata is none, not flagging on any data visibilities.')
         if len(indata) > 1:
             raise AssertionError('xrfi_run currently only takes a single data file.')
         filename = indata[0]
