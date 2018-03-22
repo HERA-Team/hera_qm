@@ -385,7 +385,7 @@ def xrfi_run(indata, args, history):
             summarize_flags(uvd, sum_path, flag_array=d_flag_array)
     if args.model_file is not None:
         if args.xrfi_path == '':
-            dirname = os.path.dirname(abspath)
+            dirname = os.path.dirname(os.path.abspath(args.model_file))
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
         np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, history=history)
