@@ -198,9 +198,9 @@ def get_metrics_ArgumentParser(method_name):
         d.add_argument("--standoff", type=float, default=15.0, help='fixed additional delay beyond the horizon (default 15 ns)')
         d.add_argument("--horizon", type=float, default=1.0, help='proportionality constant for bl_len where 1.0 (default) is the horizon\
                                   (full light travel time)')
-        d.add_argument("--tol", type=float, default=1e-5, help='CLEAN algorithm convergence tolerance (default 1e-5). '
+        d.add_argument("--tol", type=float, default=1e-7, help='CLEAN algorithm convergence tolerance (default 1e-7). '
                        'NOTE: default is different from default when running delay_filter_run.py.')
-        d.add_argument("--window", type=str, default="none", help='window function for frequency filtering (default "none",\
+        d.add_argument("--window", type=str, default="blackman-harris", help='window function for frequency filtering (default "blackman-harris",\
                                   see aipy.dsp.gen_window for options')
         d.add_argument("--skip_wgt", type=float, default=0.1, help='skips filtering rows with unflagged fraction ~< skip_wgt (default 0.1)')
         d.add_argument("--maxiter", type=int, default=100, help='maximum iterations for aipy.deconv.clean to converge (default 100)')
