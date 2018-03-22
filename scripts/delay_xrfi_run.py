@@ -16,7 +16,7 @@ history = ' '.join(sys.argv)
 uv = UVData()
 uv.read_miriad(filename)
 # apply a priori waterfall flags
-waterfalls == []
+waterfalls = []
 if args.waterfalls is not None:
     for wfile in args.waterfalls.split(','):
         d = np.load(wfile)
