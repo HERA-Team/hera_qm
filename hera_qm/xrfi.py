@@ -278,7 +278,10 @@ def xrfi_run(indata, args, history):
                                  'The filename is used in conjunction with "extension" '
                                  'to determine the output filename.')
         else:
-            filename = args.filename[0]
+            if isinstance(args.filename, str):
+                filename = args.filename
+            else:
+                filename = args.filename[0]
     else:
         # make sure we were given files to process
         if len(indata) == 0:
