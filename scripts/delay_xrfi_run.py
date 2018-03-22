@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import numpy as np
 from hera_qm import utils as qm_utils
 from hera_qm import xrfi
 from hera_cal import delay_filter
