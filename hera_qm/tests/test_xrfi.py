@@ -820,6 +820,14 @@ class TestCalFlag(object):
         nt.assert_raises(ValueError, xrfi.cal_flag, uvc, args)
 
 
+class TestxrfiErrorHandling(object):
+    def test_kernel_size_exceeds_data(self):
+        d = np.random.normal((7, 9))
+        f = uvtest.checkWarnings(xrfi.xrfi, [d], {'Kt': 8, 'Kf': 8}, nwarnings=1,
+                                 message='Kernel size exceeds data.')
+        nt.assert_true(np.all(f))
+
+
 class TestFlags2Waterfall(object):
     def test_flags2waterfall(self):
         from pyuvdata import UVCal
