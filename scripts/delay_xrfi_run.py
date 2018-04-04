@@ -31,7 +31,7 @@ dfil = delay_filter.Delay_Filter()
 dfil.load_data(uv)
 dfil.run_filter(standoff=args.standoff, horizon=args.horizon, tol=args.tol,
                 window=args.window, skip_wgt=args.skip_wgt, maxiter=args.maxiter)
-io.update_uvdata(dfil.input_data, data=dfil.filtered_residuals)
+io.update_uvdata(dfil.input_data, data=dfil.filtered_residuals, flags=dfil.flags)
 
 # Run xrfi
 xrfi.xrfi_run(dfil.input_data, args, history)
