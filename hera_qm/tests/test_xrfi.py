@@ -70,7 +70,7 @@ class Template():
             try:
                 f = func(data, *arg)
             except:
-                # ValueError check to make sure kernel size isn't too big
+                # AssertionError check to make sure kernel size isn't too big
                 self.assertRaises(AssertionError, func, data, *arg)
                 f = fake_flags(SIZE)
             if VERBOSE:
