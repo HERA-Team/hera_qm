@@ -70,8 +70,8 @@ class Template():
             try:
                 f = func(data, *arg)
             except:
-                # ValueError check to make sure kernel size isn't too big
-                self.assertRaises(ValueError, func, data, *arg)
+                # AssertionError check to make sure kernel size isn't too big
+                self.assertRaises(AssertionError, func, data, *arg)
                 f = fake_flags(SIZE)
             if VERBOSE:
                 print self.__class__, func.__name__
@@ -818,6 +818,14 @@ class TestCalFlag(object):
         cmd = ' '.join([arg0, ''])
         args = a.parse_args(cmd.split())
         nt.assert_raises(ValueError, xrfi.cal_flag, uvc, args)
+
+
+class TestxrfiErrorHandling(object):
+    def test_kernel_size_exceeds_data(self):
+        d = np.random.normal((7, 9))
+        f = uvtest.checkWarnings(xrfi.xrfi, [d], {'Kt': 8, 'Kf': 8}, nwarnings=1,
+                                 message='Kernel size exceeds data.')
+        nt.assert_true(np.all(f))
 
 
 class TestFlags2Waterfall(object):
