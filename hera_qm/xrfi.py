@@ -33,7 +33,7 @@ def medminfilt(d, Kt=8, Kf=8):
         array: filtered array with same shape as input array.
     '''
     if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise ValueError('Kernel size exceeds data.')
+        raise AssertionError('Kernel size exceeds data.')
     d_sm = np.empty_like(d)
     for i in xrange(d.shape[0]):
         for j in xrange(d.shape[1]):
@@ -113,7 +113,7 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     from scipy.signal import medfilt2d
 
     if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise ValueError('Kernel size exceeds data.')
+        raise AssertionError('Kernel size exceeds data.')
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(d):
@@ -245,8 +245,12 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     Returns:
         bool array: array of flags
     """
-    nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
-    f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
+    try:
+        nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
+        f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
+    except AssertionError:
+        warnings.warn('Kernel size exceeds data. Flagging all data.')
+        f = np.ones_like(d, dtype=np.bool)
     return f
 
 
