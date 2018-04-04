@@ -71,7 +71,7 @@ class Template():
                 f = func(data, *arg)
             except:
                 # ValueError check to make sure kernel size isn't too big
-                self.assertRaises(ValueError, func, data, *arg)
+                self.assertRaises(AssertionError, func, data, *arg)
                 f = fake_flags(SIZE)
             if VERBOSE:
                 print self.__class__, func.__name__
