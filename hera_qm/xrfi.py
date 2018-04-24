@@ -152,6 +152,8 @@ def flag_xants(uvd, xants):
         for xant in xants:
             blts = uvd.antpair2ind(ant, xant)
             uvd.flag_array[blts, :, :, :] = True
+            blts = uvd.antpair2ind(xant, ant)
+            uvd.flag_array[blts, :, :, :] = True
     return uvd
 
 

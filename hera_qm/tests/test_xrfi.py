@@ -945,6 +945,9 @@ class TestFlagXants(object):
                 blts = uv.antpair2ind(ant, xant)
                 flags = uv.flag_array[blts, :, :, :]
                 nt.assert_true(np.allclose(flags, True))
+                blts = uv.antpair2ind(xant, ant)
+                flags = uv.flag_array[blts, :, :, :]
+                nt.assert_true(np.allclose(flags, True))
 
 
 class TestInputFlagWatershed(object):
