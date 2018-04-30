@@ -344,6 +344,11 @@ class TestXrfiRun(object):
         history = cmd
         xrfi.xrfi_run(args.filename, args, cmd)
         nt.assert_true(os.path.exists(dest_file))
+        # load data and test all arrays exist in file
+        d = np.load(dest_file)
+        nt.assert_true(np.array(map(lambda n: n in d, ['baseline_array', 'waterfall', 'flag_array', 'history'])).all())
+        # test baseline array has same shape as flag_array axis 0
+        nt.assert_equal(len(d['baseline_array']), d['flag_array'].shape[0])
         os.remove(dest_file)
 
         # test running with UVData object
