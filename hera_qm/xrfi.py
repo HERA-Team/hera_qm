@@ -386,7 +386,8 @@ def xrfi_run(indata, args, history):
         basename = os.path.basename(filename)
         outfile = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, history=history)
+        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array, 
+                 history=history)
         if (args.summary):
             sum_file = ''.join([basename, args.summary_ext])
             sum_path = os.path.join(dirname, sum_file)
@@ -397,7 +398,8 @@ def xrfi_run(indata, args, history):
             dirname = os.path.dirname(os.path.abspath(args.model_file))
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, history=history)
+        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array, 
+                 history=history)
     if args.calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
         if args.xrfi_path == '':
