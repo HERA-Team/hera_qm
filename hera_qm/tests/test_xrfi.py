@@ -446,10 +446,7 @@ class TestXrfiRun(object):
         cmd = ' '.join([arguments, ''])
         args = a.parse_args(cmd.split())
         nt.assert_true
-        # Note we need to implement this checkWarnings, but right now there are
-        # calfits warnings that are machine specific. TODO.
-        # uvtest.checkWarnings(xrfi.xrfi_run, [None, args, cmd], nwarnings=1, message='indata is none,')
-        xrfi.xrfi_run(None, args, cmd)
+        uvtest.checkWarnings(xrfi.xrfi_run, [None, args, cmd], nwarnings=1, message='indata is none,')
         for f in dest_files:
             nt.assert_true(os.path.exists(f))
             os.remove(f)
