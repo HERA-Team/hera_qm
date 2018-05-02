@@ -33,7 +33,7 @@ def medminfilt(d, Kt=8, Kf=8):
         array: filtered array with same shape as input array.
     '''
     if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise ValueError('Kernel size exceeds data.')
+        raise AssertionError('Kernel size exceeds data.')
     d_sm = np.empty_like(d)
     for i in xrange(d.shape[0]):
         for j in xrange(d.shape[1]):
@@ -113,7 +113,7 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     from scipy.signal import medfilt2d
 
     if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise ValueError('Kernel size exceeds data.')
+        raise AssertionError('Kernel size exceeds data.')
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(d):
@@ -151,6 +151,8 @@ def flag_xants(uvd, xants):
         # loop over list of excluded antennas to form baseline pairs
         for xant in xants:
             blts = uvd.antpair2ind(ant, xant)
+            uvd.flag_array[blts, :, :, :] = True
+            blts = uvd.antpair2ind(xant, ant)
             uvd.flag_array[blts, :, :, :] = True
     return uvd
 
@@ -245,8 +247,12 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     Returns:
         bool array: array of flags
     """
-    nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
-    f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
+    try:
+        nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
+        f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
+    except AssertionError:
+        warnings.warn('Kernel size exceeds data. Flagging all data.')
+        f = np.ones_like(d, dtype=np.bool)
     return f
 
 
@@ -278,7 +284,10 @@ def xrfi_run(indata, args, history):
                                  'The filename is used in conjunction with "extension" '
                                  'to determine the output filename.')
         else:
-            filename = args.filename[0]
+            if isinstance(args.filename, str):
+                filename = args.filename
+            else:
+                filename = args.filename[0]
     else:
         # make sure we were given files to process
         if len(indata) == 0:
@@ -377,7 +386,8 @@ def xrfi_run(indata, args, history):
         basename = os.path.basename(filename)
         outfile = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, history=history)
+        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array, 
+                 history=history)
         if (args.summary):
             sum_file = ''.join([basename, args.summary_ext])
             sum_path = os.path.join(dirname, sum_file)
@@ -385,10 +395,11 @@ def xrfi_run(indata, args, history):
             summarize_flags(uvd, sum_path, flag_array=d_flag_array)
     if args.model_file is not None:
         if args.xrfi_path == '':
-            dirname = os.path.dirname(abspath)
+            dirname = os.path.dirname(os.path.abspath(args.model_file))
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, history=history)
+        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array, 
+                 history=history)
     if args.calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
         if args.xrfi_path == '':

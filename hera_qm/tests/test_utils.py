@@ -62,7 +62,7 @@ def test_get_metrics_ArgumentParser():
     nt.assert_equal(args.nsig_dt, 6.0)
     nt.assert_equal(args.px_threshold, 0.2)
     nt.assert_equal(args.filename, None)
-    nt.assert_equal(args.tol, 1e-5)
+    nt.assert_equal(args.tol, 1e-7)
     nt.assert_equal(args.waterfalls, None)
     # try to set something
     args = a.parse_args(['--waterfalls', 'a,g'])
