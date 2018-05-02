@@ -326,8 +326,7 @@ def xrfi_run(indata, args, history):
         # Make a "normalized waterfall" to account for data already flagged in file
         d_wf_tot = flags2waterfall(uvd, flag_array=d_flag_array)
         d_wf_prior = flags2waterfall(uvd, flag_array=uvd.flag_array)
-        unit_flags = np.ones_like(d_wf_prior)
-        d_wf_norm = (d_wf_tot - d_wf_prior) / (unit_flags - d_wf_prior)
+        d_wf_norm = normalize_wf(d_wf_tot, d_wf_prior)
         d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
@@ -386,7 +385,7 @@ def xrfi_run(indata, args, history):
         basename = os.path.basename(filename)
         outfile = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array, 
+        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array,
                  history=history)
         if (args.summary):
             sum_file = ''.join([basename, args.summary_ext])
@@ -398,7 +397,7 @@ def xrfi_run(indata, args, history):
             dirname = os.path.dirname(os.path.abspath(args.model_file))
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array, 
+        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array,
                  history=history)
     if args.calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
@@ -553,6 +552,19 @@ def waterfall2flags(waterfall, uv):
             flag_array[uv.time_array == t, :, :, :] = waterfall[i, np.newaxis, :, np.newaxis]
 
     return flag_array
+
+
+def normalize_wf(wf, wfp):
+    """ Normalize waterfall to account for data already flaggedself.
+    Args:
+        wf -- Waterfall of fractional flags.
+        wfp -- Waterfall of prior fractional flags. Size must match wf.
+    """
+    if wf.shape != wfp.shape:
+        raise AssertionError('waterfall and prior waterfall must be same shape.')
+    wf_norm = (wf - wfp) / (np.ones_like(wf) - wfp)
+    wf_norm[wfp == 1] = 1  # Account for pixels already fully flagged.
+    return wf_norm
 
 
 def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05):

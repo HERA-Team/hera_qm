@@ -926,6 +926,25 @@ class TestThresholdFlags(object):
         nt.assert_true(wf_t.sum() == Nf)
 
 
+class TestNormalizeWf(object):
+    def test_normalize_wf(self):
+        Nt = 20
+        Nf = 15
+        wf = 0.5 * np.ones((Nt, Nf))
+        wfp = 0.25 * np.ones((Nt, Nf))
+
+        wfn = xrfi.normalize_wf(wf, wfp)
+        nt.assert_true(np.all(wfn == 1. / 3.))
+        nt.assert_true(wfn.shape == wf.shape)
+
+    def test_normalize_wf_fail(self):
+        Nt = 20
+        Nf = 15
+        wf = 0.5 * np.ones((Nt, Nf))
+        wfp = 0.25 * np.ones((Nt, Nf + 1))
+        nt.assert_raises(AssertionError, xrfi.normalize_wf, wf, wfp)
+
+
 class TestFlagXants(object):
     def test_flag_xants(self):
         # Raise an error by passing in something besides a UVData object
