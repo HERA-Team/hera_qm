@@ -53,6 +53,21 @@ def test_get_metrics_ArgumentParser():
     # raise error for requesting unknown type of parser
     nt.assert_raises(AssertionError, utils.get_metrics_ArgumentParser, 'fake_method')
 
+    # Test the delay_xrfi_run method
+    a = utils.get_metrics_ArgumentParser('delay_xrfi_run')
+    # First try defaults - test a few of them
+    args = a.parse_args('')
+    nt.assert_equal(args.infile_format, 'miriad')
+    nt.assert_equal(args.algorithm, 'xrfi_simple')
+    nt.assert_equal(args.nsig_dt, 6.0)
+    nt.assert_equal(args.px_threshold, 0.2)
+    nt.assert_equal(args.filename, None)
+    nt.assert_equal(args.tol, 1e-7)
+    nt.assert_equal(args.waterfalls, None)
+    # try to set something
+    args = a.parse_args(['--waterfalls', 'a,g'])
+    nt.assert_equal(args.waterfalls, 'a,g')
+
 
 def test_metrics2mc():
     # test ant metrics

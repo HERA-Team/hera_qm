@@ -70,8 +70,8 @@ class Template():
             try:
                 f = func(data, *arg)
             except:
-                # ValueError check to make sure kernel size isn't too big
-                self.assertRaises(ValueError, func, data, *arg)
+                # AssertionError check to make sure kernel size isn't too big
+                self.assertRaises(AssertionError, func, data, *arg)
                 f = fake_flags(SIZE)
             if VERBOSE:
                 print self.__class__, func.__name__
@@ -325,6 +325,9 @@ class TestXrfiRun(object):
         history = cmd
         nt.assert_raises(AssertionError, xrfi.xrfi_run, args.filename, args, history)
 
+        # test running with filename as None
+        nt.assert_raises(AssertionError, xrfi.xrfi_run, None, args, history)
+
         # test running with too many files
         cmd = ' '.join([arguments, 'file1', 'file2'])
         args = a.parse_args(cmd.split())
@@ -341,6 +344,11 @@ class TestXrfiRun(object):
         history = cmd
         xrfi.xrfi_run(args.filename, args, cmd)
         nt.assert_true(os.path.exists(dest_file))
+        # load data and test all arrays exist in file
+        d = np.load(dest_file)
+        nt.assert_true(np.array(map(lambda n: n in d, ['baseline_array', 'waterfall', 'flag_array', 'history'])).all())
+        # test baseline array has same shape as flag_array axis 0
+        nt.assert_equal(len(d['baseline_array']), d['flag_array'].shape[0])
         os.remove(dest_file)
 
         # test running with UVData object
@@ -420,6 +428,25 @@ class TestXrfiRun(object):
         cmd = ' '.join([arguments, xx_file])
         args = a.parse_args(cmd.split())
         xrfi.xrfi_run(args.filename, args, cmd)
+        for f in dest_files:
+            nt.assert_true(os.path.exists(f))
+            os.remove(f)
+
+        # test running without a filename
+        dest_files = []
+        dest_files.append(os.path.join(DATA_PATH, 'test_output',
+                                       'zen.2457698.40355.xx.HH.uvc.vis.uvfits.flags.npz'))
+        dest_files.append(os.path.join(DATA_PATH, 'test_output',
+                                       'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.npz'))
+        dest_files.append(os.path.join(DATA_PATH, 'test_output',
+                                       'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.x.flags.npz'))
+        for f in dest_files:
+            if os.path.exists(f):
+                os.remove(f)
+        cmd = ' '.join([arguments, ''])
+        args = a.parse_args(cmd.split())
+        nt.assert_true
+        uvtest.checkWarnings(xrfi.xrfi_run, [None, args, cmd], nwarnings=1, message='indata is none,')
         for f in dest_files:
             nt.assert_true(os.path.exists(f))
             os.remove(f)
@@ -795,6 +822,14 @@ class TestCalFlag(object):
         nt.assert_raises(ValueError, xrfi.cal_flag, uvc, args)
 
 
+class TestxrfiErrorHandling(object):
+    def test_kernel_size_exceeds_data(self):
+        d = np.random.normal((7, 9))
+        f = uvtest.checkWarnings(xrfi.xrfi, [d], {'Kt': 8, 'Kf': 8}, nwarnings=1,
+                                 message='Kernel size exceeds data.')
+        nt.assert_true(np.all(f))
+
+
 class TestFlags2Waterfall(object):
     def test_flags2waterfall(self):
         from pyuvdata import UVCal
@@ -910,6 +945,9 @@ class TestFlagXants(object):
         for xant in xants:
             for ant in all_ants:
                 blts = uv.antpair2ind(ant, xant)
+                flags = uv.flag_array[blts, :, :, :]
+                nt.assert_true(np.allclose(flags, True))
+                blts = uv.antpair2ind(xant, ant)
                 flags = uv.flag_array[blts, :, :, :]
                 nt.assert_true(np.allclose(flags, True))
 
