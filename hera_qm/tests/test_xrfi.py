@@ -925,6 +925,11 @@ class TestThresholdFlags(object):
         wf_t = xrfi.threshold_flags(wf, freq_threshold=.4 / Nf)
         nt.assert_true(wf_t.sum() == Nf)
 
+        # Test NaN mapping
+        wf[0, 0] = np.nan
+        wf_t = xrfi.threshold_flags(wf)
+        nt.assert_true(wf_t[0, 0])
+
 
 class TestNormalizeWf(object):
     def test_normalize_wf(self):

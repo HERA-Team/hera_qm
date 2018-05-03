@@ -559,11 +559,13 @@ def normalize_wf(wf, wfp):
     Args:
         wf -- Waterfall of fractional flags.
         wfp -- Waterfall of prior fractional flags. Size must match wf.
+    Returns:
+        wf_norm -- Waterfall of fractional flags which were not flagged prior.
+                   Note if wfp[i, j] == 1, then wf_norm[i, j] will be NaN.
     """
     if wf.shape != wfp.shape:
         raise AssertionError('waterfall and prior waterfall must be same shape.')
     wf_norm = (wf - wfp) / (np.ones_like(wf) - wfp)
-    wf_norm[wfp == 1] = 1  # Account for pixels already fully flagged.
     return wf_norm
 
 
@@ -586,6 +588,7 @@ def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.0
     tseries = np.nanmean(wf, axis=1)
     wf_t[tseries > freq_threshold, :] = True
     wf_t[wf > px_threshold] = True
+    wf_t[np.isnan(wf)] = True  # Flag anything that was completely flagged in prior.
     return wf_t
 
 
