@@ -555,7 +555,7 @@ def waterfall2flags(waterfall, uv):
 
 
 def normalize_wf(wf, wfp):
-    """ Normalize waterfall to account for data already flaggedself.
+    """ Normalize waterfall to account for data already flagged.
     Args:
         wf -- Waterfall of fractional flags.
         wfp -- Waterfall of prior fractional flags. Size must match wf.
