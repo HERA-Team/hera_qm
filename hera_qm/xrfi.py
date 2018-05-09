@@ -386,8 +386,10 @@ def xrfi_run(indata, args, history):
         basename = os.path.basename(filename)
         outfile = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, outfile)
+        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
         np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array, 
-                 history=history)
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, freq_array=uvd.freq_array, 
+                 time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, history=history)
         if (args.summary):
             sum_file = ''.join([basename, args.summary_ext])
             sum_path = os.path.join(dirname, sum_file)
@@ -737,12 +739,8 @@ def xrfi_apply(filename, args, history):
     if args.output_npz:
         # Save an npz with the final flag array and waterfall and relevant metadata
         outpath = outpath + args.out_npz_ext
-        lsts = []
-        for l in uvd.lst_array.ravel():
-            if l not in lsts:
-                lsts.append(l)
-        lsts = np.array(lsts)
         antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
         np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, antpairs=uvd.get_antpairs(), 
-                 polarization_array=uvd.polarization_array, freqs=np.unique(uvd.freq_array), 
-                 times=np.unique(uvd.time_array), lsts=lsts, antpos=antpos, ants=ants, history=flag_history + history)
+                 polarization_array=uvd.polarization_array, freq_array=uvd.freq_array, 
+                 time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, 
+                 history=flag_history + history)
