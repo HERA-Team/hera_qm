@@ -386,8 +386,10 @@ def xrfi_run(indata, args, history):
         basename = os.path.basename(filename)
         outfile = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, outfile)
+        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
         np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array, 
-                 history=history)
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, freq_array=uvd.freq_array, 
+                 time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, history=history)
         if (args.summary):
             sum_file = ''.join([basename, args.summary_ext])
             sum_path = os.path.join(dirname, sum_file)
@@ -735,7 +737,10 @@ def xrfi_apply(filename, args, history):
     else:
         raise ValueError('Unrecognized output file format ' + str(args.outfile_format))
     if args.output_npz:
-        # Save an npz with the final flag array and waterfall
+        # Save an npz with the final flag array and waterfall and relevant metadata
         outpath = outpath + args.out_npz_ext
-        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full,
+        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
+        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, antpairs=uvd.get_antpairs(), 
+                 polarization_array=uvd.polarization_array, freq_array=uvd.freq_array, 
+                 time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, 
                  history=flag_history + history)
