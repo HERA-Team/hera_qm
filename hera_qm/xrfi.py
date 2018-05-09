@@ -735,7 +735,14 @@ def xrfi_apply(filename, args, history):
     else:
         raise ValueError('Unrecognized output file format ' + str(args.outfile_format))
     if args.output_npz:
-        # Save an npz with the final flag array and waterfall
+        # Save an npz with the final flag array and waterfall and relevant metadata
         outpath = outpath + args.out_npz_ext
-        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full,
-                 history=flag_history + history)
+        lsts = []
+        for l in uvd.lst_array.ravel():
+            if l not in lsts:
+                lsts.append(l)
+        lsts = np.array(lsts)
+        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
+        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, antpairs=uvd.get_antpairs(), 
+                 polarization_array=uvd.polarization_array, freqs=np.unique(uvd.freq_array), 
+                 times=np.unique(uvd.time_array), lsts=lsts, antpos=antpos, ants=ants, history=flag_history + history)
