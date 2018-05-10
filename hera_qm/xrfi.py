@@ -755,7 +755,7 @@ def xrfi_apply(filename, args, history):
         # Save an npz with the final flag array and waterfall and relevant metadata
         outpath = outpath + args.out_npz_ext
         antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
-        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, antpairs=uvd.get_antpairs(), 
-                 polarization_array=uvd.polarization_array, freq_array=uvd.freq_array, 
-                 time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, 
-                 history=flag_history + history)
+        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, baseline_array=uvd.baseline_array,
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, 
+                 freq_array=uvd.freq_array, time_array=uvd.time_array, lst_array=uvd.lst_array, 
+                 antpos=antpos, ants=ants, history=flag_history + history)
