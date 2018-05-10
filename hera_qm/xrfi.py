@@ -386,8 +386,8 @@ def xrfi_run(indata, args, history):
         outfile = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, outfile)
         antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
-        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array, 
-                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, freq_array=uvd.freq_array, 
+        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array,
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, freq_array=uvd.freq_array,
                  time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, history=history)
         if (args.summary):
             sum_file = ''.join([basename, args.summary_ext])
@@ -567,7 +567,7 @@ def normalize_wf(wf, wfp):
     """
     if wf.shape != wfp.shape:
         raise AssertionError('waterfall and prior waterfall must be same shape.')
-    wf_norm = (wf - wfp) / (np.ones_like(wf) - wfp)
+    wf_norm = np.where(wfp < 1, (wf - wfp) / (np.ones_like(wf) - wfp), np.nan)
     return wf_norm
 
 
@@ -756,6 +756,6 @@ def xrfi_apply(filename, args, history):
         outpath = outpath + args.out_npz_ext
         antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
         np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, baseline_array=uvd.baseline_array,
-                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, 
-                 freq_array=uvd.freq_array, time_array=uvd.time_array, lst_array=uvd.lst_array, 
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array,
+                 freq_array=uvd.freq_array, time_array=uvd.time_array, lst_array=uvd.lst_array,
                  antpos=antpos, ants=ants, history=flag_history + history)
