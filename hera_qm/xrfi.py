@@ -326,8 +326,7 @@ def xrfi_run(indata, args, history):
         # Make a "normalized waterfall" to account for data already flagged in file
         d_wf_tot = flags2waterfall(uvd, flag_array=d_flag_array)
         d_wf_prior = flags2waterfall(uvd, flag_array=uvd.flag_array)
-        unit_flags = np.ones_like(d_wf_prior)
-        d_wf_norm = (d_wf_tot - d_wf_prior) / (unit_flags - d_wf_prior)
+        d_wf_norm = normalize_wf(d_wf_tot, d_wf_prior)
         d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
@@ -387,8 +386,8 @@ def xrfi_run(indata, args, history):
         outfile = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, outfile)
         antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
-        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array, 
-                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, freq_array=uvd.freq_array, 
+        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array,
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, freq_array=uvd.freq_array,
                  time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, history=history)
         if (args.summary):
             sum_file = ''.join([basename, args.summary_ext])
@@ -400,7 +399,7 @@ def xrfi_run(indata, args, history):
             dirname = os.path.dirname(os.path.abspath(args.model_file))
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array, 
+        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array,
                  history=history)
     if args.calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
@@ -557,6 +556,21 @@ def waterfall2flags(waterfall, uv):
     return flag_array
 
 
+def normalize_wf(wf, wfp):
+    """ Normalize waterfall to account for data already flagged.
+    Args:
+        wf -- Waterfall of fractional flags.
+        wfp -- Waterfall of prior fractional flags. Size must match wf.
+    Returns:
+        wf_norm -- Waterfall of fractional flags which were not flagged prior.
+                   Note if wfp[i, j] == 1, then wf_norm[i, j] will be NaN.
+    """
+    if wf.shape != wfp.shape:
+        raise AssertionError('waterfall and prior waterfall must be same shape.')
+    wf_norm = np.where(wfp < 1, (wf - wfp) / (np.ones_like(wf) - wfp), np.nan)
+    return wf_norm
+
+
 def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05):
     """ Threshold flag waterfall at each pixel, as well as averages across time and frequency
     Args:
@@ -576,6 +590,7 @@ def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.0
     tseries = np.nanmean(wf, axis=1)
     wf_t[tseries > freq_threshold, :] = True
     wf_t[wf > px_threshold] = True
+    wf_t[np.isnan(wf)] = True  # Flag anything that was completely flagged in prior.
     return wf_t
 
 
@@ -740,7 +755,7 @@ def xrfi_apply(filename, args, history):
         # Save an npz with the final flag array and waterfall and relevant metadata
         outpath = outpath + args.out_npz_ext
         antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
-        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, antpairs=uvd.get_antpairs(), 
-                 polarization_array=uvd.polarization_array, freq_array=uvd.freq_array, 
-                 time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, 
-                 history=flag_history + history)
+        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, baseline_array=uvd.baseline_array,
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array,
+                 freq_array=uvd.freq_array, time_array=uvd.time_array, lst_array=uvd.lst_array,
+                 antpos=antpos, ants=ants, history=flag_history + history)
