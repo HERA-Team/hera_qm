@@ -28,8 +28,8 @@ if args.waterfalls is not None:
 
 # set kwargs
 kwargs = {}
-if a.window == 'tukey':
-    kwargs['alpha'] = a.alpha
+if args.window == 'tukey':
+    kwargs['alpha'] = args.alpha
 
 # Stuff into delay filter object, run delay filter
 dfil = delay_filter.Delay_Filter()
