@@ -204,7 +204,7 @@ def get_metrics_ArgumentParser(method_name):
                                   see aipy.dsp.gen_window for options')
         d.add_argument("--skip_wgt", type=float, default=0.1, help='skips filtering rows with unflagged fraction ~< skip_wgt (default 0.1)')
         d.add_argument("--maxiter", type=int, default=100, help='maximum iterations for aipy.deconv.clean to converge (default 100)')
-        d.add_argument("--alpha", type=int, default=.5, help='alpha parameter to use for Tukey window (ignored if window is not Tukey)')
+        d.add_argument("--alpha", type=float, default=.5, help='alpha parameter to use for Tukey window (ignored if window is not Tukey)')
         d.add_argument('--waterfalls', default=None, type=str, help='comma separated '
                        'list of npz files containing waterfalls of flags to broadcast '
                        'to full flag array and apply before delay filter.')
