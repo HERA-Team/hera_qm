@@ -572,7 +572,9 @@ def normalize_wf(wf, wfp):
     """
     if wf.shape != wfp.shape:
         raise AssertionError('waterfall and prior waterfall must be same shape.')
-    wf_norm = np.where(wfp < 1, (wf - wfp) / (np.ones_like(wf) - wfp), np.nan)
+    ind = np.where(wfp < 1)
+    wf_norm = np.nan * np.ones_like(wf)
+    wf_norm[ind] = (wf[ind] - wfp[ind]) / (1. - wfp[ind])
     return wf_norm
 
 
@@ -590,12 +592,22 @@ def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.0
         wf_t -- thresholded waterfall. Boolean array, same shape as wf.
     """
     wf_t = np.zeros(wf.shape, dtype=bool)
-    spec = np.nanmean(wf, axis=0)
+    with warnings.catch_warnings():
+        # Ignore empty slice warning which occurs for entire rows/columns of nan
+        warnings.filterwarnings('ignore', message='Mean of empty slice',
+                                category=RuntimeWarning)
+        spec = np.nanmean(wf, axis=0)
+        spec[np.isnan(spec)] = 1
+        tseries = np.nanmean(wf, axis=1)
+        tseries[np.isnan(tseries)] = 1
     wf_t[:, spec > time_threshold] = True
-    tseries = np.nanmean(wf, axis=1)
     wf_t[tseries > freq_threshold, :] = True
-    wf_t[wf > px_threshold] = True
-    wf_t[np.isnan(wf)] = True  # Flag anything that was completely flagged in prior.
+    with warnings.catch_warnings():
+        # Explicitly handle nans in wf
+        warnings.filterwarnings('ignore', message='invalid value encountered in greater',
+                                category=RuntimeWarning)
+        wf_t[wf > px_threshold] = True
+        wf_t[np.isnan(wf)] = True  # Flag anything that was completely flagged in prior.
     return wf_t
 
 
