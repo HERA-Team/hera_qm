@@ -349,7 +349,9 @@ def xrfi_run(indata, args, history):
                                  'the data file.')
         m_flag_array = vis_flag(uvm, args)
         m_waterfall = flags2waterfall(uvm, flag_array=m_flag_array)
-        m_wf_t = threshold_flags(m_waterfall, px_threshold=args.px_threshold,
+        m_wf_prior = flags2waterfall(uvm)
+        m_wf_norm = normalize_wf(m_waterfall, m_wf_prior)
+        m_wf_t = threshold_flags(m_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
 
@@ -365,10 +367,13 @@ def xrfi_run(indata, args, history):
         g_flag_array, x_flag_array = cal_flag(uvc, args)
         g_waterfall = flags2waterfall(uvc, flag_array=g_flag_array)
         x_waterfall = flags2waterfall(uvc, flag_array=x_flag_array)
-        g_wf_t = threshold_flags(g_waterfall, px_threshold=args.px_threshold,
+        c_wf_prior = flags2waterfall(uvc)
+        g_wf_norm = normalize_wf(g_waterfall, c_wf_prior)
+        x_wf_norm = normalize_wf(x_waterfall, c_wf_prior)
+        g_wf_t = threshold_flags(g_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
-        x_wf_t = threshold_flags(x_waterfall, px_threshold=args.px_threshold,
+        x_wf_t = threshold_flags(x_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
 
