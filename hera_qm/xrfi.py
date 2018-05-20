@@ -404,18 +404,24 @@ def xrfi_run(indata, args, history):
             dirname = os.path.dirname(os.path.abspath(args.model_file))
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
+        antpos, ants = uvm.get_ENU_antpos(center=True, pick_data_ants=True)
         np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array,
-                 history=history)
+                 antpairs=uvm.get_antpairs(), polarization_array=uvm.polarization_array, freq_array=uvm.freq_array,
+                 time_array=uvm.time_array, lst_array=uvm.lst_array, antpos=antpos, ants=ants, history=history)
     if args.calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
         if args.xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(args.calfits_file))
         outfile = ''.join([os.path.basename(args.calfits_file), '.g', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, history=history)
+        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, ants=uvc.antenna_numbers,
+                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
+                 time_array=uvc.time_array, history=history)
         outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, history=history)
+        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, ants=uvc.antenna_numbers,
+                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
+                 time_array=uvc.time_array, history=history)
 
     return
 
