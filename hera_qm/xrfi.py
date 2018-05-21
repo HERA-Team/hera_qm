@@ -414,12 +414,12 @@ def xrfi_run(indata, args, history):
             dirname = os.path.dirname(os.path.abspath(args.calfits_file))
         outfile = ''.join([os.path.basename(args.calfits_file), '.g', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, ants=uvc.antenna_numbers,
+        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, ants=uvc.ant_array,
                  jones_array=uvc.jones_array, freq_array=uvc.freq_array,
                  time_array=uvc.time_array, history=history)
         outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, ants=uvc.antenna_numbers,
+        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, ants=uvc.ant_array,
                  jones_array=uvc.jones_array, freq_array=uvc.freq_array,
                  time_array=uvc.time_array, history=history)
 
