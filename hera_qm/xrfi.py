@@ -349,7 +349,9 @@ def xrfi_run(indata, args, history):
                                  'the data file.')
         m_flag_array = vis_flag(uvm, args)
         m_waterfall = flags2waterfall(uvm, flag_array=m_flag_array)
-        m_wf_t = threshold_flags(m_waterfall, px_threshold=args.px_threshold,
+        m_wf_prior = flags2waterfall(uvm)
+        m_wf_norm = normalize_wf(m_waterfall, m_wf_prior)
+        m_wf_t = threshold_flags(m_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
 
@@ -365,10 +367,13 @@ def xrfi_run(indata, args, history):
         g_flag_array, x_flag_array = cal_flag(uvc, args)
         g_waterfall = flags2waterfall(uvc, flag_array=g_flag_array)
         x_waterfall = flags2waterfall(uvc, flag_array=x_flag_array)
-        g_wf_t = threshold_flags(g_waterfall, px_threshold=args.px_threshold,
+        c_wf_prior = flags2waterfall(uvc)
+        g_wf_norm = normalize_wf(g_waterfall, c_wf_prior)
+        x_wf_norm = normalize_wf(x_waterfall, c_wf_prior)
+        g_wf_t = threshold_flags(g_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
-        x_wf_t = threshold_flags(x_waterfall, px_threshold=args.px_threshold,
+        x_wf_t = threshold_flags(x_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
 
@@ -399,18 +404,24 @@ def xrfi_run(indata, args, history):
             dirname = os.path.dirname(os.path.abspath(args.model_file))
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
+        antpos, ants = uvm.get_ENU_antpos(center=True, pick_data_ants=True)
         np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array,
-                 history=history)
+                 antpairs=uvm.get_antpairs(), polarization_array=uvm.polarization_array, freq_array=uvm.freq_array,
+                 time_array=uvm.time_array, lst_array=uvm.lst_array, antpos=antpos, ants=ants, history=history)
     if args.calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
         if args.xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(args.calfits_file))
         outfile = ''.join([os.path.basename(args.calfits_file), '.g', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, history=history)
+        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, ants=uvc.ant_array,
+                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
+                 time_array=uvc.time_array, history=history)
         outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, history=history)
+        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, ants=uvc.ant_array,
+                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
+                 time_array=uvc.time_array, history=history)
 
     return
 
@@ -567,7 +578,9 @@ def normalize_wf(wf, wfp):
     """
     if wf.shape != wfp.shape:
         raise AssertionError('waterfall and prior waterfall must be same shape.')
-    wf_norm = np.where(wfp < 1, (wf - wfp) / (np.ones_like(wf) - wfp), np.nan)
+    ind = np.where(wfp < 1)
+    wf_norm = np.nan * np.ones_like(wf)
+    wf_norm[ind] = (wf[ind] - wfp[ind]) / (1. - wfp[ind])
     return wf_norm
 
 
@@ -585,12 +598,22 @@ def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.0
         wf_t -- thresholded waterfall. Boolean array, same shape as wf.
     """
     wf_t = np.zeros(wf.shape, dtype=bool)
-    spec = np.nanmean(wf, axis=0)
+    with warnings.catch_warnings():
+        # Ignore empty slice warning which occurs for entire rows/columns of nan
+        warnings.filterwarnings('ignore', message='Mean of empty slice',
+                                category=RuntimeWarning)
+        spec = np.nanmean(wf, axis=0)
+        spec[np.isnan(spec)] = 1
+        tseries = np.nanmean(wf, axis=1)
+        tseries[np.isnan(tseries)] = 1
     wf_t[:, spec > time_threshold] = True
-    tseries = np.nanmean(wf, axis=1)
     wf_t[tseries > freq_threshold, :] = True
-    wf_t[wf > px_threshold] = True
-    wf_t[np.isnan(wf)] = True  # Flag anything that was completely flagged in prior.
+    with warnings.catch_warnings():
+        # Explicitly handle nans in wf
+        warnings.filterwarnings('ignore', message='invalid value encountered in greater',
+                                category=RuntimeWarning)
+        wf_t[wf > px_threshold] = True
+        wf_t[np.isnan(wf)] = True  # Flag anything that was completely flagged in prior.
     return wf_t
 
 
