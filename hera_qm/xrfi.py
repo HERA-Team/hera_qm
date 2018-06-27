@@ -6,6 +6,126 @@ from pyuvdata import UVCal
 from hera_qm.version import hera_qm_version_str
 import json
 import warnings
+import h5py
+
+
+class UVFlag():
+    ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
+    and stores all relevant information to combine flags and apply to data.
+    '''
+    def __init__(self, input, mode, copy_flags=False, wf=False):
+        # TODO: Docstring
+        # M
+        # TODO: Need to handle flags _or_ "metric" (ie, float metric that is used to determine flags)
+        #       Is there a better name for array that's used for both? Or just use "flag_array"?
+        # Mode can be 'flag' or 'metric'
+        # TODO: Weight array - get from nsample_array?
+
+        self.mode = mode
+        if isinstance(input, str):
+            # Given a path, read input
+            self.read(input)
+        elif wf and isinstance(input, (UVData, UVCal)):
+            self.type = 'WF'
+            self.time_array, ri = np.unique(input.time_array, return_index=True)
+            # TODO: lst_array doesn't exist in UVCal
+            self.lst_array = input.lst_array[ri]
+            self.freq_array = input.freq_arrayp[0, :]
+            if copy_flags:
+                self.metric_array = flags2waterfall(input)
+                # TODO: throw warning if mode == 'flag'
+            else:
+                self.flag_array = np.zeros((len(self.time_array), len(self.freq_array)))
+        elif isinstance(input, UVData):
+            self.type = 'Baseline'
+            self.baseline_array = input.baseline_array
+            self.time_array = input.time_array
+            self.lst_array = input.lst_array
+            self.freq_array = input.freq_array
+            self.polarization_array = input.polarization_array
+            if copy_flags:
+                self.flag_array = input.flag_array
+            else:
+                self.flag_array = np.zeros_like(input.flag_array)
+
+        elif isinstance(input, UVCal):
+            self.type = 'Antenna'
+            self.ant_array = input.ant_array
+            self.time_array = input.time_array
+            # TODO: get LST array
+            # self.lst_array = input.lst_array
+            self.freq_array = input.freq_array
+            self.jones_array = input.jones_array
+            if copy_flags:
+                self.flag_array = input.flag_array
+            else:
+                self.flag_array = np.zeros_like(input.flag_array)
+
+    def read(self, filename):
+        # TODO: Docstring
+        # TODO: write this
+
+
+    def write(self, filename, clobber=False, data_compression="lzf"):
+        # TODO: Docstring
+
+        if os.path.exists(filename):
+            if clobber:
+                print("File exists; clobbering")
+            else:
+                raise ValueError("File exists; skipping")
+
+        with h5py.File(filename, 'w') as f:
+            header = f.create_group('Header')
+
+            # write out metadata
+            header['type'] = self.type
+            header['mode'] = self.mode
+            header['time_array'] = self.time_array
+            header['lst_array'] = self.lst_array
+            header['freq_array'] = self.freq_array
+            header['history'] = self.history
+
+            if self.type == 'Baseline':
+                header['baseline_array'] = self.baseline_array
+                header['polarization_array'] = self.polarization_array
+            elif self.type == 'Antenna':
+                header['ant_array'] = self.ant_array
+                header['jones_array'] = self.jones_array
+
+            data = f.create_group('Data')
+            if self.mode == 'metric':
+                data['metric_array'] = self.metric_array
+            elif self.mode == 'flag':
+                data['flag_array'] = self.flag_array
+
+            dgrp = f.create_group("Data")
+            if data_compression is not None:
+                wtsdata = dgrp.create_dataset('weights_array', chunks=True,
+                                              data=self.weights_array,
+                                              compression=data_compression)
+                if self.mode == 'metric':
+                    data = dgrp.create_dataset('metric_array', chunks=True,
+                                               data=self.metric_array,
+                                               compression=data_compression)
+                elif self.mode == 'flag':
+                    data = dgrp.create_dataset('flag_array', chunks=True,
+                                               data=self.flag_array,
+                                               compression=data_compression)
+            else:
+                wtsdata = dgrp.create_dataset('weights_array', chunks=True,
+                                              data=self.weights_array)
+                if self.mode == 'metric':
+                    data = dgrp.create_dataset('metric_array', chunks=True,
+                                               data=self.metric_array)
+                elif self.mode == 'flag':
+                    data = dgrp.create_dataset('flag_array', chunks=True,
+                                               data=self.flag_array)
+
+    def __add__(self):
+        # TODO: make less general that UVData, but more efficient - have user specify axis
+
+
 
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
