@@ -20,6 +20,7 @@ class UVFlag():
         #       Is there a better name for array that's used for both? Or just use "flag_array"?
         # Mode can be 'flag' or 'metric'
         # TODO: Weight array - get from nsample_array?
+        # TODO: history
 
         self.mode = mode
         if isinstance(input, str):
@@ -62,18 +63,73 @@ class UVFlag():
                 self.flag_array = np.zeros_like(input.flag_array)
 
     def read(self, filename):
-        # TODO: Docstring
-        # TODO: write this
+        """
+        Read in flag/metric data from a UVH5 file.
 
-
-    def write(self, filename, clobber=False, data_compression="lzf"):
+        Args:
+            filename: The file name to read.
+        """
         # TODO: Docstring
+
+        if not os.path.exists(filename):
+            raise IOError(filename + ' not found.')
+
+        # These are useful to clear no longer used attributes if the type or mode changes
+        prev_type = self.type
+        prev_mode = self.mode
+
+        # Open file for reading
+        with h5py.File(filename, 'r') as f:
+            header = f['/Header']
+
+            self.type = header['type'].value
+            self.mode = header['mode'].value
+            self.time_array = header['time_array'].value
+            self.lst_array = header['lst_array'].value
+            self.freq_array = header['freq_array'].value
+            # TODO: update history on read
+            self.history = header['history'].value
+            if self.type == 'Baseline':
+                self.baseline_array = header['baseline_array'].value
+                self.polarization_array = header['polarization_array'].value
+                if prev_type == 'Antenna':
+                    del(self.ant_array)
+                    del(self.jones_array)
+            elif self.type == 'Antenna':
+                self.ant_array = header['ant_array'].value
+                self.jones_array = header['jones_array'].value
+                if prev_type == 'Baseline':
+                    del(self.baseline_array)
+                    del(self.jones_array)
+
+            dgrp = f['/Data']
+            if self.mode == 'metric':
+                self.metric_array = dgrp['metric_array'].value
+                if prev_mode == 'flag':
+                    del(self.flag_array)
+            elif self.mode == 'flag':
+                self.flag_array = dgrp['flag_array'].value
+                if prev_mode == 'metric':
+                    del(self.metric_array)
+
+            self.weights_array = dgrp['weights_array'].value
+
+    def write(self, filename, clobber=False, data_compression='lzf'):
+        """
+        Write a UVFlag object to a hdf5 file.
+
+        Args:
+            filename: The file to write to.
+            clobber: Option to overwrite the file if it already exists. Default is False.
+            data_compression: HDF5 filter to apply when writing the data_array. Default is
+                 LZF. If no compression is wanted, set to None.
+        """
 
         if os.path.exists(filename):
             if clobber:
-                print("File exists; clobbering")
+                print('File ' + filename + ' exists; clobbering')
             else:
-                raise ValueError("File exists; skipping")
+                raise ValueError('File ' + filename + ' exists; skipping')
 
         with h5py.File(filename, 'w') as f:
             header = f.create_group('Header')
@@ -84,6 +140,7 @@ class UVFlag():
             header['time_array'] = self.time_array
             header['lst_array'] = self.lst_array
             header['freq_array'] = self.freq_array
+            # TODO: update history on write
             header['history'] = self.history
 
             if self.type == 'Baseline':
@@ -92,12 +149,6 @@ class UVFlag():
             elif self.type == 'Antenna':
                 header['ant_array'] = self.ant_array
                 header['jones_array'] = self.jones_array
-
-            data = f.create_group('Data')
-            if self.mode == 'metric':
-                data['metric_array'] = self.metric_array
-            elif self.mode == 'flag':
-                data['flag_array'] = self.flag_array
 
             dgrp = f.create_group("Data")
             if data_compression is not None:
@@ -124,7 +175,6 @@ class UVFlag():
 
     def __add__(self):
         # TODO: make less general that UVData, but more efficient - have user specify axis
-
 
 
 #############################################################################
