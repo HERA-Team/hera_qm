@@ -13,7 +13,7 @@ class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
     and stores all relevant information to combine flags and apply to data.
     '''
-    def __init__(self, input, mode, copy_flags=False, wf=False):
+    def __init__(self, input, mode='metric', copy_flags=False, wf=False):
         # TODO: Docstring
         # M
         # TODO: Need to handle flags _or_ "metric" (ie, float metric that is used to determine flags)
@@ -22,7 +22,7 @@ class UVFlag():
         # TODO: Weight array - get from nsample_array?
         # TODO: history
 
-        self.mode = mode
+        self.mode = mode  # Gets overwritten if reading file
         if isinstance(input, str):
             # Given a path, read input
             self.read(input)
@@ -36,7 +36,12 @@ class UVFlag():
                 self.metric_array = flags2waterfall(input)
                 # TODO: throw warning if mode == 'flag'
             else:
-                self.flag_array = np.zeros((len(self.time_array), len(self.freq_array)))
+                if self.mode == 'flag':
+                    self.flag_array = np.zeros((len(self.time_array),
+                                               len(self.freq_array)), np.bool)
+                elif self.mode == 'metric':
+                    self.metric_array = np.zeros((len(self.time_array),
+                                                 len(self.freq_array)))
         elif isinstance(input, UVData):
             self.type = 'Baseline'
             self.baseline_array = input.baseline_array
@@ -46,8 +51,12 @@ class UVFlag():
             self.polarization_array = input.polarization_array
             if copy_flags:
                 self.flag_array = input.flag_array
+                # TODO: Throw warning if mode == 'metric'
             else:
-                self.flag_array = np.zeros_like(input.flag_array)
+                if self.mode == 'flag':
+                    self.flag_array = np.zeros_like(input.flag_array)
+                elif self.mode == 'metric':
+                    self.metric_array = np.zeros_like(input.flag_array).astype(np.float)
 
         elif isinstance(input, UVCal):
             self.type = 'Antenna'
@@ -59,8 +68,12 @@ class UVFlag():
             self.jones_array = input.jones_array
             if copy_flags:
                 self.flag_array = input.flag_array
+                # TODO: throw warning if mode is metric
             else:
-                self.flag_array = np.zeros_like(input.flag_array)
+                if self.mode == 'flag':
+                    self.flag_array = np.zeros_like(input.flag_array)
+                elif self.mode == 'metric':
+                    self.metric_array = np.zeros_like(input.flag_array).astype(np.float)
 
     def read(self, filename):
         """
