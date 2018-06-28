@@ -237,7 +237,7 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
     mean_Vij_cross_pol_metrics -- a dictionary indexed by (ant,antpol) of the modified z-scores of the
             ratio of mean visibilities, (Vxy+Vyx)/(Vxx+Vyy). Results duplicated in both antpols.
             Very large values are probably cross-polarized.
-    """s
+    """
     # Compute metrics and cross pols only and and same pols only
     samePols = [pol for pol in pols if pol[0] == pol[1]]
     crossPols = [pol for pol in pols if pol[0] != pol[1]]
