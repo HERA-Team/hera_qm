@@ -13,28 +13,32 @@ class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
     and stores all relevant information to combine flags and apply to data.
     '''
-    def __init__(self, input, mode='metric', copy_flags=False, wf=False):
+    def __init__(self, input, mode='metric', copy_flags=False, wf=False, history=''):
         # TODO: Docstring
         # M
         # TODO: Need to handle flags _or_ "metric" (ie, float metric that is used to determine flags)
         #       Is there a better name for array that's used for both? Or just use "flag_array"?
         # Mode can be 'flag' or 'metric'
         # TODO: Weight array - get from nsample_array?
-        # TODO: history
 
         self.mode = mode  # Gets overwritten if reading file
+        self.history = history
         if isinstance(input, str):
             # Given a path, read input
-            self.read(input)
+            self.read(input, history)
         elif wf and isinstance(input, (UVData, UVCal)):
             self.type = 'WF'
+            self.history += 'Flag object with type "WF" created by ' + hera_qm_version_str
             self.time_array, ri = np.unique(input.time_array, return_index=True)
             # TODO: lst_array doesn't exist in UVCal
             self.lst_array = input.lst_array[ri]
             self.freq_array = input.freq_arrayp[0, :]
             if copy_flags:
                 self.metric_array = flags2waterfall(input)
-                # TODO: throw warning if mode == 'flag'
+                self.history += ' WF generated from ' + str(input.__class__) + ' object.'
+                if self.mode == 'flag':
+                    warnings.warn('Copying flags into waterfall results in mode=="metric".')
+                    self.mode = 'metric'
             else:
                 if self.mode == 'flag':
                     self.flag_array = np.zeros((len(self.time_array),
@@ -44,6 +48,7 @@ class UVFlag():
                                                  len(self.freq_array)))
         elif isinstance(input, UVData):
             self.type = 'Baseline'
+            self.history += 'Flag object with type "Baseline" created by ' + hera_qm_version_str
             self.baseline_array = input.baseline_array
             self.time_array = input.time_array
             self.lst_array = input.lst_array
@@ -51,7 +56,10 @@ class UVFlag():
             self.polarization_array = input.polarization_array
             if copy_flags:
                 self.flag_array = input.flag_array
-                # TODO: Throw warning if mode == 'metric'
+                self.history += ' Flags copied from ' + str(input.__class__) + ' object.'
+                if self.mode == 'metric':
+                    warnings.warn('Copying flags to type=="Baseline" results in mode=="flag".')
+                    self.mode = 'flag'
             else:
                 if self.mode == 'flag':
                     self.flag_array = np.zeros_like(input.flag_array)
@@ -60,6 +68,7 @@ class UVFlag():
 
         elif isinstance(input, UVCal):
             self.type = 'Antenna'
+            self.history += 'Flag object with type "Antenna" created by ' + hera_qm_version_str
             self.ant_array = input.ant_array
             self.time_array = input.time_array
             # TODO: get LST array
@@ -68,7 +77,10 @@ class UVFlag():
             self.jones_array = input.jones_array
             if copy_flags:
                 self.flag_array = input.flag_array
-                # TODO: throw warning if mode is metric
+                self.history += ' Flags copied from ' + str(input.__class__) + ' object.'
+                if self.mode == 'metric':
+                    warnings.warn('Copying flags to type=="Antenna" results in mode=="flag".')
+                    self.mode = 'flag'
             else:
                 if self.mode == 'flag':
                     self.flag_array = np.zeros_like(input.flag_array)
@@ -100,8 +112,8 @@ class UVFlag():
             self.time_array = header['time_array'].value
             self.lst_array = header['lst_array'].value
             self.freq_array = header['freq_array'].value
-            # TODO: update history on read
-            self.history = header['history'].value
+            self.history = header['history'].value + ' Read by ' + hera_qm_version_str
+            self.history += history
             if self.type == 'Baseline':
                 self.baseline_array = header['baseline_array'].value
                 self.polarization_array = header['polarization_array'].value
@@ -154,7 +166,7 @@ class UVFlag():
             header['lst_array'] = self.lst_array
             header['freq_array'] = self.freq_array
             # TODO: update history on write
-            header['history'] = self.history
+            header['history'] = self.history + 'Written by ' + hera_qm_version_str
 
             if self.type == 'Baseline':
                 header['baseline_array'] = self.baseline_array
