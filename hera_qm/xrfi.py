@@ -87,14 +87,19 @@ class UVFlag():
                 elif self.mode == 'metric':
                     self.metric_array = np.zeros_like(input.flag_array).astype(np.float)
 
-    def read(self, filename):
+        if not isinstance(input, str):
+            if self.mode == 'flag':
+                self.weights_array = np.zeros(self.flag_array.shape)
+            else:
+                self.weights_array = np.zeros(self.metric_array.shape)
+
+    def read(self, filename, history):
         """
         Read in flag/metric data from a UVH5 file.
 
         Args:
             filename: The file name to read.
         """
-        # TODO: Docstring
 
         if not os.path.exists(filename):
             raise IOError(filename + ' not found.')
@@ -198,9 +203,72 @@ class UVFlag():
                     data = dgrp.create_dataset('flag_array', chunks=True,
                                                data=self.flag_array)
 
-    def __add__(self):
+    def __add__(self, other, inplace=False, axis='time'):
         # TODO: make less general that UVData, but more efficient - have user specify axis
+        # TODO: docstring
 
+        # Handle in place
+        if inplace:
+            this = self
+        else:
+            this = copy.deepcopy(self)
+
+        # Check that objects are compatible
+        if not isinstance(other, this.__class__):
+            raise ValueError('Only UVFlag objects can be added to a UVFlag object')
+        if this.type != other.type:
+            raise ValueError('UVFlag object of type ' + other.type + ' cannot be ' +
+                             'added to object of type ' + this.type + '.')
+        if this.mode != other.mode:
+            raise ValueError('UVFlag object of mode ' + other.mode + ' cannot be ' +
+                             'added to object of mode ' + this.type + '.')
+        # TODO: Check for overlapping data (see pyuvdata.UVData.__add__)
+
+        # Simplify axis referencing
+        axis = axis.lower()
+        type_nums = {'WF': 0, 'Baseline': 1, 'Antenna': 2}
+        axis_nums = {'time': [0, 0, 3], 'baseline': [None, 0, None],
+                     'antenna': [None, None, 0], 'frequency': [1, 2, 2],
+                     'polarization': [None, 3, 4], 'pol': [None, 3, 4],
+                     'jones': [None, 3, 4]}
+        ax = axis_nums[type][type_nums[self.type]]
+        if axis == 'time':
+            this.time_array = np.concatenate([this.time_array, other.time_array])
+            this.lst_array = np.concatenate([this.lst_array, other.lst_array])
+            if this.type == 'Baseline':
+                this.baseline_array = np.concatenate([this.baseline_array, other.baseline_array])
+        elif axis == 'baseline':
+            if self.type != 'Baseline':
+                raise ValueError('Flag object of type ' + self.type + ' cannot be '
+                                 'concatenated along baseline axis.')
+            this.time_array = np.concatenate([this.time_array, other.time_array])
+            this.lst_array = np.concatenate([this.lst_array, other.lst_array])
+            this.baseline_array = np.concatenate([this.baseline_array, other.baseline_array])
+        elif axis == 'antenna':
+            if self.type != 'Antenna':
+                raise ValueError('Flag object of type ' + self.type + ' cannot be '
+                                 'concatenated along antenna axis.')
+            this.ant_array = np.concatenate([this.ant_array, other.ant_array])
+        elif axis == 'frequency':
+            this.freq_array = np.concatenate([this.freq_array, other.freq_array])
+        elif axis in ['polarization', 'pol', 'jones']:
+            if self.type == 'WF':
+                raise ValueError('Flag object of type WF cannot be '
+                                 'concatenated along ' + axis + ' axis.')
+            elif self.type == 'Baseline':
+                this.polarization_array = np.concatenate([this.polarization_array,
+                                                          other.polarization_array])
+            elif self.type == 'Antenna':
+                this.jones_array = np.concatenate([this.jones_array, other.jones_array])
+
+        if this.mode == 'flag':
+            this.flag_array = np.concatenate([this.flag_array, other.flag_array],
+                                             axis=ax)
+        elif this.mode == 'metric':
+            this.metric_array = np.concatenate([this.metric_array,
+                                                other.metric_array], axis=ax)
+        this.weights_array = np.concatenate([this.weights_array,
+                                             other.weights_array], axis=ax)
 
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
