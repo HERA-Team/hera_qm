@@ -326,8 +326,7 @@ def xrfi_run(indata, args, history):
         # Make a "normalized waterfall" to account for data already flagged in file
         d_wf_tot = flags2waterfall(uvd, flag_array=d_flag_array)
         d_wf_prior = flags2waterfall(uvd, flag_array=uvd.flag_array)
-        unit_flags = np.ones_like(d_wf_prior)
-        d_wf_norm = (d_wf_tot - d_wf_prior) / (unit_flags - d_wf_prior)
+        d_wf_norm = normalize_wf(d_wf_tot, d_wf_prior)
         d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
@@ -350,7 +349,9 @@ def xrfi_run(indata, args, history):
                                  'the data file.')
         m_flag_array = vis_flag(uvm, args)
         m_waterfall = flags2waterfall(uvm, flag_array=m_flag_array)
-        m_wf_t = threshold_flags(m_waterfall, px_threshold=args.px_threshold,
+        m_wf_prior = flags2waterfall(uvm)
+        m_wf_norm = normalize_wf(m_waterfall, m_wf_prior)
+        m_wf_t = threshold_flags(m_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
 
@@ -366,10 +367,13 @@ def xrfi_run(indata, args, history):
         g_flag_array, x_flag_array = cal_flag(uvc, args)
         g_waterfall = flags2waterfall(uvc, flag_array=g_flag_array)
         x_waterfall = flags2waterfall(uvc, flag_array=x_flag_array)
-        g_wf_t = threshold_flags(g_waterfall, px_threshold=args.px_threshold,
+        c_wf_prior = flags2waterfall(uvc)
+        g_wf_norm = normalize_wf(g_waterfall, c_wf_prior)
+        x_wf_norm = normalize_wf(x_waterfall, c_wf_prior)
+        g_wf_t = threshold_flags(g_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
-        x_wf_t = threshold_flags(x_waterfall, px_threshold=args.px_threshold,
+        x_wf_t = threshold_flags(x_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
 
@@ -386,8 +390,10 @@ def xrfi_run(indata, args, history):
         basename = os.path.basename(filename)
         outfile = ''.join([basename, args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array, 
-                 history=history)
+        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
+        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array,
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, freq_array=uvd.freq_array,
+                 time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, history=history)
         if (args.summary):
             sum_file = ''.join([basename, args.summary_ext])
             sum_path = os.path.join(dirname, sum_file)
@@ -398,18 +404,24 @@ def xrfi_run(indata, args, history):
             dirname = os.path.dirname(os.path.abspath(args.model_file))
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array, 
-                 history=history)
+        antpos, ants = uvm.get_ENU_antpos(center=True, pick_data_ants=True)
+        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array,
+                 antpairs=uvm.get_antpairs(), polarization_array=uvm.polarization_array, freq_array=uvm.freq_array,
+                 time_array=uvm.time_array, lst_array=uvm.lst_array, antpos=antpos, ants=ants, history=history)
     if args.calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
         if args.xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(args.calfits_file))
         outfile = ''.join([os.path.basename(args.calfits_file), '.g', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, history=history)
+        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, ants=uvc.ant_array,
+                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
+                 time_array=uvc.time_array, history=history)
         outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, history=history)
+        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, ants=uvc.ant_array,
+                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
+                 time_array=uvc.time_array, history=history)
 
     return
 
@@ -555,6 +567,23 @@ def waterfall2flags(waterfall, uv):
     return flag_array
 
 
+def normalize_wf(wf, wfp):
+    """ Normalize waterfall to account for data already flagged.
+    Args:
+        wf -- Waterfall of fractional flags.
+        wfp -- Waterfall of prior fractional flags. Size must match wf.
+    Returns:
+        wf_norm -- Waterfall of fractional flags which were not flagged prior.
+                   Note if wfp[i, j] == 1, then wf_norm[i, j] will be NaN.
+    """
+    if wf.shape != wfp.shape:
+        raise AssertionError('waterfall and prior waterfall must be same shape.')
+    ind = np.where(wfp < 1)
+    wf_norm = np.nan * np.ones_like(wf)
+    wf_norm[ind] = (wf[ind] - wfp[ind]) / (1. - wfp[ind])
+    return wf_norm
+
+
 def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05):
     """ Threshold flag waterfall at each pixel, as well as averages across time and frequency
     Args:
@@ -569,11 +598,22 @@ def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.0
         wf_t -- thresholded waterfall. Boolean array, same shape as wf.
     """
     wf_t = np.zeros(wf.shape, dtype=bool)
-    spec = np.nanmean(wf, axis=0)
+    with warnings.catch_warnings():
+        # Ignore empty slice warning which occurs for entire rows/columns of nan
+        warnings.filterwarnings('ignore', message='Mean of empty slice',
+                                category=RuntimeWarning)
+        spec = np.nanmean(wf, axis=0)
+        spec[np.isnan(spec)] = 1
+        tseries = np.nanmean(wf, axis=1)
+        tseries[np.isnan(tseries)] = 1
     wf_t[:, spec > time_threshold] = True
-    tseries = np.nanmean(wf, axis=1)
     wf_t[tseries > freq_threshold, :] = True
-    wf_t[wf > px_threshold] = True
+    with warnings.catch_warnings():
+        # Explicitly handle nans in wf
+        warnings.filterwarnings('ignore', message='invalid value encountered in greater',
+                                category=RuntimeWarning)
+        wf_t[wf > px_threshold] = True
+        wf_t[np.isnan(wf)] = True  # Flag anything that was completely flagged in prior.
     return wf_t
 
 
@@ -735,7 +775,10 @@ def xrfi_apply(filename, args, history):
     else:
         raise ValueError('Unrecognized output file format ' + str(args.outfile_format))
     if args.output_npz:
-        # Save an npz with the final flag array and waterfall
+        # Save an npz with the final flag array and waterfall and relevant metadata
         outpath = outpath + args.out_npz_ext
-        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full,
-                 history=flag_history + history)
+        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
+        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, baseline_array=uvd.baseline_array,
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array,
+                 freq_array=uvd.freq_array, time_array=uvd.time_array, lst_array=uvd.lst_array,
+                 antpos=antpos, ants=ants, history=flag_history + history)

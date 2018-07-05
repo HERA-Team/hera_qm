@@ -26,11 +26,16 @@ if args.waterfalls is not None:
         wf_full = sum(waterfalls).astype(bool)
         uv.flag_array += xrfi.waterfall2flags(wf_full, uv)
 
+# set kwargs
+kwargs = {}
+if args.window == 'tukey':
+    kwargs['alpha'] = args.alpha
+
 # Stuff into delay filter object, run delay filter
 dfil = delay_filter.Delay_Filter()
 dfil.load_data(uv)
 dfil.run_filter(standoff=args.standoff, horizon=args.horizon, tol=args.tol,
-                window=args.window, skip_wgt=args.skip_wgt, maxiter=args.maxiter)
+                window=args.window, skip_wgt=args.skip_wgt, maxiter=args.maxiter, **kwargs)
 io.update_uvdata(dfil.input_data, data=dfil.filtered_residuals, flags=dfil.flags)
 
 # Run xrfi

@@ -200,10 +200,11 @@ def get_metrics_ArgumentParser(method_name):
                                   (full light travel time)')
         d.add_argument("--tol", type=float, default=1e-7, help='CLEAN algorithm convergence tolerance (default 1e-7). '
                        'NOTE: default is different from default when running delay_filter_run.py.')
-        d.add_argument("--window", type=str, default="blackman-harris", help='window function for frequency filtering (default "blackman-harris",\
+        d.add_argument("--window", type=str, default="tukey", help='window function for frequency filtering (default "tukey",\
                                   see aipy.dsp.gen_window for options')
         d.add_argument("--skip_wgt", type=float, default=0.1, help='skips filtering rows with unflagged fraction ~< skip_wgt (default 0.1)')
         d.add_argument("--maxiter", type=int, default=100, help='maximum iterations for aipy.deconv.clean to converge (default 100)')
+        d.add_argument("--alpha", type=float, default=.5, help='alpha parameter to use for Tukey window (ignored if window is not Tukey)')
         d.add_argument('--waterfalls', default=None, type=str, help='comma separated '
                        'list of npz files containing waterfalls of flags to broadcast '
                        'to full flag array and apply before delay filter.')

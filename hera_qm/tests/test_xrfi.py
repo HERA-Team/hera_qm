@@ -922,6 +922,30 @@ class TestThresholdFlags(object):
         wf_t = xrfi.threshold_flags(wf, freq_threshold=.4 / Nf)
         nt.assert_true(wf_t.sum() == Nf)
 
+        # Test NaN mapping
+        wf[0, 0] = np.nan
+        wf_t = xrfi.threshold_flags(wf)
+        nt.assert_true(wf_t[0, 0])
+
+
+class TestNormalizeWf(object):
+    def test_normalize_wf(self):
+        Nt = 20
+        Nf = 15
+        wf = 0.5 * np.ones((Nt, Nf))
+        wfp = 0.25 * np.ones((Nt, Nf))
+
+        wfn = xrfi.normalize_wf(wf, wfp)
+        nt.assert_true(np.all(wfn == 1. / 3.))
+        nt.assert_true(wfn.shape == wf.shape)
+
+    def test_normalize_wf_fail(self):
+        Nt = 20
+        Nf = 15
+        wf = 0.5 * np.ones((Nt, Nf))
+        wfp = 0.25 * np.ones((Nt, Nf + 1))
+        nt.assert_raises(AssertionError, xrfi.normalize_wf, wf, wfp)
+
 
 class TestFlagXants(object):
     def test_flag_xants(self):
