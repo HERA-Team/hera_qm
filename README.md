@@ -27,6 +27,7 @@ First install dependencies.
 * astropy >= 2.0
 * sklearn >= 0.18.0
 * aipy
+* h5py
 * pyuvdata (`pip install pyuvdata` or use https://github.com/HERA-Team/pyuvdata.git)
 * hera_cal (https://github.com/HERA-Team/hera_cal.git)
 * omnical (https://github.com/HERA-Team/omnical.git)
@@ -50,11 +51,11 @@ There are currently three primary modules which drive HERA quality metrics.
 
 ### ant_metrics
 A module to handle visibility-based metrics designed to identify misbehaving antennas.
-The module includes methods to calculate several metrics to identify cross-polarized antennas 
+The module includes methods to calculate several metrics to identify cross-polarized antennas
 or dead antennas, based on either their redundancy with other antennas or their relative power.
-The primary class, `Antenna_Metrics`, includes interfaces to these methods and functions for 
-loading data, iteratively running metrics and removing misbehaving antennas, and saving the 
-results of those metrics in a JSON. And example of using this moduleis in 
+The primary class, `Antenna_Metrics`, includes interfaces to these methods and functions for
+loading data, iteratively running metrics and removing misbehaving antennas, and saving the
+results of those metrics in a JSON. And example of using this moduleis in
 `scripts/ant_metrics_example_notebook.ipynb`.
 
 ### firstcal_metrics
@@ -67,7 +68,7 @@ An example of using this module is in `scripts/firstcal_metrics.ipynb`.
 ### omnical_metrics
 A module to calculate metrics based on omnical solutions. Currently, these metrics
 aim to identify discontinuities in the phase solutions of the gains and model visibilities,
-as well as outliers in the antenna-based chi-square output from omnical. Routines for 
+as well as outliers in the antenna-based chi-square output from omnical. Routines for
 calculating the metrics, writing them to file, and plotting the metrics (as well as the
 gain solutions and model visibilities) are included. For an example of how to use these
 metrics see `scripts/omnical_metrics_example.ipynb`. The metrics themselves are detailed
@@ -77,7 +78,7 @@ there as well as in the doc-strings of the source code in `hera_qm.Omnical_Metri
 This module contains several algorithms for radio frequency interference (RFI)
 detection and flagging. `xrfi.xrfi` provides the most robust RFI excision we currently have.
 The function `xrfi.xrfi_run` demonstrates how to use and apply the RFI algorithms
-to a UVData object. `xrfi.xrfi_simple` is the legacy RFI flagger from the PAPER pipeline. 
+to a UVData object. `xrfi.xrfi_simple` is the legacy RFI flagger from the PAPER pipeline.
 NOTE: Default settings for each algorithm may not be the most optimal depending
 on the dataset.
 
