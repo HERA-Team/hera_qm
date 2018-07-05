@@ -1,3 +1,4 @@
+from __future__ import print_function
 import unittest
 import nose.tools as nt
 from hera_qm import ant_metrics
@@ -9,7 +10,8 @@ import os
 import sys
 import json
 import copy
-
+from hera_qm.version import hera_qm_version_str
+import h5py
 
 class fake_data():
 
@@ -163,8 +165,9 @@ class TestLowLevelFunctions(unittest.TestCase):
 
     def test_load_antenna_metrics(self):
         # load a metrics file and check some values
-        metrics_file = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+        metrics_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
         metrics = ant_metrics.load_antenna_metrics(metrics_file)
+
         self.assertAlmostEqual(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')], 0.17529333517595402)
         self.assertAlmostEqual(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')], 0.17529333517595402)
         self.assertAlmostEqual(metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')], 0.7012786080508268)
@@ -175,9 +178,21 @@ class TestLowLevelFunctions(unittest.TestCase):
         metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')] = -np.inf
         for key in metrics.keys():
             metrics[key] = str(metrics[key])
-        outpath = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.json')
-        with open(outpath, 'w') as outfile:
-            json.dump(metrics, outfile, indent=4)
+        outpath = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.hdf5')
+
+        with h5py.File(outpath, 'w') as outfile:
+            header = outfile.create_group('Header')
+            header['version'] = metrics['version']
+            if 'history' in metrics:
+                header['history'] = metrics['history']
+            else:
+                header['history'] = 'Nosetests'
+            mgrp = outfile.create_group('Metrics')
+            for _name in metrics:
+                if _name in header:
+                    continue
+                else:
+                    _ = mgrp.create_dataset(_name, data=metrics[_name])
 
         # test reading it back in, and that the values agree
         metrics_new = ant_metrics.load_antenna_metrics(outpath)
@@ -187,7 +202,6 @@ class TestLowLevelFunctions(unittest.TestCase):
 
         # clean up after ourselves
         os.remove(outpath)
-
 
 class TestAntennaMetrics(unittest.TestCase):
 
@@ -266,7 +280,7 @@ class TestAntennaMetrics(unittest.TestCase):
         am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
                                          fileformat='miriad')
         with self.assertRaises(KeyError):
-            am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
+            am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.hdf5')
 
         am.iterative_antenna_metrics_and_flagging()
         for stat in self.summaryStats:
@@ -276,7 +290,7 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertIn((81, 'x'), am.deadAntsRemoved)
         self.assertIn((81, 'y'), am.deadAntsRemoved)
 
-        outfile = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.json')
+        outfile = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.hdf5')
         am.save_antenna_metrics(outfile)
         loaded = ant_metrics.load_antenna_metrics(outfile)
         # json names for summary statistics
