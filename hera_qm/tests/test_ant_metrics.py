@@ -246,7 +246,7 @@ class TestAntennaMetrics(unittest.TestCase):
         with self.assertRaises(IOError):
             ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='uvfits')
-        with self.assertRaises(StandardError):
+        with self.assertRaises(Exception):
             ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='fhd')
         with self.assertRaises(ValueError):

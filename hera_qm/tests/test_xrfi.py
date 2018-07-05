@@ -485,7 +485,7 @@ class TestXrfiRun(object):
         arg4 = "--model_file_format=fhd"
         cmd = ' '.join([arguments, arg4, xx_file])
         args = a.parse_args(cmd.split())
-        nt.assert_raises(StandardError, xrfi.xrfi_run, args.filename, args, cmd)
+        nt.assert_raises(Exception, xrfi.xrfi_run, args.filename, args, cmd)
 
         arg4 = "--model_file_format=blah"
         cmd = ' '.join([arguments, arg4, xx_file])
@@ -524,7 +524,7 @@ class TestXrfiRun(object):
         arg0 = "--infile_format=fhd"
         cmd = ' '.join([arg0, xx_file])
         args = a.parse_args(cmd.split())
-        nt.assert_raises(StandardError, xrfi.xrfi_run, args.filename, args, cmd)
+        nt.assert_raises(Exception, xrfi.xrfi_run, args.filename, args, cmd)
 
         arg0 = "--infile_format=blah"
         cmd = ' '.join([arg0, xx_file])
@@ -650,7 +650,7 @@ class TestXrfiApply(object):
         arg0 = "--infile_format=fhd"
         cmd = ' '.join([arg0, xx_file])
         args = a.parse_args(cmd.split())
-        nt.assert_raises(StandardError, xrfi.xrfi_apply, args.filename, args, cmd)
+        nt.assert_raises(Exception, xrfi.xrfi_apply, args.filename, args, cmd)
 
         arg0 = "--infile_format=blah"
         cmd = ' '.join([arg0, xx_file])
