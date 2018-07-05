@@ -9,6 +9,7 @@ import os
 import re
 from hera_qm.version import hera_qm_version_str
 from hera_qm import utils
+import h5py
 
 
 def get_ant_metrics_dict():
@@ -303,7 +304,7 @@ def average_abs_metrics(metrics1, metrics2):
     return {key: np.nanmean([np.abs(metrics1[key]), np.abs(metrics2[key])]) for
             key in metrics1.keys()}
 
-
+# # TODO: Make Read and write to HDF5 file type
 def load_antenna_metrics(metricsJSONFile):
     """Load all cut decisions and meta-metrics from a JSON into python dictionary."""
     with open(metricsJSONFile, 'r') as infile:
@@ -489,8 +490,95 @@ class Antenna_Metrics():
             else:
                 break
 
+    # # TODO: Make Read and write to HDF5 file type
+    def save_antenna_metrics(self, metricsHDF5Filename,
+                             data_compression='lzf'):
+        """Output all meta-metrics and cut decisions to HDF5 file.
+
+        Saves all cut decisions and meta-metrics in an HDF5 that can be loaded
+        back into a dictionary using hera_qm.ant_metrics.load_antenna_metrics().
+        """
+        if not hasattr(self, 'xants'):
+            raise KeyError(('Must run AntennaMetrics.'
+                            'iterative_antenna_metrics_and_flagging() first.'))
+
+        with hdf5.File(metricsHDF5Filename, 'w') as f:
+            header = f.create_group('Header')
+
+            if self.history != '':
+                header['history'] = self.history
+
+            header['version'] = self.version_str
+
+            # Create group for metrics data in file
+            mgrp = f.create_group('Metrics')
+
+            if data_compression is not None:
+                _ = mgrp.create_dataset('xants', chunks=True,
+                                        data=str(self.xants)
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('crossed_ants', chunks=True,
+                                        data=str(self.crossedAntsRemoved),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('dead_ants', chunk=true,
+                                        data=str(self.deadAntsRemoved),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('final_metrics', chunks=True,
+                                        data=str(self.finalMetrics),
+                                        compression=data_compression)
+                __ = mgrp.create_dataset('all_metrics', chunks=True,
+                                         data=str(self.allMetrics),
+                                         compression=data_compression)
+                _ = mgrp.create_dataset('final_mod_z_scores', chunks=True,
+                                        data=str(self.finalModzScores),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('all_mod_z_scores', chunks=True,
+                                        data=str(self.allModzScores),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('removal_iteration', chunks=True,
+                                        data=str(self.removalIter),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('cross_pol_z_cut', chunks=True,
+                                        data=str(self.crossCut),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('dead_ant_z_cut', chunks=True,
+                                        data=str(self.deadCut),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('always_dead_ant_z_cut', chunks=True,
+                                        data=str(self.alwaysDeadCut),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('datafile_list', chunks=True,
+                                        data=str(self.dataFileList),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('datafile_list', chunks=True,
+                                        data=str(self.dataFileList),
+                                        compression=data_compression)
+                _ = mgrp.create_dataset('reds', chunks=True,
+                                        data=str(self.reds),
+                                        compression=data_compression)
+
+
+        name_list = ['xants', 'crossed_ants', 'dead_ants', 'final_metrics',
+                     'all_metrics', 'final_mod_z_scores', 'all_mod_z_scores',
+                     'removal_iteration', 'cross_pol_z_cut', 'dead_ant_z_cut',
+                     'always_dead_ant_z_cut', 'datafile_list', 'reds']
+        metric_list = [self.xants, self.crossedAntsRemoved,
+                       self.deadAntsRemoved, self.finalMetrics,
+                       self.allMetrics, self.finalModzScores,
+                       self.allModzScores, self.removalIter, self.crossCut,
+                       self.deadCut, self.alwaysDeadCut, self.dataFileList,
+                       self.reds]
+
+        for _name, _metric in iterator.izip(name_lits, metric_list)
+        if data_compression is not None:
+            _ = mgrp.create_dataset(_name, chunks=True,
+                                    data=str(_metric)
+                                    compression=data_compression)
+        else:
+            _ = mgrp.create_dataset(_name, chunks=True,
+                                    data=str(_metric))
     def save_antenna_metrics(self, metricsJSONFilename):
-        """Output all meta-metrics ans cut decisions to file.
+        """Output all meta-metrics and cut decisions to file.
 
         Saves all cut decisions and meta-metrics in a human-readable JSON that can be loaded
         back into a dictionary using hera_qm.ant_metrics.load_antenna_metrics().
