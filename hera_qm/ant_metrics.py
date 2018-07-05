@@ -10,6 +10,7 @@ import re
 from hera_qm.version import hera_qm_version_str
 from hera_qm import utils
 import h5py
+import warnings
 
 
 def get_ant_metrics_dict():
@@ -316,8 +317,11 @@ def _read_visitor(name, obj, ):
 
 
 def load_antenna_metrics(metricsHDF5Filename):
-    """Load all cut decisions and meta-metrics from a JSON into python dictionary."""
+    """Load all cut decisions and meta-metrics from a HDF5 into python dictionary."""
     if metricsHDF5Filename.split('.')[-1] == 'json':
+        warnings.warn("JSON-type files can still be read but are no longer "
+                      "writen by default.\n"
+                      "Write to HDF5 format for future compatibility.")
         return load_json_metrics(metricsHDF5Filename)
     gvars = {'nan': np.nan, 'inf': np.inf, '-inf': -np.inf}
     metric_dict = {}
@@ -355,7 +359,7 @@ class Antenna_Metrics():
     Object for holding relevant visibility data and metadata with interfaces to four
     antenna metrics (two for identifying dead antennas, two for identifying cross-polarized ones),
     an iterative method for identifying one bad antenna at a time while keeping track of all
-    metrics, and for writing metrics to a JSON. Works on raw data from a single observation
+    metrics, and for writing metrics to a HDF5. Works on raw data from a single observation
     with all four visibility polarizations.
     """
 
@@ -603,7 +607,7 @@ def ant_metrics_run(files, args, history):
        None
 
     The funciton will take in a list of files and options. It will run the
-    series of ant metrics tests, and produce a JSON file containing the relevant
+    series of ant metrics tests, and produce an HDF5 file containing the relevant
     information. The file list passed in need only contain one of the polarization
     files for a given JD, and the function will look for the other polarizations
     in the same folder. If not all four polarizations are found, a warning is
