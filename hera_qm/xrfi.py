@@ -33,6 +33,10 @@ class UVFlag():
             # TODO: lst_array doesn't exist in UVCal
             self.lst_array = input.lst_array[ri]
             self.freq_array = input.freq_arrayp[0, :]
+            if isinstance(input, UVData):
+                self.polarization_array = input.polarization_array
+            else:
+                self.polarization_array = input.jones_array
             if copy_flags:
                 self.metric_array = flags2waterfall(input)
                 self.history += ' WF generated from ' + str(input.__class__) + ' object.'
@@ -42,10 +46,13 @@ class UVFlag():
             else:
                 if self.mode == 'flag':
                     self.flag_array = np.zeros((len(self.time_array),
-                                               len(self.freq_array)), np.bool)
+                                               len(self.freq_array),
+                                               len(self.polarization_array)), np.bool)
                 elif self.mode == 'metric':
                     self.metric_array = np.zeros((len(self.time_array),
-                                                 len(self.freq_array)))
+                                                 len(self.freq_array),
+                                                 len(self.polarization_array)))
+
         elif isinstance(input, UVData):
             self.type = 'baseline'
             self.history += 'Flag object with type "baseline" created by ' + hera_qm_version_str
@@ -74,7 +81,7 @@ class UVFlag():
             # TODO: get LST array
             # self.lst_array = input.lst_array
             self.freq_array = input.freq_array
-            self.jones_array = input.jones_array
+            self.polarization_array = input.jones_array
             if copy_flags:
                 self.flag_array = input.flag_array
                 self.history += ' Flags copied from ' + str(input.__class__) + ' object.'
@@ -119,15 +126,14 @@ class UVFlag():
             self.freq_array = header['freq_array'].value
             self.history = header['history'].value + ' Read by ' + hera_qm_version_str
             self.history += history
+            self.polarization_array = header['polarization_array'].value
             if self.type == 'baseline':
                 self.baseline_array = header['baseline_array'].value
-                self.polarization_array = header['polarization_array'].value
                 if prev_type == 'antenna':
                     del(self.ant_array)
                     del(self.jones_array)
             elif self.type == 'antenna':
                 self.ant_array = header['ant_array'].value
-                self.jones_array = header['jones_array'].value
                 if prev_type == 'baseline':
                     del(self.baseline_array)
                     del(self.jones_array)
@@ -170,15 +176,14 @@ class UVFlag():
             header['time_array'] = self.time_array
             header['lst_array'] = self.lst_array
             header['freq_array'] = self.freq_array
+            header['polarization_array'] = self.polarization_array
             # TODO: update history on write
             header['history'] = self.history + 'Written by ' + hera_qm_version_str
 
             if self.type == 'baseline':
                 header['baseline_array'] = self.baseline_array
-                header['polarization_array'] = self.polarization_array
             elif self.type == 'antenna':
                 header['ant_array'] = self.ant_array
-                header['jones_array'] = self.jones_array
 
             dgrp = f.create_group("Data")
             if data_compression is not None:
@@ -252,14 +257,8 @@ class UVFlag():
         elif axis == 'frequency':
             this.freq_array = np.concatenate([this.freq_array, other.freq_array])
         elif axis in ['polarization', 'pol', 'jones']:
-            if self.type == 'WF':
-                raise ValueError('Flag object of type WF cannot be '
-                                 'concatenated along ' + axis + ' axis.')
-            elif self.type == 'Baseline':
-                this.polarization_array = np.concatenate([this.polarization_array,
-                                                          other.polarization_array])
-            elif self.type == 'Antenna':
-                this.jones_array = np.concatenate([this.jones_array, other.jones_array])
+            this.polarization_array = np.concatenate([this.polarization_array,
+                                                      other.polarization_array])
 
         if this.mode == 'flag':
             this.flag_array = np.concatenate([this.flag_array, other.flag_array],
