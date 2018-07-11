@@ -337,7 +337,7 @@ class TestAntmetricsRun(object):
         arg1 = "-p xx,yy,xy,yx"
         arg2 = "--crossCut=5"
         arg3 = "--deadCut=5"
-        arg4 = "--extension=.ant_metrics.json"
+        arg4 = "--extension=.ant_metrics.hdf5"
         arg5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
         arg6 = "--vis_format=miriad"
         arg7 = "--alwaysDeadCut=10"
@@ -363,7 +363,7 @@ class TestAntmetricsRun(object):
         # test actually running metrics
         xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2457698.40355.HH.uvcA.ant_metrics.json')
+                                 'zen.2457698.40355.HH.uvcA.ant_metrics.hdf5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, xx_file])
@@ -381,7 +381,7 @@ class TestAntmetricsRun(object):
         arg0 = "-p xx,yy,xy,yx"
         arg1 = "--crossCut=5"
         arg2 = "--deadCut=5"
-        arg3 = "--extension=.ant_metrics.json"
+        arg3 = "--extension=.ant_metrics.hdf5"
         arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
         arg5 = "--vis_format=miriad"
         arg6 = "--alwaysDeadCut=10"
@@ -390,7 +390,7 @@ class TestAntmetricsRun(object):
         # test running with no calfile
         xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2458002.47754.HH.uvA.ant_metrics.json')
+                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, xx_file])
