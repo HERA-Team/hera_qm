@@ -15,15 +15,22 @@ class UVFlag():
     '''
     def __init__(self, input, mode='metric', copy_flags=False, wf=False, history=''):
         # TODO: Docstring
-        # M
-        # TODO: Need to handle flags _or_ "metric" (ie, float metric that is used to determine flags)
-        #       Is there a better name for array that's used for both? Or just use "flag_array"?
+        #
         # Mode can be 'flag' or 'metric'
         # TODO: Weight array - get from nsample_array?
+        # TODO: get_flags similar to pyuvdata and/or convert to data container
+        # TODO: list loading
 
         self.mode = mode.lower()  # Gets overwritten if reading file
         self.history = history
-        if isinstance(input, str):
+        if isinstance(input, (list, tuple)):
+            self.__init__(input[0], mode=mode, copy_flags=copy_flags, wf=wf, history=history)
+            if len(input) > 1:
+                for i in input[1:]:
+                    fobj = UVFlag(i, mode=mode, copy_flags=copy_flags, wf=wf, history=history)
+                    self += fobj
+                del(fobj)
+        elif isinstance(input, str):
             # Given a path, read input
             self.read(input, history)
         elif wf and isinstance(input, (UVData, UVCal)):
@@ -38,7 +45,7 @@ class UVFlag():
             else:
                 self.polarization_array = input.jones_array
             if copy_flags:
-                self.metric_array = flags2waterfall(input)
+                self.metric_array = flags2waterfall(input, keep_pol=True)
                 self.history += ' WF generated from ' + str(input.__class__) + ' object.'
                 if self.mode == 'flag':
                     warnings.warn('Copying flags into waterfall results in mode=="metric".')
@@ -100,55 +107,63 @@ class UVFlag():
             else:
                 self.weights_array = np.zeros(self.metric_array.shape)
 
-    def read(self, filename, history):
+    def read(self, filename, history=''):
         """
         Read in flag/metric data from a UVH5 file.
 
         Args:
             filename: The file name to read.
         """
+        # TODO: list loading? More efficient than pyuvdata?
 
-        if not os.path.exists(filename):
-            raise IOError(filename + ' not found.')
+        if isinstance(filename, (tuple, list)):
+            self.read(filename[0])
+            if len(filename) > 1:
+                for f in filename[1:]:
+                    f2 = UVFlag(f, history=history)
+                    self += f2
+                del(f2)
 
-        # These are useful to clear no longer used attributes if the type or mode changes
-        prev_type = self.type
-        prev_mode = self.mode
+        else:
+            if not os.path.exists(filename):
+                raise IOError(filename + ' not found.')
 
-        # Open file for reading
-        with h5py.File(filename, 'r') as f:
-            header = f['/Header']
+            # These are useful to clear no longer used attributes if the type or mode changes
+            prev_type = self.type
+            prev_mode = self.mode
 
-            self.type = header['type'].value
-            self.mode = header['mode'].value
-            self.time_array = header['time_array'].value
-            self.lst_array = header['lst_array'].value
-            self.freq_array = header['freq_array'].value
-            self.history = header['history'].value + ' Read by ' + hera_qm_version_str
-            self.history += history
-            self.polarization_array = header['polarization_array'].value
-            if self.type == 'baseline':
-                self.baseline_array = header['baseline_array'].value
-                if prev_type == 'antenna':
-                    del(self.ant_array)
-                    del(self.jones_array)
-            elif self.type == 'antenna':
-                self.ant_array = header['ant_array'].value
-                if prev_type == 'baseline':
-                    del(self.baseline_array)
-                    del(self.jones_array)
+            # Open file for reading
+            with h5py.File(filename, 'r') as f:
+                header = f['/Header']
 
-            dgrp = f['/Data']
-            if self.mode == 'metric':
-                self.metric_array = dgrp['metric_array'].value
-                if prev_mode == 'flag':
-                    del(self.flag_array)
-            elif self.mode == 'flag':
-                self.flag_array = dgrp['flag_array'].value
-                if prev_mode == 'metric':
-                    del(self.metric_array)
+                self.type = header['type'].value
+                self.mode = header['mode'].value
+                self.time_array = header['time_array'].value
+                self.lst_array = header['lst_array'].value
+                self.freq_array = header['freq_array'].value
+                self.history = header['history'].value + ' Read by ' + hera_qm_version_str
+                self.history += history
+                self.polarization_array = header['polarization_array'].value
+                if self.type == 'baseline':
+                    self.baseline_array = header['baseline_array'].value
+                    if prev_type == 'antenna':
+                        del(self.ant_array)
+                elif self.type == 'antenna':
+                    self.ant_array = header['ant_array'].value
+                    if prev_type == 'baseline':
+                        del(self.baseline_array)
 
-            self.weights_array = dgrp['weights_array'].value
+                dgrp = f['/Data']
+                if self.mode == 'metric':
+                    self.metric_array = dgrp['metric_array'].value
+                    if prev_mode == 'flag':
+                        del(self.flag_array)
+                elif self.mode == 'flag':
+                    self.flag_array = dgrp['flag_array'].value
+                    if prev_mode == 'metric':
+                        del(self.metric_array)
+
+                self.weights_array = dgrp['weights_array'].value
 
     def write(self, filename, clobber=False, data_compression='lzf'):
         """
