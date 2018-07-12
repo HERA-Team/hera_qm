@@ -5,17 +5,20 @@ import warnings
 import argparse
 import numpy as np
 
+
 # argument-generating function for *_run wrapper functions
 def get_metrics_ArgumentParser(method_name):
     """
     Function to get an ArgumentParser instance for working with metrics wrappers.
 
     Args:
-        method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics", "omnical_metrics", or "xrfi"
+        method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics",
+                       "omnical_metrics", "xrfi_run", "delay_xrfi_run", or "xrfi_apply"
     Returns:
         a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
-    methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_run", "xrfi_apply"]
+    methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_run",
+               "delay_xrfi_run", "xrfi_apply"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -132,6 +135,79 @@ def get_metrics_ArgumentParser(method_name):
                        'visibilities formed with these antennas will be set to True.')
         a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
                        help='file for which to flag RFI (only one file allowed).')
+    elif method_name == 'delay_xrfi_run':
+        a.prog = 'delay_xrfi_run.py'
+        a.add_argument('filename', metavar='filename', nargs='?', type=str, default=None,
+                       help='file for which to flag RFI (only one file allowed).')
+        x = a.add_argument_group(title='XRFI options', description='Options related to '
+                                 'the RFI flagging routine.')
+        x.add_argument('--infile_format', default='miriad', type=str,
+                       help='File format for input files. Default is miriad.')
+        x.add_argument('--extension', default='.flags.npz', type=str,
+                       help='Extension to be appended to input file name. Default is ".flags.npz".')
+        x.add_argument('--summary', action='store_true', default=False,
+                       help='Run summary of RFI flags and store in npz file.')
+        x.add_argument('--summary_ext', default='.flag_summary.npz',
+                       type=str, help='Extension to be appended to input file name'
+                       ' for summary file. Default is ".flag_summary.npz"')
+        x.add_argument('--xrfi_path', default='', type=str,
+                       help='Path to save flag files to. Default is same directory as input file.')
+        x.add_argument('--algorithm', default='xrfi_simple', type=str,
+                       help='RFI-flagging algorithm to use. Default is xrfi_simple.')
+        x.add_argument('--model_file', default=None, type=str, help='Model visibility '
+                       'file to flag on.')
+        x.add_argument('--model_file_format', default='uvfits', type=str,
+                       help='File format for input files. Default is uvfits.')
+        x.add_argument('--calfits_file', default=None, type=str, help='Calfits file '
+                       'to use to flag on gains and/or chisquared values.')
+        x.add_argument('--nsig_df', default=6.0, type=float, help='Number of sigma '
+                       'above median value to flag in f direction for xrfi_simple. Default is 6.')
+        x.add_argument('--nsig_dt', default=6.0, type=float,
+                       help='Number of sigma above median value to flag in t direction'
+                       ' for xrfi_simple. Default is 6.')
+        x.add_argument('--nsig_all', default=0.0, type=float,
+                       help='Number of overall sigma above median value to flag'
+                       ' for xrfi_simple. Default is 0 (skip).')
+        x.add_argument('--kt_size', default=8, type=int,
+                       help='Size of kernel in time dimension for detrend in xrfi '
+                       'algorithm. Default is 8.')
+        x.add_argument('--kf_size', default=8, type=int,
+                       help='Size of kernel in frequency dimension for detrend in '
+                       'xrfi algorithm. Default is 8.')
+        x.add_argument('--sig_init', default=6.0, type=float,
+                       help='Starting number of sigmas to flag on. Default is 6.')
+        x.add_argument('--sig_adj', default=2.0, type=float,
+                       help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
+        x.add_argument('--px_threshold', default=0.2, type=float,
+                       help='Fraction of flags required to trigger a broadcast across'
+                       ' baselines for a given (time, frequency) pixel. Default is 0.2.')
+        x.add_argument('--freq_threshold', default=0.5, type=float,
+                       help='Fraction of channels required to trigger broadcast across'
+                       ' frequency (single time). Default is 0.5.')
+        x.add_argument('--time_threshold', default=0.05, type=float,
+                       help='Fraction of times required to trigger broadcast across'
+                       ' time (single frequency). Default is 0.05.')
+        x.add_argument('--ex_ants', default='', type=str,
+                       help='Comma-separated list of antennas to exclude. Flags of visibilities '
+                       'formed with these antennas will be set to True.')
+        x.add_argument('--metrics_json', default='', type=str,
+                       help='Metrics file that contains a list of excluded antennas. Flags of '
+                       'visibilities formed with these antennas will be set to True.')
+        d = a.add_argument_group(title='Delay filter options', description='Options '
+                                 'related to the delay filter which is applied before flagging.')
+        d.add_argument("--standoff", type=float, default=15.0, help='fixed additional delay beyond the horizon (default 15 ns)')
+        d.add_argument("--horizon", type=float, default=1.0, help='proportionality constant for bl_len where 1.0 (default) is the horizon\
+                                  (full light travel time)')
+        d.add_argument("--tol", type=float, default=1e-7, help='CLEAN algorithm convergence tolerance (default 1e-7). '
+                       'NOTE: default is different from default when running delay_filter_run.py.')
+        d.add_argument("--window", type=str, default="tukey", help='window function for frequency filtering (default "tukey",\
+                                  see aipy.dsp.gen_window for options')
+        d.add_argument("--skip_wgt", type=float, default=0.1, help='skips filtering rows with unflagged fraction ~< skip_wgt (default 0.1)')
+        d.add_argument("--maxiter", type=int, default=100, help='maximum iterations for aipy.deconv.clean to converge (default 100)')
+        d.add_argument("--alpha", type=float, default=.5, help='alpha parameter to use for Tukey window (ignored if window is not Tukey)')
+        d.add_argument('--waterfalls', default=None, type=str, help='comma separated '
+                       'list of npz files containing waterfalls of flags to broadcast '
+                       'to full flag array and apply before delay filter.')
     elif method_name == 'xrfi_apply':
         a.prog = 'xrfi_apply.py'
         a.add_argument('--infile_format', default='miriad', type=str,
@@ -149,6 +225,12 @@ def get_metrics_ArgumentParser(method_name):
         a.add_argument('--waterfalls', default=None, type=str, help='comma separated '
                        'list of npz files containing waterfalls of flags to broadcast '
                        'to full flag array and union with flag array in flag_file.')
+        a.add_argument('--output_npz', default=True, type=bool,
+                       help='Whether to save an npz with the final flag array and waterfall. '
+                       'The flag array will be identical to what is stored in the data, '
+                       'and the waterfall is the union of all input waterfalls.')
+        a.add_argument('--out_npz_ext', default='.flags.npz', type=str,
+                       help='Extension to be appended to input file name. Default is ".flags.npz".')
         a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
                        help='file for which to flag RFI (only one file allowed).')
     return a

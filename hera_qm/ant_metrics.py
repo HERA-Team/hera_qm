@@ -172,6 +172,9 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
     for key, count in antCounts.items():
         if count > 0:
             antCorrs[key] /= count
+        else:
+            # Was not found in reds, should not have a valid metric.
+            antCorrs[key] = np.NaN
     if rawMetric:
         return antCorrs
     else:

@@ -5,6 +5,7 @@ from pyuvdata import UVData
 from pyuvdata import UVCal
 from hera_qm.version import hera_qm_version_str
 import json
+import warnings
 
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
@@ -32,7 +33,7 @@ def medminfilt(d, Kt=8, Kf=8):
         array: filtered array with same shape as input array.
     '''
     if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise ValueError('Kernel size exceeds data.')
+        raise AssertionError('Kernel size exceeds data.')
     d_sm = np.empty_like(d)
     for i in xrange(d.shape[0]):
         for j in xrange(d.shape[1]):
@@ -112,7 +113,7 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     from scipy.signal import medfilt2d
 
     if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise ValueError('Kernel size exceeds data.')
+        raise AssertionError('Kernel size exceeds data.')
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(d):
@@ -151,6 +152,8 @@ def flag_xants(uvd, xants):
         for xant in xants:
             blts = uvd.antpair2ind(ant, xant)
             uvd.flag_array[blts, :, :, :] = True
+            blts = uvd.antpair2ind(xant, ant)
+            uvd.flag_array[blts, :, :, :] = True
     return uvd
 
 
@@ -188,7 +191,7 @@ def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
         prevx, prevy = x.size, y.size
         for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             xp, yp = (x + dx).clip(0, f1.shape[0] - 1), (y + dy).clip(0, f1.shape[1] - 1)
-            i = np.where(f1[xp, yp] > sig_adj)[0]  # if sigma > 'sigl'
+            i = np.where(d[xp, yp] > sig_adj)[0]  # if sigma > 'sigl'
             f1.mask[xp[i], yp[i]] = 1
             x, y = np.where(f1.mask)
     return f1.mask
@@ -240,42 +243,68 @@ def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     Returns:
         bool array: array of flags
     """
-    nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
-    f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
+    try:
+        nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
+        f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
+    except AssertionError:
+        warnings.warn('Kernel size exceeds data. Flagging all data.')
+        f = np.ones_like(d, dtype=np.bool)
     return f
 
 
-def xrfi_run(filename, args, history):
+def xrfi_run(indata, args, history):
     """
     Run an RFI-flagging algorithm on a single data file, and optionally calibration files,
     and store results in npz files.
 
     Args:
-       filename -- Data file to run RFI flagging on.
+       indata -- Either UVData object or data file to run RFI flagging on.
        args -- parsed arguments via argparse.ArgumentParser.parse_args
        history -- history string to include in files
     Return:
        None
 
-    This function will take in a data file and optionally a cal file and
+    This function will take in a UVData object or  data file and optionally a cal file and
     model visibility file, and run an RFI-flagging algorithm to identify contaminated
     observations. Each set of flagging will be stored, as well as compressed versions.
     """
-    # make sure we were given files to process
-    if len(filename) == 0:
-        raise AssertionError('Please provide a visibility file')
-    if len(filename) > 1:
-        raise AssertionError('xrfi_run currently only takes a single data file.')
-    filename = filename[0]
-    uvd = UVData()
-    if args.infile_format == 'miriad':
-        uvd.read_miriad(filename)
-    elif args.infile_format == 'uvfits':
-        uvd.read_uvfits(filename)
-    elif args.infile_format == 'fhd':
-        uvd.read_fhd(filename)
+    if indata is None:
+        if (args.model_file is None) and (args.calfits_file is None):
+            raise AssertionError('Must provide at least one of: filename, '
+                                 'model_file, or calfits_file.')
+        warnings.warn('indata is none, not flagging on any data visibilities.')
+    elif isinstance(indata, UVData):
+        uvd = indata
+        if len(args.filename) == 0:
+            raise AssertionError('Please provide a filename to go with UVData object. '
+                                 'The filename is used in conjunction with "extension" '
+                                 'to determine the output filename.')
+        else:
+            if isinstance(args.filename, str):
+                filename = args.filename
+            else:
+                filename = args.filename[0]
     else:
-        raise ValueError('Unrecognized input file format ' + str(args.infile_format))
+        # make sure we were given files to process
+        if len(indata) == 0:
+            if (args.model_file is None) and (args.calfits_file is None):
+                raise AssertionError('Must provide at least one of: filename, '
+                                     'model_file, or calfits_file.')
+            indata = None
+            warnings.warn('indata is none, not flagging on any data visibilities.')
+        elif len(indata) > 1:
+            raise AssertionError('xrfi_run currently only takes a single data file.')
+        else:
+            filename = indata[0]
+            uvd = UVData()
+            if args.infile_format == 'miriad':
+                uvd.read_miriad(filename)
+            elif args.infile_format == 'uvfits':
+                uvd.read_uvfits(filename)
+            elif args.infile_format == 'fhd':
+                uvd.read_fhd(filename)
+            else:
+                raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
     # Compute list of excluded antennas
     if args.ex_ants != '' or args.metrics_json != '':
@@ -287,16 +316,16 @@ def xrfi_run(filename, args, history):
         uvd = flag_xants(uvd, xants)
 
     # Flag on full data set
-    d_flag_array = vis_flag(uvd, args)
+    if indata is not None:
+        d_flag_array = vis_flag(uvd, args)
 
-    # Make a "normalized waterfall" to account for data already flagged in file
-    d_wf_tot = flags2waterfall(uvd, flag_array=d_flag_array)
-    d_wf_prior = flags2waterfall(uvd, flag_array=uvd.flag_array)
-    unit_flags = np.ones_like(d_wf_prior)
-    d_wf_norm = (d_wf_tot - d_wf_prior) / (unit_flags - d_wf_prior)
-    d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
-                             freq_threshold=args.freq_threshold,
-                             time_threshold=args.time_threshold)
+        # Make a "normalized waterfall" to account for data already flagged in file
+        d_wf_tot = flags2waterfall(uvd, flag_array=d_flag_array)
+        d_wf_prior = flags2waterfall(uvd, flag_array=uvd.flag_array)
+        d_wf_norm = normalize_wf(d_wf_tot, d_wf_prior)
+        d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
+                                 freq_threshold=args.freq_threshold,
+                                 time_threshold=args.time_threshold)
 
     # Flag on model visibilities
     if args.model_file is not None:
@@ -309,13 +338,16 @@ def xrfi_run(filename, args, history):
             uvm.read_fhd(args.model_file)
         else:
             raise ValueError('Unrecognized input file format ' + str(args.model_file_format))
-        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5, rtol=0) and
-                np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
-            raise ValueError('Time and frequency axes of model vis file must match'
-                             'the data file.')
+        if indata is not None:
+            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5, rtol=0) and
+                    np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
+                raise ValueError('Time and frequency axes of model vis file must match'
+                                 'the data file.')
         m_flag_array = vis_flag(uvm, args)
         m_waterfall = flags2waterfall(uvm, flag_array=m_flag_array)
-        m_wf_t = threshold_flags(m_waterfall, px_threshold=args.px_threshold,
+        m_wf_prior = flags2waterfall(uvm)
+        m_wf_norm = normalize_wf(m_waterfall, m_wf_prior)
+        m_wf_t = threshold_flags(m_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
 
@@ -323,17 +355,21 @@ def xrfi_run(filename, args, history):
     if args.calfits_file is not None:
         uvc = UVCal()
         uvc.read_calfits(args.calfits_file)
-        if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5, rtol=0) and
-                np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
-            raise ValueError('Time and frequency axes of calfits file must match'
-                             'the data file.')
+        if indata is not None:
+            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5, rtol=0) and
+                    np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
+                raise ValueError('Time and frequency axes of calfits file must match'
+                                 'the data file.')
         g_flag_array, x_flag_array = cal_flag(uvc, args)
         g_waterfall = flags2waterfall(uvc, flag_array=g_flag_array)
         x_waterfall = flags2waterfall(uvc, flag_array=x_flag_array)
-        g_wf_t = threshold_flags(g_waterfall, px_threshold=args.px_threshold,
+        c_wf_prior = flags2waterfall(uvc)
+        g_wf_norm = normalize_wf(g_waterfall, c_wf_prior)
+        x_wf_norm = normalize_wf(x_waterfall, c_wf_prior)
+        g_wf_t = threshold_flags(g_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
-        x_wf_t = threshold_flags(x_waterfall, px_threshold=args.px_threshold,
+        x_wf_t = threshold_flags(x_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
                                  time_threshold=args.time_threshold)
 
@@ -341,34 +377,47 @@ def xrfi_run(filename, args, history):
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
 
     # save output when we're done
-    if args.xrfi_path == '':
-        # default to the same directory
-        abspath = os.path.abspath(filename)
-        dirname = os.path.dirname(abspath)
-    else:
+    if args.xrfi_path != '':
+        # If explicitly given output path, use it. Otherwise use path from data.
         dirname = args.xrfi_path
-    basename = os.path.basename(filename)
-    outfile = ''.join([basename, args.extension])
-    outpath = os.path.join(dirname, outfile)
-    np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, history=history)
+    if indata is not None:
+        if args.xrfi_path == '':
+            dirname = os.path.dirname(os.path.abspath(filename))
+        basename = os.path.basename(filename)
+        outfile = ''.join([basename, args.extension])
+        outpath = os.path.join(dirname, outfile)
+        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
+        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array,
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, freq_array=uvd.freq_array,
+                 time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, history=history)
+        if (args.summary):
+            sum_file = ''.join([basename, args.summary_ext])
+            sum_path = os.path.join(dirname, sum_file)
+            # Summarize using one of the raw flag arrays
+            summarize_flags(uvd, sum_path, flag_array=d_flag_array)
     if args.model_file is not None:
+        if args.xrfi_path == '':
+            dirname = os.path.dirname(os.path.abspath(args.model_file))
         outfile = ''.join([os.path.basename(args.model_file), args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, history=history)
+        antpos, ants = uvm.get_ENU_antpos(center=True, pick_data_ants=True)
+        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array,
+                 antpairs=uvm.get_antpairs(), polarization_array=uvm.polarization_array, freq_array=uvm.freq_array,
+                 time_array=uvm.time_array, lst_array=uvm.lst_array, antpos=antpos, ants=ants, history=history)
     if args.calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
+        if args.xrfi_path == '':
+            dirname = os.path.dirname(os.path.abspath(args.calfits_file))
         outfile = ''.join([os.path.basename(args.calfits_file), '.g', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, history=history)
+        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, ants=uvc.ant_array,
+                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
+                 time_array=uvc.time_array, history=history)
         outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, history=history)
-
-    if args.summary:
-        sum_file = ''.join([basename, args.summary_ext])
-        sum_path = os.path.join(dirname, sum_file)
-        # Summarize using one of the raw flag arrays
-        summarize_flags(uvd, sum_path, flag_array=d_flag_array)
+        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, ants=uvc.ant_array,
+                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
+                 time_array=uvc.time_array, history=history)
 
     return
 
@@ -481,7 +530,7 @@ def flags2waterfall(uv, flag_array=None):
     else:
         waterfall = np.zeros((uv.Ntimes, uv.Nfreqs))
         for i, t in enumerate(np.unique(uv.time_array)):
-            waterfall[i, :] = np.mean(uv.flag_array[uv.time_array == t, 0, :, :],
+            waterfall[i, :] = np.mean(flag_array[uv.time_array == t, 0, :, :],
                                       axis=(0, 2))
 
     return waterfall
@@ -514,6 +563,23 @@ def waterfall2flags(waterfall, uv):
     return flag_array
 
 
+def normalize_wf(wf, wfp):
+    """ Normalize waterfall to account for data already flagged.
+    Args:
+        wf -- Waterfall of fractional flags.
+        wfp -- Waterfall of prior fractional flags. Size must match wf.
+    Returns:
+        wf_norm -- Waterfall of fractional flags which were not flagged prior.
+                   Note if wfp[i, j] == 1, then wf_norm[i, j] will be NaN.
+    """
+    if wf.shape != wfp.shape:
+        raise AssertionError('waterfall and prior waterfall must be same shape.')
+    ind = np.where(wfp < 1)
+    wf_norm = np.nan * np.ones_like(wf)
+    wf_norm[ind] = (wf[ind] - wfp[ind]) / (1. - wfp[ind])
+    return wf_norm
+
+
 def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05):
     """ Threshold flag waterfall at each pixel, as well as averages across time and frequency
     Args:
@@ -528,11 +594,22 @@ def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.0
         wf_t -- thresholded waterfall. Boolean array, same shape as wf.
     """
     wf_t = np.zeros(wf.shape, dtype=bool)
-    spec = np.nanmean(wf, axis=0)
+    with warnings.catch_warnings():
+        # Ignore empty slice warning which occurs for entire rows/columns of nan
+        warnings.filterwarnings('ignore', message='Mean of empty slice',
+                                category=RuntimeWarning)
+        spec = np.nanmean(wf, axis=0)
+        spec[np.isnan(spec)] = 1
+        tseries = np.nanmean(wf, axis=1)
+        tseries[np.isnan(tseries)] = 1
     wf_t[:, spec > time_threshold] = True
-    tseries = np.nanmean(wf, axis=1)
     wf_t[tseries > freq_threshold, :] = True
-    wf_t[wf > px_threshold] = True
+    with warnings.catch_warnings():
+        # Explicitly handle nans in wf
+        warnings.filterwarnings('ignore', message='invalid value encountered in greater',
+                                category=RuntimeWarning)
+        wf_t[wf > px_threshold] = True
+        wf_t[np.isnan(wf)] = True  # Flag anything that was completely flagged in prior.
     return wf_t
 
 
@@ -667,6 +744,8 @@ def xrfi_apply(filename, args, history):
     if len(waterfalls) > 0:
         wf_full = sum(waterfalls).astype(bool)  # Union all waterfalls
         flag_array += waterfall2flags(wf_full, uvd)  # Combine with flag array
+    else:
+        wf_full = None
 
     # Finally, add the flag array to the flag array in the data
     uvd.flag_array += flag_array
@@ -691,3 +770,11 @@ def xrfi_apply(filename, args, history):
         uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
     else:
         raise ValueError('Unrecognized output file format ' + str(args.outfile_format))
+    if args.output_npz:
+        # Save an npz with the final flag array and waterfall and relevant metadata
+        outpath = outpath + args.out_npz_ext
+        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
+        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, baseline_array=uvd.baseline_array,
+                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array,
+                 freq_array=uvd.freq_array, time_array=uvd.time_array, lst_array=uvd.lst_array,
+                 antpos=antpos, ants=ants, history=flag_history + history)
