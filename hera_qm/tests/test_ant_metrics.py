@@ -377,7 +377,7 @@ class TestAntennaMetrics(unittest.TestCase):
         am.save_antenna_metrics(outfile)
         outname = os.path.join(DATA_PATH, 'test_output',
                                'ant_metrics_output.hdf5')
-        nt.assert_True(os.path.isfile(outname))
+        nt.assert_true(os.path.isfile(outname))
         os.remove(outname)
 
     def test_cross_detection(self):
