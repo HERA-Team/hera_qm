@@ -331,12 +331,19 @@ def load_antenna_metrics(metricsHDF5Filename):
 
 
 def load_json_metrics(metricsJSONFile):
-    """Load all cut decisions and meta-metrics from a JSON into python dictionary."""
+    """Load cut decisions and metrics from a JSON into python dictionary."""
     with open(metricsJSONFile, 'r') as infile:
         jsonMetrics = json.load(infile)
     gvars = {'nan': np.nan, 'inf': np.inf, '-inf': -np.inf}
-    return {key: (eval(str(val), gvars) if (key != 'version' and key != 'history') else str(val)) for
-            key, val in jsonMetrics.items()}
+
+    metric_dict = {}
+    for key, val in jsonMetrics.items():
+        if (key == 'version') or (key == 'history'):
+            metric_dict[key] = str(val)
+        else:
+            metric_dict[key] = eval(str(val), gvars)
+
+    return metric_dict
 
 
 #######################################################################
@@ -548,11 +555,11 @@ class Antenna_Metrics():
         out_dict['reds'] = str(self.reds)
 
         if metricsHDF5Filename.split('.')[-1] == 'json':
-            warnings.warn("JSON-type files can still be written"
+            warnings.warn("JSON-type files can still be written "
                           "but are no longer writen by default.\n"
                           "Write to HDF5 format for future compatibility.")
 
-            with open(metricsJSONFilename, 'w') as outfile:
+            with open(metricsHDF5Filename, 'w') as outfile:
                 json.dump(out_dict, outfile, indent=4)
         else:
             if metricsHDF5Filename.split('.')[-1] != 'hdf5':
