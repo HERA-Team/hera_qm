@@ -37,7 +37,7 @@ class UVFlag():
             self.time_array, ri = np.unique(input.time_array, return_index=True)
             # TODO: lst_array doesn't exist in UVCal
             self.lst_array = input.lst_array[ri]
-            self.freq_array = input.freq_arrayp[0, :]
+            self.freq_array = input.freq_array[0, :]
             if isinstance(input, UVData):
                 self.polarization_array = input.polarization_array
             else:
@@ -105,6 +105,38 @@ class UVFlag():
             else:
                 self.weights_array = np.zeros(self.metric_array.shape)
 
+    def __eq__(self, other, check_history=False):
+        """ Function to check equality of two UVFlag objects
+        Args:
+            other: UVFlag object to check against
+        """
+        if not isinstance(other, self.__class__):
+            return False
+        if (self.type != other.type) or (self.mode != other.mode):
+            return False
+
+        array_list = ['weights_array', 'time_array', 'lst_array', 'freq_array',
+                      'polarization_array']
+        if self.type == 'antenna':
+            array_list.append('ant_array')
+        elif self.type == 'baseline':
+            array_list.append('baseline_array')
+        if self.mode == 'flag':
+            array_list.append('flag_array')
+        elif self.mode == 'metric':
+            array_list.append('metric_array')
+        for arr in array_list:
+            self_param = getattr(self, arr)
+            other_param = getattr(other, arr)
+            if not np.all(self_param == other_param):
+                return False
+
+        if check_history:
+            if self.history != other.history:
+                return False
+
+        return True
+
     def read(self, filename, history=''):
         """
         Read in flag/metric data from a UVH5 file.
@@ -127,8 +159,14 @@ class UVFlag():
                 raise IOError(filename + ' not found.')
 
             # These are useful to clear no longer used attributes if the type or mode changes
-            prev_type = self.type
-            prev_mode = self.mode
+            try:
+                prev_type = self.type
+            except AttributeError:
+                prev_type = None
+            try:
+                prev_mode = self.mode
+            except AttributeError:
+                prev_mode = None
 
             # Open file for reading
             with h5py.File(filename, 'r') as f:
