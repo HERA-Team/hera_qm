@@ -12,6 +12,7 @@ import json
 import copy
 from hera_qm.version import hera_qm_version_str
 import h5py
+import warnings
 
 class fake_data():
 
@@ -202,6 +203,19 @@ class TestLowLevelFunctions(unittest.TestCase):
 
         # clean up after ourselves
         os.remove(outpath)
+
+    def test_load_ant_metrics_json(self):
+        json_file = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+        hdf5_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
+        warn_message = ["JSON-type files can still be read but are no longer "
+                        "writen by default.\n"
+                        "Write to HDF5 format for future compatibility."]
+        json_dict = uvtest.checkWarnings(ant_metrics.load_antenna_metrics,
+                                         func_args=[json_file],
+                                         category=UserWarning, nwarnings=1,
+                                         message=warn_message)
+        hdf5_dict = ant_metrics.load_antenna_metrics(hdf5_file)
+        nt.assert_dict_equal(hdf5_dict, json_dict)
 
 class TestAntennaMetrics(unittest.TestCase):
 
