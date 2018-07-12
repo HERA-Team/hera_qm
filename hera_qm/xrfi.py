@@ -440,8 +440,8 @@ def vis_flag(uv, args):
         raise ValueError('First argument to vis_flags must be a UVData object.')
     flag_array = np.zeros_like(uv.flag_array)
     for key, d in uv.antpairpol_iter():
-        ind1, ind2, ipol = uv._key2inds(key)
-        for ind in [ind1, ind2]:
+        ind1, ind2, pol = uv._key2inds(key)
+        for ind, ipol in zip((ind1, ind2), pol):
             if len(ind) == 0:
                 continue
             f = uv.flag_array[ind, 0, :, ipol]
