@@ -217,6 +217,7 @@ class TestLowLevelFunctions(unittest.TestCase):
         hdf5_dict = ant_metrics.load_antenna_metrics(hdf5_file)
         nt.assert_dict_equal(hdf5_dict, json_dict)
 
+
 class TestAntennaMetrics(unittest.TestCase):
 
     def setUp(self):
@@ -261,9 +262,10 @@ class TestAntennaMetrics(unittest.TestCase):
                      [(10, 88), (43, 64)], [(9, 97), (64, 81), (80, 89), (88, 112),
                                             (53, 10), (104, 43)]]
         # internal names for summary statistics
-        self.summaryStats = ['xants', 'crossedAntsRemoved', 'deadAntsRemoved', 'removalIter',
-                             'finalMetrics', 'allMetrics', 'finalModzScores', 'allModzScores',
-                             'crossCut', 'deadCut', 'dataFileList', 'reds']
+        self.summaryStats = ['xants', 'crossedAntsRemoved', 'deadAntsRemoved',
+                             'removalIter', 'finalMetrics', 'allMetrics',
+                             'finalModzScores', 'allModzScores', 'crossCut',
+                             'deadCut', 'dataFileList', 'reds']
 
     def test_load_errors(self):
         with self.assertRaises(ValueError):
@@ -294,7 +296,9 @@ class TestAntennaMetrics(unittest.TestCase):
         am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
                                          fileformat='miriad')
         with self.assertRaises(KeyError):
-            am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.hdf5')
+            filename = os.path.join(DATA_PATH,
+                                    '/test_output/ant_metrics_output.hdf5')
+            am.save_antenna_metrics(filename)
 
         am.iterative_antenna_metrics_and_flagging()
         for stat in self.summaryStats:
@@ -304,16 +308,77 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertIn((81, 'x'), am.deadAntsRemoved)
         self.assertIn((81, 'y'), am.deadAntsRemoved)
 
-        outfile = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.hdf5')
+        outfile = os.path.join(DATA_PATH, 'test_output',
+                               'ant_metrics_output.hdf5')
         am.save_antenna_metrics(outfile)
         loaded = ant_metrics.load_antenna_metrics(outfile)
         # json names for summary statistics
         jsonStats = ['xants', 'crossed_ants', 'dead_ants', 'removal_iteration',
-                     'final_metrics', 'all_metrics', 'final_mod_z_scores', 'all_mod_z_scores',
-                     'cross_pol_z_cut', 'dead_ant_z_cut', 'datafile_list', 'reds', 'version']
+                     'final_metrics', 'all_metrics', 'final_mod_z_scores',
+                     'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
+                     'datafile_list', 'reds', 'version']
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
             self.assertEqual(loaded[jsonStat], getattr(am, stat))
         os.remove(outfile)
+
+    def test_save_json(self):
+        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                         fileformat='miriad')
+        am.iterative_antenna_metrics_and_flagging()
+        for stat in self.summaryStats:
+            self.assertTrue(hasattr(am, stat))
+        self.assertIn((81, 'x'), am.xants)
+        self.assertIn((81, 'y'), am.xants)
+        self.assertIn((81, 'x'), am.deadAntsRemoved)
+        self.assertIn((81, 'y'), am.deadAntsRemoved)
+
+        outfile = os.path.join(DATA_PATH, 'test_output',
+                                 'ant_metrics_output.json')
+        warn_message = ["JSON-type files can still be written "
+                        "but are no longer writen by default.\n"
+                        "Write to HDF5 format for future compatibility."]
+        uvtest.checkWarnings(am.save_antenna_metrics,
+                             func_args=[outfile],
+                             category=UserWarning, nwarnings=1,
+                             message=warn_message)
+
+        # am.save_antenna_metrics(json_file)
+        warn_message = ["JSON-type files can still be read but are no longer "
+                        "writen by default.\n"
+                        "Write to HDF5 format for future compatibility."]
+        loaded = uvtest.checkWarnings(ant_metrics.load_antenna_metrics,
+                                      func_args=[outfile],
+                                      category=UserWarning, nwarnings=1,
+                                      message=warn_message)
+        _ = loaded.pop('history', '')
+
+        jsonStats = ['xants', 'crossed_ants', 'dead_ants', 'removal_iteration',
+                     'final_metrics', 'all_metrics', 'final_mod_z_scores',
+                     'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
+                     'datafile_list', 'reds', 'version']
+
+        for stat, jsonStat in zip(self.summaryStats, jsonStats):
+            self.assertEqual(loaded[jsonStat], getattr(am, stat))
+        os.remove(outfile)
+
+    def test_add_file_appelation(self):
+        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                         fileformat='miriad')
+        am.iterative_antenna_metrics_and_flagging()
+        for stat in self.summaryStats:
+            self.assertTrue(hasattr(am, stat))
+        self.assertIn((81, 'x'), am.xants)
+        self.assertIn((81, 'y'), am.xants)
+        self.assertIn((81, 'x'), am.deadAntsRemoved)
+        self.assertIn((81, 'y'), am.deadAntsRemoved)
+
+        outfile = os.path.join(DATA_PATH, 'test_output',
+                               'ant_metrics_output')
+        am.save_antenna_metrics(outfile)
+        outname = os.path.join(DATA_PATH, 'test_output',
+                               'ant_metrics_output.hdf5')
+        nt.assert_True(os.path.isfile(outname))
+        os.remove(outname)
 
     def test_cross_detection(self):
         am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
