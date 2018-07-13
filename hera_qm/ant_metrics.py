@@ -1,7 +1,6 @@
 """Class and algorithms to compute per Antenna metrics."""
 from __future__ import print_function, division, absolute_import
 import numpy as np
-import aipy
 from copy import deepcopy
 from pyuvdata import UVData
 import json
@@ -621,13 +620,6 @@ def ant_metrics_run(files, args, history):
     if len(fullpol_file_list) == 0:
         raise AssertionError('Could not find all 4 polarizations for any files provided')
 
-    # if args.cal is not None:
-    #     # define freqs
-    #     # note that redundancy calculation does not depend on this, so this is just a dummy range
-    #     freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
-    #     # process calfile
-    #     aa = aipy.cal.get_aa(args.cal, freqs)
-    # else:
     # generate aa object from file
     # N.B.: assumes redunancy information is the same for all files passed in
     first_file = fullpol_file_list[0][0]
