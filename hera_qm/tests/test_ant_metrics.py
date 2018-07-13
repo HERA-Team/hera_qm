@@ -406,7 +406,8 @@ class TestAntennaMetrics(unittest.TestCase):
 
 
 class TestAntmetricsRun(object):
-    def test_ant_metrics_run(self):
+
+    def test_run_ant_metrics_no_files(self):
         # get argument object
         a = utils.get_metrics_ArgumentParser('ant_metrics')
         if DATA_PATH not in sys.path:
@@ -421,7 +422,6 @@ class TestAntmetricsRun(object):
         arg6 = "--vis_format=miriad"
         arg7 = "--alwaysDeadCut=10"
         arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
-
         # test running with no files
         cmd = ' '.join([arguments, ''])
         args = a.parse_args(cmd.split())
@@ -429,28 +429,29 @@ class TestAntmetricsRun(object):
         nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run, args.files,
                          args, history)
 
-        # test running with a lone file
-        lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-        cmd = ' '.join([arguments, lone_file])
-        args = a.parse_args(cmd.split())
-        history = cmd
-        # this test raises a warning, then fails...
-        args = [AssertionError, ant_metrics.ant_metrics_run, args.files, args, history]
-        uvtest.checkWarnings(nt.assert_raises, args, nwarnings=1,
-                             message='Could not find')
-
-        # test actually running metrics
-        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA')
-        dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2457698.40355.HH.uvcA.ant_metrics.hdf5')
-        if os.path.exists(dest_file):
-            os.remove(dest_file)
-        cmd = ' '.join([arguments, xx_file])
-        args = a.parse_args(cmd.split())
-        history = cmd
-        ant_metrics.ant_metrics_run(args.files, args, history)
-        nt.assert_true(os.path.exists(dest_file))
-        os.remove(dest_file)
+    def test_run_ant_metrics_one_file(self):
+            a = utils.get_metrics_ArgumentParser('ant_metrics')
+            if DATA_PATH not in sys.path:
+                sys.path.append(DATA_PATH)
+            calfile = 'heratest_calfile'
+            arg0 = "-C {}".format(calfile)
+            arg1 = "-p xx,yy,xy,yx"
+            arg2 = "--crossCut=5"
+            arg3 = "--deadCut=5"
+            arg4 = "--extension=.ant_metrics.hdf5"
+            arg5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+            arg6 = "--vis_format=miriad"
+            arg7 = "--alwaysDeadCut=10"
+            arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+            # test running with a lone file
+            lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+            cmd = ' '.join([arguments, lone_file])
+            args = a.parse_args(cmd.split())
+            history = cmd
+            # this test raises a warning, then fails...
+            args = [AssertionError, ant_metrics.ant_metrics_run, args.files, args, history]
+            uvtest.checkWarnings(nt.assert_raises, args, nwarnings=1,
+                                 message='Could not find')
 
     def test_ant_metrics_run_nocalfile(self):
         # get arguments
