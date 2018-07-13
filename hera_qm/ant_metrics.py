@@ -1,6 +1,5 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
-import aipy
 from copy import deepcopy
 from pyuvdata import UVData
 import json
@@ -544,6 +543,7 @@ def ant_metrics_run(files, args, history):
         raise AssertionError('Could not find all 4 polarizations for any files provided')
 
     if args.cal is not None:
+        import aipy
         # define freqs
         # note that redundancy calculation does not depend on this, so this is just a dummy range
         freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
