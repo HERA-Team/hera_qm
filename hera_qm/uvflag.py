@@ -3,9 +3,30 @@ import numpy as np
 import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
+from pyuvdata import utils as uvutils
+from pyuvdata import telescopes as uvtel
 from hera_qm.version import hera_qm_version_str
 import warnings
 import h5py
+import copy
+
+
+def lst_from_uv(uv):
+    ''' Calculate the lst_array for a UVData or UVCal object.
+    Args:
+        uv: a UVData or UVCal object.
+    Returns:
+        lst_array: lst_array corresponding to time_array and at telecope location.
+                   Units are radian.
+    '''
+    if not isinstance(uv, (UVCal, UVData)):
+        raise ValueError('Function lst_from_uv can only operate on '
+                         'UVCal or UVData object.')
+
+    tel = uvtel.get_telescope(uv.telescope_name)
+    lat, lon, alt = tel.telescope_location_lat_lon_alt_degrees
+    lst_array = uvutils.get_lst_for_time(uv.time_array, lat, lon, alt)
+    return lst_array
 
 class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
@@ -35,13 +56,13 @@ class UVFlag():
             self.type = 'wf'
             self.history += 'Flag object with type "wf" created by ' + hera_qm_version_str
             self.time_array, ri = np.unique(input.time_array, return_index=True)
-            # TODO: lst_array doesn't exist in UVCal
-            self.lst_array = input.lst_array[ri]
             self.freq_array = input.freq_array[0, :]
             if isinstance(input, UVData):
                 self.polarization_array = input.polarization_array
+                self.lst_array = input.lst_array[ri]
             else:
                 self.polarization_array = input.jones_array
+                self.lst_array = lst_from_uv(input)[ri]
             if copy_flags:
                 self.metric_array = flags2waterfall(input, keep_pol=True)
                 self.history += ' WF generated from ' + str(input.__class__) + ' object.'
@@ -83,8 +104,7 @@ class UVFlag():
             self.history += 'Flag object with type "antenna" created by ' + hera_qm_version_str
             self.ant_array = input.ant_array
             self.time_array = input.time_array
-            # TODO: get LST array
-            # self.lst_array = input.lst_array
+            self.lst_array = lst_from_uv(input)
             self.freq_array = input.freq_array
             self.polarization_array = input.jones_array
             if copy_flags:
