@@ -506,7 +506,7 @@ def cal_flag(uvc, args):
     return g_flags, x_flags
 
 
-def flags2waterfall(uv, flag_array=None):
+def flags2waterfall(uv, flag_array=None, keep_pol=False):
     """
     Convert a flag array to a 2D waterfall of dimensions (Ntimes, Nfreqs).
     Averages over baselines and polarizations (in the case of visibility data),
@@ -516,10 +516,11 @@ def flags2waterfall(uv, flag_array=None):
               and supplies the flag_array to convert (if flag_array not specified)
         flag_array -- Optional flag array to convert instead of uv.flag_array.
                       Must have same dimensions as uv.flag_array.
+        keep_pol -- Option to keep the polarization axis in tact. Default is False.
     Returns:
         waterfall -- 2D waterfall of averaged flags, for example fraction of baselines
                      which are flagged for every time and frequency (in case of UVData input)
-                     Size is (Ntimes, Nfreqs).
+                     Size is (Ntimes, Nfreqs) or (Ntimes, Nfreqs, Npols).
     """
     if not isinstance(uv, (UVData, UVCal)):
         raise ValueError('flags2waterfall() requires a UVData or UVCal object as '
@@ -530,12 +531,21 @@ def flags2waterfall(uv, flag_array=None):
         raise ValueError('Flag array must align with UVData or UVCal object.')
 
     if isinstance(uv, UVCal):
-        waterfall = np.mean(flag_array, axis=(0, 1, 4)).T
+        if keep_pol:
+            waterfall = np.swapaxes(np.mean(flag_array, axis=(0, 1)), 0, 1)
+        else:
+            waterfall = np.mean(flag_array, axis=(0, 1, 4)).T
     else:
-        waterfall = np.zeros((uv.Ntimes, uv.Nfreqs))
-        for i, t in enumerate(np.unique(uv.time_array)):
-            waterfall[i, :] = np.mean(flag_array[uv.time_array == t, 0, :, :],
-                                      axis=(0, 2))
+        if keep_pol:
+            waterfall = np.zeros((uv.Ntimes, uv.Nfreqs, uv.Npols))
+            for i, t in enumerate(np.unique(uv.time_array)):
+                waterfall[i, :] = np.mean(flag_array[uv.time_array == t, 0, :, :],
+                                          axis=0)
+        else:
+            waterfall = np.zeros((uv.Ntimes, uv.Nfreqs))
+            for i, t in enumerate(np.unique(uv.time_array)):
+                waterfall[i, :] = np.mean(flag_array[uv.time_array == t, 0, :, :],
+                                          axis=(0, 2))
 
     return waterfall
 

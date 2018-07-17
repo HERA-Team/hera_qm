@@ -6,6 +6,7 @@ from pyuvdata import UVCal
 from pyuvdata import utils as uvutils
 from pyuvdata import telescopes as uvtel
 from hera_qm.version import hera_qm_version_str
+from hera_qm import xrfi
 import warnings
 import h5py
 import copy
@@ -64,7 +65,7 @@ class UVFlag():
                 self.polarization_array = input.jones_array
                 self.lst_array = lst_from_uv(input)[ri]
             if copy_flags:
-                self.metric_array = flags2waterfall(input, keep_pol=True)
+                self.metric_array = xrfi.flags2waterfall(input, keep_pol=True)
                 self.history += ' WF generated from ' + str(input.__class__) + ' object.'
                 if self.mode == 'flag':
                     warnings.warn('Copying flags into waterfall results in mode=="metric".')

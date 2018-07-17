@@ -88,6 +88,37 @@ def test_init_wf_uvc():
     nt.assert_true('Flag object with type "wf"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
+def test_init_wf_flag():
+    uv = UVCal()
+    uv.read_calfits(test_c_file)
+    uvf = UVFlag(uv, wf=True, mode='flag')
+    nt.assert_true(uvf.flag_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
+    nt.assert_true(np.all(uvf.flag_array == False))
+    nt.assert_true(uvf.weights_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
+    nt.assert_true(np.all(uvf.weights_array == 0))
+    nt.assert_true(uvf.type == 'wf')
+    nt.assert_true(uvf.mode == 'flag')
+    nt.assert_true(np.all(uvf.time_array == np.unique(uv.time_array)))
+    nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
+    nt.assert_true(np.all(uvf.polarization_array == uv.jones_array))
+    nt.assert_true('Flag object with type "wf"' in uvf.history)
+    nt.assert_true(hera_qm_version_str in uvf.history)
+
+def test_init_wf_copy_flags():
+    uv = UVCal()
+    uv.read_calfits(test_c_file)
+    uvf = UVFlag(uv, wf=True, mode='flag', copy_flags=True)
+    nt.assert_false(hasattr(uvf, 'flag_array'))  # Should be metric due to copy flags
+    nt.assert_true(uvf.metric_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
+    nt.assert_true(uvf.weights_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
+    nt.assert_true(uvf.type == 'wf')
+    nt.assert_true(uvf.mode == 'metric')
+    nt.assert_true(np.all(uvf.time_array == np.unique(uv.time_array)))
+    nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
+    nt.assert_true(np.all(uvf.polarization_array == uv.jones_array))
+    nt.assert_true('Flag object with type "wf"' in uvf.history)
+    nt.assert_true(hera_qm_version_str in uvf.history)
+
 def test_read_write_loop():
     uv = UVData()
     uv.read_miriad(test_d_file)
