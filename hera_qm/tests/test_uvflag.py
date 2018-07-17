@@ -43,7 +43,6 @@ def test_init_UVData_copy_flags():
     uv.read_miriad(test_d_file)
     uvf = uvtest.checkWarnings(UVFlag, [uv], {'copy_flags': True, 'mode': 'metric'},
                                nwarnings=1, message='Copying flags to type=="baseline"')
-    uvf = UVFlag(uv, copy_flags=True, mode='metric')
     nt.assert_false(hasattr(uvf, 'metric_array'))  # Should be flag due to copy flags
     nt.assert_true(np.array_equal(uvf.flag_array, uv.flag_array))
     nt.assert_true(uvf.weights_array.shape == uv.flag_array.shape)
@@ -82,7 +81,8 @@ def test_init_UVCal():
 def test_init_cal_copy_flags():
     uv = UVCal()
     uv.read_calfits(test_c_file)
-    uvf = UVFlag(uv, mode='metric', copy_flags=True)
+    uvf = uvtest.checkWarnings(UVFlag, [uv], {'copy_flags': True, 'mode': 'metric'},
+                               nwarnings=1, message='Copying flags to type=="antenna"')
     nt.assert_false(hasattr(uvf, 'metric_array'))  # Should be flag due to copy flags
     nt.assert_true(np.array_equal(uvf.flag_array, uv.flag_array))
     nt.assert_true(uvf.weights_array.shape == uv.flag_array.shape)
@@ -145,7 +145,8 @@ def test_init_wf_flag():
 def test_init_wf_copy_flags():
     uv = UVCal()
     uv.read_calfits(test_c_file)
-    uvf = UVFlag(uv, wf=True, mode='flag', copy_flags=True)
+    uvf = uvtest.checkWarnings(UVFlag, [uv], {'copy_flags': True, 'mode': 'flag', 'wf': True},
+                               nwarnings=1, message='Copying flags into waterfall')
     nt.assert_false(hasattr(uvf, 'flag_array'))  # Should be metric due to copy flags
     nt.assert_true(uvf.metric_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
     nt.assert_true(uvf.weights_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
@@ -484,3 +485,24 @@ def test_clear_unused_attributes():
     uv.clear_unused_attributes()
     nt.assert_false(hasattr(uv, 'ant_array'))
     nt.assert_false(hasattr(uv, 'flag_array'))
+
+def test_not_equal():
+    uvf1 = UVFlag(test_f_file)
+    # different class
+    nt.assert_false(uvf1.__eq__(5))
+    # different mode
+    uvf2 = copy.deepcopy(uvf1)
+    uvf2.mode = 'flag'
+    nt.assert_false(uvf1.__eq__(uvf2))
+    # different type
+    uvf2 = copy.deepcopy(uvf1)
+    uvf2.type = 'antenna'
+    nt.assert_false(uvf1.__eq__(uvf2))
+    # array different
+    uvf2 = copy.deepcopy(uvf1)
+    uvf2.freq_array += 1
+    nt.assert_false(uvf1.__eq__(uvf2))
+    # history different
+    uvf2 = copy.deepcopy(uvf1)
+    uvf2.history += 'hello'
+    nt.assert_false(uvf1.__eq__(uvf2, check_history=True))
