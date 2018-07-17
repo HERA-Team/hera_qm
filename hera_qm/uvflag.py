@@ -125,6 +125,16 @@ class UVFlag():
             else:
                 self.weights_array = np.zeros(self.metric_array.shape)
 
+        # Clear out unused attributes
+        if hasattr(self, 'baseline') and self.type != 'baseline':
+            del(self.baseline)
+        if hasattr(self, 'ant_array') and self.type != 'antenna':
+            del(self.ant_array)
+        if hasattr(self, 'metric_array') and self.mode != 'metric':
+            del(self.metric_array)
+        if hasattr(self, 'flag_array') and self.mode != 'flag':
+            del(self.flag_array)
+
     def __eq__(self, other, check_history=False):
         """ Function to check equality of two UVFlag objects
         Args:
@@ -178,16 +188,6 @@ class UVFlag():
             if not os.path.exists(filename):
                 raise IOError(filename + ' not found.')
 
-            # These are useful to clear no longer used attributes if the type or mode changes
-            try:
-                prev_type = self.type
-            except AttributeError:
-                prev_type = None
-            try:
-                prev_mode = self.mode
-            except AttributeError:
-                prev_mode = None
-
             # Open file for reading
             with h5py.File(filename, 'r') as f:
                 header = f['/Header']
@@ -202,21 +202,21 @@ class UVFlag():
                 self.polarization_array = header['polarization_array'].value
                 if self.type == 'baseline':
                     self.baseline_array = header['baseline_array'].value
-                    if prev_type == 'antenna':
+                    if hasattr(self, 'ant_array'):
                         del(self.ant_array)
                 elif self.type == 'antenna':
                     self.ant_array = header['ant_array'].value
-                    if prev_type == 'baseline':
+                    if hasattr(self, 'baseline_array'):
                         del(self.baseline_array)
 
                 dgrp = f['/Data']
                 if self.mode == 'metric':
                     self.metric_array = dgrp['metric_array'].value
-                    if prev_mode == 'flag':
+                    if hasattr(self, 'flag_array'):
                         del(self.flag_array)
                 elif self.mode == 'flag':
                     self.flag_array = dgrp['flag_array'].value
-                    if prev_mode == 'metric':
+                    if hasattr(self, 'metric_array'):
                         del(self.metric_array)
 
                 self.weights_array = dgrp['weights_array'].value
