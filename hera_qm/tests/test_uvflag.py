@@ -427,3 +427,24 @@ def test_inplace_add():
     uv2.time_array += 1
     uv1a += uv2
     nt.assert_true(uv1a.__eq__(uv1b + uv2))
+
+def test_clear_unused_attributes():
+    uv = UVFlag(test_f_file)
+    nt.assert_true(hasattr(uv, 'baseline_array') & hasattr(uv, 'ant_1_array')
+                   & hasattr(uv, 'ant_2_array'))
+    uv.type = 'antenna'
+    uv.clear_unused_attributes()
+    nt.assert_false(hasattr(uv, 'baseline_array') | hasattr(uv, 'ant_1_array')
+                    | hasattr(uv, 'ant_2_array'))
+    uv.mode = 'flag'
+    nt.assert_true(hasattr(uv, 'metric_array'))
+    uv.clear_unused_attributes()
+    nt.assert_false(hasattr(uv, 'metric_array'))
+
+    # Start over
+    uv = UVFlag(test_f_file)
+    uv.ant_array = np.array([4])
+    uv.flag_array = np.array([5])
+    uv.clear_unused_attributes()
+    nt.assert_false(hasattr(uv, 'ant_array'))
+    nt.assert_false(hasattr(uv, 'flag_array'))
