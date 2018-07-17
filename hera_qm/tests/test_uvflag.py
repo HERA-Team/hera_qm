@@ -15,6 +15,7 @@ import copy
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
 test_c_file = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
 test_f_file = test_d_file + '.testuvflag.h5'
+test_outfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
 
 
 def test_init_UVData():
@@ -46,7 +47,8 @@ def test_init_UVCal():
     nt.assert_true(uvf.type == 'antenna')
     nt.assert_true(uvf.mode == 'metric')
     nt.assert_true(np.all(uvf.time_array == uvc.time_array))
-    nt.assert_true(np.all(uvf.lst_array == uv.lst_array))
+    lst = lst_from_uv(uvc)
+    nt.assert_true(np.all(uvf.lst_array == lst))
     nt.assert_true(np.all(uvf.freq_array == uvc.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uvc.jones_array))
     nt.assert_true(np.all(uvf.ant_array == uvc.ant_array))
@@ -55,7 +57,7 @@ def test_init_UVCal():
 
 def test_init_wf_uvd():
     uv = UVData()
-    uv.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'))
+    uv.read_miriad(test_d_file)
     uvf = UVFlag(uv, wf=True)
     nt.assert_true(uvf.metric_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Npols))
     nt.assert_true(np.all(uvf.metric_array == 0))
@@ -72,7 +74,7 @@ def test_init_wf_uvd():
 
 def test_init_wf_uvc():
     uv = UVCal()
-    uv.read_calfits(os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits'))
+    uv.read_calfits(test_c_file)
     uvf = UVFlag(uv, wf=True)
     nt.assert_true(uvf.metric_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
     nt.assert_true(np.all(uvf.metric_array == 0))
@@ -88,11 +90,10 @@ def test_init_wf_uvc():
 
 def test_read_write_loop():
     uv = UVData()
-    uv.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'))
+    uv.read_miriad(test_d_file)
     uvf = UVFlag(uv)
-    testfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
-    uvf.write(testfile, clobber=True)
-    uvf2 = UVFlag(testfile)
+    uvf.write(test_outfile, clobber=True)
+    uvf2 = UVFlag(test_outfile)
     # Update history to match expected additions that were made
     uvf.history += 'Written by ' + hera_qm_version_str
     uvf.history += ' Read by ' + hera_qm_version_str
@@ -101,23 +102,115 @@ def test_read_write_loop():
 def test_read_write_ant():
     uv = UVCal()
     uv.read_calfits(test_c_file)
-    uvf = UVFlag(uv)
-    testfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
-    uvf.write(testfile, clobber=True)
-    uvf2 = UVFlag(testfile)
+    uvf = UVFlag(uv, mode='flag')
+    uvf.write(test_outfile, clobber=True)
+    uvf2 = UVFlag(test_outfile)
     # Update history to match expected additions that were made
     uvf.history += 'Written by ' + hera_qm_version_str
     uvf.history += ' Read by ' + hera_qm_version_str
     nt.assert_true(uvf.__eq__(uvf2, check_history=True))
 
+def test_read_write_nocompress():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(uv)
+    uvf.write(test_outfile, clobber=True, data_compression=None)
+    uvf2 = UVFlag(test_outfile)
+    # Update history to match expected additions that were made
+    uvf.history += 'Written by ' + hera_qm_version_str
+    uvf.history += ' Read by ' + hera_qm_version_str
+    nt.assert_true(uvf.__eq__(uvf2, check_history=True))
+
+def test_read_write_nocompress_flag():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(uv, mode='flag')
+    uvf.write(test_outfile, clobber=True, data_compression=None)
+    uvf2 = UVFlag(test_outfile)
+    # Update history to match expected additions that were made
+    uvf.history += 'Written by ' + hera_qm_version_str
+    uvf.history += ' Read by ' + hera_qm_version_str
+    nt.assert_true(uvf.__eq__(uvf2, check_history=True))
+
+def test_init_list():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uv.time_array -= 1
+    uvf = UVFlag([uv, test_f_file])
+    uvf1 = UVFlag(uv)
+    uvf2 = UVFlag(test_f_file)
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.metric_array, uvf2.metric_array), axis=0),
+                                  uvf.metric_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.weights_array, uvf2.weights_array), axis=0),
+                                  uvf.weights_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.time_array, uvf2.time_array)),
+                                  uvf.time_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.baseline_array, uvf2.baseline_array)),
+                                  uvf.baseline_array))
+    nt.assert_true(uvf.mode == 'metric')
+    nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
+    nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
+
+def test_read_list():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uv.time_array -= 1
+    uvf = UVFlag(uv)
+    uvf.write(test_outfile, clobber=True)
+    uvf.read([test_outfile, test_f_file])
+    uvf1 = UVFlag(uv)
+    uvf2 = UVFlag(test_f_file)
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.metric_array, uvf2.metric_array), axis=0),
+                                  uvf.metric_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.weights_array, uvf2.weights_array), axis=0),
+                                  uvf.weights_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.time_array, uvf2.time_array)),
+                                  uvf.time_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.baseline_array, uvf2.baseline_array)),
+                                  uvf.baseline_array))
+    nt.assert_true(uvf.mode == 'metric')
+    nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
+    nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
+
+def test_read_error():
+    nt.assert_raises(IOError, UVFlag, 'foo')
+
+def test_read_change_type():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    uvf.write(test_outfile, clobber=True)
+    nt.assert_true(hasattr(uvf, 'ant_array'))
+    uvf.read(test_f_file)
+    nt.assert_false(hasattr(uvf, 'ant_array'))
+    nt.assert_true(hasattr(uvf, 'baseline_array'))
+    uvf.read(test_outfile)
+    nt.assert_true(hasattr(uvf, 'ant_array'))
+    nt.assert_false(hasattr(uvf, 'baseline_array'))
+
+def test_read_change_mode():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(uv, mode='flag')
+    nt.assert_true(hasattr(uvf, 'flag_array'))
+    nt.assert_false(hasattr(uvf, 'metric_array'))
+    uvf.write(test_outfile, clobber=True)
+    uvf.read(test_f_file)
+    nt.assert_true(hasattr(uvf, 'metric_array'))
+    nt.assert_false(hasattr(uvf, 'flag_array'))
+    uvf.read(test_outfile)
+    nt.assert_true(hasattr(uvf, 'flag_array'))
+    nt.assert_false(hasattr(uvf, 'metric_array'))
+
 def test_write_no_clobber():
-    fi = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.testuvflag.h5')
-    uvf = UVFlag(fi)
-    nt.assert_raises(ValueError, uvf.write, fi)
+    uvf = UVFlag(test_f_file)
+    nt.assert_raises(ValueError, uvf.write, test_f_file)
 
 def test_lst_from_uv():
     uv = UVData()
-    uv.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA'))
+    uv.read_miriad(test_d_file)
     lst_array = lst_from_uv(uv)
     nt.assert_true(np.allclose(uv.lst_array, lst_array))
 
@@ -125,7 +218,7 @@ def test_lst_from_uv_error():
     nt.assert_raises(ValueError, lst_from_uv, 4)
 
 def test_add():
-    uv1 = UVFlag(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.testuvflag.h5'))
+    uv1 = UVFlag(test_f_file)
     uv2 = copy.deepcopy(uv1)
     uv2.time_array += 1  # Add a day
     uv3 = uv1 + uv2
@@ -146,7 +239,7 @@ def test_add():
     nt.assert_true('Data combined along time axis with ' + hera_qm_version_str in uv3.history)
 
 def test_add_baseline():
-    uv1 = UVFlag(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.testuvflag.h5'))
+    uv1 = UVFlag(test_f_file)
     uv2 = copy.deepcopy(uv1)
     uv2.baseline_array += 100  # Arbitrary
     uv3 = uv1.__add__(uv2, axis='baseline')
@@ -168,7 +261,7 @@ def test_add_baseline():
 
 def test_add_antenna():
     uvc = UVCal()
-    uvc.read_calfits(os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits'))
+    uvc.read_calfits(test_c_file)
     uv1 = UVFlag(uvc)
     uv2 = copy.deepcopy(uv1)
     uv2.ant_array += 100  # Arbitrary
@@ -188,7 +281,7 @@ def test_add_antenna():
     nt.assert_true('Data combined along antenna axis with ' + hera_qm_version_str in uv3.history)
 
 def test_add_frequency():
-    uv1 = UVFlag(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.testuvflag.h5'))
+    uv1 = UVFlag(test_f_file)
     uv2 = copy.deepcopy(uv1)
     uv2.freq_array += 1e4  # Arbitrary
     uv3 = uv1.__add__(uv2, axis='frequency')
@@ -207,7 +300,7 @@ def test_add_frequency():
     nt.assert_true('Data combined along frequency axis with ' + hera_qm_version_str in uv3.history)
 
 def test_add_pol():
-    uv1 = UVFlag(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.testuvflag.h5'))
+    uv1 = UVFlag(test_f_file)
     uv2 = copy.deepcopy(uv1)
     uv2.polarization_array += 1  # Arbitrary
     uv3 = uv1.__add__(uv2, axis='polarization')
@@ -227,7 +320,7 @@ def test_add_pol():
 
 def test_add_flag():
     uv = UVData()
-    uv.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'))
+    uv.read_miriad(test_d_file)
     uv1 = UVFlag(uv, mode='flag')
     uv2 = copy.deepcopy(uv1)
     uv2.time_array += 1  # Add a day
@@ -250,9 +343,9 @@ def test_add_flag():
 
 def test_add_errors():
     uv = UVData()
-    uv.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA'))
+    uv.read_miriad(test_d_file)
     uvc = UVCal()
-    uvc.read_calfits(os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits'))
+    uvc.read_calfits(test_c_file)
     uv1 = UVFlag(uv)
     # Mismatched classes
     nt.assert_raises(ValueError, uv1.__add__, 3)
@@ -267,7 +360,7 @@ def test_add_errors():
     nt.assert_raises(ValueError, uv2.__add__, uv2, axis='baseline')
 
 def test_inplace_add():
-    uv1a = UVFlag(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.testuvflag.h5'))
+    uv1a = UVFlag(test_f_file)
     uv1b = copy.deepcopy(uv1a)
     uv2 = copy.deepcopy(uv1a)
     uv2.time_array += 1
