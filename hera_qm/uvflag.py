@@ -311,17 +311,17 @@ class UVFlag():
         if axis == 'time':
             this.time_array = np.concatenate([this.time_array, other.time_array])
             this.lst_array = np.concatenate([this.lst_array, other.lst_array])
-            if this.type == 'Baseline':
+            if this.type == 'baseline':
                 this.baseline_array = np.concatenate([this.baseline_array, other.baseline_array])
         elif axis == 'baseline':
-            if self.type != 'Baseline':
+            if self.type != 'baseline':
                 raise ValueError('Flag object of type ' + self.type + ' cannot be '
                                  'concatenated along baseline axis.')
             this.time_array = np.concatenate([this.time_array, other.time_array])
             this.lst_array = np.concatenate([this.lst_array, other.lst_array])
             this.baseline_array = np.concatenate([this.baseline_array, other.baseline_array])
         elif axis == 'antenna':
-            if self.type != 'Antenna':
+            if self.type != 'antenna':
                 raise ValueError('Flag object of type ' + self.type + ' cannot be '
                                  'concatenated along antenna axis.')
             this.ant_array = np.concatenate([this.ant_array, other.ant_array])
