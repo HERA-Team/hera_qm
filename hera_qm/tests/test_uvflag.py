@@ -33,6 +33,8 @@ def test_init_UVData():
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
     nt.assert_true(np.all(uvf.baseline_array == uv.baseline_array))
+    nt.assert_true(np.all(uvf.ant_1_array == uv.ant_1_array))
+    nt.assert_true(np.all(uvf.ant_2_array == uv.ant_2_array))
     nt.assert_true('Flag object with type "baseline"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
@@ -178,6 +180,10 @@ def test_init_list():
                                   uvf.time_array))
     nt.assert_true(np.array_equal(np.concatenate((uvf1.baseline_array, uvf2.baseline_array)),
                                   uvf.baseline_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.ant_1_array, uvf2.ant_1_array)),
+                                  uvf.ant_1_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.ant_2_array, uvf2.ant_2_array)),
+                                  uvf.ant_2_array))
     nt.assert_true(uvf.mode == 'metric')
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
@@ -199,6 +205,10 @@ def test_read_list():
                                   uvf.time_array))
     nt.assert_true(np.array_equal(np.concatenate((uvf1.baseline_array, uvf2.baseline_array)),
                                   uvf.baseline_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.ant_1_array, uvf2.ant_1_array)),
+                                  uvf.ant_1_array))
+    nt.assert_true(np.array_equal(np.concatenate((uvf1.ant_2_array, uvf2.ant_2_array)),
+                                  uvf.ant_2_array))
     nt.assert_true(uvf.mode == 'metric')
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
@@ -217,9 +227,13 @@ def test_read_change_type():
     uvf.read(test_f_file)
     nt.assert_false(hasattr(uvf, 'ant_array'))
     nt.assert_true(hasattr(uvf, 'baseline_array'))
+    nt.assert_true(hasattr(uvf, 'ant_1_array'))
+    nt.assert_true(hasattr(uvf, 'ant_2_array'))
     uvf.read(test_outfile)
     nt.assert_true(hasattr(uvf, 'ant_array'))
     nt.assert_false(hasattr(uvf, 'baseline_array'))
+    nt.assert_false(hasattr(uvf, 'ant_1_array'))
+    nt.assert_false(hasattr(uvf, 'ant_2_array'))
 
 def test_read_change_mode():
     uv = UVData()
@@ -257,6 +271,10 @@ def test_add():
                                   uv3.time_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.baseline_array, uv2.baseline_array)),
                                   uv3.baseline_array))
+    nt.assert_true(np.array_equal(np.concatenate((uv1.ant_1_array, uv2.ant_1_array)),
+                                  uv3.ant_1_array))
+    nt.assert_true(np.array_equal(np.concatenate((uv1.ant_2_array, uv2.ant_2_array)),
+                                  uv3.ant_2_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.lst_array, uv2.lst_array)),
                                   uv3.lst_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.metric_array, uv2.metric_array), axis=0),
@@ -278,6 +296,10 @@ def test_add_baseline():
                                   uv3.time_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.baseline_array, uv2.baseline_array)),
                                   uv3.baseline_array))
+    nt.assert_true(np.array_equal(np.concatenate((uv1.ant_1_array, uv2.ant_1_array)),
+                                  uv3.ant_1_array))
+    nt.assert_true(np.array_equal(np.concatenate((uv1.ant_2_array, uv2.ant_2_array)),
+                                  uv3.ant_2_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.lst_array, uv2.lst_array)),
                                   uv3.lst_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.metric_array, uv2.metric_array), axis=0),
@@ -320,6 +342,8 @@ def test_add_frequency():
                                   uv3.freq_array))
     nt.assert_true(np.array_equal(uv1.time_array, uv3.time_array))
     nt.assert_true(np.array_equal(uv1.baseline_array, uv3.baseline_array))
+    nt.assert_true(np.array_equal(uv1.ant_1_array, uv3.ant_1_array))
+    nt.assert_true(np.array_equal(uv1.ant_2_array, uv3.ant_2_array))
     nt.assert_true(np.array_equal(uv1.lst_array, uv3.lst_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.metric_array, uv2.metric_array), axis=2),
                                   uv3.metric_array))
@@ -338,6 +362,8 @@ def test_add_pol():
     nt.assert_true(np.array_equal(uv1.freq_array, uv3.freq_array))
     nt.assert_true(np.array_equal(uv1.time_array, uv3.time_array))
     nt.assert_true(np.array_equal(uv1.baseline_array, uv3.baseline_array))
+    nt.assert_true(np.array_equal(uv1.ant_1_array, uv3.ant_1_array))
+    nt.assert_true(np.array_equal(uv1.ant_2_array, uv3.ant_2_array))
     nt.assert_true(np.array_equal(uv1.lst_array, uv3.lst_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.metric_array, uv2.metric_array), axis=3),
                                   uv3.metric_array))
@@ -360,6 +386,10 @@ def test_add_flag():
                                   uv3.time_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.baseline_array, uv2.baseline_array)),
                                   uv3.baseline_array))
+    nt.assert_true(np.array_equal(np.concatenate((uv1.ant_1_array, uv2.ant_1_array)),
+                                  uv3.ant_1_array))
+    nt.assert_true(np.array_equal(np.concatenate((uv1.ant_2_array, uv2.ant_2_array)),
+                                  uv3.ant_2_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.lst_array, uv2.lst_array)),
                                   uv3.lst_array))
     nt.assert_true(np.array_equal(np.concatenate((uv1.flag_array, uv2.flag_array), axis=0),

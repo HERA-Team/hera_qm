@@ -84,6 +84,8 @@ class UVFlag():
             self.type = 'baseline'
             self.history += 'Flag object with type "baseline" created by ' + hera_qm_version_str
             self.baseline_array = input.baseline_array
+            self.ant_1_array = input.ant_1_array
+            self.ant_2_array = input.ant_2_array
             self.time_array = input.time_array
             self.lst_array = input.lst_array
             self.freq_array = input.freq_array
@@ -126,15 +128,7 @@ class UVFlag():
             else:
                 self.weights_array = np.zeros(self.metric_array.shape)
 
-        # Clear out unused attributes
-        if hasattr(self, 'baseline') and self.type != 'baseline':
-            del(self.baseline)
-        if hasattr(self, 'ant_array') and self.type != 'antenna':
-            del(self.ant_array)
-        if hasattr(self, 'metric_array') and self.mode != 'metric':
-            del(self.metric_array)
-        if hasattr(self, 'flag_array') and self.mode != 'flag':
-            del(self.flag_array)
+        self.clear_unused_attributes()
 
     def __eq__(self, other, check_history=False):
         """ Function to check equality of two UVFlag objects
@@ -149,13 +143,13 @@ class UVFlag():
         array_list = ['weights_array', 'time_array', 'lst_array', 'freq_array',
                       'polarization_array']
         if self.type == 'antenna':
-            array_list.append('ant_array')
+            array_list += ['ant_array']
         elif self.type == 'baseline':
-            array_list.append('baseline_array')
+            array_list += ['baseline_array', 'ant_1_array', 'ant_2_array']
         if self.mode == 'flag':
-            array_list.append('flag_array')
+            array_list += ['flag_array']
         elif self.mode == 'metric':
-            array_list.append('metric_array')
+            array_list += ['metric_array']
         for arr in array_list:
             self_param = getattr(self, arr)
             other_param = getattr(other, arr)
@@ -175,7 +169,6 @@ class UVFlag():
         Args:
             filename: The file name to read.
         """
-        # TODO: list loading? More efficient than pyuvdata?
 
         if isinstance(filename, (tuple, list)):
             self.read(filename[0])
@@ -203,24 +196,20 @@ class UVFlag():
                 self.polarization_array = header['polarization_array'].value
                 if self.type == 'baseline':
                     self.baseline_array = header['baseline_array'].value
-                    if hasattr(self, 'ant_array'):
-                        del(self.ant_array)
+                    self.ant_1_array = header['ant_1_array'].value
+                    self.ant_2_array = header['ant_2_array'].value
                 elif self.type == 'antenna':
                     self.ant_array = header['ant_array'].value
-                    if hasattr(self, 'baseline_array'):
-                        del(self.baseline_array)
 
                 dgrp = f['/Data']
                 if self.mode == 'metric':
                     self.metric_array = dgrp['metric_array'].value
-                    if hasattr(self, 'flag_array'):
-                        del(self.flag_array)
                 elif self.mode == 'flag':
                     self.flag_array = dgrp['flag_array'].value
-                    if hasattr(self, 'metric_array'):
-                        del(self.metric_array)
 
                 self.weights_array = dgrp['weights_array'].value
+
+            self.clear_unused_attributes()
 
     def write(self, filename, clobber=False, data_compression='lzf'):
         """
@@ -249,11 +238,12 @@ class UVFlag():
             header['lst_array'] = self.lst_array
             header['freq_array'] = self.freq_array
             header['polarization_array'] = self.polarization_array
-            # TODO: update history on write
             header['history'] = self.history + 'Written by ' + hera_qm_version_str
 
             if self.type == 'baseline':
                 header['baseline_array'] = self.baseline_array
+                header['ant_1_array'] = self.ant_1_array
+                header['ant_2_array'] = self.ant_2_array
             elif self.type == 'antenna':
                 header['ant_array'] = self.ant_array
 
@@ -314,6 +304,8 @@ class UVFlag():
             this.lst_array = np.concatenate([this.lst_array, other.lst_array])
             if this.type == 'baseline':
                 this.baseline_array = np.concatenate([this.baseline_array, other.baseline_array])
+                this.ant_1_array = np.concatenate([this.ant_1_array, other.ant_1_array])
+                this.ant_2_array = np.concatenate([this.ant_2_array, other.ant_2_array])
         elif axis == 'baseline':
             if self.type != 'baseline':
                 raise ValueError('Flag object of type ' + self.type + ' cannot be '
@@ -321,6 +313,8 @@ class UVFlag():
             this.time_array = np.concatenate([this.time_array, other.time_array])
             this.lst_array = np.concatenate([this.lst_array, other.lst_array])
             this.baseline_array = np.concatenate([this.baseline_array, other.baseline_array])
+            this.ant_1_array = np.concatenate([this.ant_1_array, other.ant_1_array])
+            this.ant_2_array = np.concatenate([this.ant_2_array, other.ant_2_array])
         elif axis == 'antenna':
             if self.type != 'antenna':
                 raise ValueError('Flag object of type ' + self.type + ' cannot be '
@@ -353,3 +347,20 @@ class UVFlag():
         """
         self.__add__(other, inplace=True)
         return self
+
+    def clear_unused_attributes(self):
+        """
+        Remove unused attributes. Useful when changing type or mode.
+        """
+        if hasattr(self, 'baseline_array') and self.type != 'baseline':
+            del(self.baseline_array)
+        if hasattr(self, 'ant_1_array') and self.type != 'baseline':
+            del(self.ant_1_array)
+        if hasattr(self, 'ant_2_array') and self.type != 'baseline':
+            del(self.ant_2_array)
+        if hasattr(self, 'ant_array') and self.type != 'antenna':
+            del(self.ant_array)
+        if hasattr(self, 'metric_array') and self.mode != 'metric':
+            del(self.metric_array)
+        if hasattr(self, 'flag_array') and self.mode != 'flag':
+            del(self.flag_array)
