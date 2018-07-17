@@ -319,3 +319,16 @@ class UVFlag():
                                                 other.metric_array], axis=ax)
         this.weights_array = np.concatenate([this.weights_array,
                                              other.weights_array], axis=ax)
+        this.history += 'Data combined along ' + axis + ' axis with ' + hera_qm_version_str
+
+        return this
+
+    def __iadd__(self, other):
+        """
+        In place add.
+
+        Args:
+            other: Another UVFlag object which will be added to self.
+        """
+        self.__add__(other, inplace=True)
+        return self
