@@ -155,7 +155,7 @@ def load_firstcal_gains(fc_file):
         path to firstcal .calfits file (single polarization)
 
     jones2pol : dict
-        dictionary containing jones integers as keys and 
+        dictionary containing jones integers as keys and
         X-Y pols as values
 
     """
@@ -802,9 +802,10 @@ class OmniCal_Metrics(object):
                 fname = os.path.join(self.filedir, fname)
             else:
                 fname = os.path.join(outpath, fname)
-        if custom_ax == False:
+        print('custom ax is : ', custom_ax)
+        if (custom_ax is False) and save:
             fig.savefig(fname, bbox_inches='tight')
-        else:
+        elif save:
             ax.figure.savefig(fname, bbox_inches='tight')
 
         if custom_ax is False:
