@@ -802,7 +802,6 @@ class OmniCal_Metrics(object):
                 fname = os.path.join(self.filedir, fname)
             else:
                 fname = os.path.join(outpath, fname)
-        print('custom ax is : ', custom_ax)
         if (custom_ax is False) and save:
             fig.savefig(fname, bbox_inches='tight')
         elif save:
