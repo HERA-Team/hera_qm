@@ -413,7 +413,7 @@ class Antenna_Metrics():
     def red_corr_cross_pol_metrics(self, xants=[], rawMetric=False):
         """Local wrapper for red_corr_cross_pol_metrics in hera_qm.ant_metrics module."""
         return red_corr_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants,
-                                          self.reds, xants=xants, rawMetric=False)
+                                          self.reds, xants=xants, rawMetric=rawMetric)
 
     def reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
