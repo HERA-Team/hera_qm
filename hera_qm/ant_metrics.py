@@ -596,12 +596,8 @@ def ant_metrics_run(files, args, history):
     in the same folder. If not all four polarizations are found, a warning is
     generated, since the code assumes all four polarizations are present.
     """
-    try:
-        from hera_cal.omni import aa_to_info
-        from hera_cal.utils import get_aa_from_uv
-    except(ImportError):
-        from nose.plugins.skip import SkipTest
-        raise SkipTest('hera_cal.omni not detected. It must be installed to calculate array info')
+    from hera_cal.omni import aa_to_info
+    from hera_cal.utils import get_aa_from_uv
 
     # check that we were given some files to process
     if len(files) == 0:
