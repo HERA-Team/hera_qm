@@ -88,7 +88,7 @@ def detrend_medminfilt(d, Kt=8, Kf=8):
         Kt (int): size in time to apply medminfilter over
         Kf (int): size in frequency to apply medminfilter over
     Returns:
-         bool array: boolean array of flags
+        float array: float array of outlier significance metric
     """
     d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
     d_rs = d - d_sm
@@ -107,7 +107,7 @@ def detrend_medfilt(d, Kt=8, Kf=8):
         d (array): data array to detrend.
         K (int, optional): box size to apply medminfilt over
     Returns:
-        bool array: boolean array of flags
+        f: array of outlier significance metric. Same type and size as d.
     """
     # Delay import so scipy is not required for any use of hera_qm
     from scipy.signal import medfilt2d
