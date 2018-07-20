@@ -21,7 +21,7 @@ test_outfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
 def test_init_UVData():
     uv = UVData()
     uv.read_miriad(test_d_file)
-    uvf = UVFlag(uv)
+    uvf = UVFlag(uv, history='I made a UVFlag object')
     nt.assert_true(uvf.metric_array.shape == uv.flag_array.shape)
     nt.assert_true(np.all(uvf.metric_array == 0))
     nt.assert_true(uvf.weights_array.shape == uv.flag_array.shape)
@@ -35,6 +35,7 @@ def test_init_UVData():
     nt.assert_true(np.all(uvf.baseline_array == uv.baseline_array))
     nt.assert_true(np.all(uvf.ant_1_array == uv.ant_1_array))
     nt.assert_true(np.all(uvf.ant_2_array == uv.ant_2_array))
+    nt.assert_true('I made a UVFlag object' in uvf.history)
     nt.assert_true('Flag object with type "baseline"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
