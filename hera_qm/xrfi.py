@@ -13,8 +13,45 @@ import warnings
 # Utility functions
 #############################################################################
 
+def flag_xants(uv, xants, inplace=True):
+    """Flag visibilities containing specified antennas.
     Args:
+        uv (UVData, UVCal, or UVFlag object): Data to be flagged
+        xants (list of ints): antennas to flag
+        inplace (bool): Apply flags to uv (Default). If False, returns UVFlag object
+                        with only xants flags.
+    Returns:
+        uvo: if inplace, applies flags to input uv. If not inplace,
+                uvo is a new UVFlag object with only xants flags.
+    """
+    # check that we got an appropriate object
+    if not isinstance(uv, (UVData, UVCal, UVFlag)):
+        raise ValueError('First argument to flag_xants must be a UVData, UVCal, '
+                         ' or UVFlag object.')
+    if isinstance(uv, UVFlag) and uv.type == 'wf':
+        raise ValueError('Cannot flag antennas on UVFlag obejct of type "wf".')
 
+    if not inplace:
+        if isinstance(uv, UVFlag):
+            uvo = copy.deepcopy(uv).to_flag()
+        else:
+            uvo = UVFlag(uv, mode='flag')
+    else:
+        uvo = uv
+
+    if isinstance(uvo, UVData) or (isinstance(uvo, UVFlag) and uvo.type == 'baseline'):
+        all_ants = np.unique(np.append(uvo.ant_1_array, uvo.ant_2_array))
+        for ant in all_ants:
+            for xant in xants:
+                blts = uvo.antpair2ind(ant, xant)
+                uvo.flag_array[blts, :, :, :] = True
+                blts = uvo.antpair2ind(xant, ant)
+                uvo.flag_array[blts, :, :, :] = True
+    elif isinstance(uvo, UVCal) or (isinstance(uvo, UVFlag) and uvo.type == 'antenna'):
+        for xant in xants:
+            ai = np.where(uvo.ant_array == xant)
+            uvo.flag_array[ai, :, :, :, :] = True
+    return uvo
 
 
 #############################################################################
@@ -140,32 +177,6 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-7))
     f = np.where(np.abs(sig) > 1e-7, f, np.inf)
     return f[Kt:-Kt, Kf:-Kf]
-
-
-def flag_xants(uvd, xants):
-    """Flag visibilities containing specified antennas.
-    TODO: Allow UVCal and UVFlag objects
-    TODO: Add option to return new flag array
-    Args:
-        uvd (UVData object): visibilities to be flagged
-        xants (list of ints): antennas to flag
-    Returns:
-        uvd: UVData object, with flag_array set to True for all
-             visibilities containing xants
-    """
-    # check that we got a UVData object
-    if not isinstance(uvd, UVData):
-        raise ValueError("First argument to flag_xants must be a UVData object")
-    # loop over all antennas in data
-    all_ants = uvd.get_ants()
-    for ant in all_ants:
-        # loop over list of excluded antennas to form baseline pairs
-        for xant in xants:
-            blts = uvd.antpair2ind(ant, xant)
-            uvd.flag_array[blts, :, :, :] = True
-            blts = uvd.antpair2ind(xant, ant)
-            uvd.flag_array[blts, :, :, :] = True
-    return uvd
 
 
 #############################################################################

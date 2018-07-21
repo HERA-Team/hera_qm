@@ -421,3 +421,12 @@ class UVFlag():
             self.mode = 'metric'
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to metric.')
+
+    def antpair2ind(self, ant1, ant2):
+        """
+        Get blt indices for given (ordered) antenna pair.
+        """
+        if self.type != 'baseline':
+            raise ValueError('UVFlag object of type ' + self.type + ' does not '
+                             'contain antenna pairs to index.')
+        return np.where((self.ant_1_array == ant1) & (self.ant_2_array == ant2))[0]
