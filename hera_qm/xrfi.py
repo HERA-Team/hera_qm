@@ -8,6 +8,33 @@ import warnings
 
 
 #############################################################################
+# Utility functions
+#############################################################################
+
+def absmean(a, weights=None, axis=None, returned=False):
+    ''' Function to average absolute value
+    Args:
+        a - array to process
+        weights - weights for average
+        axis - axis keyword to pass to np.mean
+        returned - whether to return sum of weights. Default is False.
+    '''
+    return np.average(np.abs(a), weights=weights, axis=axis, returned=returned)
+
+def quadmean(a, weights=None, axis=None, returned=False):
+    ''' Function to average in quadrature
+    Args:
+        a - array to process
+        weights - weights for average
+        axis - axis keyword to pass to np.mean
+        returned - whether to return sum of weights. Default is False.
+    '''
+    return np.sqrt(np.average(np.abs(a)**2, weights=weights, axis=axis,
+                              returned=returned)
+
+averaging_dict = {'mean': np.average, 'absmean': absmean, 'quadmean': quadmean}
+
+#############################################################################
 # Functions for preprocessing data prior to RFI flagging
 #############################################################################
 

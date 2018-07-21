@@ -29,26 +29,6 @@ def lst_from_uv(uv):
     lst_array = uvutils.get_lst_for_time(uv.time_array, lat, lon, alt)
     return lst_array
 
-def absmean(a, weights=None, axis=None, returned=False):
-    ''' Function to average absolute value
-    Args:
-        a - array to process
-        weights - weights for average
-        axis - axis keyword to pass to np.mean
-        returned - whether to return sum of weights. Default is False.
-    '''
-    return np.average(np.abs(a), weights=weights, axis=axis, returned=returned)
-
-def quadmean(a, weights=None, axis=None, returned=False):
-    ''' Function to average in quadrature
-    Args:
-        a - array to process
-        weights - weights for average
-        axis - axis keyword to pass to np.mean
-        returned - whether to return sum of weights. Default is False.
-    '''
-    return np.average(np.abs(a)**2, weights=weights, axis=axis, returned=returned)
-
 class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
     and stores all relevant information to combine flags and apply to data.
@@ -393,7 +373,7 @@ class UVFlag():
             keep_pol: Whether to also collapse the polarization dimension
         """
         method = method.lower()
-        f_dict = {'mean': np.average, 'absmean': absmean, 'quadmean': quadmean}
+        avg_f = xrfi.averaging_dict[method]
         if self.type == 'wf' and (keep_pol or (self.Npols == 1)):
             warnings.warn('This object is already a waterfall. Nothing to change.')
             return
@@ -403,14 +383,14 @@ class UVFlag():
             darr = self.metric_array
         if (not keep_pol) and (self.Npols > 1):
             # Collapse pol dimension. But note we retain a polarization axis.
-            d, w = f_dict[method](darr, axis=-1, weights=self.weights_array, returned=True)
+            d, w = avg_f(darr, axis=-1, weights=self.weights_array, returned=True)
             darr = np.expand_dims(d, axis=d.ndim)
             self.weights_array = np.expand_dims(w, axis=w.ndim)
             self.polarization_array = ','.join(map(str, self.polarization_array))
             self.Npols = 1
 
         if self.type == 'antenna':
-            d, w = f_dict[method](darr, axis=(0, 1), weights=self.weights_array,
+            d, w = avg_f(darr, axis=(0, 1), weights=self.weights_array,
                                   returned=True)
             darr = np.swapaxes(d, 0, 1)
             self.weights_array = np.swapaxes(w, 0, 1)
@@ -422,9 +402,9 @@ class UVFlag():
             w = np.zeros((Nt, Nf, Np))
             for i, t in enumerate(np.unique(self.time_array)):
                 ind = self.time_array == t
-                d[i, :, :], w[i, :, :] = f_dict[method](darr[ind, :, :], axis=0,
-                                                        weights=self.weights_array[ind, :, :],
-                                                        returned=True)
+                d[i, :, :], w[i, :, :] = avg_f(darr[ind, :, :], axis=0,
+                                               weights=self.weights_array[ind, :, :],
+                                               returned=True)
             darr = d
             self.weights_array = w
             self.time_array = np.unique(self.time_array)
