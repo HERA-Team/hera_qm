@@ -6,28 +6,12 @@ from pyuvdata import UVCal
 from pyuvdata import utils as uvutils
 from pyuvdata import telescopes as uvtel
 from hera_qm.version import hera_qm_version_str
-from hera_qm import xrfi
+from hera_qm.utils import flags2waterfall
+from hera_qm.utils import averaging_dict
 import warnings
 import h5py
 import copy
 
-
-def lst_from_uv(uv):
-    ''' Calculate the lst_array for a UVData or UVCal object.
-    Args:
-        uv: a UVData or UVCal object.
-    Returns:
-        lst_array: lst_array corresponding to time_array and at telecope location.
-                   Units are radian.
-    '''
-    if not isinstance(uv, (UVCal, UVData)):
-        raise ValueError('Function lst_from_uv can only operate on '
-                         'UVCal or UVData object.')
-
-    tel = uvtel.get_telescope(uv.telescope_name)
-    lat, lon, alt = tel.telescope_location_lat_lon_alt_degrees
-    lst_array = uvutils.get_lst_for_time(uv.time_array, lat, lon, alt)
-    return lst_array
 
 class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
@@ -65,7 +49,7 @@ class UVFlag():
                 self.polarization_array = input.jones_array
                 self.lst_array = lst_from_uv(input)[ri]
             if copy_flags:
-                self.metric_array = xrfi.flags2waterfall(input, keep_pol=True)
+                self.metric_array = flags2waterfall(input, keep_pol=True)
                 self.history += ' WF generated from ' + str(input.__class__) + ' object.'
                 if self.mode == 'flag':
                     warnings.warn('Copying flags into waterfall results in mode=="metric".')
@@ -373,7 +357,7 @@ class UVFlag():
             keep_pol: Whether to also collapse the polarization dimension
         """
         method = method.lower()
-        avg_f = xrfi.averaging_dict[method]
+        avg_f = averaging_dict[method]
         if self.type == 'wf' and (keep_pol or (self.Npols == 1)):
             warnings.warn('This object is already a waterfall. Nothing to change.')
             return

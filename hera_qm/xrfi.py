@@ -4,6 +4,8 @@ import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
 from hera_qm import UVFlag
+from hera_qm.utils import averaging_dict
+from hera_qm.utils import flags2waterfall
 from hera_qm.version import hera_qm_version_str
 import warnings
 
@@ -12,29 +14,9 @@ import warnings
 # Utility functions
 #############################################################################
 
-def absmean(a, weights=None, axis=None, returned=False):
-    ''' Function to average absolute value
     Args:
-        a - array to process
-        weights - weights for average
-        axis - axis keyword to pass to np.mean
-        returned - whether to return sum of weights. Default is False.
-    '''
-    return np.average(np.abs(a), weights=weights, axis=axis, returned=returned)
 
-def quadmean(a, weights=None, axis=None, returned=False):
-    ''' Function to average in quadrature
-    Args:
-        a - array to process
-        weights - weights for average
-        axis - axis keyword to pass to np.mean
-        returned - whether to return sum of weights. Default is False.
-    '''
-    return np.sqrt(np.average(np.abs(a)**2, weights=weights, axis=axis,
-                              returned=returned)
 
-# Dictionary to map different methods for averaging data.
-averaging_dict = {'mean': np.average, 'absmean': absmean, 'quadmean': quadmean}
 
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
@@ -292,9 +274,9 @@ def watershed_flag(uvf_m, uvf_f, p_adj=2., f_adj=2., t_adj=2., avg_method='quadm
 
 
 def _ws_flag_wf(d, fin, sig=2.):
-     ''' Performs watershed algorithm on 1D or 2D arrays of metric and input flags.
-     This is a helper function for watershed_flag, but not usually called
-     by end users.
+    ''' Performs watershed algorithm on 1D or 2D arrays of metric and input flags.
+    This is a helper function for watershed_flag, but not usually called
+    by end users.
 
     Args:
         d: 2D or 1D array. Should be in units of standard deviations.
@@ -640,50 +622,6 @@ def cal_flag(uvc, args):
             else:
                 raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
     return g_flags, x_flags
-
-
-def flags2waterfall(uv, flag_array=None, keep_pol=False):
-    """
-    Convert a flag array to a 2D waterfall of dimensions (Ntimes, Nfreqs).
-    Averages over baselines and polarizations (in the case of visibility data),
-    or antennas and jones parameters (in case of calibrationd data).
-    Args:
-        uv -- A UVData or UVCal object which defines the times and frequencies,
-              and supplies the flag_array to convert (if flag_array not specified)
-        flag_array -- Optional flag array to convert instead of uv.flag_array.
-                      Must have same dimensions as uv.flag_array.
-        keep_pol -- Option to keep the polarization axis in tact. Default is False.
-    Returns:
-        waterfall -- 2D waterfall of averaged flags, for example fraction of baselines
-                     which are flagged for every time and frequency (in case of UVData input)
-                     Size is (Ntimes, Nfreqs) or (Ntimes, Nfreqs, Npols).
-    """
-    if not isinstance(uv, (UVData, UVCal)):
-        raise ValueError('flags2waterfall() requires a UVData or UVCal object as '
-                         'the first argument.')
-    if flag_array is None:
-        flag_array = uv.flag_array
-    if uv.flag_array.shape != flag_array.shape:
-        raise ValueError('Flag array must align with UVData or UVCal object.')
-
-    if isinstance(uv, UVCal):
-        if keep_pol:
-            waterfall = np.swapaxes(np.mean(flag_array, axis=(0, 1)), 0, 1)
-        else:
-            waterfall = np.mean(flag_array, axis=(0, 1, 4)).T
-    else:
-        if keep_pol:
-            waterfall = np.zeros((uv.Ntimes, uv.Nfreqs, uv.Npols))
-            for i, t in enumerate(np.unique(uv.time_array)):
-                waterfall[i, :] = np.mean(flag_array[uv.time_array == t, 0, :, :],
-                                          axis=0)
-        else:
-            waterfall = np.zeros((uv.Ntimes, uv.Nfreqs))
-            for i, t in enumerate(np.unique(uv.time_array)):
-                waterfall[i, :] = np.mean(flag_array[uv.time_array == t, 0, :, :],
-                                          axis=(0, 2))
-
-    return waterfall
 
 
 def waterfall2flags(waterfall, uv):

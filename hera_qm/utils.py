@@ -438,3 +438,87 @@ def metrics2mc(filename, ftype):
         raise ValueError('Metric file type ' + ftype + ' is not recognized.')
 
     return d
+
+def lst_from_uv(uv):
+    ''' Calculate the lst_array for a UVData or UVCal object.
+    Args:
+        uv: a UVData or UVCal object.
+    Returns:
+        lst_array: lst_array corresponding to time_array and at telecope location.
+                   Units are radian.
+    '''
+    if not isinstance(uv, (UVCal, UVData)):
+        raise ValueError('Function lst_from_uv can only operate on '
+                         'UVCal or UVData object.')
+
+    tel = uvtel.get_telescope(uv.telescope_name)
+    lat, lon, alt = tel.telescope_location_lat_lon_alt_degrees
+    lst_array = uvutils.get_lst_for_time(uv.time_array, lat, lon, alt)
+    return lst_array
+
+def absmean(a, weights=None, axis=None, returned=False):
+    ''' Function to average absolute value
+    Args:
+        a - array to process
+        weights - weights for average
+        axis - axis keyword to pass to np.mean
+        returned - whether to return sum of weights. Default is False.
+    '''
+    return np.average(np.abs(a), weights=weights, axis=axis, returned=returned)
+
+def quadmean(a, weights=None, axis=None, returned=False):
+    ''' Function to average in quadrature
+    Args:
+        a - array to process
+        weights - weights for average
+        axis - axis keyword to pass to np.mean
+        returned - whether to return sum of weights. Default is False.
+    '''
+    return np.sqrt(np.average(np.abs(a)**2, weights=weights, axis=axis,
+                              returned=returned))
+
+# Dictionary to map different methods for averaging data.
+averaging_dict = {'mean': np.average, 'absmean': absmean, 'quadmean': quadmean}
+
+def flags2waterfall(uv, flag_array=None, keep_pol=False):
+    """
+    Convert a flag array to a 2D waterfall of dimensions (Ntimes, Nfreqs).
+    Averages over baselines and polarizations (in the case of visibility data),
+    or antennas and jones parameters (in case of calibrationd data).
+    Args:
+        uv -- A UVData or UVCal object which defines the times and frequencies,
+              and supplies the flag_array to convert (if flag_array not specified)
+        flag_array -- Optional flag array to convert instead of uv.flag_array.
+                      Must have same dimensions as uv.flag_array.
+        keep_pol -- Option to keep the polarization axis in tact. Default is False.
+    Returns:
+        waterfall -- 2D waterfall of averaged flags, for example fraction of baselines
+                     which are flagged for every time and frequency (in case of UVData input)
+                     Size is (Ntimes, Nfreqs) or (Ntimes, Nfreqs, Npols).
+    """
+    if not isinstance(uv, (UVData, UVCal)):
+        raise ValueError('flags2waterfall() requires a UVData or UVCal object as '
+                         'the first argument.')
+    if flag_array is None:
+        flag_array = uv.flag_array
+    if uv.flag_array.shape != flag_array.shape:
+        raise ValueError('Flag array must align with UVData or UVCal object.')
+
+    if isinstance(uv, UVCal):
+        if keep_pol:
+            waterfall = np.swapaxes(np.mean(flag_array, axis=(0, 1)), 0, 1)
+        else:
+            waterfall = np.mean(flag_array, axis=(0, 1, 4)).T
+    else:
+        if keep_pol:
+            waterfall = np.zeros((uv.Ntimes, uv.Nfreqs, uv.Npols))
+            for i, t in enumerate(np.unique(uv.time_array)):
+                waterfall[i, :] = np.mean(flag_array[uv.time_array == t, 0, :, :],
+                                          axis=0)
+        else:
+            waterfall = np.zeros((uv.Ntimes, uv.Nfreqs))
+            for i, t in enumerate(np.unique(uv.time_array)):
+                waterfall[i, :] = np.mean(flag_array[uv.time_array == t, 0, :, :],
+                                          axis=(0, 2))
+
+    return waterfall
