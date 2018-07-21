@@ -452,6 +452,51 @@ class UVFlag():
         self.lst_array = uv.lst_array
         self.history += 'Broadcast to type "baseline" with ' + hera_qm_version_str
 
+    def to_antenna(self, uv, force_pol=False):
+        '''Convert a UVFlag object of type "wf" to type "antenna".
+        Broadcasts the flag array to all antennas.
+        This function does NOT apply flags to uv.
+        Args:
+            uv: UVCal or UVFlag object of type antenna to match.
+            force_pol: If True, will use 1 pol to broadcast to any other pol.
+                       Otherwise, will require polarizations match.
+        '''
+        if self.type == 'antenna':
+            return
+        if not (isinstance(uv, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna')):
+            raise ValueError('Must pass in UVCal object or UVFlag object of type '
+                             '"antenna" to match.')
+        if self.type != 'wf':
+            raise ValueError('Cannot convert from type "' + self.type + '" to "antenna".')
+        # Deal with polarization
+        if isinstance(uv, UVCal):
+            polarr = uv.jones_array
+        else:
+            polarr = uv.polarization_array
+        if force_pol and self.polarization_array.size == 1:
+            # Use single pol for all pols, regardless
+            self.polarization_array = polarr
+            # Broadcast arrays
+            if self.type == 'flag':
+                self.flag_array = self.flag_array.repeat(self.polarization_array.size, axis=-1)
+            else:
+                self.metric_array = self.metric_array.repeat(self.polarization_array.size, axis=-1)
+            self.weights_array = self.weights_array.repeat(self.polarization_array.size, axis=-1)
+        # Now the pol axes should match regardless of force_pol.
+        if not np.array_equal(polarr, self.polarization_array):
+            raise ValueError('Polarizations could not be made to match.')
+        # Populate arrays
+        warr = np.zeros_like(uv.flag_array)
+        if self.type == 'flag':
+            self.flag_array = np.swapaxes(self.flag_array, 0, 1)[np.newaxis, np.newaxis,
+                                                                 :, :, :]
+        elif self.type == 'metric':
+            self.metric_array = np.swapaxes(self.metric_array, 0, 1)[np.newaxis, np.newaxis,
+                                                                     :, :, :]
+        self.weights_array = np.swapaxes(self.weights_array, 0, 1)[np.newaxis, np.newaxis,
+                                                                   :, :, :]
+        self.ant_array = uv.ant_array
+        self.history += 'Broadcast to type "antenna" with ' + hera_qm_version_str
 
     def to_flag(self):
         '''Convert to flag mode. NOT SMART. Simply removes metric_array and initializes
