@@ -395,7 +395,63 @@ class UVFlag():
         self.freq_array = self.freq_array.flatten()
         self.mode = 'metric'
         self.type = 'wf'
+        self.history += 'Collapsed to type "wf" with ' + hera_qm_version_str
         self.clear_unused_attributes()
+
+    def to_baseline(self, uv, force_pol=False):
+        '''Convert a UVFlag object of type "wf" to type "baseline".
+        Broadcasts the flag array to all baselines.
+        This function does NOT apply flags to uv.
+        Args:
+            uv: UVData or UVFlag object of type baseline to match.
+            force_pol: If True, will use 1 pol to broadcast to any other pol.
+                       Otherwise, will require polarizations match.
+        '''
+        if self.type == 'baseline':
+            return
+        if not (isinstance(uv, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline')):
+            raise ValueError('Must pass in UVData object or UVFlag object of type '
+                             '"baseline" to match.')
+        if self.type != 'wf':
+            raise ValueError('Cannot convert from type "' + self.type + '" to "baseline".')
+        # Deal with polarization
+        if force_pol and self.polarization_array.size == 1:
+            # Use single pol for all pols, regardless
+            self.polarization_array = uv.polarization_array
+            # Broadcast arrays
+            if self.type == 'flag':
+                self.flag_array = self.flag_array.repeat(self.polarization_array.size, axis=-1)
+            else:
+                self.metric_array = self.metric_array.repeat(self.polarization_array.size, axis=-1)
+            self.weights_array = self.weights_array.repeat(self.polarization_array.size, axis=-1)
+        # Now the pol axes should match regardless of force_pol.
+        if not np.array_equal(uv.polarization_array, self.polarization_array):
+            raise ValueError('Polarizations could not be made to match.')
+        # Populate arrays
+        warr = np.zeros_like(uv.flag_array)
+        if self.type == 'flag':
+            arr = np.zeros_like(uv.flag_array)
+            sarr = self.flag_array
+        elif self.type == 'metric':
+            arr = np.zeros_like(uv.flag_array, dtype=float)
+            sarr = self.metric_array
+        for i, t in enumerate(np.unique(uv.time_array)):
+            ti = np.where(uv.time_array == t)
+            arr[ti, :, :, :] = sarr[i, :, :][np.newaxis, np.newaxis, :, :]
+            warr[ti, :, :, :] = self.weights_array[i, :, :][np.newaxis, np.newaxis, :, :]
+        if self.type == 'flag':
+            self.flag_array = arr
+        elif self.type == 'metric':
+            self.metric_array = arr
+        self.weights_array = warr
+
+        self.baseline_array = uv.baseline_array
+        self.ant1_array = uv.ant1_array
+        self.ant2_array = uv.ant2_array
+        self.time_array = uv.time_array
+        self.lst_array = uv.lst_array
+        self.history += 'Broadcast to type "baseline" with ' + hera_qm_version_str
+
 
     def to_flag(self):
         '''Convert to flag mode. NOT SMART. Simply removes metric_array and initializes
@@ -408,9 +464,10 @@ class UVFlag():
             self.mode = 'flag'
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to flag.')
+        self.history += 'Converted to mode "flag" with ' + hera_qm_version_str
         self.clear_unused_attributes()
 
-    def to_flag(self):
+    def to_metric(self):
         '''Convert to metric mode. NOT SMART. Simply removes flag_array and initializes
         metric_array with zeros.
         '''
@@ -421,6 +478,7 @@ class UVFlag():
             self.mode = 'metric'
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to metric.')
+        self.history += 'Converted to mode "metric" with ' + hera_qm_version_str
 
     def antpair2ind(self, ant1, ant2):
         """
