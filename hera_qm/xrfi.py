@@ -3,9 +3,8 @@ import numpy as np
 import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
-from hera_qm import UVFlag
-from hera_qm.utils import averaging_dict
-from hera_qm.utils import flags2waterfall
+from .uvflag import UVFlag
+from hera_qm import utils as qm_utils
 from hera_qm.version import hera_qm_version_str
 import warnings
 
@@ -211,7 +210,7 @@ def watershed_flag(uvf_m, uvf_f, p_adj=2., f_adj=2., t_adj=2., avg_method='quadm
         uvf = copy.deepcopy(uvf_f)
 
     try:
-        avg_f = averaging_dict[avg_method]
+        avg_f = qm_utils.averaging_dict[avg_method]
     except KeyError:
         raise KeyError('avg_method must be one of: "mean", "absmean", or "quadmean".')
 
@@ -442,8 +441,8 @@ def xrfi_run(indata, args, history):
         d_flag_array = vis_flag(uvd, args)
 
         # Make a "normalized waterfall" to account for data already flagged in file
-        d_wf_tot = flags2waterfall(uvd, flag_array=d_flag_array)
-        d_wf_prior = flags2waterfall(uvd, flag_array=uvd.flag_array)
+        d_wf_tot = qm_utils.flags2waterfall(uvd, flag_array=d_flag_array)
+        d_wf_prior = qm_utils.flags2waterfall(uvd, flag_array=uvd.flag_array)
         d_wf_norm = normalize_wf(d_wf_tot, d_wf_prior)
         d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
@@ -466,8 +465,8 @@ def xrfi_run(indata, args, history):
                 raise ValueError('Time and frequency axes of model vis file must match'
                                  'the data file.')
         m_flag_array = vis_flag(uvm, args)
-        m_waterfall = flags2waterfall(uvm, flag_array=m_flag_array)
-        m_wf_prior = flags2waterfall(uvm)
+        m_waterfall = qm_utils.flags2waterfall(uvm, flag_array=m_flag_array)
+        m_wf_prior = qm_utils.flags2waterfall(uvm)
         m_wf_norm = normalize_wf(m_waterfall, m_wf_prior)
         m_wf_t = threshold_flags(m_wf_norm, px_threshold=args.px_threshold,
                                  freq_threshold=args.freq_threshold,
@@ -483,9 +482,9 @@ def xrfi_run(indata, args, history):
                 raise ValueError('Time and frequency axes of calfits file must match'
                                  'the data file.')
         g_flag_array, x_flag_array = cal_flag(uvc, args)
-        g_waterfall = flags2waterfall(uvc, flag_array=g_flag_array)
-        x_waterfall = flags2waterfall(uvc, flag_array=x_flag_array)
-        c_wf_prior = flags2waterfall(uvc)
+        g_waterfall = qm_utils.flags2waterfall(uvc, flag_array=g_flag_array)
+        x_waterfall = qm_utils.flags2waterfall(uvc, flag_array=x_flag_array)
+        c_wf_prior = qm_utils.flags2waterfall(uvc)
         g_wf_norm = normalize_wf(g_waterfall, c_wf_prior)
         x_wf_norm = normalize_wf(x_waterfall, c_wf_prior)
         g_wf_t = threshold_flags(g_wf_norm, px_threshold=args.px_threshold,
