@@ -413,3 +413,28 @@ class UVFlag():
         self.mode = 'metric'
         self.type = 'wf'
         self.clear_unused_attributes()
+
+    def to_flag(self):
+        '''Convert to flag mode. NOT SMART. Simply removes metric_array and initializes
+        flag_array with zeros.
+        '''
+        if self.mode == 'flag':
+            return
+        elif self.mode == 'metric':
+            self.flag_array = np.zeros_like(self.metric_array, dtype=np.bool)
+            self.mode = 'flag'
+        else:
+            raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to flag.')
+        self.clear_unused_attributes()
+
+    def to_flag(self):
+        '''Convert to metric mode. NOT SMART. Simply removes flag_array and initializes
+        metric_array with zeros.
+        '''
+        if self.mode == 'metric':
+            return
+        elif self.mode == 'flag':
+            self.metric_array = np.zeros_like(self.flag_array, dtype=np.float)
+            self.mode = 'metric'
+        else:
+            raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to metric.')
