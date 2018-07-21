@@ -3,6 +3,7 @@ import numpy as np
 import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
+from hera_qm import UVFlag
 from hera_qm.version import hera_qm_version_str
 import warnings
 
@@ -32,6 +33,7 @@ def quadmean(a, weights=None, axis=None, returned=False):
     return np.sqrt(np.average(np.abs(a)**2, weights=weights, axis=axis,
                               returned=returned)
 
+# Dictionary to map different methods for averaging data.
 averaging_dict = {'mean': np.average, 'absmean': absmean, 'quadmean': quadmean}
 
 #############################################################################
@@ -161,7 +163,8 @@ def detrend_medfilt(d, Kt=8, Kf=8):
 
 def flag_xants(uvd, xants):
     """Flag visibilities containing specified antennas.
-
+    TODO: Allow UVCal and UVFlag objects
+    TODO: Add option to return new flag array
     Args:
         uvd (UVData object): visibilities to be flagged
         xants (list of ints): antennas to flag
@@ -188,40 +191,146 @@ def flag_xants(uvd, xants):
 # RFI flagging algorithms
 #############################################################################
 
-def watershed_flag(d, f=None, sig_init=6, sig_adj=2):
-    '''Generates a mask for flags using a watershed algorithm.
-    Returns a watershed flagging of an array that is in units of standard
-    deviation (i.e. how many sigma the datapoint is from the center).
+def watershed_flag(uvf_m, uvf_f, p_adj=2., f_adj=2., t_adj=2., avg_method='quadmean',
+                   inplace=True):
+    '''Expands a set of flags using a watershed algorithm.
+    Uses a UVFlag object in 'metric' mode (i.e. how many sigma the data point is
+    from the center) and a set of flags to grow the flags using defined thresholds.
 
     Args:
-        d (array)[time,freq]: 2D array to perform watershed on.
-            d should be in units of standard deviations.
-        f (array, optional): input flags. Same size as d.
-        sig_init (int): number of sigma to flag above, initially.
-        sig_adj (int): number of sigma to flag above for points
-            near flagged points.
+        uvf_m: UVFlag object in 'metric' mode
+        uvf_f: UVFlag object in 'flag' mode
+        p_adj: Number of sigma above which to flag pixels which are near
+               previously flagged pixels. Default is 2.0.
+        f_adj: Number of sigma above which to flag channels which are near
+               fully flagged channels. Default is 2.0.
+        t_adj: Number of sigma above which to flag integrations which are near
+               fully flagged integrations. Default is 2.0.
+        avg_method: Method to average metric data for frequency and time watershedding.
+                    Options are 'mean', 'absmean', and 'quadmean' (Default).
+        inplace: Whether to update uvf_f or create a new flag object. Default is True.
 
     Returns:
-        bool array: Array of mask values for d.
+        uvf: UVFlag object in 'flag' mode with flags after watershed.
     '''
-    # mask off any points above 'sig' sigma and nan's.
-    f1 = np.ma.array(d, mask=np.where(d > sig_init, 1, 0))
-    f1.mask |= np.isnan(f1)
-    if f is not None:
-        f1.mask |= np.array(f)
+    # Check inputs
+    if (not isinstance(uvf_m, UVFlag)) or (uvf_m.mode == 'metric'):
+        raise ValueError('uvf_m must be UVFlag instance with mode == "metric."')
+    if (not isinstance(uvf_f, UVFlag)) or (uvf_f.mode == 'flag'):
+        raise ValueError('uvf_f must be UVFlag instance with mode == "flag."')
+    if uvf_m.metric_array.shape != uvf_f.flag_array.shape:
+        raise ValueError('uvf_m and uvf_f must have data of same shape. Shapes '
+                         'are: ' + str(uvf_m.metric_array.shape) + ' and '
+                         + str(uvf_f.flag_array.shape))
+    # Handle in place
+    if inplace:
+        uvf = uvf_f
+    else:
+        uvf = copy.deepcopy(uvf_f)
 
-    # Loop over flagged points and examine adjacent points to see if they exceed sig_adj
-    # Start the watershed
-    prevx, prevy = 0, 0
-    x, y = np.where(f1.mask)
-    while x.size != prevx and y.size != prevy:
-        prevx, prevy = x.size, y.size
-        for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-            xp, yp = (x + dx).clip(0, f1.shape[0] - 1), (y + dy).clip(0, f1.shape[1] - 1)
-            i = np.where(d[xp, yp] > sig_adj)[0]  # if sigma > 'sigl'
-            f1.mask[xp[i], yp[i]] = 1
-            x, y = np.where(f1.mask)
-    return f1.mask
+    try:
+        avg_f = averaging_dict[avg_method]
+    except KeyError:
+        raise KeyError('avg_method must be one of: "mean", "absmean", or "quadmean".')
+
+    # Convenience
+    farr = uvf.flag_array
+    marr = uvf_m.metric_array
+    warr = uvf_m.weights_array
+
+    if uvf_m.type == 'baseline':
+        # Pixel watershed
+        for b in np.unique(uvf.baseline_array):
+            i = np.where(uvf.baseline_array == b)
+            for pi in range(uvf.polarization_array.size):
+                farr[i, 0, :, pi] = _ws_flag_wf(marr[i, 0, :, pi],
+                                                farr[i, 0, :, pi], p_adj)
+        # Channel watershed
+        d = avg_f(marr, axis=(0, 1, 3), weights=warr)
+        f = np.all(farr, axis=(0, 1, 3))
+        farr[:, :, :, :] = _ws_flag_wf(d, f, f_adj).reshape(1, 1, -1, 1)
+        # Time watershed
+        ts = np.unique(uvf.time_array)
+        d = np.zeros(ts.size)
+        f = np.zeros(ts.size, dtype=np.bool)
+        for i, t in enumerate(ts):
+            d[i] = avg_f(marr[uvf.time_array == t, 0, :, :],
+                         weights=warr[uvf.time_array == t, 0, :, :])
+            f[i] = np.all(farr[uvf.time_array == t, 0, :, :])
+        f = _ws_flag_wf(d, f, t_adj)
+        for i, t in enumerate(ts):
+            farr[uvf.time_array == t, :, :, :] = f[i]
+    elif uvf_m.type == 'antenna':
+        # Pixel watershed
+        for ai in range(uvf.ant_array.size):
+            for pi in range(uvf.polarization_array.size):
+                farr[ai, 0, :, :, pi] = _ws_flag_wf(marr[ai, 0, :, :, pi].T,
+                                                    farr[ai, 0, :, :, pi].T, p_adj).T
+        # Channel watershed
+        d = avg_f(marr, axis=(0, 1, 3, 4), weights=warr)
+        f = np.all(farr, axis=(0, 1, 3, 4))
+        farr[:, :, :, :, :] = _ws_flag_wf(d, f, f_adj).reshape(1, 1, -1, 1, 1)
+        # Time watershed
+        d = avg_f(marr, axis=(0, 1, 2, 4), weights=warr)
+        f = np.all(farr, axis=(0, 1, 2, 4))
+        farr[:, :, :, :, :] = _ws_flag_wf(d, f, t_adj).reshape(1, 1, 1, -1, 1)
+    elif uvf_m.type == 'wf':
+        # Pixel watershed
+        for pi in range(uvf.polarization_array.size):
+            farr[:, :, pi] = _ws_flag_wf(marr[:, :, pi], farr[:, :, pi], p_adj)
+        # Channel watershed
+        d = avg_f(marr, axis=(0, 2), weights=warr)
+        f = np.app(farr, axis=(0, 2))
+        farr[:, :, :] = _ws_flag_wf(d, f, f_adj).reshape(1, -1, 1)
+        # Time watershed
+        d = avg_f(marr, axis=(1, 2), weights=warr)
+        f = np.all(farr, axis=(1, 2))
+        farr[:, :, :] = _ws_flag_wf(d, f, t_adj).reshape(-1, 1, 1)
+    else:
+        raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
+    return uvf
+
+
+def _ws_flag_wf(d, fin, sig=2.):
+     ''' Performs watershed algorithm on 1D or 2D arrays of metric and input flags.
+     This is a helper function for watershed_flag, but not usually called
+     by end users.
+
+    Args:
+        d: 2D or 1D array. Should be in units of standard deviations.
+        fin: input (boolean) flags used as seed of watershed. Same size as d.
+        sig: number of sigma to flag above for point near flagged points.
+    Returns:
+        f: boolean array matching size of d and fin, with watershedded flags.
+    '''
+
+    if d.shape != fin.shape:
+        raise ValueError('d and f must match in shape. Shapes are: ' + str(d.shape)
+                         + ' and ' + str(f.shape))
+    f = copy.deepcopy(fin)
+    # There may be an elegant way to combine these... for the future.
+    if d.ndim == 1:
+        prevn = 0
+        x = np.where(f)[0]
+        while x.size != prevn:
+            for dx in [-1, 1]:
+                xp = (x + dx).clip(0, f.size - 1)
+                i = np.where(d[xp] > sig)[0]  # if our metric > sig
+                f[xp[i]] = 1
+                x = np.where(f)[0]
+    elif d.ndim == 2:
+        prevx, prevy = 0, 0
+        x, y = np.where(f)
+        while x.size != prevx and y.size != prevy:
+            prevx, prevy = x.size, y.size
+            for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                xp, yp = (x + dx).clip(0, f.shape[0] - 1), (y + dy).clip(0, f.shape[1] - 1)
+                i = np.where(d[xp, yp] > sig)[0]  # if our metric > sig
+                f1.mask[xp[i], yp[i]] = 1
+                x, y = np.where(f)
+    else:
+        raise ValueError('Data must be 1D or 2D.')
+    return f
 
 
 def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
