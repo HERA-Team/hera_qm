@@ -507,3 +507,30 @@ def test_not_equal():
     uvf2 = copy.deepcopy(uvf1)
     uvf2.history += 'hello'
     nt.assert_false(uvf1.__eq__(uvf2, check_history=True))
+
+def test_to_wf_bl():
+    uvf = UVFlag(test_f_file)
+    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf.to_wf()
+    nt.assert_true(uvf.type == 'wf')
+    nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
+                                              len(uvf.polarization_array)))
+    nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
+
+def test_to_wf_ant():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf.to_wf()
+    nt.assert_true(uvf.type == 'wf')
+    nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
+                                              len(uvf.polarization_array)))
+    nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
+
+def test_to_wf_wf():
+    uvf = UVFlag(test_f_file)
+    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf.to_wf()
+    uvtest.checkWarnings(uvf.to_wf, [], {}, nwarnings=1,
+                         message='This object is already a waterfall')

@@ -29,6 +29,26 @@ def lst_from_uv(uv):
     lst_array = uvutils.get_lst_for_time(uv.time_array, lat, lon, alt)
     return lst_array
 
+def absmean(a, weights=None, axis=None, returned=False):
+    ''' Function to average absolute value
+    Args:
+        a - array to process
+        weights - weights for average
+        axis - axis keyword to pass to np.mean
+        returned - whether to return sum of weights. Default is False.
+    '''
+    return np.average(np.abs(a), weights=weights, axis=axis, returned=returned)
+
+def quadmean(a, weights=None, axis=None, returned=False):
+    ''' Function to average in quadrature
+    Args:
+        a - array to process
+        weights - weights for average
+        axis - axis keyword to pass to np.mean
+        returned - whether to return sum of weights. Default is False.
+    '''
+    return np.average(np.abs(a)**2, weights=weights, axis=axis, returned=returned)
+
 class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
     and stores all relevant information to combine flags and apply to data.
@@ -364,3 +384,52 @@ class UVFlag():
             del(self.metric_array)
         if hasattr(self, 'flag_array') and self.mode != 'flag':
             del(self.flag_array)
+
+    def to_wf(self, method='quadmean', keep_pol=True):
+        """
+        Convert an 'antenna' or 'baseline' type object to waterfall using a given method.
+        Args:
+            method: How to collapse the dimension(s)
+            keep_pol: Whether to also collapse the polarization dimension
+        """
+        method = method.lower()
+        f_dict = {'mean': np.average, 'absmean': absmean, 'quadmean': quadmean}
+        if self.type == 'wf' and (keep_pol or (self.Npols == 1)):
+            warnings.warn('This object is already a waterfall. Nothing to change.')
+            return
+        if self.mode == 'flag':
+            darr = self.flag_array
+        else:
+            darr = self.metric_array
+        if (not keep_pol) and (self.Npols > 1):
+            # Collapse pol dimension. But note we retain a polarization axis.
+            d, w = f_dict[method](darr, axis=-1, weights=self.weights_array, returned=True)
+            darr = np.expand_dims(d, axis=d.ndim)
+            self.weights_array = np.expand_dims(w, axis=w.ndim)
+            self.polarization_array = ','.join(map(str, self.polarization_array))
+            self.Npols = 1
+
+        if self.type == 'antenna':
+            d, w = f_dict[method](darr, axis=(0, 1), weights=self.weights_array,
+                                  returned=True)
+            darr = np.swapaxes(d, 0, 1)
+            self.weights_array = np.swapaxes(w, 0, 1)
+        elif self.type == 'baseline':
+            Nt = len(np.unique(self.time_array))
+            Nf = len(self.freq_array[0, :])
+            Np = len(self.polarization_array)
+            d = np.zeros((Nt, Nf, Np))
+            w = np.zeros((Nt, Nf, Np))
+            for i, t in enumerate(np.unique(self.time_array)):
+                ind = self.time_array == t
+                d[i, :, :], w[i, :, :] = f_dict[method](darr[ind, :, :], axis=0,
+                                                        weights=self.weights_array[ind, :, :],
+                                                        returned=True)
+            darr = d
+            self.weights_array = w
+            self.time_array = np.unique(self.time_array)
+        self.metric_array = darr
+        self.freq_array = self.freq_array.flatten()
+        self.mode = 'metric'
+        self.type = 'wf'
+        self.clear_unused_attributes()
