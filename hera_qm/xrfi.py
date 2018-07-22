@@ -519,15 +519,41 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
     return uvf
 
 
-def xrfi_run(indata, args, history):
+def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
+                 summary=False, summary_ext='.flag_summary.npz', xrfi_path='',
+                 model_file=None, model_file_format='uvfits',
+                 calfits_file=None, kt_size=8, kf_size=8, sig_init=6.0, sig_adj=2.0,
+                 px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05,
+                 ex_ants='', metrics_json='', filename=None):
     """
-    Run an RFI-flagging algorithm on a single data file, and optionally calibration files,
+    Run RFI-flagging algorithm from H1C on a single data file, and optionally calibration files,
     and store results in npz files.
 
     Args:
-       indata -- Either UVData object or data file to run RFI flagging on.
-       args -- parsed arguments via argparse.ArgumentParser.parse_args
-       history -- history string to include in files
+        indata -- Either UVData object or data file to run RFI flagging on.
+        history -- history string to include in files
+        infile_format -- File format for input files. Default is miriad.
+        extension -- Extension to be appended to input file name. Default is ".flags.h5"
+        summary -- Run summary of RFI flags and store in npz file. Default is False.
+        xrfi_path -- Path to save flag files to. Default is same directory as input file.
+        model_file -- Model visibility file to flag on.
+        model_file_format -- File format for input model file. Default is uvfits.
+        calfits_file -- Calfits file to use to flag on gains and/or chisquared values.
+        kt_size -- Size of kernel in time dimension for detrend in xrfi algorithm. Default is 8.
+        kf_size -- Size of kernel in frequency dimension for detrend in xrfi. Default is 8.
+        sig_init -- Starting number of sigmas to flag on. Default is 6.
+        sig_adj -- Number of sigmas to flag on for data adjacent to a flag. Default is 2.
+        px_threshold -- Fraction of flags required to trigger a broadcast across baselines
+                        for a given (time, frequency) pixel. Default is 0.2.
+        freq_threshold -- Fraction of channels required to trigger broadcast across
+                          frequency (single time). Default is 0.5.
+        time_threshold -- Fraction of times required to trigger broadcast across
+                          time (single frequency). Default is 0.05.
+        ex_ants -- Comma-separated list of antennas to exclude. Flags of visibilities
+                   formed with these antennas will be set to True.
+        metrics_json -- Metrics file that contains a list of excluded antennas. Flags of
+                        visibilities formed with these antennas will be set to True.
+        filename -- File for which to flag RFI (only one file allowed).
     Return:
        None
 
@@ -536,155 +562,148 @@ def xrfi_run(indata, args, history):
     observations. Each set of flagging will be stored, as well as compressed versions.
     """
     if indata is None:
-        if (args.model_file is None) and (args.calfits_file is None):
-            raise AssertionError('Must provide at least one of: filename, '
+        if (model_file is None) and (calfits_file is None):
+            raise AssertionError('Must provide at least one of: indata, '
                                  'model_file, or calfits_file.')
-        warnings.warn('indata is none, not flagging on any data visibilities.')
+        warnings.warn('indata is None, not flagging on any data visibilities.')
     elif isinstance(indata, UVData):
         uvd = indata
-        if len(args.filename) == 0:
+        if filename is None:
             raise AssertionError('Please provide a filename to go with UVData object. '
                                  'The filename is used in conjunction with "extension" '
                                  'to determine the output filename.')
         else:
-            if isinstance(args.filename, str):
-                filename = args.filename
-            else:
-                filename = args.filename[0]
+            assert (isinstance(filename, str)), 'filename must be string path to file.'
     else:
-        # make sure we were given files to process
-        if len(indata) == 0:
-            if (args.model_file is None) and (args.calfits_file is None):
-                raise AssertionError('Must provide at least one of: filename, '
-                                     'model_file, or calfits_file.')
-            indata = None
-            warnings.warn('indata is none, not flagging on any data visibilities.')
-        elif len(indata) > 1:
-            raise AssertionError('xrfi_run currently only takes a single data file.')
+        filename = indata
+        uvd = UVData()
+        if infile_format == 'miriad':
+            uvd.read_miriad(filename)
+        elif infile_format == 'uvfits':
+            uvd.read_uvfits(filename)
+        elif infile_format == 'fhd':
+            uvd.read_fhd(filename)
         else:
-            filename = indata[0]
-            uvd = UVData()
-            if args.infile_format == 'miriad':
-                uvd.read_miriad(filename)
-            elif args.infile_format == 'uvfits':
-                uvd.read_uvfits(filename)
-            elif args.infile_format == 'fhd':
-                uvd.read_fhd(filename)
-            else:
-                raise ValueError('Unrecognized input file format ' + str(args.infile_format))
+            raise ValueError('Unrecognized input file format ' + str(infile_format))
 
     # Compute list of excluded antennas
-    if args.ex_ants != '' or args.metrics_json != '':
+    if ex_ants != '' or metrics_json != '':
         # import function from hera_cal
         from hera_cal.omni import process_ex_ants
-        xants = process_ex_ants(args.ex_ants, args.metrics_json)
+        xants = process_ex_ants(ex_ants, metrics_json)
 
         # Flag the visibilities corresponding to the specified antennas
         uvd = flag_xants(uvd, xants)
 
-    # Flag on full data set
+    # Flag on data
     if indata is not None:
-        d_flag_array = vis_flag(uvd, args)
-
-        # Make a "normalized waterfall" to account for data already flagged in file
-        d_wf_tot = qm_utils.flags2waterfall(uvd, flag_array=d_flag_array)
-        d_wf_prior = qm_utils.flags2waterfall(uvd, flag_array=uvd.flag_array)
-        d_wf_norm = normalize_wf(d_wf_tot, d_wf_prior)
-        d_wf_t = threshold_flags(d_wf_norm, px_threshold=args.px_threshold,
-                                 freq_threshold=args.freq_threshold,
-                                 time_threshold=args.time_threshold)
-
-    # Flag on model visibilities
-    if args.model_file is not None:
+        uvf_d = UVFlag(uvd)
+        uvf_d.weights_array = np.logical_not(uvd.flag_array).astype(np.float)
+        uvf_d = calculate_metric(uvd, 'detrend_medfilt', Kt=kt_size, Kf=kf_size)
+        uvf_df = flag(uvf_d, nsig_p=sig_init, nsig_f=None, nsig_t=None)
+        uvf_df = watershed_flag(uvf_d, uvf_df, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+        uvf_dw = copy.deepcopy(uvf_df)
+        uvf_dw.to_wf()
+        # I realize the naming convention has flipped, which results in nsig_f=time_threshold.
+        # time_threshold is defined as fraction of time flagged to flag a given channel.
+        # nsig_f is defined as significance required to flag a channel.
+        uvf_dwf = flag(uvf_dw, nsig_p=px_threshold, nsig_f=time_threshold,
+                       nsig_t=freq_threshold)
+    if model_file is not None:
         uvm = UVData()
-        if args.model_file_format == 'miriad':
-            uvm.read_miriad(args.model_file)
-        elif args.model_file_format == 'uvfits':
-            uvm.read_uvfits(args.model_file)
-        elif args.model_file_format == 'fhd':
-            uvm.read_fhd(args.model_file)
+        if model_file_format == 'miriad':
+            uvm.read_miriad(model_file)
+        elif model_file_format == 'uvfits':
+            uvm.read_uvfits(model_file)
+        elif model_file_format == 'fhd':
+            uvm.read_fhd(model_file)
         else:
-            raise ValueError('Unrecognized input file format ' + str(args.model_file_format))
+            raise ValueError('Unrecognized input file format ' + str(model_file_format))
         if indata is not None:
             if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5, rtol=0) and
                     np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of model vis file must match'
                                  'the data file.')
-        m_flag_array = vis_flag(uvm, args)
-        m_waterfall = qm_utils.flags2waterfall(uvm, flag_array=m_flag_array)
-        m_wf_prior = qm_utils.flags2waterfall(uvm)
-        m_wf_norm = normalize_wf(m_waterfall, m_wf_prior)
-        m_wf_t = threshold_flags(m_wf_norm, px_threshold=args.px_threshold,
-                                 freq_threshold=args.freq_threshold,
-                                 time_threshold=args.time_threshold)
-
-    # Flag on gain solutions and chisquared values
-    if args.calfits_file is not None:
+        uvf_m = UVFlag(uvm)
+        uvf_m.weights_array = np.logical_not(uvm.flag_array).astype(np.float)
+        uvf_m = calculate_metric(uvm, 'detrend_medfilt', Kt=kt_size, Kf=kf_size)
+        uvf_mf = flag(uvf_m, nsig_p=sig_init, nsig_f=None, nsig_t=None)
+        uvf_mf = watershed_flag(uvf_m, uvf_mf, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+        uvf_mw = copy.deepcopy(uvf_mf)
+        uvf_mw.to_wf()
+        # Note above comment about naming convention
+        uvf_mwf = flag(uvf_mw, nsig_p=px_threshold, nsig_f=time_threshold,
+                       nsig_t=freq_threshold)
+    if calfits_file is not None:
         uvc = UVCal()
-        uvc.read_calfits(args.calfits_file)
+        uvc.read_calfits(calfits_file)
         if indata is not None:
             if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5, rtol=0) and
                     np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of calfits file must match'
                                  'the data file.')
-        g_flag_array, x_flag_array = cal_flag(uvc, args)
-        g_waterfall = qm_utils.flags2waterfall(uvc, flag_array=g_flag_array)
-        x_waterfall = qm_utils.flags2waterfall(uvc, flag_array=x_flag_array)
-        c_wf_prior = qm_utils.flags2waterfall(uvc)
-        g_wf_norm = normalize_wf(g_waterfall, c_wf_prior)
-        x_wf_norm = normalize_wf(x_waterfall, c_wf_prior)
-        g_wf_t = threshold_flags(g_wf_norm, px_threshold=args.px_threshold,
-                                 freq_threshold=args.freq_threshold,
-                                 time_threshold=args.time_threshold)
-        x_wf_t = threshold_flags(x_wf_norm, px_threshold=args.px_threshold,
-                                 freq_threshold=args.freq_threshold,
-                                 time_threshold=args.time_threshold)
+        uvf_g = UVFlag(uvc)
+        uvf_g.weights_array = np.logical_not(uvc.flag_array).astype(np.float)
+        uvf_x = copy.deepcopy(uvf_g)
+        uvf_g = calculate_metric(uvc, 'detrend_medfilt', Kt=kt_size, Kf=kf_size)
+        uvf_gf = flag(uvf_g, nsig_p=sig_init, nsig_f=None, nsig_t=None)
+        uvf_gf = watershed_flag(uvf_g, uvf_gf, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+        uvf_gw = copy.deepcopy(uvf_gf)
+        uvf_gw.to_wf()
+        # Note above comment about naming convention
+        uvf_gwf = flag(uvf_gw, nsig_p=px_threshold, nsig_f=time_threshold,
+                       nsig_t=freq_threshold)
+        # Repeat for chisquared
+        uvf_x = calculate_metric(uvc, 'detrend_medfilt', Kt=kt_size, Kf=kf_size,
+                                 gains=False, chisq=True)
+        uvf_xf = flag(uvf_x, nsig_p=sig_init, nsig_f=None, nsig_t=None)
+        uvf_xf = watershed_flag(uvf_x, uvf_xf, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+        uvf_xw = copy.deepcopy(uvf_xf)
+        uvf_xw.to_wf()
+        # Note above comment about naming convention
+        uvf_xwf = flag(uvf_xw, nsig_p=px_threshold, nsig_f=time_threshold,
+                       nsig_t=freq_threshold)
 
     # append to history
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
 
     # save output when we're done
-    if args.xrfi_path != '':
+    if xrfi_path != '':
         # If explicitly given output path, use it. Otherwise use path from data.
-        dirname = args.xrfi_path
+        dirname = xrfi_path
     if indata is not None:
-        if args.xrfi_path == '':
+        if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(filename))
         basename = os.path.basename(filename)
-        outfile = ''.join([basename, args.extension])
+        # Save watersheded flags
+        outfile = ''.join([basename, extension])
         outpath = os.path.join(dirname, outfile)
-        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
-        np.savez(outpath, flag_array=d_flag_array, waterfall=d_wf_t, baseline_array=uvd.baseline_array,
-                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array, freq_array=uvd.freq_array,
-                 time_array=uvd.time_array, lst_array=uvd.lst_array, antpos=antpos, ants=ants, history=history)
-        if (args.summary):
-            sum_file = ''.join([basename, args.summary_ext])
+        uvf_df.write(outpath)
+        # Save thresholded waterfall
+        outfile = ''.join([baseline, '.wf', extension])
+        outpath = os.path.join(dirname, outfile)
+        uvf_dwf.write(outpath)
+        if summary:
+            sum_file = ''.join([baseline, summary_ext])
             sum_path = os.path.join(dirname, sum_file)
-            # Summarize using one of the raw flag arrays
-            summarize_flags(uvd, sum_path, flag_array=d_flag_array)
-    if args.model_file is not None:
-        if args.xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(args.model_file))
-        outfile = ''.join([os.path.basename(args.model_file), args.extension])
+            uvf_dw.write(sum_path)
+    if model_file is not None:
+        if xrfi_path == '':
+            dirname = os.path.dirname(os.path.abspath(model_file))
+        # Only save thresholded waterfall
+        outfile = ''.join([os.path.basename(model_file), extension])
         outpath = os.path.join(dirname, outfile)
-        antpos, ants = uvm.get_ENU_antpos(center=True, pick_data_ants=True)
-        np.savez(outpath, flag_array=m_flag_array, waterfall=m_wf_t, baseline_array=uvm.baseline_array,
-                 antpairs=uvm.get_antpairs(), polarization_array=uvm.polarization_array, freq_array=uvm.freq_array,
-                 time_array=uvm.time_array, lst_array=uvm.lst_array, antpos=antpos, ants=ants, history=history)
-    if args.calfits_file is not None:
+        uvf_mwf.write(outpath)
+    if calfits_file is not None:
         # Save flags from gains and chisquareds in separate files
-        if args.xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(args.calfits_file))
-        outfile = ''.join([os.path.basename(args.calfits_file), '.g', args.extension])
+        if xrfi_path == '':
+            dirname = os.path.dirname(os.path.abspath(calfits_file))
+        outfile = ''.join([os.path.basename(calfits_file), '.g', extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=g_flag_array, waterfall=g_wf_t, ants=uvc.ant_array,
-                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
-                 time_array=uvc.time_array, history=history)
+        uvf_gwf.write(outpath)
         outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
         outpath = os.path.join(dirname, outfile)
-        np.savez(outpath, flag_array=x_flag_array, waterfall=x_wf_t, ants=uvc.ant_array,
-                 jones_array=uvc.jones_array, freq_array=uvc.freq_array,
-                 time_array=uvc.time_array, history=history)
+        uvf_xwf.write(outpath)
 
     return
 
