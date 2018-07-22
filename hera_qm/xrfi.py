@@ -179,6 +179,10 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     return f[Kt:-Kt, Kf:-Kf]
 
 
+# Update algorithm_dict whenever new metric algorithm is created.
+algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': detrend_deriv,
+                  'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt}
+
 #############################################################################
 # RFI flagging algorithms
 #############################################################################
@@ -451,84 +455,56 @@ def xrfi_h1c(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
     return f
 
 
-def vis_flag(uv, args):
+#############################################################################
+# Higher level functions that loop through data to calculate metrics
+#############################################################################
+
+def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
     """
-    Run an RFI-flagging algorithm on visibility data.
+    Iterate over waterfalls in a UVData or UVCal object and generate a UVFlag object
+    of mode 'metric'.
 
     Args:
-        uv -- a UVData object containing visibility data to flag on.
-        args -- parsed arguments via argparse.ArgumentParser.parse_args
-    Return:
-        flag_array -- boolean array of flags, same shape as uv.data_array
+        uv: UVData or UVCal object to calculate metrics on.
+        algorithm: (str) metric algorithm name. Must be defined in algorithm_dict.
+        gains: (bool) If True, and uv is UVCal, calculate metric based on gains.
+               Supersedes chisq.
+        chisq: (bool) If True, and gains==False, calculate metric based on chisq.
+        **kwargs: Keyword arguments that are passed to algorithm.
+    Returns:
+        uvf: UVFlag object of mode 'metric' corresponding to the uv object.
     """
-    if not isinstance(uv, UVData):
-        raise ValueError('First argument to vis_flags must be a UVData object.')
-    flag_array = np.zeros_like(uv.flag_array)
-    for key, d in uv.antpairpol_iter():
-        ind1, ind2, pol = uv._key2inds(key)
-        for ind, ipol in zip((ind1, ind2), pol):
-            if len(ind) == 0:
-                continue
-            f = uv.flag_array[ind, 0, :, ipol]
-            if args.algorithm == 'xrfi_simple':
-                flag_array[ind, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
-                                                          nsig_df=args.nsig_df,
-                                                          nsig_dt=args.nsig_dt,
-                                                          nsig_all=args.nsig_all)
-            elif args.algorithm == 'xrfi':
-                flag_array[ind, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
-                                                   Kf=args.kf_size, sig_init=args.sig_init,
-                                                   sig_adj=args.sig_adj)
-            else:
-                raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
-    return flag_array
-
-
-def cal_flag(uvc, args):
-    """
-    Run an RFI-flagging algorithm on calibration solutions and quality_array.
-
-    Args:
-        uvc -- a UVCal object containing calibration output to flag on.
-                Must have cal_type=='gain'
-        args -- parsed arguments via argparse.ArgumentParser.parse_args
-    Return:
-        flag_array -- boolean array of flags, same shape as uvc.gain_array
-    """
-    if not isinstance(uvc, UVCal):
-        raise ValueError('First argument to cal_flags must be a UVCal object.')
-    if uvc.cal_type != 'gain':
-        raise ValueError('UVCal object must have cal_type=="gain".')
-
-    g_flags = np.zeros_like(uvc.flag_array)
-    x_flags = np.zeros_like(uvc.flag_array)
-
-    for ai in range(uvc.Nants_data):
-        for pi in range(uvc.Njones):
-            # Note transposes are due to freq, time dimensions rather than the
-            # expected time, freq
-            f = uvc.flag_array[ai, 0, :, :, pi].T
-            if args.algorithm == 'xrfi_simple':
-                d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
-                g_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
-                                                       nsig_dt=args.nsig_dt,
-                                                       nsig_all=args.nsig_all).T
-                d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
-                x_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
-                                                       nsig_dt=args.nsig_dt,
-                                                       nsig_all=args.nsig_all).T
-            elif args.algorithm == 'xrfi':
-                d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
-                g_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
-                                                Kf=args.kf_size, sig_init=args.sig_init,
-                                                sig_adj=args.sig_adj).T
-                d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
-                x_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
-                                                Kf=args.kf_size, sig_init=args.sig_init,
-                                                sig_adj=args.sig_adj).T
-            else:
-                raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
-    return g_flags, x_flags
+    if not isinstance(uv, (UVData, UVCal)):
+        raise ValueError('uv must be a UVData or UVCal object.')
+    try:
+        mfunc = algorithm_dict[algorithm]
+    except KeyError:
+        raise KeyError('Algorithm not found in list of available functions.')
+    uvf = UVFlag(uv)
+    uvf.weights_array = uv.nsample_array * np.logical_not(uv.flag_array).astype(np.float)
+    if isinstance(uv, UVData):
+        for key, d in uv.antpairpol_iter():
+            ind1, ind2, pol = uv._key2inds(key)
+            for ind, ipol in zip((ind1, ind2), pol):
+                if len(ind) == 0:
+                    continue
+                f = uv.flag_array[ind, 0, :, ipol]
+                uvf.flag_array[ind, 0, :, ipol] = mfunc(np.abs(d), f=f, **kwargs)
+    elif isinstance(uv, UVCal):
+        for ai in range(uv.Nants_data):
+            for pi in range(uv.Njones):
+                # Note transposes are due to freq, time dimensions rather than the
+                # expected time, freq
+                f = uv.flag_array[ai, 0, :, :, pi].T
+                if gains:
+                    d = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
+                elif chisq:
+                    d = np.abs(uv.quality_array[ai, 0, :, :, pi].T)
+                else:
+                    raise ValueError('When calculating metric for UVCal object, '
+                                     'gains or chisq must be set to True.')
+                uvf.flag_array[ai, 0, :, :, pi] = mfunc(d, f=f, **kwargs).T
+    return uvf
 
 
 def xrfi_run(indata, args, history):
