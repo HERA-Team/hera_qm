@@ -198,11 +198,10 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='qu
         uvf_f: UVFlag object in 'flag' mode
         nsig_p: Number of sigma above which to flag pixels which are near
                previously flagged pixels. Default is 2.0.
-        TODO: option to skip 1D watersheds by setting to None
         nsig_f: Number of sigma above which to flag channels which are near
-               fully flagged channels. Default is 2.0.
+               fully flagged channels. Default is 2.0. Bypassed if None.
         nsig_t: Number of sigma above which to flag integrations which are near
-               fully flagged integrations. Default is 2.0.
+               fully flagged integrations. Default is 2.0. Bypassed if None.
         avg_method: Method to average metric data for frequency and time watershedding.
                     Options are 'mean', 'absmean', and 'quadmean' (Default).
         inplace: Whether to update uvf_f or create a new flag object. Default is True.
@@ -242,47 +241,53 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='qu
             for pi in range(uvf.polarization_array.size):
                 farr[i, 0, :, pi] += _ws_flag_wf(marr[i, 0, :, pi],
                                                  farr[i, 0, :, pi], nsig_p)
-        # Channel watershed
-        d = avg_f(marr, axis=(0, 1, 3), weights=warr)
-        f = np.all(farr, axis=(0, 1, 3))
-        farr[:, :, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, 1, -1, 1)
-        # Time watershed
-        ts = np.unique(uvf.time_array)
-        d = np.zeros(ts.size)
-        f = np.zeros(ts.size, dtype=np.bool)
-        for i, t in enumerate(ts):
-            d[i] = avg_f(marr[uvf.time_array == t, 0, :, :],
-                         weights=warr[uvf.time_array == t, 0, :, :])
-            f[i] = np.all(farr[uvf.time_array == t, 0, :, :])
-        f = _ws_flag_wf(d, f, nsig_t)
-        for i, t in enumerate(ts):
-            farr[uvf.time_array == t, :, :, :] += f[i]
+        if nsig_f is not None:
+            # Channel watershed
+            d = avg_f(marr, axis=(0, 1, 3), weights=warr)
+            f = np.all(farr, axis=(0, 1, 3))
+            farr[:, :, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, 1, -1, 1)
+        if nsig_t is not None:
+            # Time watershed
+            ts = np.unique(uvf.time_array)
+            d = np.zeros(ts.size)
+            f = np.zeros(ts.size, dtype=np.bool)
+            for i, t in enumerate(ts):
+                d[i] = avg_f(marr[uvf.time_array == t, 0, :, :],
+                             weights=warr[uvf.time_array == t, 0, :, :])
+                f[i] = np.all(farr[uvf.time_array == t, 0, :, :])
+            f = _ws_flag_wf(d, f, nsig_t)
+            for i, t in enumerate(ts):
+                farr[uvf.time_array == t, :, :, :] += f[i]
     elif uvf_m.type == 'antenna':
         # Pixel watershed
         for ai in range(uvf.ant_array.size):
             for pi in range(uvf.polarization_array.size):
                 farr[ai, 0, :, :, pi] += _ws_flag_wf(marr[ai, 0, :, :, pi].T,
                                                      farr[ai, 0, :, :, pi].T, nsig_p).T
-        # Channel watershed
-        d = avg_f(marr, axis=(0, 1, 3, 4), weights=warr)
-        f = np.all(farr, axis=(0, 1, 3, 4))
-        farr[:, :, :, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, 1, -1, 1, 1)
-        # Time watershed
-        d = avg_f(marr, axis=(0, 1, 2, 4), weights=warr)
-        f = np.all(farr, axis=(0, 1, 2, 4))
-        farr[:, :, :, :, :] += _ws_flag_wf(d, f, nsig_t).reshape(1, 1, 1, -1, 1)
+        if nsig_f is not None:
+            # Channel watershed
+            d = avg_f(marr, axis=(0, 1, 3, 4), weights=warr)
+            f = np.all(farr, axis=(0, 1, 3, 4))
+            farr[:, :, :, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, 1, -1, 1, 1)
+        if nsig_t is not None:
+            # Time watershed
+            d = avg_f(marr, axis=(0, 1, 2, 4), weights=warr)
+            f = np.all(farr, axis=(0, 1, 2, 4))
+            farr[:, :, :, :, :] += _ws_flag_wf(d, f, nsig_t).reshape(1, 1, 1, -1, 1)
     elif uvf_m.type == 'wf':
         # Pixel watershed
         for pi in range(uvf.polarization_array.size):
             farr[:, :, pi] += _ws_flag_wf(marr[:, :, pi], farr[:, :, pi], nsig_p)
-        # Channel watershed
-        d = avg_f(marr, axis=(0, 2), weights=warr)
-        f = np.app(farr, axis=(0, 2))
-        farr[:, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, -1, 1)
-        # Time watershed
-        d = avg_f(marr, axis=(1, 2), weights=warr)
-        f = np.all(farr, axis=(1, 2))
-        farr[:, :, :] += _ws_flag_wf(d, f, nsig_t).reshape(-1, 1, 1)
+        if nsig_f is not None:
+            # Channel watershed
+            d = avg_f(marr, axis=(0, 2), weights=warr)
+            f = np.app(farr, axis=(0, 2))
+            farr[:, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, -1, 1)
+        if nsig_t is not None:
+            # Time watershed
+            d = avg_f(marr, axis=(1, 2), weights=warr)
+            f = np.all(farr, axis=(1, 2))
+            farr[:, :, :] += _ws_flag_wf(d, f, nsig_t).reshape(-1, 1, 1)
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
     return uvf
@@ -335,9 +340,10 @@ def flag(uvf_m, nsig_p=6., nsig_f=3., nsig_t=3., avg_method='quadmean'):
     Args:
         uvf_m: UVFlag object in 'metric' mode (ie. number of sigma data is from middle)
         nsig_p: Number of sigma above which to flag pixels. Default is 6.0.
-        TODO: option to skip 1D flagging by setting to None
         nsig_f: Number of sigma above which to flag channels. Default is 3.0.
+                Bypassed if None.
         nsig_t: Number of sigma above which to flag integrations. Default is 3.0.
+                Bypassed if None.
         avg_method: Method to average metric data for frequency and time flagging.
                     Options are 'mean', 'absmean', and 'quadmean' (Default).
 
@@ -360,37 +366,43 @@ def flag(uvf_m, nsig_p=6., nsig_f=3., nsig_t=3., avg_method='quadmean'):
     uvf_f.flag_array[uvf_m.metric_array > nsig_p] = True
 
     if uvf_m.type == 'baseline':
-        # Channel flagging
-        d = avg_f(uvf_m.metric_array, axis=(0, 1, 3), weights=uvf_m.weights_array)
-        indf = np.where(d > nsig_f)[0]
-        uvf_f.flag_array[:, :, indf, :] = True
-        # Time flagging
-        ts = np.unique(uvf_m.time_array)
-        d = np.zeros(ts.size)
-        for i, t in enumerate(ts):
-            d[i] = avg_f(marr[uvf.time_array == t, 0, :, :],
-                         weights=warr[uvf.time_array == t, 0, :, :])
-        indf = np.where(d > nsig_t)[0]
-        for t in ts[indf]:
-            uvf_f.flag_array[uvf.time_array == t, :, :, :] = True
+        if nsig_f is not None:
+            # Channel flagging
+            d = avg_f(uvf_m.metric_array, axis=(0, 1, 3), weights=uvf_m.weights_array)
+            indf = np.where(d > nsig_f)[0]
+            uvf_f.flag_array[:, :, indf, :] = True
+        if nsig_t is not None:
+            # Time flagging
+            ts = np.unique(uvf_m.time_array)
+            d = np.zeros(ts.size)
+            for i, t in enumerate(ts):
+                d[i] = avg_f(marr[uvf.time_array == t, 0, :, :],
+                             weights=warr[uvf.time_array == t, 0, :, :])
+            indf = np.where(d > nsig_t)[0]
+            for t in ts[indf]:
+                uvf_f.flag_array[uvf.time_array == t, :, :, :] = True
     elif uvf_m.type == 'antenna':
-        # Channel flag
-        d = avg_f(uvf_m.metric_array, axis=(0, 1, 3, 4), weights=warr)
-        indf = np.where(d > nsig_f)[0]
-        uvf_f.flag_array[:, :, indf, :, :] = True
-        # Time watershed
-        d = avg_f(uvf_m.metric_array, axis=(0, 1, 2, 4), weights=warr)
-        indt = np.where(d > nsig_t)[0]
-        uvf_f.flag_array[:, :, :, indt, :] = True
+        if nsig_f is not None:
+            # Channel flag
+            d = avg_f(uvf_m.metric_array, axis=(0, 1, 3, 4), weights=warr)
+            indf = np.where(d > nsig_f)[0]
+            uvf_f.flag_array[:, :, indf, :, :] = True
+        if nsig_t is not None:
+            # Time watershed
+            d = avg_f(uvf_m.metric_array, axis=(0, 1, 2, 4), weights=warr)
+            indt = np.where(d > nsig_t)[0]
+            uvf_f.flag_array[:, :, :, indt, :] = True
     elif uvf_m.type == 'wf':
-        # Channel flag
-        d = avg_f(uvf_m.metric_array, axis=(0, 2), weights=warr)
-        indf = np.where(d > nsig_f)[0]
-        uvf_f.flag_array[:, indf, :] = True
-        # Time watershed
-        d = avg_f(uvf_m.metric_array, axis=(1, 2), weights=warr)
-        indt = np.where(d > nsig_t)[0]
-        uvf_f.flag_array[indt, :, :] = True
+        if nsig_f is not None:
+            # Channel flag
+            d = avg_f(uvf_m.metric_array, axis=(0, 2), weights=warr)
+            indf = np.where(d > nsig_f)[0]
+            uvf_f.flag_array[:, indf, :] = True
+        if nsig_t is not None:
+            # Time watershed
+            d = avg_f(uvf_m.metric_array, axis=(1, 2), weights=warr)
+            indt = np.where(d > nsig_t)[0]
+            uvf_f.flag_array[indt, :, :] = True
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
     return uvf_f
