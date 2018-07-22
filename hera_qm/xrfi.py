@@ -183,7 +183,7 @@ def detrend_medfilt(d, Kt=8, Kf=8):
 # RFI flagging algorithms
 #############################################################################
 
-def watershed_flag(uvf_m, uvf_f, p_adj=2., f_adj=2., t_adj=2., avg_method='quadmean',
+def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='quadmean',
                    inplace=True):
     '''Expands a set of flags using a watershed algorithm.
     Uses a UVFlag object in 'metric' mode (i.e. how many sigma the data point is
@@ -192,11 +192,12 @@ def watershed_flag(uvf_m, uvf_f, p_adj=2., f_adj=2., t_adj=2., avg_method='quadm
     Args:
         uvf_m: UVFlag object in 'metric' mode
         uvf_f: UVFlag object in 'flag' mode
-        p_adj: Number of sigma above which to flag pixels which are near
+        nsig_p: Number of sigma above which to flag pixels which are near
                previously flagged pixels. Default is 2.0.
-        f_adj: Number of sigma above which to flag channels which are near
+        TODO: option to skip 1D watersheds by setting to None
+        nsig_f: Number of sigma above which to flag channels which are near
                fully flagged channels. Default is 2.0.
-        t_adj: Number of sigma above which to flag integrations which are near
+        nsig_t: Number of sigma above which to flag integrations which are near
                fully flagged integrations. Default is 2.0.
         avg_method: Method to average metric data for frequency and time watershedding.
                     Options are 'mean', 'absmean', and 'quadmean' (Default).
@@ -235,12 +236,12 @@ def watershed_flag(uvf_m, uvf_f, p_adj=2., f_adj=2., t_adj=2., avg_method='quadm
         for b in np.unique(uvf.baseline_array):
             i = np.where(uvf.baseline_array == b)
             for pi in range(uvf.polarization_array.size):
-                farr[i, 0, :, pi] = _ws_flag_wf(marr[i, 0, :, pi],
-                                                farr[i, 0, :, pi], p_adj)
+                farr[i, 0, :, pi] += _ws_flag_wf(marr[i, 0, :, pi],
+                                                 farr[i, 0, :, pi], nsig_p)
         # Channel watershed
         d = avg_f(marr, axis=(0, 1, 3), weights=warr)
         f = np.all(farr, axis=(0, 1, 3))
-        farr[:, :, :, :] = _ws_flag_wf(d, f, f_adj).reshape(1, 1, -1, 1)
+        farr[:, :, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, 1, -1, 1)
         # Time watershed
         ts = np.unique(uvf.time_array)
         d = np.zeros(ts.size)
@@ -249,41 +250,41 @@ def watershed_flag(uvf_m, uvf_f, p_adj=2., f_adj=2., t_adj=2., avg_method='quadm
             d[i] = avg_f(marr[uvf.time_array == t, 0, :, :],
                          weights=warr[uvf.time_array == t, 0, :, :])
             f[i] = np.all(farr[uvf.time_array == t, 0, :, :])
-        f = _ws_flag_wf(d, f, t_adj)
+        f = _ws_flag_wf(d, f, nsig_t)
         for i, t in enumerate(ts):
-            farr[uvf.time_array == t, :, :, :] = f[i]
+            farr[uvf.time_array == t, :, :, :] += f[i]
     elif uvf_m.type == 'antenna':
         # Pixel watershed
         for ai in range(uvf.ant_array.size):
             for pi in range(uvf.polarization_array.size):
-                farr[ai, 0, :, :, pi] = _ws_flag_wf(marr[ai, 0, :, :, pi].T,
-                                                    farr[ai, 0, :, :, pi].T, p_adj).T
+                farr[ai, 0, :, :, pi] += _ws_flag_wf(marr[ai, 0, :, :, pi].T,
+                                                     farr[ai, 0, :, :, pi].T, nsig_p).T
         # Channel watershed
         d = avg_f(marr, axis=(0, 1, 3, 4), weights=warr)
         f = np.all(farr, axis=(0, 1, 3, 4))
-        farr[:, :, :, :, :] = _ws_flag_wf(d, f, f_adj).reshape(1, 1, -1, 1, 1)
+        farr[:, :, :, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, 1, -1, 1, 1)
         # Time watershed
         d = avg_f(marr, axis=(0, 1, 2, 4), weights=warr)
         f = np.all(farr, axis=(0, 1, 2, 4))
-        farr[:, :, :, :, :] = _ws_flag_wf(d, f, t_adj).reshape(1, 1, 1, -1, 1)
+        farr[:, :, :, :, :] += _ws_flag_wf(d, f, nsig_t).reshape(1, 1, 1, -1, 1)
     elif uvf_m.type == 'wf':
         # Pixel watershed
         for pi in range(uvf.polarization_array.size):
-            farr[:, :, pi] = _ws_flag_wf(marr[:, :, pi], farr[:, :, pi], p_adj)
+            farr[:, :, pi] += _ws_flag_wf(marr[:, :, pi], farr[:, :, pi], nsig_p)
         # Channel watershed
         d = avg_f(marr, axis=(0, 2), weights=warr)
         f = np.app(farr, axis=(0, 2))
-        farr[:, :, :] = _ws_flag_wf(d, f, f_adj).reshape(1, -1, 1)
+        farr[:, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, -1, 1)
         # Time watershed
         d = avg_f(marr, axis=(1, 2), weights=warr)
         f = np.all(farr, axis=(1, 2))
-        farr[:, :, :] = _ws_flag_wf(d, f, t_adj).reshape(-1, 1, 1)
+        farr[:, :, :] += _ws_flag_wf(d, f, nsig_t).reshape(-1, 1, 1)
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
     return uvf
 
 
-def _ws_flag_wf(d, fin, sig=2.):
+def _ws_flag_wf(d, fin, nsig=2.):
     ''' Performs watershed algorithm on 1D or 2D arrays of metric and input flags.
     This is a helper function for watershed_flag, but not usually called
     by end users.
@@ -291,7 +292,7 @@ def _ws_flag_wf(d, fin, sig=2.):
     Args:
         d: 2D or 1D array. Should be in units of standard deviations.
         fin: input (boolean) flags used as seed of watershed. Same size as d.
-        sig: number of sigma to flag above for point near flagged points.
+        nsig: number of sigma to flag above for point near flagged points.
     Returns:
         f: boolean array matching size of d and fin, with watershedded flags.
     '''
@@ -307,7 +308,7 @@ def _ws_flag_wf(d, fin, sig=2.):
         while x.size != prevn:
             for dx in [-1, 1]:
                 xp = (x + dx).clip(0, f.size - 1)
-                i = np.where(d[xp] > sig)[0]  # if our metric > sig
+                i = np.where(d[xp] > nsig)[0]  # if our metric > sig
                 f[xp[i]] = 1
                 x = np.where(f)[0]
     elif d.ndim == 2:
@@ -317,12 +318,159 @@ def _ws_flag_wf(d, fin, sig=2.):
             prevx, prevy = x.size, y.size
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 xp, yp = (x + dx).clip(0, f.shape[0] - 1), (y + dy).clip(0, f.shape[1] - 1)
-                i = np.where(d[xp, yp] > sig)[0]  # if our metric > sig
+                i = np.where(d[xp, yp] > nsig)[0]  # if our metric > sig
                 f1.mask[xp[i], yp[i]] = 1
                 x, y = np.where(f)
     else:
         raise ValueError('Data must be 1D or 2D.')
     return f
+
+
+def flag(uvf_m, nsig_p=6., nsig_f=3., nsig_t=3., avg_method='quadmean'):
+    '''Creates a set of flags based on a "metric" type UVFlag object.
+    Args:
+        uvf_m: UVFlag object in 'metric' mode (ie. number of sigma data is from middle)
+        nsig_p: Number of sigma above which to flag pixels. Default is 6.0.
+        TODO: option to skip 1D flagging by setting to None
+        nsig_f: Number of sigma above which to flag channels. Default is 3.0.
+        nsig_t: Number of sigma above which to flag integrations. Default is 3.0.
+        avg_method: Method to average metric data for frequency and time flagging.
+                    Options are 'mean', 'absmean', and 'quadmean' (Default).
+
+    Returns:
+        uvf_f: UVFlag object in 'flag' mode with flags determined from uvm.
+    '''
+    # Check input
+    if (not isinstance(uvf_m, UVFlag)) or (uvf_m.mode == 'metric'):
+        raise ValueError('uvf_m must be UVFlag instance with mode == "metric."')
+
+    try:
+        avg_f = qm_utils.averaging_dict[avg_method]
+    except KeyError:
+        raise KeyError('avg_method must be one of: "mean", "absmean", or "quadmean".')
+
+    # initialize
+    uvf_f = copy.deepcopy(uvf_m).to_flag()
+
+    # Pixel flagging
+    uvf_f.flag_array[uvf_m.metric_array > nsig_p] = True
+
+    if uvf_m.type == 'baseline':
+        # Channel flagging
+        d = avg_f(uvf_m.metric_array, axis=(0, 1, 3), weights=uvf_m.weights_array)
+        indf = np.where(d > nsig_f)[0]
+        uvf_f.flag_array[:, :, indf, :] = True
+        # Time flagging
+        ts = np.unique(uvf_m.time_array)
+        d = np.zeros(ts.size)
+        for i, t in enumerate(ts):
+            d[i] = avg_f(marr[uvf.time_array == t, 0, :, :],
+                         weights=warr[uvf.time_array == t, 0, :, :])
+        indf = np.where(d > nsig_t)[0]
+        for t in ts[indf]:
+            uvf_f.flag_array[uvf.time_array == t, :, :, :] = True
+    elif uvf_m.type == 'antenna':
+        # Channel flag
+        d = avg_f(uvf_m.metric_array, axis=(0, 1, 3, 4), weights=warr)
+        indf = np.where(d > nsig_f)[0]
+        uvf_f.flag_array[:, :, indf, :, :] = True
+        # Time watershed
+        d = avg_f(uvf_m.metric_array, axis=(0, 1, 2, 4), weights=warr)
+        indt = np.where(d > nsig_t)[0]
+        uvf_f.flag_array[:, :, :, indt, :] = True
+    elif uvf_m.type == 'wf':
+        # Channel flag
+        d = avg_f(uvf_m.metric_array, axis=(0, 2), weights=warr)
+        indf = np.where(d > nsig_f)[0]
+        uvf_f.flag_array[:, indf, :] = True
+        # Time watershed
+        d = avg_f(uvf_m.metric_array, axis=(1, 2), weights=warr)
+        indt = np.where(d > nsig_t)[0]
+        uvf_f.flag_array[indt, :, :] = True
+    else:
+        raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
+    return uvf
+
+
+def vis_flag(uv, args):
+    """
+    Run an RFI-flagging algorithm on visibility data.
+
+    Args:
+        uv -- a UVData object containing visibility data to flag on.
+        args -- parsed arguments via argparse.ArgumentParser.parse_args
+    Return:
+        flag_array -- boolean array of flags, same shape as uv.data_array
+    """
+    if not isinstance(uv, UVData):
+        raise ValueError('First argument to vis_flags must be a UVData object.')
+    flag_array = np.zeros_like(uv.flag_array)
+    for key, d in uv.antpairpol_iter():
+        ind1, ind2, pol = uv._key2inds(key)
+        for ind, ipol in zip((ind1, ind2), pol):
+            if len(ind) == 0:
+                continue
+            f = uv.flag_array[ind, 0, :, ipol]
+            if args.algorithm == 'xrfi_simple':
+                flag_array[ind, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
+                                                          nsig_df=args.nsig_df,
+                                                          nsig_dt=args.nsig_dt,
+                                                          nsig_all=args.nsig_all)
+            elif args.algorithm == 'xrfi':
+                flag_array[ind, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
+                                                   Kf=args.kf_size, sig_init=args.sig_init,
+                                                   sig_adj=args.sig_adj)
+            else:
+                raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
+    return flag_array
+
+
+def cal_flag(uvc, args):
+    """
+    Run an RFI-flagging algorithm on calibration solutions and quality_array.
+
+    Args:
+        uvc -- a UVCal object containing calibration output to flag on.
+                Must have cal_type=='gain'
+        args -- parsed arguments via argparse.ArgumentParser.parse_args
+    Return:
+        flag_array -- boolean array of flags, same shape as uvc.gain_array
+    """
+    if not isinstance(uvc, UVCal):
+        raise ValueError('First argument to cal_flags must be a UVCal object.')
+    if uvc.cal_type != 'gain':
+        raise ValueError('UVCal object must have cal_type=="gain".')
+
+    g_flags = np.zeros_like(uvc.flag_array)
+    x_flags = np.zeros_like(uvc.flag_array)
+
+    for ai in range(uvc.Nants_data):
+        for pi in range(uvc.Njones):
+            # Note transposes are due to freq, time dimensions rather than the
+            # expected time, freq
+            f = uvc.flag_array[ai, 0, :, :, pi].T
+            if args.algorithm == 'xrfi_simple':
+                d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
+                g_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
+                                                       nsig_dt=args.nsig_dt,
+                                                       nsig_all=args.nsig_all).T
+                d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
+                x_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
+                                                       nsig_dt=args.nsig_dt,
+                                                       nsig_all=args.nsig_all).T
+            elif args.algorithm == 'xrfi':
+                d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
+                g_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
+                                                Kf=args.kf_size, sig_init=args.sig_init,
+                                                sig_adj=args.sig_adj).T
+                d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
+                x_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
+                                                Kf=args.kf_size, sig_init=args.sig_init,
+                                                sig_adj=args.sig_adj).T
+            else:
+                raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
+    return g_flags, x_flags
+
 
 
 def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
@@ -362,8 +510,8 @@ def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
     return f
 
 
-def xrfi(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
-    """Run best rfi excision we have. Uses detrending and watershed algorithms above.
+def xrfi_h1c(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
+    """xrfi excision algorithm we used for H1C. Uses detrending and watershed algorithms above.
     Args:
         d (array): 2D of data array.
         f (array, optional): input flag array.
@@ -553,85 +701,6 @@ def xrfi_run(indata, args, history):
 
     return
 
-
-def vis_flag(uv, args):
-    """
-    Run an RFI-flagging algorithm on visibility data.
-
-    Args:
-        uv -- a UVData object containing visibility data to flag on.
-        args -- parsed arguments via argparse.ArgumentParser.parse_args
-    Return:
-        flag_array -- boolean array of flags, same shape as uv.data_array
-    """
-    if not isinstance(uv, UVData):
-        raise ValueError('First argument to vis_flags must be a UVData object.')
-    flag_array = np.zeros_like(uv.flag_array)
-    for key, d in uv.antpairpol_iter():
-        ind1, ind2, pol = uv._key2inds(key)
-        for ind, ipol in zip((ind1, ind2), pol):
-            if len(ind) == 0:
-                continue
-            f = uv.flag_array[ind, 0, :, ipol]
-            if args.algorithm == 'xrfi_simple':
-                flag_array[ind, 0, :, ipol] = xrfi_simple(np.abs(d), f=f,
-                                                          nsig_df=args.nsig_df,
-                                                          nsig_dt=args.nsig_dt,
-                                                          nsig_all=args.nsig_all)
-            elif args.algorithm == 'xrfi':
-                flag_array[ind, 0, :, ipol] = xrfi(np.abs(d), f=f, Kt=args.kt_size,
-                                                   Kf=args.kf_size, sig_init=args.sig_init,
-                                                   sig_adj=args.sig_adj)
-            else:
-                raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
-    return flag_array
-
-
-def cal_flag(uvc, args):
-    """
-    Run an RFI-flagging algorithm on calibration solutions and quality_array.
-
-    Args:
-        uvc -- a UVCal object containing calibration output to flag on.
-                Must have cal_type=='gain'
-        args -- parsed arguments via argparse.ArgumentParser.parse_args
-    Return:
-        flag_array -- boolean array of flags, same shape as uvc.gain_array
-    """
-    if not isinstance(uvc, UVCal):
-        raise ValueError('First argument to cal_flags must be a UVCal object.')
-    if uvc.cal_type != 'gain':
-        raise ValueError('UVCal object must have cal_type=="gain".')
-
-    g_flags = np.zeros_like(uvc.flag_array)
-    x_flags = np.zeros_like(uvc.flag_array)
-
-    for ai in range(uvc.Nants_data):
-        for pi in range(uvc.Njones):
-            # Note transposes are due to freq, time dimensions rather than the
-            # expected time, freq
-            f = uvc.flag_array[ai, 0, :, :, pi].T
-            if args.algorithm == 'xrfi_simple':
-                d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
-                g_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
-                                                       nsig_dt=args.nsig_dt,
-                                                       nsig_all=args.nsig_all).T
-                d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
-                x_flags[ai, 0, :, :, pi] = xrfi_simple(d, f=f, nsig_df=args.nsig_df,
-                                                       nsig_dt=args.nsig_dt,
-                                                       nsig_all=args.nsig_all).T
-            elif args.algorithm == 'xrfi':
-                d = np.abs(uvc.gain_array[ai, 0, :, :, pi].T)
-                g_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
-                                                Kf=args.kf_size, sig_init=args.sig_init,
-                                                sig_adj=args.sig_adj).T
-                d = np.abs(uvc.quality_array[ai, 0, :, :, pi].T)
-                x_flags[ai, 0, :, :, pi] = xrfi(d, f=f, Kt=args.kt_size,
-                                                Kf=args.kf_size, sig_init=args.sig_init,
-                                                sig_adj=args.sig_adj).T
-            else:
-                raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
-    return g_flags, x_flags
 
 
 def waterfall2flags(waterfall, uv):

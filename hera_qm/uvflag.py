@@ -500,7 +500,7 @@ class UVFlag():
 
     def to_flag(self):
         '''Convert to flag mode. NOT SMART. Simply removes metric_array and initializes
-        flag_array with zeros.
+        flag_array with Falses.
         '''
         if self.mode == 'flag':
             return
