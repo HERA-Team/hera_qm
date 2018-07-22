@@ -389,7 +389,66 @@ def flag(uvf_m, nsig_p=6., nsig_f=3., nsig_t=3., avg_method='quadmean'):
         uvf_f.flag_array[indt, :, :] = True
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
-    return uvf
+    return uvf_f
+
+
+def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
+    '''Flag RFI using derivatives in time and frequency.
+    Args:
+        d (array): 2D data array of the shape (time, frequency) to flag
+        f (array, optional): input flags, defaults to zeros
+        nsig_df (float, optional): number of sigma above median to flag in frequency direction
+        nsig_dt (float, optional): number of sigma above median to flag in time direction
+        nsig_all (float, optional): overall flag above some sigma. Skip if 0.
+    Returns:
+        bool array: mask array for flagging.
+    '''
+    if f is None:
+        f = np.zeros(d.shape, dtype=np.bool)
+    if nsig_df > 0:
+        d_df = d[:, 1:-1] - .5 * (d[:, :-2] + d[:, 2:])
+        d_df2 = np.abs(d_df)**2
+        sig2 = np.median(d_df2, axis=1)
+        sig2.shape = (-1, 1)
+        f[:, 0] = 1
+        f[:, -1] = 1
+        f[:, 1:-1] = np.where(d_df2 / sig2 > nsig_df**2, 1, f[:, 1:-1])
+    if nsig_dt > 0:
+        d_dt = d[1:-1, :] - .5 * (d[:-2, :] + d[2:, :])
+        d_dt2 = np.abs(d_dt)**2
+        sig2 = np.median(d_dt2, axis=0)
+        sig2.shape = (1, -1)
+        f[0, :] = 1
+        f[-1, :] = 1
+        f[1:-1, :] = np.where(d_dt2 / sig2 > nsig_dt**2, 1, f[1:-1, :])
+    if nsig_all > 0:
+        ad = np.abs(d)
+        med = np.median(ad)
+        sig = np.sqrt(np.median(np.abs(ad - med)**2))
+        f = np.where(ad > med + nsig_all * sig, 1, f)
+    return f
+
+
+def xrfi_h1c(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
+    """xrfi excision algorithm we used for H1C. Uses detrending and watershed algorithms above.
+    Args:
+        d (array): 2D of data array.
+        f (array, optional): input flag array.
+        Kt (int, optional): time size for detrending box.
+        Kf (int, optional): frequency size for detrending box/
+        sig_init (float, optional): initial sigma to flag.
+        sig_adj (float, optional): number of sigma to flag adjacent to flagged data (sig_init)
+
+    Returns:
+        bool array: array of flags
+    """
+    try:
+        nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
+        f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
+    except AssertionError:
+        warnings.warn('Kernel size exceeds data. Flagging all data.')
+        f = np.ones_like(d, dtype=np.bool)
+    return f
 
 
 def vis_flag(uv, args):
@@ -470,66 +529,6 @@ def cal_flag(uvc, args):
             else:
                 raise ValueError('Unrecognized RFI method ' + str(args.algorithm))
     return g_flags, x_flags
-
-
-
-def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
-    '''Flag RFI using derivatives in time and frequency.
-    Args:
-        d (array): 2D data array of the shape (time, frequency) to flag
-        f (array, optional): input flags, defaults to zeros
-        nsig_df (float, optional): number of sigma above median to flag in frequency direction
-        nsig_dt (float, optional): number of sigma above median to flag in time direction
-        nsig_all (float, optional): overall flag above some sigma. Skip if 0.
-    Returns:
-        bool array: mask array for flagging.
-    '''
-    if f is None:
-        f = np.zeros(d.shape, dtype=np.bool)
-    if nsig_df > 0:
-        d_df = d[:, 1:-1] - .5 * (d[:, :-2] + d[:, 2:])
-        d_df2 = np.abs(d_df)**2
-        sig2 = np.median(d_df2, axis=1)
-        sig2.shape = (-1, 1)
-        f[:, 0] = 1
-        f[:, -1] = 1
-        f[:, 1:-1] = np.where(d_df2 / sig2 > nsig_df**2, 1, f[:, 1:-1])
-    if nsig_dt > 0:
-        d_dt = d[1:-1, :] - .5 * (d[:-2, :] + d[2:, :])
-        d_dt2 = np.abs(d_dt)**2
-        sig2 = np.median(d_dt2, axis=0)
-        sig2.shape = (1, -1)
-        f[0, :] = 1
-        f[-1, :] = 1
-        f[1:-1, :] = np.where(d_dt2 / sig2 > nsig_dt**2, 1, f[1:-1, :])
-    if nsig_all > 0:
-        ad = np.abs(d)
-        med = np.median(ad)
-        sig = np.sqrt(np.median(np.abs(ad - med)**2))
-        f = np.where(ad > med + nsig_all * sig, 1, f)
-    return f
-
-
-def xrfi_h1c(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
-    """xrfi excision algorithm we used for H1C. Uses detrending and watershed algorithms above.
-    Args:
-        d (array): 2D of data array.
-        f (array, optional): input flag array.
-        Kt (int, optional): time size for detrending box.
-        Kf (int, optional): frequency size for detrending box/
-        sig_init (float, optional): initial sigma to flag.
-        sig_adj (float, optional): number of sigma to flag adjacent to flagged data (sig_init)
-
-    Returns:
-        bool array: array of flags
-    """
-    try:
-        nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
-        f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
-    except AssertionError:
-        warnings.warn('Kernel size exceeds data. Flagging all data.')
-        f = np.ones_like(d, dtype=np.bool)
-    return f
 
 
 def xrfi_run(indata, args, history):
@@ -700,7 +699,6 @@ def xrfi_run(indata, args, history):
                  time_array=uvc.time_array, history=history)
 
     return
-
 
 
 def waterfall2flags(waterfall, uv):
