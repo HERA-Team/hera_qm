@@ -175,8 +175,8 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     # puts median on same scale as average
     sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-7))
-    f = np.where(np.abs(sig) > 1e-7, f, np.inf)
+    f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-8))
+    f = np.where(np.abs(sig) > 1e-8, f, np.inf)
     return f[Kt:-Kt, Kf:-Kf]
 
 
@@ -469,7 +469,7 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
     if not isinstance(uv, (UVData, UVCal)):
         raise ValueError('uv must be a UVData or UVCal object.')
     try:
-        mfunc = algorithm_dict[algorithm]
+        alg_func = algorithm_dict[algorithm]
     except KeyError:
         raise KeyError('Algorithm not found in list of available functions.')
     uvf = UVFlag(uv)
@@ -480,7 +480,7 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
-                uvf.metric_array[ind, 0, :, ipol] = mfunc(np.abs(d), **kwargs)
+                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), **kwargs)
     elif isinstance(uv, UVCal):
         for ai in range(uv.Nants_data):
             for pi in range(uv.Njones):
@@ -493,7 +493,7 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
                 else:
                     raise ValueError('When calculating metric for UVCal object, '
                                      'gains or chisq must be set to True.')
-                uvf.metric_array[ai, 0, :, :, pi] = mfunc(d, **kwargs).T
+                uvf.metric_array[ai, 0, :, :, pi] = alg_func(d, **kwargs).T
     return uvf
 
 

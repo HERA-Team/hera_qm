@@ -459,6 +459,28 @@ def lst_from_uv(uv):
     lst_array = uvutils.get_lst_for_time(uv.time_array, lat, lon, alt)
     return lst_array
 
+def mean(a, weights=None, axis=None, returned=False):
+    ''' Function to average data. This is similar to np.average, except it
+    handles nans (by giving them zero weight) and zero weight axes (by forcing
+    result to be nan with zero output weight).
+    Args:
+        a - array to process
+        weights - weights for average
+        axis - axis keyword to pass to np.mean
+        returned - whether to return sum of weights. Default is False.
+    '''
+    w = weights * np.logical_not(np.isinf(a))
+    a[np.isinf(a)] = 0
+    wo = np.sum(w, axis=axis)
+    o = np.sum(w * a, axis=axis)
+    where = (wo > 1e-10)
+    o = np.true_divide(o, wo, where=where)
+    o = np.where(where, o, np.inf)
+    if returned:
+        return o, wo
+    else:
+        return o
+
 def absmean(a, weights=None, axis=None, returned=False):
     ''' Function to average absolute value
     Args:
@@ -467,7 +489,7 @@ def absmean(a, weights=None, axis=None, returned=False):
         axis - axis keyword to pass to np.mean
         returned - whether to return sum of weights. Default is False.
     '''
-    return np.average(np.abs(a), weights=weights, axis=axis, returned=returned)
+    return mean(np.abs(a), weights=weights, axis=axis, returned=returned)
 
 def quadmean(a, weights=None, axis=None, returned=False):
     ''' Function to average in quadrature
@@ -477,11 +499,11 @@ def quadmean(a, weights=None, axis=None, returned=False):
         axis - axis keyword to pass to np.mean
         returned - whether to return sum of weights. Default is False.
     '''
-    return np.sqrt(np.average(np.abs(a)**2, weights=weights, axis=axis,
-                              returned=returned))
+    o, w = mean(np.abs(a)**2, weights=weights, axis=axis, returned=returned)
+    return np.sqrt(o), w
 
 # Dictionary to map different methods for averaging data.
-averaging_dict = {'mean': np.average, 'absmean': absmean, 'quadmean': quadmean}
+averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean}
 
 def flags2waterfall(uv, flag_array=None, keep_pol=False):
     """
