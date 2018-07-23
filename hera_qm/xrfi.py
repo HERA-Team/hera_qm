@@ -50,7 +50,7 @@ def flag_xants(uv, xants, inplace=True):
                 uvo.flag_array[blts, :, :, :] = True
     elif isinstance(uvo, UVCal) or (isinstance(uvo, UVFlag) and uvo.type == 'antenna'):
         for xant in xants:
-            ai = np.where(uvo.ant_array == xant)
+            ai = np.where(uvo.ant_array == xant)[0]
             uvo.flag_array[ai, :, :, :, :] = True
     return uvo
 
@@ -241,7 +241,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='qu
     if uvf_m.type == 'baseline':
         # Pixel watershed
         for b in np.unique(uvf.baseline_array):
-            i = np.where(uvf.baseline_array == b)
+            i = np.where(uvf.baseline_array == b)[0]
             for pi in range(uvf.polarization_array.size):
                 farr[i, 0, :, pi] += _ws_flag_waterfall(marr[i, 0, :, pi],
                                                         farr[i, 0, :, pi], nsig_p)
