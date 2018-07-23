@@ -361,7 +361,8 @@ def flag(uvf_m, nsig_p=6., nsig_f=3., nsig_t=3., avg_method='quadmean'):
         raise KeyError('avg_method must be one of: "mean", "absmean", or "quadmean".')
 
     # initialize
-    uvf_f = copy.deepcopy(uvf_m).to_flag()
+    uvf_f = copy.deepcopy(uvf_m)
+    uvf_f.to_flag()
 
     # Pixel flagging
     uvf_f.flag_array[uvf_m.metric_array > nsig_p] = True
