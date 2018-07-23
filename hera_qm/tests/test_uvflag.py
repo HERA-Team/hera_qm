@@ -94,69 +94,69 @@ def test_init_cal_copy_flags():
     nt.assert_true(np.all(uvf.polarization_array == uv.jones_array))
     nt.assert_true(hera_qm_version_str in uvf.history)
 
-def test_init_wf_uvd():
+def test_init_waterfall_uvd():
     uv = UVData()
     uv.read_miriad(test_d_file)
-    uvf = UVFlag(uv, wf=True)
+    uvf = UVFlag(uv, waterfall=True)
     nt.assert_true(uvf.metric_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Npols))
     nt.assert_true(np.all(uvf.metric_array == 0))
     nt.assert_true(uvf.weights_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Npols))
     nt.assert_true(np.all(uvf.weights_array == 0))
-    nt.assert_true(uvf.type == 'wf')
+    nt.assert_true(uvf.type == 'waterfall')
     nt.assert_true(uvf.mode == 'metric')
     nt.assert_true(np.all(uvf.time_array == np.unique(uv.time_array)))
     nt.assert_true(np.all(uvf.lst_array == np.unique(uv.lst_array)))
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
-    nt.assert_true('Flag object with type "wf"' in uvf.history)
+    nt.assert_true('Flag object with type "waterfall"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
-def test_init_wf_uvc():
+def test_init_waterfall_uvc():
     uv = UVCal()
     uv.read_calfits(test_c_file)
-    uvf = UVFlag(uv, wf=True)
+    uvf = UVFlag(uv, waterfall=True)
     nt.assert_true(uvf.metric_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
     nt.assert_true(np.all(uvf.metric_array == 0))
     nt.assert_true(uvf.weights_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
     nt.assert_true(np.all(uvf.weights_array == 0))
-    nt.assert_true(uvf.type == 'wf')
+    nt.assert_true(uvf.type == 'waterfall')
     nt.assert_true(uvf.mode == 'metric')
     nt.assert_true(np.all(uvf.time_array == np.unique(uv.time_array)))
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.jones_array))
-    nt.assert_true('Flag object with type "wf"' in uvf.history)
+    nt.assert_true('Flag object with type "waterfall"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
-def test_init_wf_flag():
+def test_init_waterfall_flag():
     uv = UVCal()
     uv.read_calfits(test_c_file)
-    uvf = UVFlag(uv, wf=True, mode='flag')
+    uvf = UVFlag(uv, waterfall=True, mode='flag')
     nt.assert_true(uvf.flag_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
     nt.assert_true(np.all(uvf.flag_array == False))
     nt.assert_true(uvf.weights_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
     nt.assert_true(np.all(uvf.weights_array == 0))
-    nt.assert_true(uvf.type == 'wf')
+    nt.assert_true(uvf.type == 'waterfall')
     nt.assert_true(uvf.mode == 'flag')
     nt.assert_true(np.all(uvf.time_array == np.unique(uv.time_array)))
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.jones_array))
-    nt.assert_true('Flag object with type "wf"' in uvf.history)
+    nt.assert_true('Flag object with type "waterfall"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
-def test_init_wf_copy_flags():
+def test_init_waterfall_copy_flags():
     uv = UVCal()
     uv.read_calfits(test_c_file)
-    uvf = uvtest.checkWarnings(UVFlag, [uv], {'copy_flags': True, 'mode': 'flag', 'wf': True},
+    uvf = uvtest.checkWarnings(UVFlag, [uv], {'copy_flags': True, 'mode': 'flag', 'waterfall': True},
                                nwarnings=1, message='Copying flags into waterfall')
     nt.assert_false(hasattr(uvf, 'flag_array'))  # Should be metric due to copy flags
     nt.assert_true(uvf.metric_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
     nt.assert_true(uvf.weights_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
-    nt.assert_true(uvf.type == 'wf')
+    nt.assert_true(uvf.type == 'waterfall')
     nt.assert_true(uvf.mode == 'metric')
     nt.assert_true(np.all(uvf.time_array == np.unique(uv.time_array)))
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.jones_array))
-    nt.assert_true('Flag object with type "wf"' in uvf.history)
+    nt.assert_true('Flag object with type "waterfall"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
 def test_read_write_loop():
@@ -508,29 +508,29 @@ def test_not_equal():
     uvf2.history += 'hello'
     nt.assert_false(uvf1.__eq__(uvf2, check_history=True))
 
-def test_to_wf_bl():
+def test_to_waterfall_bl():
     uvf = UVFlag(test_f_file)
     uvf.weights_array = np.ones_like(uvf.weights_array)
-    uvf.to_wf()
-    nt.assert_true(uvf.type == 'wf')
+    uvf.to_waterfall()
+    nt.assert_true(uvf.type == 'waterfall')
     nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
                                               len(uvf.polarization_array)))
     nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
 
-def test_to_wf_ant():
+def test_to_waterfall_ant():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
     uvf = UVFlag(uvc)
     uvf.weights_array = np.ones_like(uvf.weights_array)
-    uvf.to_wf()
-    nt.assert_true(uvf.type == 'wf')
+    uvf.to_waterfall()
+    nt.assert_true(uvf.type == 'waterfall')
     nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
                                               len(uvf.polarization_array)))
     nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
 
-def test_to_wf_wf():
+def test_to_waterfall_waterfall():
     uvf = UVFlag(test_f_file)
     uvf.weights_array = np.ones_like(uvf.weights_array)
-    uvf.to_wf()
-    uvtest.checkWarnings(uvf.to_wf, [], {}, nwarnings=1,
+    uvf.to_waterfall()
+    uvtest.checkWarnings(uvf.to_waterfall, [], {}, nwarnings=1,
                          message='This object is already a waterfall')
