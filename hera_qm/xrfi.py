@@ -332,7 +332,7 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 xp, yp = (x + dx).clip(0, f.shape[0] - 1), (y + dy).clip(0, f.shape[1] - 1)
                 i = np.where(d[xp, yp] > nsig)[0]  # if our metric > sig
-                f.mask[xp[i], yp[i]] = 1
+                f[xp[i], yp[i]] = 1
                 x, y = np.where(f)
     else:
         raise ValueError('Data must be 1D or 2D.')
