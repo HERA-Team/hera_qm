@@ -478,7 +478,7 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
-                uvf.flag_array[ind, 0, :, ipol] = mfunc(np.abs(d), **kwargs)
+                uvf.metric_array[ind, 0, :, ipol] = mfunc(np.abs(d), **kwargs)
     elif isinstance(uv, UVCal):
         for ai in range(uv.Nants_data):
             for pi in range(uv.Njones):
@@ -491,7 +491,7 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
                 else:
                     raise ValueError('When calculating metric for UVCal object, '
                                      'gains or chisq must be set to True.')
-                uvf.flag_array[ai, 0, :, :, pi] = mfunc(d, **kwargs).T
+                uvf.metric_array[ai, 0, :, :, pi] = mfunc(d, **kwargs).T
     return uvf
 
 
