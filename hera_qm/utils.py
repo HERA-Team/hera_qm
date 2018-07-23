@@ -499,8 +499,11 @@ def quadmean(a, weights=None, axis=None, returned=False):
         axis - axis keyword to pass to np.mean
         returned - whether to return sum of weights. Default is False.
     '''
-    o, w = mean(np.abs(a)**2, weights=weights, axis=axis, returned=returned)
-    return np.sqrt(o), w
+    o = mean(np.abs(a)**2, weights=weights, axis=axis, returned=returned)
+    if returned:
+        return np.sqrt(o[0]), o[1]
+    else:
+        return o
 
 # Dictionary to map different methods for averaging data.
 averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean}
