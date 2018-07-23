@@ -351,7 +351,7 @@ def flag(uvf_m, nsig_p=6., nsig_f=3., nsig_t=3., avg_method='quadmean'):
         uvf_f: UVFlag object in 'flag' mode with flags determined from uvm.
     '''
     # Check input
-    if (not isinstance(uvf_m, UVFlag)) or (uvf_m.mode == 'metric'):
+    if (not isinstance(uvf_m, UVFlag)) or (uvf_m.mode != 'metric'):
         raise ValueError('uvf_m must be UVFlag instance with mode == "metric."')
 
     try:
