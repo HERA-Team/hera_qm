@@ -355,7 +355,6 @@ class UVFlag():
         if not other.history in this.history:
             this.history += "Flags OR'd with: " + other.history
 
-
     def clear_unused_attributes(self):
         """
         Remove unused attributes. Useful when changing type or mode.
@@ -372,6 +371,10 @@ class UVFlag():
             del(self.metric_array)
         if hasattr(self, 'flag_array') and self.mode != 'flag':
             del(self.flag_array)
+
+    def copy(self):
+        ''' Simply return a copy of this object '''
+        return copy.deepcopy(self)
 
     def to_waterfall(self, method='quadmean', keep_pol=True):
         """
