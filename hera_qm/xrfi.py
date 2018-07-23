@@ -478,14 +478,12 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
-                f = uv.flag_array[ind, 0, :, ipol]
-                uvf.flag_array[ind, 0, :, ipol] = mfunc(np.abs(d), f=f, **kwargs)
+                uvf.flag_array[ind, 0, :, ipol] = mfunc(np.abs(d), **kwargs)
     elif isinstance(uv, UVCal):
         for ai in range(uv.Nants_data):
             for pi in range(uv.Njones):
                 # Note transposes are due to freq, time dimensions rather than the
                 # expected time, freq
-                f = uv.flag_array[ai, 0, :, :, pi].T
                 if gains:
                     d = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
                 elif chisq:
@@ -493,7 +491,7 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
                 else:
                     raise ValueError('When calculating metric for UVCal object, '
                                      'gains or chisq must be set to True.')
-                uvf.flag_array[ai, 0, :, :, pi] = mfunc(d, f=f, **kwargs).T
+                uvf.flag_array[ai, 0, :, :, pi] = mfunc(d, **kwargs).T
     return uvf
 
 
