@@ -530,8 +530,6 @@ def xrfi_h1c(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
         uvf_wf: UVFlag object of waterfall type after thresholding in time/freq
         uvf_w (if return_summary): UVFlag object with fraction of flags in uvf_f
     """
-    uvf = UVFlag(uv)
-    uvf.weights_array = np.logical_not(uv.flag_array).astype(np.float)
     uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, gains=gains, chisq=chisq)
     uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None)
     uvf_f = watershed_flag(uvf, uvf_df, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
