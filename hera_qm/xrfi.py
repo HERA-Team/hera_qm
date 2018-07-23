@@ -7,6 +7,7 @@ from .uvflag import UVFlag
 from hera_qm import utils as qm_utils
 from hera_qm.version import hera_qm_version_str
 import warnings
+import copy
 
 
 #############################################################################
