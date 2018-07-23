@@ -14,29 +14,35 @@ class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
     and stores all relevant information to combine flags and apply to data.
     '''
-    def __init__(self, input, mode='metric', copy_flags=False, wf=False, history=''):
-        # TODO: Docstring
-        #
-        # Mode can be 'flag' or 'metric'
-        # TODO: Weight array - get from nsample_array?
-        # TODO: get_flags similar to pyuvdata and/or convert to data container
-        # TODO: list loading
+    def __init__(self, input, mode='metric', copy_flags=False, waterfall=False, history=''):
+        '''Initialize UVFlag object.
+        Args:
+            input: UVData object, UVCal object, or path to previously saved UVFlag object.
+                   Can also be a list of any combination of the above options.
+            mode: "metric" (default) or "flag" to initialize UVFlag in given mode.
+                  The mode determines whether the object has a floating point metric_array
+                  or a boolean flag_array.
+            copy_flags: Whether to copy flags from input to new UVFlag object. Default is False.
+            waterfall: Whether to immediately initialize as a waterfall object,
+                       with flag/metric axes: time, frequency, polarization. Default is False.
+            history: History string to attach to object.
+        '''
 
         self.mode = mode.lower()  # Gets overwritten if reading file
         self.history = history
         if isinstance(input, (list, tuple)):
-            self.__init__(input[0], mode=mode, copy_flags=copy_flags, wf=wf, history=history)
+            self.__init__(input[0], mode=mode, copy_flags=copy_flags, waterfall=waterfall, history=history)
             if len(input) > 1:
                 for i in input[1:]:
-                    fobj = UVFlag(i, mode=mode, copy_flags=copy_flags, wf=wf, history=history)
+                    fobj = UVFlag(i, mode=mode, copy_flags=copy_flags, waterfall=waterfall, history=history)
                     self += fobj
                 del(fobj)
         elif isinstance(input, str):
             # Given a path, read input
             self.read(input, history)
-        elif wf and isinstance(input, (UVData, UVCal)):
-            self.type = 'wf'
-            self.history += 'Flag object with type "wf" created by ' + hera_qm_version_str
+        elif waterfall and isinstance(input, (UVData, UVCal)):
+            self.type = 'waterfall'
+            self.history += 'Flag object with type "waterfall" created by ' + hera_qm_version_str
             self.time_array, ri = np.unique(input.time_array, return_index=True)
             self.freq_array = input.freq_array[0, :]
             if isinstance(input, UVData):
@@ -47,7 +53,7 @@ class UVFlag():
                 self.lst_array = qm_utils.lst_from_uv(input)[ri]
             if copy_flags:
                 self.metric_array = qm_utils.flags2waterfall(input, keep_pol=True)
-                self.history += ' WF generated from ' + str(input.__class__) + ' object.'
+                self.history += ' Waterfall generated from ' + str(input.__class__) + ' object.'
                 if self.mode == 'flag':
                     warnings.warn('Copying flags into waterfall results in mode=="metric".')
                     self.mode = 'metric'
@@ -252,8 +258,12 @@ class UVFlag():
                                                data=self.flag_array)
 
     def __add__(self, other, inplace=False, axis='time'):
-        # TODO: make less general that UVData, but more efficient - have user specify axis
-        # TODO: docstring
+        '''Add two UVFlag objects together along a given axis.
+        Args:
+            other: second UVFlag object to concatenate with self.
+            inplace: Whether to concatenate to self, or create a new UVFlag object. Default is False.
+            axis: Axis along which to combine UVFlag objects. Default is time.
+        '''
 
         # Handle in place
         if inplace:
@@ -270,11 +280,10 @@ class UVFlag():
         if this.mode != other.mode:
             raise ValueError('UVFlag object of mode ' + other.mode + ' cannot be ' +
                              'added to object of mode ' + this.type + '.')
-        # TODO: Check for overlapping data (see pyuvdata.UVData.__add__)
 
         # Simplify axis referencing
         axis = axis.lower()
-        type_nums = {'wf': 0, 'baseline': 1, 'antenna': 2}
+        type_nums = {'waterfall': 0, 'baseline': 1, 'antenna': 2}
         axis_nums = {'time': [0, 0, 3], 'baseline': [None, 0, None],
                      'antenna': [None, None, 0], 'frequency': [1, 2, 2],
                      'polarization': [2, 3, 4], 'pol': [2, 3, 4],
@@ -329,6 +338,24 @@ class UVFlag():
         self.__add__(other, inplace=True)
         return self
 
+    def __or__(self, other, inplace=False):
+        '''Combine two UVFlag objects in "flag" mode by "OR"-ing their flags.
+        Args:
+            other: second UVFlag object to concatenate with self.
+            inplace: Whether to concatenate to self, or create a new UVFlag object. Default is False.
+        '''
+        assert (self.mode == 'flag' & other.mode == 'flag'), 'UVFlag object must be in '
+                                                             '"flag" mode to use "or" function.'
+        # Handle in place
+        if inplace:
+            this = self
+        else:
+            this = copy.deepcopy(self)
+        this.flag_array += other.flag_array
+        if not other.history in this.history:
+            this.history += "Flags OR'd with: " + other.history
+
+
     def clear_unused_attributes(self):
         """
         Remove unused attributes. Useful when changing type or mode.
@@ -346,7 +373,7 @@ class UVFlag():
         if hasattr(self, 'flag_array') and self.mode != 'flag':
             del(self.flag_array)
 
-    def to_wf(self, method='quadmean', keep_pol=True):
+    def to_waterfall(self, method='quadmean', keep_pol=True):
         """
         Convert an 'antenna' or 'baseline' type object to waterfall using a given method.
         Args:
@@ -355,7 +382,7 @@ class UVFlag():
         """
         method = method.lower()
         avg_f = qm_utils.averaging_dict[method]
-        if self.type == 'wf' and (keep_pol or (self.Npols == 1)):
+        if self.type == 'waterfall' and (keep_pol or (self.Npols == 1)):
             warnings.warn('This object is already a waterfall. Nothing to change.')
             return
         if self.mode == 'flag':
@@ -392,12 +419,12 @@ class UVFlag():
         self.metric_array = darr
         self.freq_array = self.freq_array.flatten()
         self.mode = 'metric'
-        self.type = 'wf'
-        self.history += 'Collapsed to type "wf" with ' + hera_qm_version_str
+        self.type = 'waterfall'
+        self.history += 'Collapsed to type "waterfall" with ' + hera_qm_version_str
         self.clear_unused_attributes()
 
     def to_baseline(self, uv, force_pol=False):
-        '''Convert a UVFlag object of type "wf" to type "baseline".
+        '''Convert a UVFlag object of type "waterfall" to type "baseline".
         Broadcasts the flag array to all baselines.
         This function does NOT apply flags to uv.
         Args:
@@ -410,7 +437,7 @@ class UVFlag():
         if not (isinstance(uv, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline')):
             raise ValueError('Must pass in UVData object or UVFlag object of type '
                              '"baseline" to match.')
-        if self.type != 'wf':
+        if self.type != 'waterfall':
             raise ValueError('Cannot convert from type "' + self.type + '" to "baseline".')
         # Deal with polarization
         if force_pol and self.polarization_array.size == 1:
@@ -451,7 +478,7 @@ class UVFlag():
         self.history += 'Broadcast to type "baseline" with ' + hera_qm_version_str
 
     def to_antenna(self, uv, force_pol=False):
-        '''Convert a UVFlag object of type "wf" to type "antenna".
+        '''Convert a UVFlag object of type "waterfall" to type "antenna".
         Broadcasts the flag array to all antennas.
         This function does NOT apply flags to uv.
         Args:
@@ -464,7 +491,7 @@ class UVFlag():
         if not (isinstance(uv, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna')):
             raise ValueError('Must pass in UVCal object or UVFlag object of type '
                              '"antenna" to match.')
-        if self.type != 'wf':
+        if self.type != 'waterfall':
             raise ValueError('Cannot convert from type "' + self.type + '" to "antenna".')
         # Deal with polarization
         if isinstance(uv, UVCal):

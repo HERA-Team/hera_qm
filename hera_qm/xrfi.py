@@ -29,8 +29,8 @@ def flag_xants(uv, xants, inplace=True):
     if not isinstance(uv, (UVData, UVCal, UVFlag)):
         raise ValueError('First argument to flag_xants must be a UVData, UVCal, '
                          ' or UVFlag object.')
-    if isinstance(uv, UVFlag) and uv.type == 'wf':
-        raise ValueError('Cannot flag antennas on UVFlag obejct of type "wf".')
+    if isinstance(uv, UVFlag) and uv.type == 'waterfall':
+        raise ValueError('Cannot flag antennas on UVFlag obejct of type "waterfall".')
 
     if not inplace:
         if isinstance(uv, UVFlag):
@@ -59,7 +59,6 @@ def flag_xants(uv, xants, inplace=True):
 # Functions for preprocessing data prior to RFI flagging
 #############################################################################
 
-
 def medmin(d):
     '''Calculate the median minus minimum statistic of array.
     Args:
@@ -67,6 +66,7 @@ def medmin(d):
     Returns:
         (float): medmin statistic.
     '''
+    assert (d.ndim == 2), 'Input to medmin must be 2D array.'
     mn = np.min(d, axis=0)
     return 2 * np.median(mn) - np.min(mn)
 
@@ -80,6 +80,7 @@ def medminfilt(d, Kt=8, Kf=8):
     Returns:
         array: filtered array with same shape as input array.
     '''
+    assert (d.ndim == 2), 'Input to medminfilt must be 2D array.'
     if Kt > d.shape[0] or Kf > d.shape[1]:
         raise AssertionError('Kernel size exceeds data.')
     d_sm = np.empty_like(d)
@@ -101,7 +102,7 @@ def detrend_deriv(d, dt=True, df=True):
     Returns:
         array: detrended array with same shape as input array.
     '''
-
+    assert (d.ndim == 2), 'Input to detrend_deriv must be 2D array.'
     if df:
         d_df = np.empty_like(d)
         d_df[:, 1:-1] = (d[:, 1:-1] - .5 * (d[:, :-2] + d[:, 2:])) / np.sqrt(1.5)
@@ -132,12 +133,13 @@ def detrend_deriv(d, dt=True, df=True):
 def detrend_medminfilt(d, Kt=8, Kf=8):
     """Detrend array using medminfilt statistic. See medminfilt.
     Args:
-        d (array): data array of the shape (time, frequency) to detrend
+        d (array): 2D data array of the shape (time, frequency) to detrend
         Kt (int): size in time to apply medminfilter over
         Kf (int): size in frequency to apply medminfilter over
     Returns:
         float array: float array of outlier significance metric
     """
+    assert (d.ndim == 2), 'Input to detrend_medminfilt must be 2D array.'
     d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
@@ -152,11 +154,12 @@ def detrend_medminfilt(d, Kt=8, Kf=8):
 def detrend_medfilt(d, Kt=8, Kf=8):
     """Detrend array using a median filter.
     Args:
-        d (array): data array to detrend.
+        d (array): 2D data array to detrend.
         K (int, optional): box size to apply medminfilt over
     Returns:
         f: array of outlier significance metric. Same type and size as d.
     """
+    assert (d.ndim == 2), 'Input to detrend_medfilt must be 2D array.'
     # Delay import so scipy is not required for any use of hera_qm
     from scipy.signal import medfilt2d
 
@@ -240,13 +243,13 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='qu
         for b in np.unique(uvf.baseline_array):
             i = np.where(uvf.baseline_array == b)
             for pi in range(uvf.polarization_array.size):
-                farr[i, 0, :, pi] += _ws_flag_wf(marr[i, 0, :, pi],
-                                                 farr[i, 0, :, pi], nsig_p)
+                farr[i, 0, :, pi] += _ws_flag_waterfall(marr[i, 0, :, pi],
+                                                        farr[i, 0, :, pi], nsig_p)
         if nsig_f is not None:
             # Channel watershed
             d = avg_f(marr, axis=(0, 1, 3), weights=warr)
             f = np.all(farr, axis=(0, 1, 3))
-            farr[:, :, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, 1, -1, 1)
+            farr[:, :, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, 1, -1, 1)
         if nsig_t is not None:
             # Time watershed
             ts = np.unique(uvf.time_array)
@@ -256,45 +259,45 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='qu
                 d[i] = avg_f(marr[uvf.time_array == t, 0, :, :],
                              weights=warr[uvf.time_array == t, 0, :, :])
                 f[i] = np.all(farr[uvf.time_array == t, 0, :, :])
-            f = _ws_flag_wf(d, f, nsig_t)
+            f = _ws_flag_waterfall(d, f, nsig_t)
             for i, t in enumerate(ts):
                 farr[uvf.time_array == t, :, :, :] += f[i]
     elif uvf_m.type == 'antenna':
         # Pixel watershed
         for ai in range(uvf.ant_array.size):
             for pi in range(uvf.polarization_array.size):
-                farr[ai, 0, :, :, pi] += _ws_flag_wf(marr[ai, 0, :, :, pi].T,
-                                                     farr[ai, 0, :, :, pi].T, nsig_p).T
+                farr[ai, 0, :, :, pi] += _ws_flag_waterfall(marr[ai, 0, :, :, pi].T,
+                                                            farr[ai, 0, :, :, pi].T, nsig_p).T
         if nsig_f is not None:
             # Channel watershed
             d = avg_f(marr, axis=(0, 1, 3, 4), weights=warr)
             f = np.all(farr, axis=(0, 1, 3, 4))
-            farr[:, :, :, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, 1, -1, 1, 1)
+            farr[:, :, :, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, 1, -1, 1, 1)
         if nsig_t is not None:
             # Time watershed
             d = avg_f(marr, axis=(0, 1, 2, 4), weights=warr)
             f = np.all(farr, axis=(0, 1, 2, 4))
-            farr[:, :, :, :, :] += _ws_flag_wf(d, f, nsig_t).reshape(1, 1, 1, -1, 1)
-    elif uvf_m.type == 'wf':
+            farr[:, :, :, :, :] += _ws_flag_waterfall(d, f, nsig_t).reshape(1, 1, 1, -1, 1)
+    elif uvf_m.type == 'waterfall':
         # Pixel watershed
         for pi in range(uvf.polarization_array.size):
-            farr[:, :, pi] += _ws_flag_wf(marr[:, :, pi], farr[:, :, pi], nsig_p)
+            farr[:, :, pi] += _ws_flag_waterfall(marr[:, :, pi], farr[:, :, pi], nsig_p)
         if nsig_f is not None:
             # Channel watershed
             d = avg_f(marr, axis=(0, 2), weights=warr)
             f = np.app(farr, axis=(0, 2))
-            farr[:, :, :] += _ws_flag_wf(d, f, nsig_f).reshape(1, -1, 1)
+            farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, -1, 1)
         if nsig_t is not None:
             # Time watershed
             d = avg_f(marr, axis=(1, 2), weights=warr)
             f = np.all(farr, axis=(1, 2))
-            farr[:, :, :] += _ws_flag_wf(d, f, nsig_t).reshape(-1, 1, 1)
+            farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_t).reshape(-1, 1, 1)
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
     return uvf
 
 
-def _ws_flag_wf(d, fin, nsig=2.):
+def _ws_flag_waterfall(d, fin, nsig=2.):
     ''' Performs watershed algorithm on 1D or 2D arrays of metric and input flags.
     This is a helper function for watershed_flag, but not usually called
     by end users.
@@ -394,7 +397,7 @@ def flag(uvf_m, nsig_p=6., nsig_f=3., nsig_t=3., avg_method='quadmean'):
             d = avg_f(uvf_m.metric_array, axis=(0, 1, 2, 4), weights=warr)
             indt = np.where(d > nsig_t)[0]
             uvf_f.flag_array[:, :, :, indt, :] = True
-    elif uvf_m.type == 'wf':
+    elif uvf_m.type == 'waterfall':
         if nsig_f is not None:
             # Channel flag
             d = avg_f(uvf_m.metric_array, axis=(0, 2), weights=warr)
@@ -533,7 +536,7 @@ def xrfi_h1c(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
     uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None)
     uvf_f = watershed_flag(uvf, uvf_df, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
     uvf_w = copy.deepcopy(uvf_f)
-    uvf_w.to_wf()
+    uvf_w.to_waterfall()
     # I realize the naming convention has flipped, which results in nsig_f=time_threshold.
     # time_threshold is defined as fraction of time flagged to flag a given channel.
     # nsig_f is defined as significance required to flag a channel.
@@ -648,7 +651,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         uvf_f.history += history
         uvf_f.write(outpath)
         # Save thresholded waterfall
-        outfile = ''.join([baseline, '.wf', extension])
+        outfile = ''.join([baseline, '.waterfall', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
         uvf_wf.write(outpath)
@@ -757,16 +760,14 @@ def xrfi_apply(filename, history, infile_format='miriad', xrfi_path='', outfile_
         raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
     # Read in flag file
-    flag_history = ''
     if flag_file is not None:
         uvf = UVFlag(flag_file)
-        if uvf.type == 'wf':
+        if uvf.type == 'waterfall':
             uvf.to_baseline(uvd, force_pol=True)
         else:
             if uvf.flag_array.shape != uvd.flag_array.shape:
                 raise ValueError('Flag array in ' + flag_file + ' does not match '
                                  'shape of flag array in data file ' + filename + '.')
-        flag_history += uvf.history
     else:
         uvf = UVFlag(uvd, mode='flag')
 
@@ -778,15 +779,12 @@ def xrfi_apply(filename, history, infile_format='miriad', xrfi_path='', outfile_
         for wfile in waterfalls:
             uvtemp = UVFlag(wfile)
             uvtemp.to_baseline(uvd, force_pol=True)
-            uvf.flag_array += uvtemp.flag_array
-            if uvtemp.history not in flag_history:
-                # Several files may come from same command. Cut down on repeated info.
-                flag_history += uvtemp.history
+            uvf.__or__(uvtemp, inplace=True)
 
     # Finally, add the flag array to the flag array in the data
     uvd.flag_array += uvf.flag_array
     # append to history
-    uvd.history = uvd.history + flag_history + history
+    uvd.history = uvd.history + uvf.history + history
 
     # save output when we're done
     if xrfi_path == '':
