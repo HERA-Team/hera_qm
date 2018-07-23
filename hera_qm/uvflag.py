@@ -344,8 +344,8 @@ class UVFlag():
             other: second UVFlag object to concatenate with self.
             inplace: Whether to concatenate to self, or create a new UVFlag object. Default is False.
         '''
-        assert (self.mode == 'flag' & other.mode == 'flag'), 'UVFlag object must be in '
-                                                             '"flag" mode to use "or" function.'
+        assert (self.mode == 'flag' & other.mode == 'flag'), ('UVFlag object must be in '
+                                                              '"flag" mode to use "or" function.')
         # Handle in place
         if inplace:
             this = self
