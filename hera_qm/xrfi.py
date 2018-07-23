@@ -214,9 +214,9 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='qu
         uvf: UVFlag object in 'flag' mode with flags after watershed.
     '''
     # Check inputs
-    if (not isinstance(uvf_m, UVFlag)) or (uvf_m.mode == 'metric'):
+    if (not isinstance(uvf_m, UVFlag)) or (uvf_m.mode != 'metric'):
         raise ValueError('uvf_m must be UVFlag instance with mode == "metric."')
-    if (not isinstance(uvf_f, UVFlag)) or (uvf_f.mode == 'flag'):
+    if (not isinstance(uvf_f, UVFlag)) or (uvf_f.mode != 'flag'):
         raise ValueError('uvf_f must be UVFlag instance with mode == "flag."')
     if uvf_m.metric_array.shape != uvf_f.flag_array.shape:
         raise ValueError('uvf_m and uvf_f must have data of same shape. Shapes '
