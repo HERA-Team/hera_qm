@@ -4,6 +4,9 @@ import os
 import warnings
 import argparse
 import numpy as np
+from pyuvdata import UVCal, UVData
+from pyuvdata import telescopes as uvtel
+from pyuvdata import utils as uvutils
 
 
 # argument-generating function for *_run wrapper functions

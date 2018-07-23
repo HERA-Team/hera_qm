@@ -8,7 +8,7 @@ from pyuvdata import UVData
 from pyuvdata import UVCal
 from hera_qm.data import DATA_PATH
 from hera_qm import UVFlag
-from hera_qm.uvflag import lst_from_uv
+from hera_qm.utils import lst_from_uv
 from hera_qm.version import hera_qm_version_str
 import copy
 

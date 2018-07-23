@@ -3,8 +3,6 @@ import numpy as np
 import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
-from pyuvdata import utils as uvutils
-from pyuvdata import telescopes as uvtel
 from hera_qm.version import hera_qm_version_str
 from hera_qm import utils as qm_utils
 import warnings
@@ -46,7 +44,7 @@ class UVFlag():
                 self.lst_array = input.lst_array[ri]
             else:
                 self.polarization_array = input.jones_array
-                self.lst_array = lst_from_uv(input)[ri]
+                self.lst_array = qm_utils.lst_from_uv(input)[ri]
             if copy_flags:
                 self.metric_array = qm_utils.flags2waterfall(input, keep_pol=True)
                 self.history += ' WF generated from ' + str(input.__class__) + ' object.'
@@ -90,7 +88,7 @@ class UVFlag():
             self.history += 'Flag object with type "antenna" created by ' + hera_qm_version_str
             self.ant_array = input.ant_array
             self.time_array = input.time_array
-            self.lst_array = lst_from_uv(input)
+            self.lst_array = qm_utils.lst_from_uv(input)
             self.freq_array = input.freq_array
             self.polarization_array = input.jones_array
             if copy_flags:
