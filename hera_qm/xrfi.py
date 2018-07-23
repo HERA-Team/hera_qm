@@ -550,7 +550,7 @@ def xrfi_h1c(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 #############################################################################
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
-                 summary=False, summary_ext='.flag_summary.npz', xrfi_path='',
+                 summary=False, summary_ext='.flag_summary.h5', xrfi_path='',
                  model_file=None, model_file_format='uvfits',
                  calfits_file=None, kt_size=8, kf_size=8, sig_init=6.0, sig_adj=2.0,
                  px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05,
@@ -564,7 +564,8 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         history -- history string to include in files
         infile_format -- File format for input files. Default is miriad.
         extension -- Extension to be appended to input file name. Default is ".flags.h5"
-        summary -- Run summary of RFI flags and store in npz file. Default is False.
+        summary -- Run summary of RFI flags and store in h5 file. Default is False.
+        summary_ext -- Extension for summary file. Default is ".flag_summary.h5"
         xrfi_path -- Path to save flag files to. Default is same directory as input file.
         model_file -- Model visibility file to flag on.
         model_file_format -- File format for input model file. Default is uvfits.
@@ -714,97 +715,98 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
     return
 
 
-def xrfi_apply(filename, args, history):
+def xrfi_apply(filename, history, infile_format='miriad', xrfi_path='', outfile_format='miriad',
+               extension='R', overwrite=False, flag_file=None, waterfalls=None,
+               output_uvflag=True, output_uvflag_ext='.flags.h5'):
     """
     Read in a flag array and optionally several waterfall flags, and insert into
     a data file.
 
     Args:
         filename -- Data file in which update flag array.
-        args -- parsed arguments via argparse.ArgumentParser.parse_args
         history -- history string to include in files
+        infile_format -- File format for input files. Default is miriad.
+        xrfi_path -- Path to save output to. Default is same directory as input file.
+        outfile_format -- File format for output files. Default is miriad.
+        extension -- Extension to be appended to input file name. Default is "R".
+        overwrite -- Option to overwrite output file if it already exists.
+        flag_file -- npz file containing full flag array to insert into data file.
+        waterfalls -- list or comma separated list of npz files containing waterfalls of flags
+                      to broadcast to full flag array and union with flag array in flag_file.
+        output_uvflag -- Whether to save uvflag with the final flag array.
+                      The flag array will be identical to what is stored in the data.
+        output_uvflag_ext -- Extension to be appended to input file name. Default is ".flags.h5".
     Return:
         None
     """
     # make sure we were given files to process
     if len(filename) == 0:
         raise AssertionError('Please provide a visibility file')
-    if len(filename) > 1:
+    if isinstance(filename, (list, np.array, tuple)) and len(filename) > 1:
         raise AssertionError('xrfi_apply currently only takes a single data file.')
-    filename = filename[0]
+    if isinstance(filename, (list, np.array, tuple)):
+        filename = filename[0]
     uvd = UVData()
-    if args.infile_format == 'miriad':
+    if infile_format == 'miriad':
         uvd.read_miriad(filename)
-    elif args.infile_format == 'uvfits':
+    elif infile_format == 'uvfits':
         uvd.read_uvfits(filename)
-    elif args.infile_format == 'fhd':
+    elif infile_format == 'fhd':
         uvd.read_fhd(filename)
     else:
         raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
     # Read in flag file
-    waterfalls = []
     flag_history = ''
-    if args.flag_file is not None:
-        d = np.load(args.flag_file)
-        flag_array = d['flag_array']
-        if flag_array.shape != uvd.flag_array.shape:
-            raise ValueError('Flag array in ' + args.flag_file + ' does not match '
-                             'shape of flag array in data file ' + filename + '.')
-        flag_history += str(d['history'])
-        try:
-            # Flag file itself may contain a waterfall
-            waterfalls.append(d['waterfall'])
-        except KeyError:
-            pass
+    if flag_file is not None:
+        uvf = UVFlag(flag_file)
+        if uvf.type == 'wf':
+            uvf.to_baseline(uvd, force_pol=True)
+        else:
+            if uvf.flag_array.shape != uvd.flag_array.shape:
+                raise ValueError('Flag array in ' + flag_file + ' does not match '
+                                 'shape of flag array in data file ' + filename + '.')
+        flag_history += uvf.history
     else:
-        flag_array = np.zeros_like(uvd.flag_array)
+        uvf = UVFlag(uvd, mode='flag')
 
     # Read in waterfalls
-    if args.waterfalls is not None:
-        for wfile in args.waterfalls.split(','):
-            d = np.load(wfile)
-            if (len(waterfalls) > 0 and d['waterfall'].shape != waterfalls[0].shape):
-                raise ValueError('Not all waterfalls have the same shape, cannot combine.')
-            waterfalls.append(d['waterfall'])
-            if str(d['history']) not in flag_history:
+    if not isinstance(waterfalls, list):
+        # Assume comma separated list
+        waterfalls = waterfalls.split(',')
+    if waterfalls is not None:
+        for wfile in waterfalls:
+            uvtemp = UVFlag(wfile)
+            uvtemp.to_baseline(uvd, force_pol=True)
+            uvf.flag_array += uvtemp.flag_array
+            if uvtemp.history not in flag_history:
                 # Several files may come from same command. Cut down on repeated info.
-                flag_history += str(d['history'])
-
-    if len(waterfalls) > 0:
-        wf_full = sum(waterfalls).astype(bool)  # Union all waterfalls
-        flag_array += waterfall2flags(wf_full, uvd)  # Combine with flag array
-    else:
-        wf_full = None
+                flag_history += uvtemp.history
 
     # Finally, add the flag array to the flag array in the data
-    uvd.flag_array += flag_array
+    uvd.flag_array += uvf.flag_array
     # append to history
     uvd.history = uvd.history + flag_history + history
 
     # save output when we're done
-    if args.xrfi_path == '':
+    if xrfi_path == '':
         # default to the same directory
         abspath = os.path.abspath(filename)
         dirname = os.path.dirname(abspath)
     else:
-        dirname = args.xrfi_path
+        dirname = xrfi_path
     basename = os.path.basename(filename)
-    outfile = ''.join([basename, args.extension])
+    outfile = ''.join([basename, extension])
     outpath = os.path.join(dirname, outfile)
-    if args.outfile_format == 'miriad':
-        uvd.write_miriad(outpath, clobber=args.overwrite)
-    elif args.outfile_format == 'uvfits':
-        if os.path.exists(outpath) and not args.overwrite:
+    if outfile_format == 'miriad':
+        uvd.write_miriad(outpath, clobber=overwrite)
+    elif outfile_format == 'uvfits':
+        if os.path.exists(outpath) and not overwrite:
             raise ValueError('File exists: skipping')
         uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
     else:
-        raise ValueError('Unrecognized output file format ' + str(args.outfile_format))
-    if args.output_npz:
+        raise ValueError('Unrecognized output file format ' + str(outfile_format))
+    if output_uvflag:
         # Save an npz with the final flag array and waterfall and relevant metadata
-        outpath = outpath + args.out_npz_ext
-        antpos, ants = uvd.get_ENU_antpos(center=True, pick_data_ants=True)
-        np.savez(outpath, flag_array=uvd.flag_array, waterfall=wf_full, baseline_array=uvd.baseline_array,
-                 antpairs=uvd.get_antpairs(), polarization_array=uvd.polarization_array,
-                 freq_array=uvd.freq_array, time_array=uvd.time_array, lst_array=uvd.lst_array,
-                 antpos=antpos, ants=ants, history=flag_history + history)
+        outpath = outpath + out_uvflag_ext
+        uvf.write(outpath)
