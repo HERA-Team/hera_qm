@@ -445,28 +445,6 @@ def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
     return f
 
 
-def xrfi_h1c(d, f=None, Kt=8, Kf=8, sig_init=6, sig_adj=2):
-    """xrfi excision algorithm we used for H1C. Uses detrending and watershed algorithms above.
-    Args:
-        d (array): 2D of data array.
-        f (array, optional): input flag array.
-        Kt (int, optional): time size for detrending box.
-        Kf (int, optional): frequency size for detrending box/
-        sig_init (float, optional): initial sigma to flag.
-        sig_adj (float, optional): number of sigma to flag adjacent to flagged data (sig_init)
-
-    Returns:
-        bool array: array of flags
-    """
-    try:
-        nsig = detrend_medfilt(d, Kt=Kt, Kf=Kf)
-        f = watershed_flag(np.abs(nsig), f=f, sig_init=sig_init, sig_adj=sig_adj)
-    except AssertionError:
-        warnings.warn('Kernel size exceeds data. Flagging all data.')
-        f = np.ones_like(d, dtype=np.bool)
-    return f
-
-
 #############################################################################
 # Higher level functions that loop through data to calculate metrics
 #############################################################################
@@ -518,6 +496,58 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
                 uvf.flag_array[ai, 0, :, :, pi] = mfunc(d, f=f, **kwargs).T
     return uvf
 
+
+#############################################################################
+# "Pipelines" -- these routines define the flagging strategy for some data
+#############################################################################
+
+def xrfi_h1c(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
+             freq_threshold=0.5, time_threshold=0.05, return_summary=False,
+             gains=True, chisq=False):
+    """xrfi excision pipeline we used for H1C. Uses detrending and watershed algorithms above.
+    Args:
+        uv: UVData or UVCal object to flag
+        Kt (int): time size for detrending box. Default is 8.
+        Kf (int): frequency size for detrending box. Default is 8.
+        sig_init (float): initial sigma to flag.
+        sig_adj (float): number of sigma to flag adjacent to flagged data (sig_init)
+        px_threshold: Fraction of flags required to trigger a broadcast across baselines
+                      for a given (time, frequency) pixel. Default is 0.2.
+        freq_threshold: Fraction of channels required to trigger broadcast across
+                        frequency (single time). Default is 0.5.
+        time_threshold: Fraction of times required to trigger broadcast across
+                        time (single frequency). Default is 0.05.
+        return_summary: Return UVFlag object with fraction of baselines/antennas
+                        that were flagged in initial flag/watershed (before broadcasting)
+        gains (bool): If True (Default) and uv is UVCal, calculate flagging based on gains
+        chisq (bool): If True and uv is UVCal, calculate flagging based on chisquared.
+                      Note gains overrides chisq
+    Returns:
+        uvf_f: UVFlag object of initial flags (initial flag + watershed)
+        uvf_wf: UVFlag object of waterfall type after thresholding in time/freq
+        uvf_w (if return_summary): UVFlag object with fraction of flags in uvf_f
+    """
+    uvf = UVFlag(uv)
+    uvf.weights_array = np.logical_not(uv.flag_array).astype(np.float)
+    uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, gains=gains, chisq=chisq)
+    uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None)
+    uvf_f = watershed_flag(uvf, uvf_df, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+    uvf_w = copy.deepcopy(uvf_f)
+    uvf_w.to_wf()
+    # I realize the naming convention has flipped, which results in nsig_f=time_threshold.
+    # time_threshold is defined as fraction of time flagged to flag a given channel.
+    # nsig_f is defined as significance required to flag a channel.
+    uvf_wf = flag(uvf_w, nsig_p=px_threshold, nsig_f=time_threshold,
+                   nsig_t=freq_threshold)
+
+    if return_sumary:
+        return uvf_f, uvf_wf, uvf_w
+    else:
+        return uvf_f, uvf_wf
+
+#############################################################################
+# Wrappers -- Interact with input and output files
+#############################################################################
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                  summary=False, summary_ext='.flag_summary.npz', xrfi_path='',
@@ -595,20 +625,38 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         # Flag the visibilities corresponding to the specified antennas
         uvd = flag_xants(uvd, xants)
 
+    # append to history
+    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+
+    if xrfi_path != '':
+        # If explicitly given output path, use it. Otherwise use path from data.
+        dirname = xrfi_path
+
     # Flag on data
     if indata is not None:
-        uvf_d = UVFlag(uvd)
-        uvf_d.weights_array = np.logical_not(uvd.flag_array).astype(np.float)
-        uvf_d = calculate_metric(uvd, 'detrend_medfilt', Kt=kt_size, Kf=kf_size)
-        uvf_df = flag(uvf_d, nsig_p=sig_init, nsig_f=None, nsig_t=None)
-        uvf_df = watershed_flag(uvf_d, uvf_df, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
-        uvf_dw = copy.deepcopy(uvf_df)
-        uvf_dw.to_wf()
-        # I realize the naming convention has flipped, which results in nsig_f=time_threshold.
-        # time_threshold is defined as fraction of time flagged to flag a given channel.
-        # nsig_f is defined as significance required to flag a channel.
-        uvf_dwf = flag(uvf_dw, nsig_p=px_threshold, nsig_f=time_threshold,
-                       nsig_t=freq_threshold)
+        uvf_f, uvf_wf, uvf_w = xrfi_h1c(uv, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                        sig_adj=sig_adj, px_threshold=px_threshold,
+                                        freq_threshold=freq_threshold, time_threshold=time_threshold,
+                                        return_summary=True)
+        if xrfi_path == '':
+            dirname = os.path.dirname(os.path.abspath(filename))
+        basename = os.path.basename(filename)
+        # Save watersheded flags
+        outfile = ''.join([basename, extension])
+        outpath = os.path.join(dirname, outfile)
+        uvf_f.history += history
+        uvf_f.write(outpath)
+        # Save thresholded waterfall
+        outfile = ''.join([baseline, '.wf', extension])
+        outpath = os.path.join(dirname, outfile)
+        uvf_wf.history += history
+        uvf_wf.write(outpath)
+        if summary:
+            sum_file = ''.join([baseline, summary_ext])
+            sum_path = os.path.join(dirname, sum_file)
+            uvf_w.history += history
+            uvf_w.write(sum_path)
+
     if model_file is not None:
         uvm = UVData()
         if model_file_format == 'miriad':
@@ -624,16 +672,17 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                     np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of model vis file must match'
                                  'the data file.')
-        uvf_m = UVFlag(uvm)
-        uvf_m.weights_array = np.logical_not(uvm.flag_array).astype(np.float)
-        uvf_m = calculate_metric(uvm, 'detrend_medfilt', Kt=kt_size, Kf=kf_size)
-        uvf_mf = flag(uvf_m, nsig_p=sig_init, nsig_f=None, nsig_t=None)
-        uvf_mf = watershed_flag(uvf_m, uvf_mf, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
-        uvf_mw = copy.deepcopy(uvf_mf)
-        uvf_mw.to_wf()
-        # Note above comment about naming convention
-        uvf_mwf = flag(uvf_mw, nsig_p=px_threshold, nsig_f=time_threshold,
-                       nsig_t=freq_threshold)
+        uvf_f, uvf_wf = xrfi_h1c(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                 sig_adj=sig_adj, px_threshold=px_threshold,
+                                 freq_threshold=freq_threshold, time_threshold=time_threshold)
+        if xrfi_path == '':
+            dirname = os.path.dirname(os.path.abspath(model_file))
+        # Only save thresholded waterfall
+        outfile = ''.join([os.path.basename(model_file), extension])
+        outpath = os.path.join(dirname, outfile)
+        uvf_wf.history += history
+        uvf_wf.write(outpath)
+
     if calfits_file is not None:
         uvc = UVCal()
         uvc.read_calfits(calfits_file)
@@ -642,218 +691,27 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                     np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of calfits file must match'
                                  'the data file.')
-        uvf_g = UVFlag(uvc)
-        uvf_g.weights_array = np.logical_not(uvc.flag_array).astype(np.float)
-        uvf_x = copy.deepcopy(uvf_g)
-        uvf_g = calculate_metric(uvc, 'detrend_medfilt', Kt=kt_size, Kf=kf_size)
-        uvf_gf = flag(uvf_g, nsig_p=sig_init, nsig_f=None, nsig_t=None)
-        uvf_gf = watershed_flag(uvf_g, uvf_gf, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
-        uvf_gw = copy.deepcopy(uvf_gf)
-        uvf_gw.to_wf()
-        # Note above comment about naming convention
-        uvf_gwf = flag(uvf_gw, nsig_p=px_threshold, nsig_f=time_threshold,
-                       nsig_t=freq_threshold)
-        # Repeat for chisquared
-        uvf_x = calculate_metric(uvc, 'detrend_medfilt', Kt=kt_size, Kf=kf_size,
-                                 gains=False, chisq=True)
-        uvf_xf = flag(uvf_x, nsig_p=sig_init, nsig_f=None, nsig_t=None)
-        uvf_xf = watershed_flag(uvf_x, uvf_xf, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
-        uvf_xw = copy.deepcopy(uvf_xf)
-        uvf_xw.to_wf()
-        # Note above comment about naming convention
-        uvf_xwf = flag(uvf_xw, nsig_p=px_threshold, nsig_f=time_threshold,
-                       nsig_t=freq_threshold)
-
-    # append to history
-    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
-
-    # save output when we're done
-    if xrfi_path != '':
-        # If explicitly given output path, use it. Otherwise use path from data.
-        dirname = xrfi_path
-    if indata is not None:
-        if xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(filename))
-        basename = os.path.basename(filename)
-        # Save watersheded flags
-        outfile = ''.join([basename, extension])
-        outpath = os.path.join(dirname, outfile)
-        uvf_df.write(outpath)
-        # Save thresholded waterfall
-        outfile = ''.join([baseline, '.wf', extension])
-        outpath = os.path.join(dirname, outfile)
-        uvf_dwf.write(outpath)
-        if summary:
-            sum_file = ''.join([baseline, summary_ext])
-            sum_path = os.path.join(dirname, sum_file)
-            uvf_dw.write(sum_path)
-    if model_file is not None:
-        if xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(model_file))
-        # Only save thresholded waterfall
-        outfile = ''.join([os.path.basename(model_file), extension])
-        outpath = os.path.join(dirname, outfile)
-        uvf_mwf.write(outpath)
-    if calfits_file is not None:
-        # Save flags from gains and chisquareds in separate files
+        # By default, runs on gains
+        uvf_f, uvf_wf = xrfi_h1c(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                 sig_adj=sig_adj, px_threshold=px_threshold,
+                                 freq_threshold=freq_threshold, time_threshold=time_threshold)
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(calfits_file))
         outfile = ''.join([os.path.basename(calfits_file), '.g', extension])
         outpath = os.path.join(dirname, outfile)
-        uvf_gwf.write(outpath)
+        uvf_wf.history += history
+        uvf_wf.write(outpath)
+        # repeat for chisquared
+        uvf_f, uvf_wf = xrfi_h1c(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                 sig_adj=sig_adj, px_threshold=px_threshold,
+                                 freq_threshold=freq_threshold, time_threshold=time_threshold,
+                                 gains=False, chisq=True)
         outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
         outpath = os.path.join(dirname, outfile)
-        uvf_xwf.write(outpath)
+        uvf_wf.history += history
+        uvf_wf.write(outpath)
 
     return
-
-
-def waterfall2flags(waterfall, uv):
-    """
-    Broadcasts a 2D waterfall of dimensions (Ntimes, Nfreqs) to a full flag array,
-    defined by a UVData or UVCal object.
-    Args:
-        waterfall -- 2D waterfall of flags of size (Ntimes, Nfreqs).
-        uv -- A UVData or UVCal object which defines the times and frequencies.
-    Returns:
-        flag_array -- Flag array of dimensions defined by uv which copies the values
-                      of waterfall across the extra dimensions (baselines/antennas, pols)
-    """
-    if not isinstance(uv, (UVData, UVCal)):
-        raise ValueError('waterfall2flags() requires a UVData or UVCal object as '
-                         'the second argument.')
-    if waterfall.shape != (uv.Ntimes, uv.Nfreqs):
-        raise ValueError('Waterfall dimensions do not match data. Cannot broadcast.')
-    if isinstance(uv, UVCal):
-        flag_array = np.tile(waterfall.T[np.newaxis, np.newaxis, :, :, np.newaxis],
-                             (uv.Nants_data, uv.Nspws, 1, 1, uv.Njones))
-    elif isinstance(uv, UVData):
-        flag_array = np.zeros_like(uv.flag_array)
-        for i, t in enumerate(np.unique(uv.time_array)):
-            flag_array[uv.time_array == t, :, :, :] = waterfall[i, np.newaxis, :, np.newaxis]
-
-    return flag_array
-
-
-def normalize_wf(wf, wfp):
-    """ Normalize waterfall to account for data already flagged.
-    Args:
-        wf -- Waterfall of fractional flags.
-        wfp -- Waterfall of prior fractional flags. Size must match wf.
-    Returns:
-        wf_norm -- Waterfall of fractional flags which were not flagged prior.
-                   Note if wfp[i, j] == 1, then wf_norm[i, j] will be NaN.
-    """
-    if wf.shape != wfp.shape:
-        raise AssertionError('waterfall and prior waterfall must be same shape.')
-    ind = np.where(wfp < 1)
-    wf_norm = np.nan * np.ones_like(wf)
-    wf_norm[ind] = (wf[ind] - wfp[ind]) / (1. - wfp[ind])
-    return wf_norm
-
-
-def threshold_flags(wf, px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05):
-    """ Threshold flag waterfall at each pixel, as well as averages across time and frequency
-    Args:
-        wf -- Waterfall of fractional flags. Size (Ntimes, Nfreqs)
-        px_threshold -- Fraction of flags required to threshold the pixel. Default is 0.2.
-        freq_threshold -- Fraction of channels required to flag all channels at a
-                          single time. Default is 0.5.
-        time_threshold -- Fraction of times required to flag all times at a
-                          single frequency channel. Default is 0.05.
-
-    Return:
-        wf_t -- thresholded waterfall. Boolean array, same shape as wf.
-    """
-    wf_t = np.zeros(wf.shape, dtype=bool)
-    with warnings.catch_warnings():
-        # Ignore empty slice warning which occurs for entire rows/columns of nan
-        warnings.filterwarnings('ignore', message='Mean of empty slice',
-                                category=RuntimeWarning)
-        spec = np.nanmean(wf, axis=0)
-        spec[np.isnan(spec)] = 1
-        tseries = np.nanmean(wf, axis=1)
-        tseries[np.isnan(tseries)] = 1
-    wf_t[:, spec > time_threshold] = True
-    wf_t[tseries > freq_threshold, :] = True
-    with warnings.catch_warnings():
-        # Explicitly handle nans in wf
-        warnings.filterwarnings('ignore', message='invalid value encountered in greater',
-                                category=RuntimeWarning)
-        wf_t[wf > px_threshold] = True
-        wf_t[np.isnan(wf)] = True  # Flag anything that was completely flagged in prior.
-    return wf_t
-
-
-def summarize_flags(uv, outfile, flag_array=None, prior_flags=None):
-    """ Collapse several dimensions of a UVData flag array to summarize.
-    Args:
-        uv -- UVData object containing flag_array to be summarized
-        outfile -- filename for output npz file
-        flag_array -- (optional) use alternative flag_array (rather than uv.flag_array).
-        prior_flags -- (optional) exclude prior flag array when calculating averages.
-
-    Return:
-        Writes an npz file to disk containing summary info. The keys are:
-            waterfall - ndarray (Ntimes, Nfreqs, Npols) of rfi flags, averaged
-                        over all baselines in the file.
-            tmax - ndarray (Nfreqs, Npols) of max rfi fraction along time dimension.
-            tmin - ndarray (Nfreqs, Npols) of min rfi fraction along time dimension.
-            tmean - ndarray (Nfreqs, Npols) of average rfi fraction along time dimension.
-            tstd - ndarray (Nfreqs, Npols) of standard deviation rfi fraction
-                   along time dimension.
-            tmedian - ndarray (Nfreqs, Npols) of median rfi fraction along time dimension.
-            fmax - ndarray (Ntimes, Npols) of max rfi fraction along freq dimension.
-            fmin - ndarray (Ntimes, Npols) of min rfi fraction along freq dimension.
-            fmean - ndarray (Ntimes, Npols) of average rfi fraction along freq dimension.
-            fstd - ndarray (Ntimes, Npols) of standard deviation rfi fraction
-                   along freq dimension.
-            fmedian - ndarray (Ntimes, Npols) of median rfi fraction along freq dimension.
-            freqs - ndarray (Nfreqs) of frequencies in observation (Hz).
-            times - ndarray (Ntimes) of times in observation (julian date).
-            pols - ndarray (Npols) of polarizations in data (string format).
-            version - Version string including git information.
-    """
-    import pyuvdata.utils as uvutils
-
-    if flag_array is None:
-        flag_array = uv.flag_array
-    if prior_flags is None:
-        prior_flags = np.zeros_like(flag_array)
-    # Average across bls for given time
-    waterfall = np.zeros((uv.Ntimes, uv.Nfreqs, uv.Npols))
-    prior_wf = np.zeros_like(waterfall)
-    unit_wf = np.ones_like(prior_wf)
-    waterfall_weight = np.zeros(uv.Ntimes)
-    times = np.unique(uv.time_array)
-    for ti, time in enumerate(times):
-        ind = np.where(uv.time_array == time)[0]
-        waterfall_weight[ti] = len(ind)
-        waterfall[ti, :, :] = np.mean(flag_array[ind, 0, :, :], axis=0)
-        prior_wf[ti, :, :] = np.mean(prior_flags[ind, 0, :, :], axis=0)
-    # Normalize waterfall to account for data already flagged in file
-    waterfall = (waterfall - prior_wf) / (unit_wf - prior_wf)
-    # Calculate stats across time
-    tmax = np.max(waterfall, axis=0)
-    tmin = np.min(waterfall, axis=0)
-    tmean = np.average(waterfall, axis=0, weights=waterfall_weight)
-    tstd = np.sqrt(np.average((waterfall - tmean[np.newaxis, :, :])**2,
-                              axis=0, weights=waterfall_weight))
-    tmedian = np.median(waterfall, axis=0)
-    # Calculate stats across frequency
-    fmax = np.max(waterfall, axis=1)
-    fmin = np.min(waterfall, axis=1)
-    fmean = np.mean(waterfall, axis=1)  # no weights - all bls have all channels
-    fstd = np.std(waterfall, axis=1)
-    fmedian = np.median(waterfall, axis=1)
-    # Some meta info
-    freqs = uv.freq_array[0, :]
-    pols = uvutils.polnum2str(uv.polarization_array)
-    # Store data in npz
-    np.savez(outfile, waterfall=waterfall, tmax=tmax, tmin=tmin, tmean=tmean,
-             tstd=tstd, tmedian=tmedian, fmax=fmax, fmin=fmin, fmean=fmean,
-             fstd=fstd, fmedian=fmedian, freqs=freqs, times=times, pols=pols,
-             version=hera_qm_version_str)
 
 
 def xrfi_apply(filename, args, history):
