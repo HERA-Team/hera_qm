@@ -326,7 +326,8 @@ class UVFlag():
                                              other.weights_array], axis=ax)
         this.history += 'Data combined along ' + axis + ' axis with ' + hera_qm_version_str
 
-        return this
+        if not inplace:
+            return this
 
     def __iadd__(self, other):
         """
@@ -341,8 +342,8 @@ class UVFlag():
     def __or__(self, other, inplace=False):
         '''Combine two UVFlag objects in "flag" mode by "OR"-ing their flags.
         Args:
-            other: second UVFlag object to concatenate with self.
-            inplace: Whether to concatenate to self, or create a new UVFlag object. Default is False.
+            other: second UVFlag object to combine with self.
+            inplace: Whether to combine to self, or create a new UVFlag object. Default is False.
         '''
         assert (self.mode == 'flag' & other.mode == 'flag'), ('UVFlag object must be in '
                                                               '"flag" mode to use "or" function.')
@@ -354,6 +355,17 @@ class UVFlag():
         this.flag_array += other.flag_array
         if not other.history in this.history:
             this.history += "Flags OR'd with: " + other.history
+
+        if not inplace:
+            return this
+
+    def __ior__(self, other):
+        '''In place or
+        Args:
+            other: second UVFlag object to combine with self.
+        '''
+        self.__or__(other, inplace=True)
+        return self
 
     def clear_unused_attributes(self):
         """
