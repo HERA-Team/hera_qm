@@ -191,7 +191,7 @@ algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': d
 # RFI flagging algorithms
 #############################################################################
 
-def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='quadmean',
+def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method='quadmean',
                    inplace=True):
     '''Expands a set of flags using a watershed algorithm.
     Uses a UVFlag object in 'metric' mode (i.e. how many sigma the data point is
@@ -203,9 +203,9 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='qu
         nsig_p: Number of sigma above which to flag pixels which are near
                previously flagged pixels. Default is 2.0.
         nsig_f: Number of sigma above which to flag channels which are near
-               fully flagged channels. Default is 2.0. Bypassed if None.
+               fully flagged channels. Bypassed if None (Default).
         nsig_t: Number of sigma above which to flag integrations which are near
-               fully flagged integrations. Default is 2.0. Bypassed if None.
+               fully flagged integrations. Bypassed if None (Default)
         avg_method: Method to average metric data for frequency and time watershedding.
                     Options are 'mean', 'absmean', and 'quadmean' (Default).
         inplace: Whether to update uvf_f or create a new flag object. Default is True.
@@ -240,6 +240,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=2., nsig_t=2., avg_method='qu
 
     if uvf_m.type == 'baseline':
         # Pixel watershed
+        #TODO: bypass pixel-based if none
         for b in np.unique(uvf.baseline_array):
             i = np.where(uvf.baseline_array == b)[0]
             for pi in range(uvf.polarization_array.size):
@@ -339,15 +340,14 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
     return f
 
 
-def flag(uvf_m, nsig_p=6., nsig_f=3., nsig_t=3., avg_method='quadmean'):
+def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     '''Creates a set of flags based on a "metric" type UVFlag object.
     Args:
         uvf_m: UVFlag object in 'metric' mode (ie. number of sigma data is from middle)
-        nsig_p: Number of sigma above which to flag pixels. Default is 6.0.
-        nsig_f: Number of sigma above which to flag channels. Default is 3.0.
+        nsig_p: Number of sigma above which to flag pixels. Default is 6.
                 Bypassed if None.
-        nsig_t: Number of sigma above which to flag integrations. Default is 3.0.
-                Bypassed if None.
+        nsig_f: Number of sigma above which to flag channels. Bypassed if None (Default).
+        nsig_t: Number of sigma above which to flag integrations. Bypassed if None (Default).
         avg_method: Method to average metric data for frequency and time flagging.
                     Options are 'mean', 'absmean', and 'quadmean' (Default).
 
@@ -368,7 +368,8 @@ def flag(uvf_m, nsig_p=6., nsig_f=3., nsig_t=3., avg_method='quadmean'):
     uvf_f.to_flag()
 
     # Pixel flagging
-    uvf_f.flag_array[uvf_m.metric_array > nsig_p] = True
+    if nsig_p is not None:
+        uvf_f.flag_array[uvf_m.metric_array > nsig_p] = True
 
     if uvf_m.type == 'baseline':
         if nsig_f is not None:
