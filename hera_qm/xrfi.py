@@ -382,11 +382,11 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
             ts = np.unique(uvf_m.time_array)
             d = np.zeros(ts.size)
             for i, t in enumerate(ts):
-                d[i] = avg_f(uvf_m.metric_array[uvf.time_array == t, 0, :, :],
-                             weights=uvf_m.weights_array[uvf.time_array == t, 0, :, :])
+                d[i] = avg_f(uvf_m.metric_array[uvf_m.time_array == t, 0, :, :],
+                             weights=uvf_m.weights_array[uvf_m.time_array == t, 0, :, :])
             indf = np.where(d > nsig_t)[0]
             for t in ts[indf]:
-                uvf_f.flag_array[uvf.time_array == t, :, :, :] = True
+                uvf_f.flag_array[uvf_f.time_array == t, :, :, :] = True
     elif uvf_m.type == 'antenna':
         if nsig_f is not None:
             # Channel flag
