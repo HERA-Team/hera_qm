@@ -474,8 +474,8 @@ class UVFlag():
         self.weights_array = warr
 
         self.baseline_array = uv.baseline_array
-        self.ant1_array = uv.ant1_array
-        self.ant2_array = uv.ant2_array
+        self.ant_1_array = uv.ant_1_array
+        self.ant_2_array = uv.ant_2_array
         self.time_array = uv.time_array
         self.lst_array = uv.lst_array
         self.history += 'Broadcast to type "baseline" with ' + hera_qm_version_str
