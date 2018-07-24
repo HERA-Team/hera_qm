@@ -414,6 +414,53 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     return uvf_f
 
 
+def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
+               return_net_flags=False):
+    '''Apply flags from UVFlag or list of UVFlag objects to UVData or UVCal.
+    Args:
+        uvf: UVFlag, path to UVFlag file, or list of these. Must be in 'flag' mode, and either
+             match uv argument, or be a waterfall that can be made to match.
+        uv:  UVData or UVCal object to apply flags to.
+        keep_existing: If True (default), add flags to existing flags in uv.
+                       If False, replace existing flags in uv.
+        force_pol: If True, will use 1 pol to broadcast to any other pol.
+                   Otherwise, will require polarizations match (default).
+        history: history string to be added to uv.history
+        return_net_flags: If True, return a UVFlag object with net flags applied.
+                          If False (default) do not return net flags.
+    Returns:
+        net_flags: (if return_net_flags is set) returns UVFlag object with net flags.
+    '''
+    if isinstance(uv, UVData):
+        expected_type = 'baseline'
+    elif isinstance(uv, UVCal):
+        expected_type = 'antenna'
+    else:
+        raise ValueError('Flags can only be applied to UVData or UVCal objects.')
+    if not isinstance(uvf, (list, tuple, np.ndarray)):
+        uvf = [uvf]
+    net_flags = UVFlag(uv, mode='flag', copy_flags=keep_existing, history=history)
+    for f in uvf:
+        if isinstance(f, str):
+            f = UVFlag(f)  # Read file
+        elif not isinstance(f, UVFlag):
+            raise ValueError('Input to apply_flag must be UVFlag or path to UVFlag file.')
+        if f.mode != 'flag':
+            raise ValueError('UVFlag objects must be in mode "flag" to apply to data.')
+        if f.type == 'waterfall':
+            if expected_type == 'baseline':
+                f.to_baseline(uv, force_pol=force_pol)
+            else:
+                f.to_antenna(uv, force_pol=force_pol)
+        # Use built-in or function
+        net_flags |= f
+    uv.flag_array += f.flag_array
+    uv.history += 'FLAGGING HISTORY: ' + f.history + ' END OF FLAGGING HISTORY.'
+
+    if return_net_flags:
+        return net_flags
+
+
 def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
     '''Flag RFI using derivatives in time and frequency.
     Args:
@@ -717,10 +764,12 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
     return
 
 
-def xrfi_apply(filename, history, infile_format='miriad', xrfi_path='', outfile_format='miriad',
-               extension='R', overwrite=False, flag_file=None, waterfalls=None,
-               output_uvflag=True, output_uvflag_ext='.flags.h5'):
+def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
+                   outfile_format='miriad', extension='R', overwrite=False,
+                   flag_file=None, waterfalls=None, output_uvflag=True,
+                   output_uvflag_ext='.flags.h5'):
     """
+    Apply flags in the fashion of H1C.
     Read in a flag array and optionally several waterfall flags, and insert into
     a data file.
 
@@ -758,32 +807,19 @@ def xrfi_apply(filename, history, infile_format='miriad', xrfi_path='', outfile_
     else:
         raise ValueError('Unrecognized input file format ' + str(args.infile_format))
 
+    full_list = []
     # Read in flag file
     if flag_file is not None:
-        uvf = UVFlag(flag_file)
-        if uvf.type == 'waterfall':
-            uvf.to_baseline(uvd, force_pol=True)
-        else:
-            if uvf.flag_array.shape != uvd.flag_array.shape:
-                raise ValueError('Flag array in ' + flag_file + ' does not match '
-                                 'shape of flag array in data file ' + filename + '.')
-    else:
-        uvf = UVFlag(uvd, mode='flag')
+        full_list += [flag_file]
 
     # Read in waterfalls
-    if not isinstance(waterfalls, list):
-        # Assume comma separated list
-        waterfalls = waterfalls.split(',')
     if waterfalls is not None:
-        for wfile in waterfalls:
-            uvtemp = UVFlag(wfile)
-            uvtemp.to_baseline(uvd, force_pol=True)
-            uvf.__or__(uvtemp, inplace=True)
+        if not isinstance(waterfalls, list):
+            # Assume comma separated list
+            waterfalls = waterfalls.split(',')
+        full_list += waterfalls
 
-    # Finally, add the flag array to the flag array in the data
-    uvd.flag_array += uvf.flag_array
-    # append to history
-    uvd.history = uvd.history + uvf.history + history
+    uvf = flag_apply(full_list, uvd, force_pol=True, return_net_flags=True)
 
     # save output when we're done
     if xrfi_path == '':
