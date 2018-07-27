@@ -1,4 +1,6 @@
 #! /bin/bash
+# Copyright (c) 2018 the HERA Project
+# Licensed under the MIT License
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR/..
