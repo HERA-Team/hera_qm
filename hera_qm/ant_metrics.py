@@ -87,13 +87,19 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
                   (ant, antpol) not in xants}
     visCounts = deepcopy(absVijMean)
     for (i, j) in bls:
-        if i != j:
-            for pol in pols:
-                for ant, antpol in zip((i, j), pol):
-                    if (ant, antpol) not in xants:
-                        d = data.get_data(i, j, pol)
-                        absVijMean[(ant, antpol)] += np.nansum(np.abs(d))
-                        visCounts[(ant, antpol)] += d.size
+        if i==j:
+            continue
+        for pol in pols:
+            ants = zip((i,j),pol)
+            if all([ant in xants for ant in ants]):
+                continue
+            d = data.get_data(i, j, pol)
+            s = np.nansum(np.abs(d))
+            for ant, antpol in ants:
+		if (ant, antpol) in xants:
+                    continue
+                absVijMean[(ant, antpol)] += s
+                visCounts[(ant, antpol)] += d.size
     timeFreqMeans = {key: absVijMean[key] / visCounts[key] for key in absVijMean.keys()}
 
     if rawMetric:
