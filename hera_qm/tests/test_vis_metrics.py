@@ -11,6 +11,8 @@ from hera_qm.data import DATA_PATH
 import os
 import pyuvdata.tests as uvtest
 import copy
+import nose.tools as nt
+import matplotlib.pyplot as plt
 
 
 class TestMethods(unittest.TestCase):
@@ -45,6 +47,39 @@ class TestMethods(unittest.TestCase):
             self.assertEqual(n.shape, (self.data.Nfreqs - 1,))
             nsamp = self.data.channel_width * self.data.integration_time
             np.testing.assert_almost_equal(n, np.ones_like(n) * nsamp, -np.log10(nsamp))
+
+
+def test_vis_bl_cov():
+    uvd = UVData()
+    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
+
+    # test basic execution
+    bls = [(0, 1), (11, 12), (12, 13), (13, 14), (23, 24), (24, 25)]
+    cov = vis_metrics.vis_bl_cov(uvd, uvd, bls)
+    nt.assert_equal(cov.shape, (6, 6, 1, 1))
+    nt.assert_equal(cov.dtype, np.complex128)
+    nt.assert_true(np.isclose(cov[0,0,0,0], (9.956259010854378-16.572801938373768j)))
+
+    # test iterax
+    cov = vis_metrics.vis_bl_cov(uvd, uvd, bls, iterax='freq')
+    nt.assert_equal(cov.shape, (6, 6, 1, 1024))
+    cov = vis_metrics.vis_bl_cov(uvd, uvd, bls, iterax='time')
+    nt.assert_equal(cov.shape, (6, 6, 1, 1))
+
+
+def test_plot_bl_cov():
+    uvd = UVData()
+    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
+
+    # basic execution
+    fig, ax = plt.subplots()
+    bls = [(0, 1), (11, 12), (12, 13), (13, 14), (23, 24), (24, 25)]
+    vis_metrics.plot_bl_cov(uvd, uvd, bls, ax=ax, component='abs', colorbar=True)
+    plt.close()
+    fig = vis_metrics.plot_bl_cov(uvd, uvd, bls, component='real')
+    plt.close()
+    fig = vis_metrics.plot_bl_cov(uvd, uvd, bls, component='imag')
+    plt.close()
 
 
 if __name__ == '__main__':
