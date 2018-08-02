@@ -55,19 +55,19 @@ def test_vis_bl_cov():
 
     # test basic execution
     bls = [(0, 1), (11, 12), (12, 13), (13, 14), (23, 24), (24, 25)]
-    cov = vis_metrics.vis_bl_cov(uvd, uvd, bls, component='abs')
+    cov = vis_metrics.vis_bl_cov(uvd, bls, component='abs')
     nt.assert_equal(cov.shape, (6, 6, 1, 1))
     nt.assert_equal(cov.dtype, np.float64)
     nt.assert_almost_equal(cov[0,0,0,0], 50.27306113109233)
 
     # test iterax
-    cov = vis_metrics.vis_bl_cov(uvd, uvd, bls, iterax='freq', component='imag')
+    cov = vis_metrics.vis_bl_cov(uvd, bls, iterax='freq', component='imag')
     nt.assert_equal(cov.shape, (6, 6, 1, 1024))
-    cov = vis_metrics.vis_bl_cov(uvd, uvd, bls, iterax='time', component='real')
+    cov = vis_metrics.vis_bl_cov(uvd, bls, iterax='time', component='real')
     nt.assert_equal(cov.shape, (6, 6, 1, 1))
 
     # test corr
-    corr = vis_metrics.vis_bl_cov(uvd, uvd, bls, corr=True)
+    corr = vis_metrics.vis_bl_cov(uvd, bls, corr=True)
     nt.assert_true(np.isclose(np.abs(corr).max(), 1.0))
     nt.assert_almost_equal(corr[1, 0, 0, 0], 0.9680748528021609)
 
@@ -79,11 +79,11 @@ def test_plot_bl_cov():
     # basic execution
     fig, ax = plt.subplots()
     bls = [(0, 1), (11, 12), (12, 13), (13, 14), (23, 24), (24, 25)]
-    vis_metrics.plot_bl_cov(uvd, uvd, bls, ax=ax, component='abs', colorbar=True)
+    vis_metrics.plot_bl_cov(uvd, bls, ax=ax, component='abs', colorbar=True)
     plt.close()
-    fig = vis_metrics.plot_bl_cov(uvd, uvd, bls, component='real', corr=True)
+    fig = vis_metrics.plot_bl_cov(uvd, bls, component='real', corr=True)
     plt.close()
-    fig = vis_metrics.plot_bl_cov(uvd, uvd, bls, component='imag')
+    fig = vis_metrics.plot_bl_cov(uvd, bls, component='imag')
     plt.close()
 
 

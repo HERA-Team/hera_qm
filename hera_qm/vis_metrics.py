@@ -32,10 +32,10 @@ def check_noise_variance(data):
     return Cij
 
 
-def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
+def vis_bl_cov(uvd, bls, iterax=None, component='abs', corr=False):
     """
     Calculate visibility data covariance or correlation matrix
-    from uvd1 with uvd2 between specified baselines, optionally
+    from uvd between specified baselines, optionally
     as a fuction of frequency _or_ time.
 
     If corr == True, the correlation matrix holds the 
@@ -44,10 +44,7 @@ def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
 
     Parameters
     ----------
-    uvd1 : UVData object
-        A single-pol UVData object holding visibility data
-
-    uvd2 : UVData object
+    uvd : UVData object
         A single-pol UVData object holding visibility data
 
     bls : list
@@ -74,26 +71,22 @@ def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
             Nfreqs == 1 if iterax != 'freq'
     """
     # type checks
-    assert isinstance(uvd1, UVData) and isinstance(uvd2, UVData), \
-           "uvd1 and uvd2 must be UVData objects"
-    assert uvd1.Npols == 1 and uvd2.Npols == 1, \
-           "uvd1 and uvd2 must be single-polarization objects"
+    assert isinstance(uvd, UVData), "uvd1 and uvd2 must be UVData objects"
+    assert uvd.Npols == 1, "uvd must be single-polarization objects"
     assert isinstance(bls, (list, np.ndarray)), "bls must be a list of baselines"
     if isinstance(bls[0], (int, np.integer)):
-        bls = [uvd1.baseline_to_antnums(bl) for bl in bls]
+        bls = [uvd.baseline_to_antnums(bl) for bl in bls]
     assert iterax in [None, 'time', 'freq'], \
            "iterax {} not recognized".format(iterax)
-    assert uvd1.Ntimes == uvd2.Ntimes, "Ntimes must agree between uvd1 and uvd2"
-    assert uvd1.Nfreqs == uvd2.Nfreqs, "Nfreqs must agree between uvd1 and uvd2"
 
     # get Nfreqs and Ntimes
     if iterax == 'time':
-        Ntimes = uvd1.Ntimes
+        Ntimes = uvd.Ntimes
         Nfreqs = 1
         sumaxes = (1,)
     elif iterax == 'freq':
         Ntimes = 1
-        Nfreqs = uvd1.Nfreqs
+        Nfreqs = uvd.Nfreqs
         sumaxes = (0,)
     elif iterax is None:
         Ntimes = 1
@@ -115,8 +108,8 @@ def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
     # iterate over bls
     for i, bl1 in enumerate(bls):
         # get d1 data
-        d1 = cast(uvd1.get_data(bl1))
-        w1 = (~uvd1.get_flags(bl1)).astype(np.float)
+        d1 = cast(uvd.get_data(bl1))
+        w1 = (~uvd.get_flags(bl1)).astype(np.float)
 
         # get mean
         m1 = np.sum(d1 * w1, axis=sumaxes, keepdims=True) \
@@ -129,8 +122,8 @@ def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
         # iterate over bls
         for j, bl2 in enumerate(bls):
             # get d2 data
-            d2 = cast(uvd2.get_data(bl2))
-            w2 = (~uvd2.get_flags(bl2)).astype(np.float)
+            d2 = cast(uvd.get_data(bl2))
+            w2 = (~uvd.get_flags(bl2)).astype(np.float)
 
             # skip if completely flagged
             if np.isclose(w2, 0.0).all():
@@ -161,18 +154,16 @@ def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
     return cov
 
 
-def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
+def plot_bl_cov(uvd, bls, corr=False, ax=None, cmap='viridis', vmin=None,
                 vmax=None, component='abs', colorbar=True, tlsize=10, tlrot=35,
                 figsize=None):
     """
-    Plot the visibility data covariance or correlation matrix between uvd1 and
-    uvd2 across a set of specified baselines.
+    Plot the visibility data covariance or correlation matrix from uvd across
+    a set of specified baselines.
 
     Parameters
     ----------
-    uvd1 : UVData object
-
-    uvd2 : UVData object
+    uvd : UVData object
 
     bls : list
         List of baseline antenna-pairs
@@ -210,14 +201,8 @@ def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
         fig : matplotlib.pyplot.Figure object
     """
     # get covariance
-    blcov = vis_bl_cov(uvd1, uvd2, bls, corr=corr, component=component).squeeze()
+    blcov = vis_bl_cov(uvd, bls, corr=corr, component=component).squeeze()
     assert not np.isnan(blcov).all(), "All data are flagged!"
-    if component == 'abs':
-        blcov = np.abs(blcov)
-    elif component == 'real':
-        blcov = np.real(blcov)
-    elif component == 'imag':
-        blcov = np.imag(blcov)
 
     # setup figure
     if ax is None:
@@ -246,8 +231,8 @@ def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
             action = "corr"
         else:
             action = "cov"
-        label = r"$\rm {}(\ {}(V_{{1}}),\ {}(V_{{2}})\ )\ [{}\ \cdot\ {}]$" \
-                 .format(action, component, component, uvd1.vis_units, uvd2.vis_units)
+        label = r"$\rm {}[\ {}(V_{{1}}),\ {}(V_{{2}})\ ]\ [{}^2]$" \
+                 .format(action, component, component, uvd.vis_units)
         cbar.set_label(label, fontsize=12)
 
     # axes labels
