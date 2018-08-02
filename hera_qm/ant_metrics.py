@@ -5,6 +5,7 @@ from pyuvdata import UVData
 import json
 import os
 import re
+from hera_qm.io import UVDWrapper
 from hera_qm.version import hera_qm_version_str
 from hera_qm import utils
 
@@ -344,12 +345,14 @@ class Antenna_Metrics():
             raise ValueError('Missing polarization information. pols =' +
                              str(self.pols) + ' and antpols = ' + str(self.antpols))
 
+        self.dataindex = UVDWrapper(self.data)
+
     def mean_Vij_metrics(self, pols=None, xants=[], rawMetric=False):
         '''Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module.'''
 
         if pols is None:
             pols = self.pols
-        return mean_Vij_metrics(self.data, pols, self.antpols, self.ants, self.bls,
+        return mean_Vij_metrics(self.dataindex, pols, self.antpols, self.ants, self.bls,
                                 xants=xants, rawMetric=rawMetric)
 
     def red_corr_metrics(self, pols=None, xants=[], rawMetric=False, crossPol=False):
@@ -357,19 +360,19 @@ class Antenna_Metrics():
 
         if pols is None:
             pols = self.pols
-        return red_corr_metrics(self.data, pols, self.antpols, self.ants, self.reds,
+        return red_corr_metrics(self.dataindex, pols, self.antpols, self.ants, self.reds,
                                 xants=xants, rawMetric=rawMetric, crossPol=crossPol)
 
     def mean_Vij_cross_pol_metrics(self, xants=[], rawMetric=False):
         '''Local wrapper for mean_Vij_cross_pol_metrics in hera_qm.ant_metrics module.'''
 
-        return mean_Vij_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants,
+        return mean_Vij_cross_pol_metrics(self.dataindex, self.pols, self.antpols, self.ants,
                                           self.bls, xants=xants, rawMetric=rawMetric)
 
     def red_corr_cross_pol_metrics(self, xants=[], rawMetric=False):
         '''Local wrapper for red_corr_cross_pol_metrics in hera_qm.ant_metrics module.'''
 
-        return red_corr_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants,
+        return red_corr_cross_pol_metrics(self.dataindex, self.pols, self.antpols, self.ants,
                                           self.reds, xants=xants, rawMetric=rawMetric)
 
     def reset_summary_stats(self):
@@ -385,7 +388,7 @@ class Antenna_Metrics():
         These antennas are marked as dead, but they do not appear in recorded antenna
         metrics or zscores. Their removal iteration is -1 (i.e. before iterative flagging).'''
 
-        autoPowers = compute_median_auto_power_dict(self.data, self.pols, self.reds)
+        autoPowers = compute_median_auto_power_dict(self.dataindex, self.pols, self.reds)
         power_list_by_ant = {(ant, antpol): [] for ant in self.ants for antpol
                              in self.antpols if (ant, antpol) not in self.xants}
         for (ant0, ant1, pol), power in autoPowers.items():
