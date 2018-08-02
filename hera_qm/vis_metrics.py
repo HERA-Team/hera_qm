@@ -242,12 +242,12 @@ def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
     # colorbar
     if colorbar:
         cbar = fig.colorbar(cax, ax=ax)
-        if not corr:
-            label = r"$\rm {}\ cov(V_{{1}},\ V_{{2}}^{{\ast}})\ [{}\ \cdot\ {}]$" \
-                     .format(component, uvd1.vis_units, uvd2.vis_units)
+        if corr:
+            action = "corr"
         else:
-            label = r"$\rm corr(V_{{1}},\ V_{{2}}^{{\ast}})\ [{}\ \cdot\ {}]$" \
-                     .format(uvd1.vis_units, uvd2.vis_units)
+            action = "cov"
+        label = r"$\rm {}(\ {}(V_{{1}}),\ {}(V_{{2}})\ )\ [{}\ \cdot\ {}]$" \
+                 .format(action, component, component, uvd1.vis_units, uvd2.vis_units)
         cbar.set_label(label, fontsize=12)
 
     # axes labels
