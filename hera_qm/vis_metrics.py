@@ -32,7 +32,7 @@ def check_noise_variance(data):
     return Cij
 
 
-def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
+def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
     """
     Calculate visibility data covariance or correlation matrix
     from uvd1 with uvd2 between specified baselines, optionally
@@ -57,17 +57,13 @@ def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
     iterax : str, optional
         A data axis to iterate calculation over. Options=['freq', 'time'].
 
-    component : str, optional
-        Way of casting complex data in Real before taking covariance.
-        Options = ['abs', 'real', 'imag']. Default: 'abs'.
-
-    corr : bool, optional
-        If True, calculate correlation matrix rather than covariance matrix.
+    return_corr : bool, optional
+        If True, calculate and return correlation matrix.
 
     Returns
     -------
-    blcov : ndarray
-        A covariance (or correlation) matrix of the data.
+    bl_bl_cov : ndarray
+        A covariance (or correlation) matrix across baselines.
         This ndarray is 4 dimensional, with shape (Nbls, Nbls, Ntimes, Nfreqs)
         where 
             Ntimes == 1 if iterax != 'time'
@@ -102,20 +98,12 @@ def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
 
     # construct empty corr matrix
     Nbls = len(bls)
-    cov = np.empty((Nbls, Nbls, Ntimes, Nfreqs), dtype=np.float) * np.nan
+    cov = np.empty((Nbls, Nbls, Ntimes, Nfreqs), dtype=np.complex) * np.nan
 
-    # get casting
-    if component == 'abs':
-        cast = np.abs
-    elif component == 'real':
-        cast = np.real
-    elif component == 'imag':
-        cast = np.imag
-    
     # iterate over bls
     for i, bl1 in enumerate(bls):
         # get d1 data
-        d1 = cast(uvd1.get_data(bl1))
+        d1 = uvd1.get_data(bl1)
         w1 = (~uvd1.get_flags(bl1)).astype(np.float)
 
         # get mean
@@ -129,7 +117,7 @@ def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
         # iterate over bls
         for j, bl2 in enumerate(bls):
             # get d2 data
-            d2 = cast(uvd2.get_data(bl2))
+            d2 = uvd2.get_data(bl2)
             w2 = (~uvd2.get_flags(bl2)).astype(np.float)
 
             # skip if completely flagged
@@ -142,28 +130,27 @@ def vis_bl_cov(uvd1, uvd2, bls, iterax=None, component='abs', corr=False):
 
             # get cov
             w12 = w1 * w2
-            c = np.sum((d1 - m1) * (d2 - m2) * w12, axis=sumaxes, keepdims=True) \
+            c = np.sum((d1 - m1) * (d2 - m2).conj() * w12, axis=sumaxes, keepdims=True) \
                 / np.sum(w12).clip(1e-10, np.inf)
 
             # assign
             cov[i, j] = c
 
     # calculate correlation matrix
-    if corr:
+    if return_corr:
         cov = cov
         for i in range(Nbls):
             for j in range(Nbls):
                 if i == j:
                     continue
-                cov[i, j] /= np.sqrt(cov[i, i] * cov[j, j])
+                cov[i, j] /= np.sqrt(np.abs(cov[i, i]) * np.abs(cov[j, j]))
         cov[np.arange(Nbls), np.arange(Nbls)] /= cov[np.arange(Nbls), np.arange(Nbls)]
 
     return cov
 
-
-def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
-                vmax=None, component='abs', colorbar=True, tlsize=10, tlrot=35,
-                figsize=None):
+def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
+                   vmin=None, vmax=None, component='abs', colorbar=True,
+                   tlsize=10, tlrot=35, figsize=None, times=None, freqs=None):
     """
     Plot the visibility data covariance or correlation matrix between uvd1 and
     uvd2 across a set of specified baselines.
@@ -177,8 +164,9 @@ def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
     bls : list
         List of baseline antenna-pairs
 
-    corr : bool, optional
+    plot_corr : bool, optional
         If True, calculate and plot correlation matrix instead.
+        Default: False.
     
     ax : matplotlib.axes.Axis object
 
@@ -189,8 +177,8 @@ def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
         Colorscale min and max
 
     component : str
-        Casting of data before calculating covariance to plot.
-        Options = ['real', 'imag', 'abs'].
+        Component of matrix to plot. Options=['real', 'imag', 'abs'].
+        Default: 'abs'.
 
     colorbar : bool
         If True, plot a colorbar
@@ -204,20 +192,37 @@ def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
     figsize : tuple
         Len-2 integer tuple for figure-size if ax is None.
 
+    times : list
+        List of times to select on UVData before calculating matrices.
+        Cannot be fed if freqs if also fed.
+
+    freqs : list
+        List of frequencies to select on UVData before calculating
+        matrices. Cannot be fed if times is also fed.
+
     Returns
     -------
     if ax is None:
         fig : matplotlib.pyplot.Figure object
     """
+    # selections
+    assert times is None or freqs is None, \
+           "times and freqs cannot both be fed at the same time"
+    if times is not None or freqs is not None:
+        uvd1 = uvd1.select(times=times, frequencies=freqs, inplace=False, run_check=False)
+        uvd2 = uvd2.select(times=times, frequencies=freqs, inplace=False, run_check=False)
+
     # get covariance
-    blcov = vis_bl_cov(uvd1, uvd2, bls, corr=corr, component=component).squeeze()
-    assert not np.isnan(blcov).all(), "All data are flagged!"
+    bl_bl_cov = vis_bl_bl_cov(uvd1, uvd2, bls, return_corr=plot_corr).squeeze()
+    assert not np.isnan(bl_bl_cov).all(), "All data are flagged!"
     if component == 'abs':
-        blcov = np.abs(blcov)
+        bl_bl_cov = np.abs(bl_bl_cov)
     elif component == 'real':
-        blcov = np.real(blcov)
+        bl_bl_cov = np.real(bl_bl_cov)
     elif component == 'imag':
-        blcov = np.imag(blcov)
+        bl_bl_cov = np.imag(bl_bl_cov)
+    else:
+        raise ValueError("Didn't recognize component {}".format(component))
 
     # setup figure
     if ax is None:
@@ -228,7 +233,7 @@ def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
         newfig = False
 
     # plot 
-    cax = ax.matshow(blcov, vmin=vmin, vmax=vmax, cmap=cmap, aspect='auto')
+    cax = ax.matshow(bl_bl_cov, vmin=vmin, vmax=vmax, cmap=cmap, aspect='auto')
 
     # ticks
     Nbls = len(bls)
@@ -242,12 +247,12 @@ def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
     # colorbar
     if colorbar:
         cbar = fig.colorbar(cax, ax=ax)
-        if corr:
+        if plot_corr:
             action = "corr"
         else:
             action = "cov"
-        label = r"$\rm {}(\ {}(V_{{1}}),\ {}(V_{{2}})\ )\ [{}\ \cdot\ {}]$" \
-                 .format(action, component, component, uvd1.vis_units, uvd2.vis_units)
+        label = r"$\rm {}\ {}(V_{{1}}, V_{{2}})\ [{}\ \cdot\ {}]$" \
+                 .format(component, action, uvd1.vis_units, uvd2.vis_units)
         cbar.set_label(label, fontsize=12)
 
     # axes labels
@@ -258,3 +263,217 @@ def plot_bl_cov(uvd1, uvd2, bls, corr=False, ax=None, cmap='viridis', vmin=None,
 
     if newfig:
         return fig
+
+def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', colorbar=True, cmap='viridis', axes=None,
+                       colorax='freq', alpha=1, msize=1, marker='.', grid=True, one2one=True,
+                       loglog=False, freqs=None, times=None, figsize=None, xylim=None,
+                       cbfontsize=10, axfontsize=14, force_plot=False,
+                       tlsize=10, facecolor='lightgrey', tightlayout=True):
+    """
+    Make a scatter - matrix plot, showing covariance of visibility data
+    between baselines in uvd1 with baselines in uvd2.
+
+    Parameters
+    ----------
+    uvd1 : UVData object
+    
+    uvd2 : UVData object
+    
+    bls : list
+        List of antenna-pairs to plot in matrix
+        
+    component : str, options=['real', 'imag', 'abs']
+        Component of visibility data to plot
+        
+    colorbar : bool
+        If True, add a colorbar
+        
+    cmap : str
+        Colormap to use for scatter plot
+        
+    axes : ndarray
+        ndarray of axes objects to use in plotting
+        
+    colorax : str, options=['freq', 'time]
+        data axis to colorize
+        
+    alpha : float
+        Transparency of points
+        
+    msize : int
+        Marker size
+        
+    marker : str
+        Type of marker to use
+        
+    grid : bool
+        If True, add a grid to the scatter plots
+        
+    one2one : bool
+        If True, add a 1-to-1 line
+        
+    loglog : bool
+        If True, logscale the x and y axes
+        
+    freqs : ndarray
+        Array of frequencies to select on before plotting
+        
+    times : ndarray
+        Array of times to select on before plotting
+        
+    figsize : tuple
+        Figure size if axes is None
+        
+    xylim : tuple
+        xy limits of the subplots
+        
+    cbfontsize : int
+        Fontsize of colorbar label and ticks
+        
+    axfontsize : int
+        Fontsize of axes labels
+        
+    force_plot : bool
+        If Nbls > 10 and force_plot is False, this function exits.
+        
+    tlsize : int
+        Ticklabel size of subplots
+        
+    facecolor : str
+        Facecolor of subplots
+        
+    tightlayout : bool
+        If True, call fig.tight_layout()
+
+    Returns
+    -------
+    if axes is None:
+        fig : matplotlib.pyplot.Figure object
+    """
+    # selections
+    assert times is None or freqs is None, \
+           "times and freqs cannot both be fed at the same time"
+    if times is not None or freqs is not None:
+        uvd1 = uvd1.select(times=times, frequencies=freqs, inplace=False, run_check=False)
+        uvd2 = uvd2.select(times=times, frequencies=freqs, inplace=False, run_check=False)
+    assert uvd1.Ntimes == uvd2.Ntimes, "Ntimes must agree between uvd1 and uvd2"
+    assert uvd1.Nfreqs == uvd2.Nfreqs, "Nfreqs must agree between uvd1 and uvd2"
+
+    if component == 'abs':
+        cast = np.abs
+    elif component == 'real':
+        cast = np.real
+    elif component == 'imag':
+        cast = np.imag
+    else:
+        raise ValueError("Didn't recognize component {}".format(component))
+
+    # setup figure
+    Nbls = len(bls)
+    if Nbls >= 10 and force_plot == False:
+        raise ValueError("Trying to plot >= 10 bls and force_plot = False, quitting...")
+    if axes is None:
+        fig, axes = plt.subplots(Nbls, Nbls, figsize=figsize)
+        newfig = True
+    else:
+        assert isinstance(axes, np.ndarray), "axes must be a 2D ndarray"
+        assert axes.ndim == 2, "axes must be a 2D ndarray"
+        assert axes.size == Nbls**2, "axes.size must equal Nbls^2"
+        fig = axes[0, 0].get_figure()
+        newfig = False
+
+    # get colorax
+    if colorax == 'freq':
+        c = np.repeat(uvd1.freq_array / 1e6, uvd1.Ntimes, axis=0).ravel()
+        clabel = r"$\rm Frequency\ [MHz]$"
+    elif colorax == 'time':
+        jd = int(np.floor(np.median(uvd1.time_array)))
+        c = np.repeat(np.unique(uvd1.time_array)[:, None] % jd ,uvd1.Nfreqs, axis=1).ravel()
+        clabel = r"$\rm Julian\ Date\ \%\ {}$".format(jd)
+    else:
+        raise ValueError("Didn't recognize colorax {}".format(colorax))
+
+    # iterate over bl-bl pairs
+    for i, bl1 in enumerate(bls):
+        for j, bl2 in enumerate(bls):
+            # get ax
+            ax = axes[i, j]
+
+            # turn on grid
+            if grid:
+                ax.grid()
+
+            # facecolor
+            ax.set_facecolor(facecolor)
+
+            # plot
+            d1 = cast(uvd1.get_data(bl1)).ravel()
+            d2 = cast(uvd2.get_data(bl2)).ravel()
+            d1[uvd1.get_flags(bl1).ravel()] *= np.nan
+            d2[uvd2.get_flags(bl2).ravel()] *= np.nan
+            cax = ax.scatter(d1, d2, alpha=alpha, s=msize, cmap=cmap, c=c, marker=marker)
+
+            # logscale
+            if loglog:
+                ax.set_xscale('log')
+                ax.set_yscale('log')
+
+            # ax ticks: all subplots should have same range
+            if xylim is None:
+                xlim = ax.get_xlim()
+                ylim = ax.get_ylim()
+            else:
+                xlim, ylim = xylim, xylim
+            neg = np.min([xlim[0], ylim[0]])
+            pos = np.max([xlim[1], ylim[1]])
+            xylim = (neg, pos)
+            ax.set_xlim([neg, pos])
+            ax.set_ylim([neg, pos])
+            ax.neg = neg
+            ax.pos = pos
+
+            # ax tick labels
+            if i == Nbls - 1:
+                # last row, make axes labels
+                if ax.get_xlabel() == "":
+                    ax.set_xlabel("{} {} [{}]".format(bl2, component, uvd2.vis_units), fontsize=axfontsize)
+                _ = [tl.set_size(tlsize) for tl in ax.get_xticklabels()]
+            else:
+                # not last row, get rid of tick labels
+                ax.set_xticklabels([])
+            if j == 0:
+                # first column, make axes labels
+                if ax.get_ylabel() == "":
+                    ax.set_ylabel("{} {} [{}]".format(bl1, component, uvd1.vis_units), fontsize=axfontsize)
+                _ = [tl.set_size(tlsize) for tl in ax.get_yticklabels()]
+            else:
+                # not first column, get rid of tick labels
+                ax.set_yticklabels([])
+                
+            # plot one2one
+            if one2one:
+                ax.plot([neg, pos], [neg, pos], color='k', lw=1, ls='--')
+
+    # colorbar
+    if colorbar:
+        fig.subplots_adjust(right=0.90)
+        cbax = fig.add_axes([0.90, 0.15, 0.05, 0.7])
+        cbax.axis('off')
+        cbar = fig.colorbar(cax, ax=cbax, fraction=0.75, aspect=40)
+        cbar.set_label(clabel, fontsize=cbfontsize)
+        _ = [tl.set_size(cbfontsize) for tl in cbar.ax.get_yticklabels()]
+               
+    # tightlayout
+    if tightlayout:
+        if colorbar:
+            rect = (0, 0, 0.9, 1)
+        else:
+            rect = None
+        fig.tight_layout(rect=rect)
+            
+    if newfig:
+        return fig
+
+
+
+
