@@ -38,9 +38,9 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
     from uvd1 with uvd2 between specified baselines, optionally
     as a fuction of frequency _or_ time.
 
-    If corr == True, the correlation matrix holds the 
+    If return_corr == True, the correlation matrix holds the 
     covariance between baseline1 and baseline2 divided
-    by the standard dev. of baseline1 * baseline2.
+    by the stand. dev. of baseline1 * stand. dev. of baseline2.
 
     Parameters
     ----------
@@ -264,10 +264,10 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
     if newfig:
         return fig
 
-def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', colorbar=True, cmap='viridis', axes=None,
-                       colorax='freq', alpha=1, msize=1, marker='.', grid=True, one2one=True,
-                       loglog=False, freqs=None, times=None, figsize=None, xylim=None,
-                       cbfontsize=10, axfontsize=14, force_plot=False,
+def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', colorbar=True, cmap='viridis',
+                       axes=None, colorax='freq', alpha=1, msize=1, marker='.', grid=True,
+                       one2one=True, loglog=False, freqs=None, times=None, figsize=None,
+                       xylim=None, cbfontsize=10, axfontsize=14, force_plot=False,
                        tlsize=10, facecolor='lightgrey', tightlayout=True):
     """
     Make a scatter - matrix plot, showing covariance of visibility data
@@ -436,7 +436,8 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', colorbar=True, cmap='v
             if i == Nbls - 1:
                 # last row, make axes labels
                 if ax.get_xlabel() == "":
-                    ax.set_xlabel("{} {} [{}]".format(bl2, component, uvd2.vis_units), fontsize=axfontsize)
+                    ax.set_xlabel("{} {} [{}]".format(bl2, component, uvd2.vis_units),
+                                  fontsize=axfontsize)
                 _ = [tl.set_size(tlsize) for tl in ax.get_xticklabels()]
             else:
                 # not last row, get rid of tick labels
@@ -444,7 +445,8 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', colorbar=True, cmap='v
             if j == 0:
                 # first column, make axes labels
                 if ax.get_ylabel() == "":
-                    ax.set_ylabel("{} {} [{}]".format(bl1, component, uvd1.vis_units), fontsize=axfontsize)
+                    ax.set_ylabel("{} {} [{}]".format(bl1, component, uvd1.vis_units),
+                                  fontsize=axfontsize)
                 _ = [tl.set_size(tlsize) for tl in ax.get_yticklabels()]
             else:
                 # not first column, get rid of tick labels
