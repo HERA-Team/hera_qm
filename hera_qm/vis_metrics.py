@@ -93,57 +93,65 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
         Nfreqs = 1
         sumaxes = (0, 1)
 
-    # construct empty corr matrix
+    # construct empty data dictionaries
+    d1 = {}
+    w1 = {}
+    m1 = {}
+    d2 = {}
+    w2 = {}
+    m2 = {}
+    for bl in bls:
+        d1[bl] = uvd1.get_data(bl)
+        d2[bl] = uvd2.get_data(bl)
+        w1[bl] = (~uvd1.get_flags(bl)).astype(np.float)
+        w2[bl] = (~uvd2.get_flags(bl)).astype(np.float)
+        m1[bl] = np.sum(d1[bl] * w1[bl], axis=sumaxes, keepdims=True) \
+                 / np.sum(w1[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)
+        m2[bl] = np.sum(d2[bl] * w2[bl], axis=sumaxes, keepdims=True) \
+                 / np.sum(w2[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)
+
+    # setup empty cov array
     Nbls = len(bls)
     cov = np.empty((Nbls, Nbls, Ntimes, Nfreqs), dtype=np.complex) * np.nan
 
     # iterate over bls
     for i, bl1 in enumerate(bls):
-        # get d1 data
-        d1 = uvd1.get_data(bl1)
-        w1 = (~uvd1.get_flags(bl1)).astype(np.float)
-
-        # get mean
-        m1 = np.sum(d1 * w1, axis=sumaxes, keepdims=True) \
-             / np.sum(w1, axis=sumaxes, keepdims=True).clip(1e-10, np.inf)
-
         # skip if completely flagged
-        if np.isclose(w1, 0.0).all():
+        if np.isclose(m1[bl1], 0.0).all():
             continue
 
         # iterate over bls
         for j, bl2 in enumerate(bls):
-            # get d2 data
-            d2 = uvd2.get_data(bl2)
-            w2 = (~uvd2.get_flags(bl2)).astype(np.float)
-
             # skip if completely flagged
-            if np.isclose(w2, 0.0).all():
+            if np.isclose(m2[bl2], 0.0).all():
                 continue
 
-            # get means
-            m2 = np.sum(d2 * w2, axis=sumaxes, keepdims=True) \
-                 / np.sum(w2, axis=sumaxes, keepdims=True).clip(1e-10, np.inf)
-
             # get cov
-            w12 = w1 * w2
-            c = np.sum((d1 - m1) * (d2 - m2).conj() * w12, axis=sumaxes, keepdims=True) \
-                / np.sum(w12).clip(1e-10, np.inf)
+            w12 = w1[bl1] * w2[bl2]
+            c = np.sum((d1[bl1] - m1[bl1]) * (d2[bl2] - m2[bl2]).conj() * w12, axis=sumaxes, keepdims=True) \
+                / np.sum(w12, axis=sumaxes, keepdims=True).clip(1e-10, np.inf)
 
             # assign
             cov[i, j] = c
 
     # calculate correlation matrix
     if return_corr:
-        cov = cov
+        # get stds of bls
+        std = np.empty((2, Nbls, Ntimes, Nfreqs), dtype=np.complex) * np.nan
+        for i, bl in enumerate(bls):
+            d1diff = d1[bl] - m1[bl]
+            std[0, i] = np.sqrt(np.abs(np.sum(d1diff * d1diff.conj() * w1[bl], axis=sumaxes, keepdims=True) \
+                        / np.sum(w1[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
+            d2diff = d2[bl] - m2[bl]
+            std[1, i] = np.sqrt(np.abs(np.sum(d2diff * d2diff.conj() * w2[bl], axis=sumaxes, keepdims=True) \
+                        / np.sum(w2[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
+
+        # turn cov into corr
         for i in range(Nbls):
             for j in range(Nbls):
-                if i == j:
-                    continue
-                cov[i, j] /= np.sqrt(np.abs(cov[i, i]) * np.abs(cov[j, j]))
-        cov[np.arange(Nbls), np.arange(Nbls)] /= cov[np.arange(Nbls), np.arange(Nbls)]
-
+                cov[i, j] /= std[0, i] * std [1, j]
     return cov
+
 
 def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
                    vmin=None, vmax=None, component='abs', colorbar=True,
