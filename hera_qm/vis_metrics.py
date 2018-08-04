@@ -67,22 +67,26 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
             Nfreqs == 1 if iterax != 'freq'
     """
     # type checks
-    assert isinstance(uvd, UVData), "uvd1 and uvd2 must be UVData objects"
-    assert uvd.Npols == 1, "uvd must be single-polarization objects"
+    assert isinstance(uvd1, UVData) and isinstance(uvd2, UVData), \
+            "uvd1 and uvd2 must be UVData objects"
+    assert uvd1.Npols == 1 and uvd2.Npols==1, \
+            "uvd1 and uvd2 must be single-polarization objects"
     assert isinstance(bls, (list, np.ndarray)), "bls must be a list of baselines"
     if isinstance(bls[0], (int, np.integer)):
         bls = [uvd.baseline_to_antnums(bl) for bl in bls]
     assert iterax in [None, 'time', 'freq'], \
            "iterax {} not recognized".format(iterax)
+    assert uvd1.Ntimes == uvd2.Ntimes, "Ntimes must agree between uvd1 and uvd2"
+    assert uvd1.Nfreqs == uvd2.Nfreqs, "Nfreqs must agree between uvd1 and uvd2"
 
     # get Nfreqs and Ntimes
     if iterax == 'time':
-        Ntimes = uvd.Ntimes
+        Ntimes = uvd1.Ntimes
         Nfreqs = 1
         sumaxes = (1,)
     elif iterax == 'freq':
         Ntimes = 1
-        Nfreqs = uvd.Nfreqs
+        Nfreqs = uvd1.Nfreqs
         sumaxes = (0,)
     elif iterax is None:
         Ntimes = 1
