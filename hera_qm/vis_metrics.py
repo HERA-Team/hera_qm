@@ -35,7 +35,7 @@ def check_noise_variance(data):
 def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
     """
     Calculate visibility data covariance or correlation matrix
-    from uvd1 with uvd2 between specified baselines, optionally
+    from uvd between specified baselines, optionally
     as a fuction of frequency _or_ time.
 
     If return_corr == True, the correlation matrix holds the 
@@ -44,10 +44,7 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
 
     Parameters
     ----------
-    uvd1 : UVData object
-        A single-pol UVData object holding visibility data
-
-    uvd2 : UVData object
+    uvd : UVData object
         A single-pol UVData object holding visibility data
 
     bls : list
@@ -70,26 +67,22 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
             Nfreqs == 1 if iterax != 'freq'
     """
     # type checks
-    assert isinstance(uvd1, UVData) and isinstance(uvd2, UVData), \
-           "uvd1 and uvd2 must be UVData objects"
-    assert uvd1.Npols == 1 and uvd2.Npols == 1, \
-           "uvd1 and uvd2 must be single-polarization objects"
+    assert isinstance(uvd, UVData), "uvd1 and uvd2 must be UVData objects"
+    assert uvd.Npols == 1, "uvd must be single-polarization objects"
     assert isinstance(bls, (list, np.ndarray)), "bls must be a list of baselines"
     if isinstance(bls[0], (int, np.integer)):
-        bls = [uvd1.baseline_to_antnums(bl) for bl in bls]
+        bls = [uvd.baseline_to_antnums(bl) for bl in bls]
     assert iterax in [None, 'time', 'freq'], \
            "iterax {} not recognized".format(iterax)
-    assert uvd1.Ntimes == uvd2.Ntimes, "Ntimes must agree between uvd1 and uvd2"
-    assert uvd1.Nfreqs == uvd2.Nfreqs, "Nfreqs must agree between uvd1 and uvd2"
 
     # get Nfreqs and Ntimes
     if iterax == 'time':
-        Ntimes = uvd1.Ntimes
+        Ntimes = uvd.Ntimes
         Nfreqs = 1
         sumaxes = (1,)
     elif iterax == 'freq':
         Ntimes = 1
-        Nfreqs = uvd1.Nfreqs
+        Nfreqs = uvd.Nfreqs
         sumaxes = (0,)
     elif iterax is None:
         Ntimes = 1
@@ -152,14 +145,12 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
                    vmin=None, vmax=None, component='abs', colorbar=True,
                    tlsize=10, tlrot=35, figsize=None, times=None, freqs=None):
     """
-    Plot the visibility data covariance or correlation matrix between uvd1 and
-    uvd2 across a set of specified baselines.
+    Plot the visibility data covariance or correlation matrix from uvd across
+    a set of specified baselines.
 
     Parameters
     ----------
-    uvd1 : UVData object
-
-    uvd2 : UVData object
+    uvd : UVData object
 
     bls : list
         List of baseline antenna-pairs
