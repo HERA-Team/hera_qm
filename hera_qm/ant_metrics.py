@@ -578,6 +578,7 @@ class Antenna_Metrics():
                 for _name in out_dict:
                     _ = mgrp.create_dataset(_name, data=out_dict[_name])
 
+# TODO: Make Metrics able to be turned on or off for a run.
 # code for running ant_metrics on a file
 def ant_metrics_run(files, args, history):
     """
