@@ -1,11 +1,10 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from copy import deepcopy
-from pyuvdata import UVData
 import json
 import os
 import re
-from hera_qm.io import UVDWrapper
+from hera_cal.io import HERAData
 from hera_qm.version import hera_qm_version_str
 from hera_qm import utils
 
@@ -70,7 +69,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
     '''Calculates how an antennas's average |Vij| deviates from others.
 
     Arguments:
-    data -- data for all polarizations in a format that can support data.get_data(i,j,pol)
+    data -- data for all polarizations in a format that can support data[i,j,pol]
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
@@ -94,7 +93,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
             ants = zip((i,j),pol)
             if all([ant in xants for ant in ants]):
                 continue
-            d = data.get_data(i, j, pol)
+            d = data[i, j, pol]
             s = np.nansum(np.abs(d))
             for ant, antpol in ants:
 		if (ant, antpol) in xants:
@@ -115,7 +114,7 @@ def compute_median_auto_power_dict(data, pols, reds):
     for pol in pols:
         for bls in reds:
             for (i, j) in bls:
-                autoPower[i, j, pol] = np.median(np.mean(np.abs(data.get_data(i, j, pol))**2, axis=0))
+                autoPower[i, j, pol] = np.median(np.mean(np.abs(data[i, j, pol])**2, axis=0))
     return autoPower
 
 
@@ -124,7 +123,7 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
     with others they are nominmally redundant with.
 
     Arguments:
-    data -- data for all polarizations in a format that can support data.get_data(i,j,pol)
+    data -- data for all polarizations in a format that can support data[i,j,pol]
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
@@ -153,9 +152,9 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
             if (not crossPol and (pol0 is pol1)) or (crossPol and onlyOnePolCrossed):
                 for bls in reds:
                     for n, (ant0_i, ant0_j) in enumerate(bls):
-                        data0 = data.get_data(ant0_i, ant0_j, pol0)
+                        data0 = data[ant0_i, ant0_j, pol0]
                         for (ant1_i, ant1_j) in bls[n + 1:]:
-                            data1 = data.get_data(ant1_i, ant1_j, pol1)
+                            data1 = data[ant1_i, ant1_j, pol1]
                             corr = np.median(np.abs(np.mean(data0 * data1.conj(),
                                                             axis=0)))
                             corr /= np.sqrt(autoPower[ant0_i, ant0_j, pol0] *
@@ -214,7 +213,7 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[], rawMetr
     mean same-pol visibilities: (Vxy+Vyx)/(Vxx+Vyy).
 
     Arguments:
-    data -- data for all polarizations in a format that can support data.get_data(i,j,pol)
+    data -- data for all polarizations in a format that can support data[i,j,pol]
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
@@ -252,7 +251,7 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[], rawMet
     polarization-flipped visibilities in a redundant group. Returns the modified z-score.
 
     Arguments:
-    data -- data for all polarizations in a format that can support data.get_data(i,j,pol)
+    data -- data for all polarizations in a format that can support data[i,j,pol]
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
@@ -323,19 +322,20 @@ class Antenna_Metrics():
         format -- default 'miriad'. Other options: 'uvfits', 'fhd', 'ms ' (see pyuvdata docs)
         '''
 
-        self.data = UVData()
         if fileformat == 'miriad':
-            self.data.read_miriad(dataFileList)
+            self.hd = HERAData(dataFileList, filetype='miriad')
         elif fileformat == 'uvfits':
-            self.data.read_uvfits(dataFileList)
+            self.hd = HERAData(dataFileList, filetype='uvfits')
         elif fileformat == 'fhd':
-            self.data.read_fhd(dataFileList)
+            raise NotImplemented(str(fileformat) + 'not supported')
         else:
             raise ValueError('Unrecognized file format ' + str(fileformat))
-        self.ants = self.data.get_ants()
-        self.pols = [pol.lower() for pol in self.data.get_pols()]
-        self.antpols = [antpol.lower() for antpol in self.data.get_feedpols()]
-        self.bls = self.data.get_antpairs()
+
+        self.data,self.flags,self.nsamples = self.hd.read()
+        self.ants = self.hd.get_ants()
+        self.pols = [pol.lower() for pol in self.hd.get_pols()]
+        self.antpols = [antpol.lower() for antpol in self.hd.get_feedpols()]
+        self.bls = self.hd.get_antpairs()
         self.dataFileList = dataFileList
         self.reds = reds
         self.version_str = hera_qm_version_str
@@ -345,14 +345,12 @@ class Antenna_Metrics():
             raise ValueError('Missing polarization information. pols =' +
                              str(self.pols) + ' and antpols = ' + str(self.antpols))
 
-        self.dataindex = UVDWrapper(self.data)
-
     def mean_Vij_metrics(self, pols=None, xants=[], rawMetric=False):
         '''Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module.'''
 
         if pols is None:
             pols = self.pols
-        return mean_Vij_metrics(self.dataindex, pols, self.antpols, self.ants, self.bls,
+        return mean_Vij_metrics(self.data, pols, self.antpols, self.ants, self.bls,
                                 xants=xants, rawMetric=rawMetric)
 
     def red_corr_metrics(self, pols=None, xants=[], rawMetric=False, crossPol=False):
@@ -360,19 +358,19 @@ class Antenna_Metrics():
 
         if pols is None:
             pols = self.pols
-        return red_corr_metrics(self.dataindex, pols, self.antpols, self.ants, self.reds,
+        return red_corr_metrics(self.data, pols, self.antpols, self.ants, self.reds,
                                 xants=xants, rawMetric=rawMetric, crossPol=crossPol)
 
     def mean_Vij_cross_pol_metrics(self, xants=[], rawMetric=False):
         '''Local wrapper for mean_Vij_cross_pol_metrics in hera_qm.ant_metrics module.'''
 
-        return mean_Vij_cross_pol_metrics(self.dataindex, self.pols, self.antpols, self.ants,
+        return mean_Vij_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants,
                                           self.bls, xants=xants, rawMetric=rawMetric)
 
     def red_corr_cross_pol_metrics(self, xants=[], rawMetric=False):
         '''Local wrapper for red_corr_cross_pol_metrics in hera_qm.ant_metrics module.'''
 
-        return red_corr_cross_pol_metrics(self.dataindex, self.pols, self.antpols, self.ants,
+        return red_corr_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants,
                                           self.reds, xants=xants, rawMetric=rawMetric)
 
     def reset_summary_stats(self):
@@ -388,7 +386,7 @@ class Antenna_Metrics():
         These antennas are marked as dead, but they do not appear in recorded antenna
         metrics or zscores. Their removal iteration is -1 (i.e. before iterative flagging).'''
 
-        autoPowers = compute_median_auto_power_dict(self.dataindex, self.pols, self.reds)
+        autoPowers = compute_median_auto_power_dict(self.data, self.pols, self.reds)
         power_list_by_ant = {(ant, antpol): [] for ant in self.ants for antpol
                              in self.antpols if (ant, antpol) not in self.xants}
         for (ant0, ant1, pol), power in autoPowers.items():
@@ -562,10 +560,10 @@ def ant_metrics_run(files, args, history):
         # generate aa object from file
         # N.B.: assumes redunancy information is the same for all files passed in
         first_file = fullpol_file_list[0][0]
-        uvd = UVData()
-        uvd.read_miriad(first_file)
-        aa = get_aa_from_uv(uvd)
-        del uvd
+        hd = HERAData(first_file,filetype='miriad')
+        data,flags,nsamples=hd.read()
+        aa = get_aa_from_uv(hd)
+        del hd
     info = aa_to_info(aa, pols=[pol_list[-1][0]])
     reds = info.get_reds()
 
