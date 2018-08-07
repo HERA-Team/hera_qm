@@ -21,6 +21,14 @@ def check_noise_variance(data):
     """
     Cij = {}
     for key, d in data.antpairpol_iter():
+        inds = data.antpair2ind(key[0], key[1])
+        integration_time = data.integration_time[inds]
+        if not len(set(integration_time)) == 1:
+            # what do if not same?
+            raise NotImplementedError(("Integration times which vary with "
+                                       "time are currently not supported."))
+        else:
+            integration_time = integration_time[0]
         w = data.get_nsamples(key)
         bl = (key[0], key[1])
         ai = data.get_data((key[0], key[0], key[2])).real
@@ -32,6 +40,7 @@ def check_noise_variance(data):
                / 4)
         daj = (((aj[:-1, :-1] + aj[:-1, 1:]) + (aj[1:, :-1] + aj[1:, 1:])) * ww
                / 4)
-        Cij[key] = (np.sum(np.abs(dd)**2, axis=0) / np.sum(dai * daj, axis=0) *
-                    (data.channel_width * data.integration_time))
+        Cij[key] = (np.sum(np.abs(dd)**2, axis=0) / np.sum(dai * daj, axis=0)
+                    * (data.channel_width * integration_time))
+
     return Cij
