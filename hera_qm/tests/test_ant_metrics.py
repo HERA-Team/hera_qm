@@ -1,3 +1,4 @@
+from __future__ import print_function
 import unittest
 import nose.tools as nt
 from hera_qm import ant_metrics
@@ -9,7 +10,9 @@ import os
 import sys
 import json
 import copy
-
+from hera_qm.version import hera_qm_version_str
+import h5py
+import warnings
 
 class fake_data():
 
@@ -163,8 +166,9 @@ class TestLowLevelFunctions(unittest.TestCase):
 
     def test_load_antenna_metrics(self):
         # load a metrics file and check some values
-        metrics_file = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+        metrics_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
         metrics = ant_metrics.load_antenna_metrics(metrics_file)
+
         self.assertAlmostEqual(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')], 0.17529333517595402)
         self.assertAlmostEqual(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')], 0.17529333517595402)
         self.assertAlmostEqual(metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')], 0.7012786080508268)
@@ -175,9 +179,21 @@ class TestLowLevelFunctions(unittest.TestCase):
         metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')] = -np.inf
         for key in metrics.keys():
             metrics[key] = str(metrics[key])
-        outpath = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.json')
-        with open(outpath, 'w') as outfile:
-            json.dump(metrics, outfile, indent=4)
+        outpath = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.hdf5')
+
+        with h5py.File(outpath, 'w') as outfile:
+            header = outfile.create_group('Header')
+            header['version'] = metrics['version']
+            if 'history' in metrics:
+                header['history'] = metrics['history']
+            else:
+                header['history'] = 'Nosetests'
+            mgrp = outfile.create_group('Metrics')
+            for _name in metrics:
+                if _name in header:
+                    continue
+                else:
+                    _ = mgrp.create_dataset(_name, data=metrics[_name])
 
         # test reading it back in, and that the values agree
         metrics_new = ant_metrics.load_antenna_metrics(outpath)
@@ -187,6 +203,19 @@ class TestLowLevelFunctions(unittest.TestCase):
 
         # clean up after ourselves
         os.remove(outpath)
+
+    def test_load_ant_metrics_json(self):
+        json_file = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+        hdf5_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
+        warn_message = ["JSON-type files can still be read but are no longer "
+                        "writen by default.\n"
+                        "Write to HDF5 format for future compatibility."]
+        json_dict = uvtest.checkWarnings(ant_metrics.load_antenna_metrics,
+                                         func_args=[json_file],
+                                         category=UserWarning, nwarnings=1,
+                                         message=warn_message)
+        hdf5_dict = ant_metrics.load_antenna_metrics(hdf5_file)
+        nt.assert_dict_equal(hdf5_dict, json_dict)
 
 
 class TestAntennaMetrics(unittest.TestCase):
@@ -233,9 +262,10 @@ class TestAntennaMetrics(unittest.TestCase):
                      [(10, 88), (43, 64)], [(9, 97), (64, 81), (80, 89), (88, 112),
                                             (53, 10), (104, 43)]]
         # internal names for summary statistics
-        self.summaryStats = ['xants', 'crossedAntsRemoved', 'deadAntsRemoved', 'removalIter',
-                             'finalMetrics', 'allMetrics', 'finalModzScores', 'allModzScores',
-                             'crossCut', 'deadCut', 'dataFileList', 'reds']
+        self.summaryStats = ['xants', 'crossedAntsRemoved', 'deadAntsRemoved',
+                             'removalIter', 'finalMetrics', 'allMetrics',
+                             'finalModzScores', 'allModzScores', 'crossCut',
+                             'deadCut', 'dataFileList', 'reds']
 
     def test_load_errors(self):
         with self.assertRaises(ValueError):
@@ -266,7 +296,9 @@ class TestAntennaMetrics(unittest.TestCase):
         am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
                                          fileformat='miriad')
         with self.assertRaises(KeyError):
-            am.save_antenna_metrics(DATA_PATH + '/test_output/ant_metrics_output.json')
+            filename = os.path.join(DATA_PATH,
+                                    '/test_output/ant_metrics_output.hdf5')
+            am.save_antenna_metrics(filename)
 
         am.iterative_antenna_metrics_and_flagging()
         for stat in self.summaryStats:
@@ -276,16 +308,77 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertIn((81, 'x'), am.deadAntsRemoved)
         self.assertIn((81, 'y'), am.deadAntsRemoved)
 
-        outfile = os.path.join(DATA_PATH, 'test_output', 'ant_metrics_output.json')
+        outfile = os.path.join(DATA_PATH, 'test_output',
+                               'ant_metrics_output.hdf5')
         am.save_antenna_metrics(outfile)
         loaded = ant_metrics.load_antenna_metrics(outfile)
         # json names for summary statistics
         jsonStats = ['xants', 'crossed_ants', 'dead_ants', 'removal_iteration',
-                     'final_metrics', 'all_metrics', 'final_mod_z_scores', 'all_mod_z_scores',
-                     'cross_pol_z_cut', 'dead_ant_z_cut', 'datafile_list', 'reds', 'version']
+                     'final_metrics', 'all_metrics', 'final_mod_z_scores',
+                     'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
+                     'datafile_list', 'reds', 'version']
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
             self.assertEqual(loaded[jsonStat], getattr(am, stat))
         os.remove(outfile)
+
+    def test_save_json(self):
+        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                         fileformat='miriad')
+        am.iterative_antenna_metrics_and_flagging()
+        for stat in self.summaryStats:
+            self.assertTrue(hasattr(am, stat))
+        self.assertIn((81, 'x'), am.xants)
+        self.assertIn((81, 'y'), am.xants)
+        self.assertIn((81, 'x'), am.deadAntsRemoved)
+        self.assertIn((81, 'y'), am.deadAntsRemoved)
+
+        outfile = os.path.join(DATA_PATH, 'test_output',
+                                 'ant_metrics_output.json')
+        warn_message = ["JSON-type files can still be written "
+                        "but are no longer writen by default.\n"
+                        "Write to HDF5 format for future compatibility."]
+        uvtest.checkWarnings(am.save_antenna_metrics,
+                             func_args=[outfile],
+                             category=UserWarning, nwarnings=1,
+                             message=warn_message)
+
+        # am.save_antenna_metrics(json_file)
+        warn_message = ["JSON-type files can still be read but are no longer "
+                        "writen by default.\n"
+                        "Write to HDF5 format for future compatibility."]
+        loaded = uvtest.checkWarnings(ant_metrics.load_antenna_metrics,
+                                      func_args=[outfile],
+                                      category=UserWarning, nwarnings=1,
+                                      message=warn_message)
+        _ = loaded.pop('history', '')
+
+        jsonStats = ['xants', 'crossed_ants', 'dead_ants', 'removal_iteration',
+                     'final_metrics', 'all_metrics', 'final_mod_z_scores',
+                     'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
+                     'datafile_list', 'reds', 'version']
+
+        for stat, jsonStat in zip(self.summaryStats, jsonStats):
+            self.assertEqual(loaded[jsonStat], getattr(am, stat))
+        os.remove(outfile)
+
+    def test_add_file_appelation(self):
+        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+                                         fileformat='miriad')
+        am.iterative_antenna_metrics_and_flagging()
+        for stat in self.summaryStats:
+            self.assertTrue(hasattr(am, stat))
+        self.assertIn((81, 'x'), am.xants)
+        self.assertIn((81, 'y'), am.xants)
+        self.assertIn((81, 'x'), am.deadAntsRemoved)
+        self.assertIn((81, 'y'), am.deadAntsRemoved)
+
+        outfile = os.path.join(DATA_PATH, 'test_output',
+                               'ant_metrics_output')
+        am.save_antenna_metrics(outfile)
+        outname = os.path.join(DATA_PATH, 'test_output',
+                               'ant_metrics_output.hdf5')
+        nt.assert_true(os.path.isfile(outname))
+        os.remove(outname)
 
     def test_cross_detection(self):
         am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
@@ -313,7 +406,8 @@ class TestAntennaMetrics(unittest.TestCase):
 
 
 class TestAntmetricsRun(object):
-    def test_ant_metrics_run(self):
+
+    def test_run_ant_metrics_no_files(self):
         # get argument object
         a = utils.get_metrics_ArgumentParser('ant_metrics')
         if DATA_PATH not in sys.path:
@@ -323,12 +417,11 @@ class TestAntmetricsRun(object):
         arg1 = "-p xx,yy,xy,yx"
         arg2 = "--crossCut=5"
         arg3 = "--deadCut=5"
-        arg4 = "--extension=.ant_metrics.json"
+        arg4 = "--extension=.ant_metrics.hdf5"
         arg5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
         arg6 = "--vis_format=miriad"
         arg7 = "--alwaysDeadCut=10"
         arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
-
         # test running with no files
         cmd = ' '.join([arguments, ''])
         args = a.parse_args(cmd.split())
@@ -336,28 +429,29 @@ class TestAntmetricsRun(object):
         nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run, args.files,
                          args, history)
 
-        # test running with a lone file
-        lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-        cmd = ' '.join([arguments, lone_file])
-        args = a.parse_args(cmd.split())
-        history = cmd
-        # this test raises a warning, then fails...
-        args = [AssertionError, ant_metrics.ant_metrics_run, args.files, args, history]
-        uvtest.checkWarnings(nt.assert_raises, args, nwarnings=1,
-                             message='Could not find')
-
-        # test actually running metrics
-        xx_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA')
-        dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2457698.40355.HH.uvcA.ant_metrics.json')
-        if os.path.exists(dest_file):
-            os.remove(dest_file)
-        cmd = ' '.join([arguments, xx_file])
-        args = a.parse_args(cmd.split())
-        history = cmd
-        ant_metrics.ant_metrics_run(args.files, args, history)
-        nt.assert_true(os.path.exists(dest_file))
-        os.remove(dest_file)
+    def test_run_ant_metrics_one_file(self):
+            a = utils.get_metrics_ArgumentParser('ant_metrics')
+            if DATA_PATH not in sys.path:
+                sys.path.append(DATA_PATH)
+            calfile = 'heratest_calfile'
+            arg0 = "-C {}".format(calfile)
+            arg1 = "-p xx,yy,xy,yx"
+            arg2 = "--crossCut=5"
+            arg3 = "--deadCut=5"
+            arg4 = "--extension=.ant_metrics.hdf5"
+            arg5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+            arg6 = "--vis_format=miriad"
+            arg7 = "--alwaysDeadCut=10"
+            arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+            # test running with a lone file
+            lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+            cmd = ' '.join([arguments, lone_file])
+            args = a.parse_args(cmd.split())
+            history = cmd
+            # this test raises a warning, then fails...
+            args = [AssertionError, ant_metrics.ant_metrics_run, args.files, args, history]
+            uvtest.checkWarnings(nt.assert_raises, args, nwarnings=1,
+                                 message='Could not find')
 
     def test_ant_metrics_run_nocalfile(self):
         # get arguments
@@ -367,7 +461,7 @@ class TestAntmetricsRun(object):
         arg0 = "-p xx,yy,xy,yx"
         arg1 = "--crossCut=5"
         arg2 = "--deadCut=5"
-        arg3 = "--extension=.ant_metrics.json"
+        arg3 = "--extension=.ant_metrics.hdf5"
         arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
         arg5 = "--vis_format=miriad"
         arg6 = "--alwaysDeadCut=10"
@@ -376,7 +470,7 @@ class TestAntmetricsRun(object):
         # test running with no calfile
         xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2458002.47754.HH.uvA.ant_metrics.json')
+                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, xx_file])

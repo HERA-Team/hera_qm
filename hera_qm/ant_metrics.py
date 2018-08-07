@@ -1,3 +1,4 @@
+"""Class and algorithms to compute per Antenna metrics."""
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from copy import deepcopy
@@ -7,15 +8,20 @@ import re
 from hera_cal.io import HERAData
 from hera_qm.version import hera_qm_version_str
 from hera_qm import utils
+import h5py
+import warnings
 
 
 def get_ant_metrics_dict():
-    """ Simple function that returns dictionary with metric names as keys and
+    """Return dictionary of metric names and descriptions.
+
+    Simple function that returns dictionary with metric names as keys and
     their descriptions as values. This is used by hera_mc to populate the table
     of metrics and their descriptions.
 
     Returns:
-    metrics_dict -- Dictionary with metric names as keys and descriptions as values.
+    metrics_dict -- Dictionary with metric names as keys
+                    and descriptions as values.
     """
     metrics_dict = {'ant_metrics_meanVij': 'Mean of the absolute value of all '
                     'visibilities associated with an antenna.',
@@ -50,8 +56,11 @@ def get_ant_metrics_dict():
 
 
 def per_antenna_modified_z_scores(metric):
-    '''For a given metric, stored as a (ant,antpol) dictonary, computes the per-pol modified z-score
-    for each antenna, which is the metrics, minus the median, divided by the median absolute deviation.'''
+    """Compute modified Z-Score over antennas for each antenna polarization.
+
+    For a given metric, stored as a (ant,antpol) dictonary, computes the per-pol modified z-score
+    for each antenna, which is the metrics, minus the median, divided by the median absolute deviation.
+    """
     zscores = {}
     antpols = set([key[1] for key in metric.keys()])
     for antpol in antpols:
@@ -66,7 +75,7 @@ def per_antenna_modified_z_scores(metric):
 
 
 def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
-    '''Calculates how an antennas's average |Vij| deviates from others.
+    """Calculate how an antennas's average |Vij| deviates from others.
 
     Arguments:
     data -- data for all polarizations in a format that can support data[i,j,pol]
@@ -81,8 +90,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
     meanMetrics -- a dictionary indexed by (ant,antpol) of the modified z-score of the mean of the
     absolute value of all visibilities associated with an antenna. Very small or very large numbers
     are probably bad antennas.
-    '''
-
+    """
     absVijMean = {(ant, antpol): 0.0 for ant in ants for antpol in antpols if
                   (ant, antpol) not in xants}
     visCounts = deepcopy(absVijMean)
@@ -109,7 +117,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
 
 
 def compute_median_auto_power_dict(data, pols, reds):
-    '''Computes the median over frequency of the visibility squared, averaged over time.'''
+    """Compute the median over frequency of the visibility squared, averaged over time."""
     autoPower = {}
     for pol in pols:
         for bls in reds:
@@ -118,10 +126,12 @@ def compute_median_auto_power_dict(data, pols, reds):
     return autoPower
 
 
-def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False, crossPol=False):
-    '''Calculates the extent to which baselines involving an antenna do not correlate
-    with others they are nominmally redundant with.
+def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
+                     rawMetric=False, crossPol=False):
+    """Calculate the modified Z-Score over all redundant groups for each antenna.
 
+    Calculates the extent to which baselines involving an antenna do not correlate
+    with others they are nominmally redundant with.
     Arguments:
     data -- data for all polarizations in a format that can support data[i,j,pol]
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
@@ -136,8 +146,7 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
     powerRedMetric -- a dictionary indexed by (ant,antpol) of the modified z-scores of the mean
     power correlations inside redundant baseline groups that the antenna participates in.
     Very small numbers are probably bad antennas.
-    '''
-
+    """
     # Compute power correlations and assign them to each antenna
     autoPower = compute_median_auto_power_dict(data, pols, reds)
     antCorrs = {(ant, antpol): 0.0 for ant in ants for antpol in antpols if
@@ -187,7 +196,10 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False,
 
 
 def exclude_partially_excluded_ants(antpols, xants):
-    '''Takes a list of excluded antennas and adds on all polarizations of those antennas.'''
+    """Create list of excluded antenna polarizations from list of excluded antennas.
+
+    Takes a list of excluded antennas and adds on all polarizations of those antennas.
+    """
     xantSet = set(xants)
     for xant in xants:
         for antpol in antpols:
@@ -195,9 +207,13 @@ def exclude_partially_excluded_ants(antpols, xants):
     return list(xantSet)
 
 
-def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics, xants=[]):
-    '''Takes the ratio of two antenna metrics, summed over both polarizations, and creates a new
-    antenna metric with the same value in both polarizations for each antenna.'''
+def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics,
+                            xants=[]):
+    """Compute ratio of two metrics summed over polarizations.
+
+    Takes the ratio of two antenna metrics, summed over both polarizations, and creates a new
+    antenna metric with the same value in both polarizations for each antenna.
+    """
     crossPolRatio = {}
     for ant in ants:
         if np.all([(ant, antpol) not in xants for antpol in antpols]):
@@ -208,9 +224,12 @@ def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics, xants=[]):
     return crossPolRatio
 
 
-def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
-    '''Find which antennas are outliers based on the ratio of mean cross-pol visibilities to
-    mean same-pol visibilities: (Vxy+Vyx)/(Vxx+Vyy).
+def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
+                               rawMetric=False):
+    """Calculate the ratio of cross-pol visibilities to same-pol visibilities.
+
+    Find which antennas are outliers based on the ratio of mean cross-pol visibilities
+    to mean same-pol visibilities: (Vxy+Vyx)/(Vxx+Vyy).
 
     Arguments:
     data -- data for all polarizations in a format that can support data[i,j,pol]
@@ -226,8 +245,7 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[], rawMetr
     mean_Vij_cross_pol_metrics -- a dictionary indexed by (ant,antpol) of the modified z-scores of the
             ratio of mean visibilities, (Vxy+Vyx)/(Vxx+Vyy). Results duplicated in both antpols.
             Very large values are probably cross-polarized.
-    '''
-
+    """
     # Compute metrics and cross pols only and and same pols only
     samePols = [pol for pol in pols if pol[0] == pol[1]]
     crossPols = [pol for pol in pols if pol[0] != pol[1]]
@@ -246,9 +264,13 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[], rawMetr
         return per_antenna_modified_z_scores(crossPolRatio)
 
 
-def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[], rawMetric=False):
-    '''Find which antennas are part of visibilities that are significantly better correlated with
-    polarization-flipped visibilities in a redundant group. Returns the modified z-score.
+def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[],
+                               rawMetric=False):
+    """Calculate modified Z-Score over redundant groups assuming cross polarization.
+
+    Find which antennas are part of visibilities that are significantly better
+    correlated with polarization-flipped visibilities in a redundant groupself.
+    Returns the modified z-score.
 
     Arguments:
     data -- data for all polarizations in a format that can support data[i,j,pol]
@@ -264,8 +286,7 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[], rawMet
     redCorrCrossPolMetrics -- a dictionary indexed by (ant,antpol) of the modified z-scores of the
             mean correlation ratio between redundant visibilities and singlely-polarization flipped
             ones. Very large values are probably cross-polarized.
-    '''
-
+    """
     # Compute metrics for singly flipped pols and just same pols
     full_xants = exclude_partially_excluded_ants(antpols, xants)
     samePols = [pol for pol in pols if pol[0] == pol[1]]
@@ -284,22 +305,50 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[], rawMet
 
 
 def average_abs_metrics(metrics1, metrics2):
-    '''Averages the absolute value of two metrics together.'''
-
+    """Average the absolute value of two metrics together."""
     if set(metrics1.keys()) != set(metrics2.keys()):
-        raise KeyError('Metrics being averaged have differnt (ant,antpol) keys.')
+        error_message = ('Metrics being averaged have differnt '
+                         '(ant,antpol) keys.')
+        raise KeyError(error_message)
     return {key: np.nanmean([np.abs(metrics1[key]), np.abs(metrics2[key])]) for
             key in metrics1.keys()}
 
 
-def load_antenna_metrics(metricsJSONFile):
-    '''Loads all cut decisions and meta-metrics from a JSON into python dictionary.'''
+def load_antenna_metrics(metricsHDF5Filename):
+    """Load cut decisions and metrics from an HDF5 into python dictionary."""
+    if metricsHDF5Filename.split('.')[-1] == 'json':
+        warnings.warn("JSON-type files can still be read but are no longer "
+                      "writen by default.\n"
+                      "Write to HDF5 format for future compatibility.")
+        return load_json_metrics(metricsHDF5Filename)
 
+    gvars = {'nan': np.nan, 'inf': np.inf, '-inf': -np.inf}
+    metric_dict = {}
+    with h5py.File(metricsHDF5Filename, 'r') as f:
+        header = f['/Header']
+        for key in header:
+            metric_dict[key] = str(header[key].value)
+
+        metrics = f['/Metrics']
+        for key in metrics:
+            metric_dict[key] = eval(str(metrics[key].value), gvars)
+    return metric_dict
+
+
+def load_json_metrics(metricsJSONFile):
+    """Load cut decisions and metrics from a JSON into python dictionary."""
     with open(metricsJSONFile, 'r') as infile:
         jsonMetrics = json.load(infile)
     gvars = {'nan': np.nan, 'inf': np.inf, '-inf': -np.inf}
-    return {key: (eval(str(val), gvars) if (key != 'version' and key != 'history') else str(val)) for
-            key, val in jsonMetrics.items()}
+
+    metric_dict = {}
+    for key, val in jsonMetrics.items():
+        if (key == 'version') or (key == 'history'):
+            metric_dict[key] = str(val)
+        else:
+            metric_dict[key] = eval(str(val), gvars)
+
+    return metric_dict
 
 
 #######################################################################
@@ -308,19 +357,25 @@ def load_antenna_metrics(metricsJSONFile):
 
 
 class Antenna_Metrics():
-    '''Object for holding relevant visibility data and metadata with interfaces to four
+    """Container for holding data and meta-data for ant metrics calculations.
+
+    Object for holding relevant visibility data and metadata with interfaces to four
     antenna metrics (two for identifying dead antennas, two for identifying cross-polarized ones),
     an iterative method for identifying one bad antenna at a time while keeping track of all
-    metrics, and for writing metrics to a JSON. Works on raw data from a single observation
-    with all four visibility polarizations.'''
+    metrics, and for writing metrics to a HDF5. Works on raw data from a single observation
+    with all four visibility polarizations.
+    """
 
     def __init__(self, dataFileList, reds, fileformat='miriad'):
-        '''Arguments:
+        """Initilize an Antenna_Metrics object.
+
+        Arguments:
         dataFileList -- List of data filenames of the four different visibility
                         polarizations for the same observation
         reds -- List of lists of tuples of antenna numbers that make up redundant baseline groups
         format -- default 'miriad'. Other options: 'uvfits', 'fhd', 'ms ' (see pyuvdata docs)
-        '''
+
+        """
 
         if fileformat == 'miriad':
             self.hd = HERAData(dataFileList, filetype='miriad')
@@ -346,46 +401,42 @@ class Antenna_Metrics():
                              str(self.pols) + ' and antpols = ' + str(self.antpols))
 
     def mean_Vij_metrics(self, pols=None, xants=[], rawMetric=False):
-        '''Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module.'''
-
+        """Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module."""
         if pols is None:
             pols = self.pols
         return mean_Vij_metrics(self.data, pols, self.antpols, self.ants, self.bls,
                                 xants=xants, rawMetric=rawMetric)
 
     def red_corr_metrics(self, pols=None, xants=[], rawMetric=False, crossPol=False):
-        '''Local wrapper for red_corr_metrics in hera_qm.ant_metrics module.'''
-
+        """Local wrapper for red_corr_metrics in hera_qm.ant_metrics module."""
         if pols is None:
             pols = self.pols
         return red_corr_metrics(self.data, pols, self.antpols, self.ants, self.reds,
                                 xants=xants, rawMetric=rawMetric, crossPol=crossPol)
 
     def mean_Vij_cross_pol_metrics(self, xants=[], rawMetric=False):
-        '''Local wrapper for mean_Vij_cross_pol_metrics in hera_qm.ant_metrics module.'''
-
+        """Local wrapper for mean_Vij_cross_pol_metrics in hera_qm.ant_metrics module."""
         return mean_Vij_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants,
                                           self.bls, xants=xants, rawMetric=rawMetric)
 
     def red_corr_cross_pol_metrics(self, xants=[], rawMetric=False):
-        '''Local wrapper for red_corr_cross_pol_metrics in hera_qm.ant_metrics module.'''
-
+        """Local wrapper for red_corr_cross_pol_metrics in hera_qm.ant_metrics module."""
         return red_corr_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants,
                                           self.reds, xants=xants, rawMetric=rawMetric)
 
     def reset_summary_stats(self):
-        '''Resets all the internal summary statistics back to empty.'''
-
+        """Reset all the internal summary statistics back to empty."""
         self.xants, self.crossedAntsRemoved, self.deadAntsRemoved = [], [], []
         self.removalIter = {}
         self.allMetrics, self.allModzScores = [], []
         self.finalMetrics, self.finalModzScores = {}, {}
 
     def find_totally_dead_ants(self):
-        '''Flags antennas whose median autoPower that they are involved in is 0.0.
-        These antennas are marked as dead, but they do not appear in recorded antenna
-        metrics or zscores. Their removal iteration is -1 (i.e. before iterative flagging).'''
+        """Flag antennas whose median autoPower that they are involved in is 0.0.
 
+        These antennas are marked as dead, but they do not appear in recorded antenna
+        metrics or zscores. Their removal iteration is -1 (i.e. before iterative flagging).
+        """
         autoPowers = compute_median_auto_power_dict(self.data, self.pols, self.reds)
         power_list_by_ant = {(ant, antpol): [] for ant in self.ants for antpol
                              in self.antpols if (ant, antpol) not in self.xants}
@@ -400,8 +451,7 @@ class Antenna_Metrics():
                 self.removalIter[key] = -1
 
     def _run_all_metrics(self):
-        '''Designed to be run as part of AntennaMetrics.iterative_antenna_metrics_and_flagging().'''
-
+        """Designed to be run as part of AntennaMetrics.iterative_antenna_metrics_and_flagging()."""
         # Compute all raw metrics
         meanVij = self.mean_Vij_metrics(xants=self.xants, rawMetric=True)
         redCorr = self.red_corr_metrics(pols=['xx', 'yy'], xants=self.xants, rawMetric=True)
@@ -425,20 +475,30 @@ class Antenna_Metrics():
         self.allMetrics.append(metrics)
         self.allModzScores.append(modzScores)
 
-    def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5, alwaysDeadCut=10, verbose=False):
-        '''Runs all four metrics (two for dead antennas two for cross-polarized antennas) and saves
-        the results internally to this this antenna metrics object.
+    def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
+                                               alwaysDeadCut=10,
+                                               verbose=False):
+        """Run all four antenna metrics and stores results in self.
+
+        Runs all four metrics:
+            Two for dead antennas
+            Two for cross-polarized antennas
+        Saves the results internally to this this antenna metrics object.
 
         Arguments:
-        crossCut -- Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas".
-        deadCut -- Modified z-score cut for most likely dead antenna. Default 5 "sigmas".
-        alwaysDeadCut -- Modified z-score cut for antennas that are definitely dead. Default 10 "sigmas".
-            These are all thrown away at once without waiting to iteratively throw away only the worst offender.
-        '''
-
+        crossCut -- Modified z-score cut for most cross-polarized antennas.
+                    Default 5 "sigmas".
+        deadCut -- Modified z-score cut for most likely dead antennas.
+                   Default 5 "sigmas".
+        alwaysDeadCut -- Modified z-score cut for definitely dead antennas.
+                         Default 10 "sigmas".
+            These are all thrown away at once without
+            waiting to iteratively throw away only the worst offender.
+        """
         self.reset_summary_stats()
         self.find_totally_dead_ants()
-        self.crossCut, self.deadCut, self.alwaysDeadCut = crossCut, deadCut, alwaysDeadCut
+        self.crossCut, self.deadCut = crossCut, deadCut,
+        self.alwaysDeadCut = alwaysDeadCut
 
         # Loop over
         for n in range(len(self.antpols) * len(self.ants)):
@@ -478,34 +538,54 @@ class Antenna_Metrics():
             else:
                 break
 
-    def save_antenna_metrics(self, metricsJSONFilename):
-        '''Saves all cut decisions and meta-metrics in a human-readable JSON that can be loaded
-        back into a dictionary using hera_qm.ant_metrics.load_antenna_metrics().'''
+    def save_antenna_metrics(self, metricsHDF5Filename):
+        """Output all meta-metrics and cut decisions to HDF5 file.
 
+        Saves all cut decisions and meta-metrics in an HDF5 that can be loaded
+        back into a dictionary using hera_qm.ant_metrics.load_antenna_metrics()
+        """
         if not hasattr(self, 'xants'):
-            raise KeyError('Must run AntennaMetrics.iterative_antenna_metrics_and_flagging() first.')
+            raise KeyError(('Must run AntennaMetrics.'
+                            'iterative_antenna_metrics_and_flagging() first.'))
 
-        allMetricsData = {'xants': str(self.xants)}
-        allMetricsData['crossed_ants'] = str(self.crossedAntsRemoved)
-        allMetricsData['dead_ants'] = str(self.deadAntsRemoved)
-        allMetricsData['final_metrics'] = str(self.finalMetrics)
-        allMetricsData['all_metrics'] = str(self.allMetrics)
-        allMetricsData['final_mod_z_scores'] = str(self.finalModzScores)
-        allMetricsData['all_mod_z_scores'] = str(self.allModzScores)
-        allMetricsData['removal_iteration'] = str(self.removalIter)
-        allMetricsData['cross_pol_z_cut'] = str(self.crossCut)
-        allMetricsData['dead_ant_z_cut'] = str(self.deadCut)
-        allMetricsData['always_dead_ant_z_cut'] = str(self.alwaysDeadCut)
-        allMetricsData['datafile_list'] = str(self.dataFileList)
-        allMetricsData['reds'] = str(self.reds)
-        allMetricsData['version'] = self.version_str
-        # make sure we have something in the history string to write it out
-        if self.history != '':
-            allMetricsData['history'] = self.history
+        out_dict = {'xants': str(self.xants)}
+        out_dict['crossed_ants'] = str(self.crossedAntsRemoved)
+        out_dict['dead_ants'] = str(self.deadAntsRemoved)
+        out_dict['final_metrics'] = str(self.finalMetrics)
+        out_dict['all_metrics'] = str(self.allMetrics)
+        out_dict['final_mod_z_scores'] = str(self.finalModzScores)
+        out_dict['all_mod_z_scores'] = str(self.allModzScores)
+        out_dict['removal_iteration'] = str(self.removalIter)
+        out_dict['cross_pol_z_cut'] = str(self.crossCut)
+        out_dict['dead_ant_z_cut'] = str(self.deadCut)
+        out_dict['always_dead_ant_z_cut'] = str(self.alwaysDeadCut)
+        out_dict['datafile_list'] = str(self.dataFileList)
+        out_dict['reds'] = str(self.reds)
 
-        with open(metricsJSONFilename, 'w') as outfile:
-            json.dump(allMetricsData, outfile, indent=4)
+        if metricsHDF5Filename.split('.')[-1] == 'json':
+            warnings.warn("JSON-type files can still be written "
+                          "but are no longer writen by default.\n"
+                          "Write to HDF5 format for future compatibility.")
 
+            with open(metricsHDF5Filename, 'w') as outfile:
+                json.dump(out_dict, outfile, indent=4)
+        else:
+            if metricsHDF5Filename.split('.')[-1] != 'hdf5':
+                metricsHDF5Filename += '.hdf5'
+
+            with h5py.File(metricsHDF5Filename, 'w') as f:
+                header = f.create_group('Header')
+
+                if self.history != '':
+                    header['history'] = self.history
+
+                header['version'] = self.version_str
+
+                # Create group for metrics data in file
+                mgrp = f.create_group('Metrics')
+
+                for _name in out_dict:
+                    _ = mgrp.create_dataset(_name, data=out_dict[_name])
 
 # code for running ant_metrics on a file
 def ant_metrics_run(files, args, history):
@@ -519,18 +599,14 @@ def ant_metrics_run(files, args, history):
        None
 
     The funciton will take in a list of files and options. It will run the
-    series of ant metrics tests, and produce a JSON file containing the relevant
+    series of ant metrics tests, and produce an HDF5 file containing the relevant
     information. The file list passed in need only contain one of the polarization
     files for a given JD, and the function will look for the other polarizations
     in the same folder. If not all four polarizations are found, a warning is
     generated, since the code assumes all four polarizations are present.
     """
-    try:
-        from hera_cal.omni import aa_to_info
-        from hera_cal.utils import get_aa_from_uv
-    except(ImportError):
-        from nose.plugins.skip import SkipTest
-        raise SkipTest('hera_cal.omni not detected. It must be installed to calculate array info')
+    from hera_cal.omni import aa_to_info
+    from hera_cal.utils import get_aa_from_uv
 
     # check that we were given some files to process
     if len(files) == 0:
@@ -549,21 +625,14 @@ def ant_metrics_run(files, args, history):
     if len(fullpol_file_list) == 0:
         raise AssertionError('Could not find all 4 polarizations for any files provided')
 
-    if args.cal is not None:
-        import aipy
-        # define freqs
-        # note that redundancy calculation does not depend on this, so this is just a dummy range
-        freqs = np.linspace(0.1, 0.2, num=1024, endpoint=False)
-        # process calfile
-        aa = aipy.cal.get_aa(args.cal, freqs)
-    else:
-        # generate aa object from file
-        # N.B.: assumes redunancy information is the same for all files passed in
-        first_file = fullpol_file_list[0][0]
-        hd = HERAData(first_file,filetype='miriad')
-        data,flags,nsamples=hd.read()
-        aa = get_aa_from_uv(hd)
-        del hd
+    # generate aa object from file
+    # N.B.: assumes redunancy information is the same for all files passed in
+    first_file = fullpol_file_list[0][0]
+    hd = HERAData(first_file,filetype='miriad')
+    data,flags,nsamples=hd.read()
+    aa = get_aa_from_uv(hd)
+    del hd
+
     info = aa_to_info(aa, pols=[pol_list[-1][0]])
     reds = info.get_reds()
 
