@@ -24,7 +24,6 @@ def check_noise_variance(data):
         inds = data.antpair2ind(key[0], key[1])
         integration_time = data.integration_time[inds]
         if not len(set(integration_time)) == 1:
-            # what do if not same?
             raise NotImplementedError(("Integration times which vary with "
                                        "time are currently not supported."))
         else:
