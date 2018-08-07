@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2018 the HERA Project
 # Licensed under the MIT License
-
 import hera_qm.tests as qmtest
 import unittest
 from hera_qm import vis_metrics
@@ -124,6 +123,43 @@ def test_plot_bl_bl_scatter():
     # once xylim specified, should pass
     fig = vis_metrics.plot_bl_bl_scatter(uv, uv, bls, xylim=(-50, 50))
     plt.close()
+
+
+def test_sequential_diff():
+    uvd = UVData()
+    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA'))
+
+    # diff across time
+    uvd_diff = vis_metrics.sequential_diff(uvd, axis=0)
+    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes-1)
+    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs)
+    nt.assert_true(np.isclose(uvd_diff.get_nsamples((89, 89)), 1/np.sqrt(2)).all())
+
+    # diff across freq
+    uvd_diff = vis_metrics.sequential_diff(uvd, axis=1)
+    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes)
+    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs-1)
+    nt.assert_true(np.isclose(uvd_diff.get_nsamples((89, 89)), 1/np.sqrt(2)).all())
+
+    # diff across both
+    uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1))
+    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes-1)
+    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs-1)
+    nt.assert_true(np.isclose(uvd_diff.get_nsamples((89, 89)), 1/np.sqrt(4)).all())
+
+    # switch diff and test closeness to within 5 decimals
+    uvd_diff2 = vis_metrics.sequential_diff(uvd, axis=(1, 0))
+    nt.assert_true(np.isclose(uvd_diff.data_array, uvd_diff2.data_array, atol=1e-5).all())
+
+    # test flag propagation
+    uvd.flag_array[uvd.get_blt_inds(89, 96)[:1]] = True
+    uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0,))
+    nt.assert_true(uvd_diff.get_flags(89, 96)[0].all())
+    nt.assert_false(uvd_diff.get_flags(89, 96)[1:].any())
+
+    # test exception
+    nt.assert_raises(AssertionError, vis_metrics.sequential_diff, uvd, axis=3)
+    nt.assert_raises(ValueError, vis_metrics.sequential_diff, 'foo')
 
 
 if __name__ == '__main__':

@@ -4,6 +4,8 @@
 import numpy as np
 from pyuvdata import UVData
 import matplotlib.pyplot as plt
+from hera_qm import utils
+import copy
 
 
 def check_noise_variance(data):
@@ -46,6 +48,107 @@ def check_noise_variance(data):
                     * (data.channel_width * integration_time))
 
     return Cij
+
+
+def sequential_diff(data, wgts=None, axis=(0,)):
+    """
+    Take a sequential (adjacent) difference of a visibility waterfall
+    as an estimate of the visibility noise.
+
+    Parameters
+    ----------
+    data : ndarray or UVData object
+        A 2D or 3D ndarray containing visibility data, with
+        shape (Ntimes, Nfreqs, :). Or UVData object
+        holding visibility data.
+
+    wgts : ndarray
+        A 2D or 3D ndarray containing visibility weights
+        matching data shape, or a UVData object with
+        real component of data as non-binary weights.
+        If None, and data is UVData, will use UVData
+        ~flags * nsample as weights.
+
+    axis : int or tuple
+        Axes along which to take sequential difference
+
+    Returns
+    -------
+    diff_data : ndarray or UVData object
+        A 2D or 3D complex differenced data array,
+        or UVData object holding differenced data.
+
+    prod_wgts : ndarray
+        If input data is ndarray, this is the geometric
+        mean of all wgts in the difference.
+    """
+    # type check
+    if isinstance(axis, (int, np.integer)):
+        axis = (axis,)
+    assert np.all([ax in [0, 1] for ax in axis]), "axis must be 0, 1 or both"
+
+    # perform differencing if data is an ndarray
+    if isinstance(data, np.ndarray):
+        # get weights
+        if wgts is None:
+            wgts = np.ones_like(data, dtype=np.float64)
+        else:
+            assert isinstance(wgts, np.ndarray), \
+                   "wgts must be ndarray if data is ndarray"
+
+        # difference data
+        for ax in axis:
+            data = utils.dynamic_slice(data, slice(1, None), axis=ax) \
+                   - utils.dynamic_slice(data, slice(None, -1), axis=ax)
+            wgts = np.sqrt(utils.dynamic_slice(wgts, slice(1, None), axis=ax) \
+                   * utils.dynamic_slice(wgts, slice(None, -1), axis=ax))
+
+        return data, wgts
+
+    # iterate over bls if UVData
+    elif isinstance(data, UVData):
+        # copy object
+        uvd = copy.deepcopy(data)
+
+        # get new time and freq arrays and UVData object
+        times = None
+        freqs = None
+        for ax in axis:
+            if ax == 0:
+                times = np.unique(uvd.time_array)[:-1]
+            elif ax == 1:
+                freqs = np.unique(uvd.freq_array)[:-1]
+        if times is not None or freqs is not None:
+            uvd.select(times=times, frequencies=freqs)
+
+        # iterate over baselines
+        bls = uvd.get_antpairs()
+        for bl in bls:
+            # get blt slice
+            bl_slice = uvd.get_blt_inds(bl)
+
+            # configure data and weights
+            d = data.get_data(bl, squeeze='none')[:, 0, :, :]
+            w = data.get_nsamples(bl, squeeze='none')[:, 0, :, :] * (~data.get_flags(bl, squeeze='none')[:, 0, :, :]).astype(np.float64)
+
+            # take difference
+            d, w = sequential_diff(d, wgts=w, axis=axis)
+
+            # configure output weights and flags
+            w /= np.sqrt(2 * len(axis))
+            f = np.isclose(w, 0.0)
+
+            # assign data
+            uvd.data_array[bl_slice, 0, :, :] = d
+            uvd.flag_array[bl_slice, 0, :, :] = f
+            uvd.nsample_array[bl_slice, 0, :, :] = w
+
+        uvd.check()
+
+        return uvd
+
+    else:
+        raise ValueError("Didn't recognize input data structure")
 
 
 def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
@@ -282,6 +385,7 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
 
     if newfig:
         return fig
+
 
 def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar=True,
                        axes=None, colorax='freq', alpha=1, msize=1, marker='.', grid=True,
