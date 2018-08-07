@@ -45,7 +45,7 @@ class TestMethods(unittest.TestCase):
         for bl in self.data.get_antpairs():
             n = nos[bl + ('XX',)]
             self.assertEqual(n.shape, (self.data.Nfreqs - 1,))
-            nsamp = self.data.channel_width * self.data.integration_time
+            nsamp = self.data.channel_width * np.median(self.data.integration_time)
             np.testing.assert_almost_equal(n, np.ones_like(n) * nsamp, -np.log10(nsamp))
 
 
@@ -99,15 +99,23 @@ def test_plot_bl_bl_scatter():
     vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, axes=axes, component='real', colorax='freq',
                                    freqs=np.unique(uvd.freq_array)[100:900], axfontsize=10)
     plt.close()
-    fig = vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, component='abs', colorax='time')
+    fig = vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, component='abs', colorax='time', whiten=False)
     plt.close()
-    fig = vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, component='imag', colorax='time')
+    fig = vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, component='imag', colorax='time', whiten=True)
     plt.close()
 
     # test exceptions
     nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, bls, component='foo')
     nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, uvd.get_antpairs())
     nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, bls, colorax='foo')
+    uv = copy.deepcopy(uvd)
+    # test flagged first bl data and no xylim fails
+    uv.flag_array[uv.get_blt_inds(bls[0])] = True
+    nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uv, uv, bls)
+    # once xylim specified, should pass
+    fig = vis_metrics.plot_bl_bl_scatter(uv, uv, bls, xylim=(-50, 50))
+    plt.close()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -16,6 +16,9 @@ def check_noise_variance(data):
     Returns:
         Cij (dict): dictionary of variance measurements with keywords of (ant1, ant2, pol)
     '''
+    if len(np.unique(data.integration_time)) > 1:
+        print("Warning: check_noise_variance() assumes a constant integration_time\n"
+              "across the entire UVData object, which is not the case here! Taking a median...")
     Cij = {}
     for key, d in data.antpairpol_iter():
         w = data.get_nsamples(key)
@@ -27,7 +30,7 @@ def check_noise_variance(data):
         dai = ((ai[:-1, :-1] + ai[:-1, 1:]) + (ai[1:, :-1] + ai[1:, 1:])) * ww / 4
         daj = ((aj[:-1, :-1] + aj[:-1, 1:]) + (aj[1:, :-1] + aj[1:, 1:])) * ww / 4
         Cij[key] = (np.sum(np.abs(dd)**2, axis=0) / np.sum(dai * daj, axis=0) *
-                    (data.channel_width * data.integration_time))
+                    (data.channel_width * np.median(data.integration_time)))
 
     return Cij
 
@@ -267,11 +270,11 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
     if newfig:
         return fig
 
-def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', colorbar=True, cmap='viridis',
+def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar=True,
                        axes=None, colorax='freq', alpha=1, msize=1, marker='.', grid=True,
                        one2one=True, loglog=False, freqs=None, times=None, figsize=None,
-                       xylim=None, cbfontsize=10, axfontsize=14, force_plot=False,
-                       tlsize=10, facecolor='lightgrey', tightlayout=True):
+                       xylim=None, cbfontsize=10, axfontsize=14, force_plot=False, 
+                       tlsize=10, facecolor='lightgrey', tightlayout=True, cmap='viridis'):
     """
     Make a scatter - matrix plot, showing covariance of visibility data
     between baselines in uvd1 with baselines in uvd2.
@@ -288,6 +291,9 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', colorbar=True, cmap='v
     component : str, options=['real', 'imag', 'abs']
         Component of visibility data to plot
         
+    whiten : bool, optional
+        If True, divide data component by abs of data before plotting.
+
     colorbar : bool
         If True, add a colorbar
         
@@ -409,12 +415,32 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', colorbar=True, cmap='v
             # facecolor
             ax.set_facecolor(facecolor)
 
+            # get data
+            try:
+                d1 = uvd1.get_data(bl1).ravel().copy()
+                d2 = uvd2.get_data(bl2).ravel().copy()
+                f1 = uvd1.get_flags(bl1).ravel()
+                f2 = uvd2.get_flags(bl2).ravel()
+            except KeyError:
+                # data key didn't exist...
+                d1 = np.zeros_like(c)
+                d2 = np.zeros_like(c)
+                f1 = np.ones_like(c, dtype=np.bool)
+                f2 = np.ones_like(c, dtype=np.bool)
+
+            d1[f1] *= np.nan
+            d2[f2] *= np.nan
+            if whiten:
+                d1 /= np.abs(d1)
+                d2 /= np.abs(d2)
+            d1 = cast(d1)
+            d2 = cast(d2)
+
             # plot
-            d1 = cast(uvd1.get_data(bl1)).ravel()
-            d2 = cast(uvd2.get_data(bl2)).ravel()
-            d1[uvd1.get_flags(bl1).ravel()] *= np.nan
-            d2[uvd2.get_flags(bl2).ravel()] *= np.nan
             cax = ax.scatter(d1, d2, alpha=alpha, s=msize, cmap=cmap, c=c, marker=marker)
+            if (i == 0 and j == 0 ) and (f1.all() or f2.all()) and (xylim is None):
+                raise ValueError("xylim was not specified and is therefore determined by\n"
+                                 "range of first bl-pair, but these data are completely flagged.")
 
             # logscale
             if loglog:
@@ -478,7 +504,3 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', colorbar=True, cmap='v
             
     if newfig:
         return fig
-
-
-
-
