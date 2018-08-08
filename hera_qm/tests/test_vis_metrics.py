@@ -110,7 +110,7 @@ def test_plot_bl_bl_scatter():
     nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, bls, colorax='foo')
     uv = copy.deepcopy(uvd)
     # test flagged first bl data and no xylim fails
-    uv.flag_array[uv.get_blt_inds(bls[0])] = True
+    uv.flag_array[uv.antpair2ind(bls[0], ordered=False)] = True
     nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uv, uv, bls)
     # once xylim specified, should pass
     fig = vis_metrics.plot_bl_bl_scatter(uv, uv, bls, xylim=(-50, 50))
