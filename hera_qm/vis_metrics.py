@@ -7,30 +7,43 @@ import matplotlib.pyplot as plt
 
 
 def check_noise_variance(data):
-    '''Function to calculate the noise levels of each baseline/pol combination,
-    relative to the noise on the autos.
+    """Calculate the noise levels of each baseline/pol relative to the autos.
+
+    Calculates the noise for each baseline/pol by differencing along frequency
+    dimension and compares to the noise on the auto-spectra for each
+    antenna in the baseline.
 
     Args:
         data (UVData): UVData object with data.
 
     Returns:
-        Cij (dict): dictionary of variance measurements with keywords of (ant1, ant2, pol)
-    '''
-    if len(np.unique(data.integration_time)) > 1:
-        print("Warning: check_noise_variance() assumes a constant integration_time\n"
-              "across the entire UVData object, which is not the case here! Taking a median...")
+        Cij (dict): dictionary of variance measurements
+                    has keywords of (ant1, ant2, pol)
+    """
+
     Cij = {}
     for key, d in data.antpairpol_iter():
+        inds = data.antpair2ind(key[0], key[1])
+        integration_time = data.integration_time[inds]
+        if not len(set(integration_time)) == 1:
+            raise NotImplementedError(("Integration times which vary with "
+                                       "time are currently not supported."))
+        else:
+            integration_time = integration_time[0]
         w = data.get_nsamples(key)
         bl = (key[0], key[1])
         ai = data.get_data((key[0], key[0], key[2])).real
         aj = data.get_data((key[1], key[1], key[2])).real
         ww = w[1:, 1:] * w[1:, :-1] * w[:-1, 1:] * w[:-1, :-1]
-        dd = ((d[:-1, :-1] - d[:-1, 1:]) - (d[1:, :-1] - d[1:, 1:])) * ww / np.sqrt(4)
-        dai = ((ai[:-1, :-1] + ai[:-1, 1:]) + (ai[1:, :-1] + ai[1:, 1:])) * ww / 4
-        daj = ((aj[:-1, :-1] + aj[:-1, 1:]) + (aj[1:, :-1] + aj[1:, 1:])) * ww / 4
-        Cij[key] = (np.sum(np.abs(dd)**2, axis=0) / np.sum(dai * daj, axis=0) *
-                    (data.channel_width * np.median(data.integration_time)))
+
+        dd = (((d[:-1, :-1] - d[:-1, 1:]) - (d[1:, :-1] - d[1:, 1:])) * ww
+              / np.sqrt(4))
+        dai = (((ai[:-1, :-1] + ai[:-1, 1:]) + (ai[1:, :-1] + ai[1:, 1:])) * ww
+               / 4)
+        daj = (((aj[:-1, :-1] + aj[:-1, 1:]) + (aj[1:, :-1] + aj[1:, 1:])) * ww
+               / 4)
+        Cij[key] = (np.sum(np.abs(dd)**2, axis=0) / np.sum(dai * daj, axis=0)
+                    * (data.channel_width * integration_time))
 
     return Cij
 
