@@ -267,6 +267,7 @@ class TestLines(Template, unittest.TestCase):
 class TestBackground(Template, unittest.TestCase):
 
     def setUp(self):
+        np.random.seed(0)
         RFI = 50
         NTRIALS = 10
         NSIG = 10
