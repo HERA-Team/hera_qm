@@ -602,6 +602,48 @@ def test_to_waterfall_waterfall():
                          message='This object is already a waterfall')
 
 
+def test_to_baseline_flags():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(uv)
+    uvf.to_waterfall()
+    uvf.to_flag()
+    uvf.flag_array[0, 10, 0] = True  # Flag time0, chan10
+    uvf.flag_array[1, 15, 0] = True  # Flag time1, chan15
+    uvf.to_baseline(uv)
+    nt.assert_true(np.all(uvf.baseline_array == uv.baseline_array))
+    nt.assert_true(np.all(uvf.time_array == uv.time_array))
+    times = np.unique(uvf.time_array)
+    ntrue = 0.0
+    ind = np.where(uvf.time_array == times[0])[0]
+    ntrue += len(ind)
+    nt.assert_true(np.all(uvf.flag_array[ind, 0, 10, 0]))
+    ind = np.where(uvf.time_array == times[1])[0]
+    ntrue += len(ind)
+    nt.assert_true(np.all(uvf.flag_array[ind, 0, 15, 0]))
+    nt.assert_true(uvf.flag_array.mean() == ntrue / uvf.flag_array.size)
+
+
+def test_to_baseline_metric():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(uv)
+    uvf.to_waterfall()
+    uvf.metric_array[0, 10, 0] = 3.2  # Fill in time0, chan10
+    uvf.metric_array[1, 15, 0] = 2.1  # Fill in time1, chan15
+    uvf.to_baseline(uv)
+    nt.assert_true(np.all(uvf.baseline_array == uv.baseline_array))
+    nt.assert_true(np.all(uvf.time_array == uv.time_array))
+    times = np.unique(uvf.time_array)
+    ind = np.where(uvf.time_array == times[0])[0]
+    nt0 = len(ind)
+    nt.assert_true(np.all(uvf.metric_array[ind, 0, 10, 0] == 3.2))
+    ind = np.where(uvf.time_array == times[1])[0]
+    nt1 = len(ind)
+    nt.assert_true(np.all(uvf.metric_array[ind, 0, 15, 0] == 2.1))
+    nt.assert_true(uvf.metric_array.mean() == (3.2 * nt0 + 2.1 * nt1) / uvf.metric_array.size)
+
+
 def test_copy():
     uvf = UVFlag(test_f_file)
     uvf2 = uvf.copy()

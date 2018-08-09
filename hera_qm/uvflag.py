@@ -469,19 +469,19 @@ class UVFlag():
             raise ValueError('Polarizations could not be made to match.')
         # Populate arrays
         warr = np.zeros_like(uv.flag_array)
-        if self.type == 'flag':
+        if self.mode == 'flag':
             arr = np.zeros_like(uv.flag_array)
             sarr = self.flag_array
-        elif self.type == 'metric':
+        elif self.mode == 'metric':
             arr = np.zeros_like(uv.flag_array, dtype=float)
             sarr = self.metric_array
         for i, t in enumerate(np.unique(uv.time_array)):
             ti = np.where(uv.time_array == t)
             arr[ti, :, :, :] = sarr[i, :, :][np.newaxis, np.newaxis, :, :]
             warr[ti, :, :, :] = self.weights_array[i, :, :][np.newaxis, np.newaxis, :, :]
-        if self.type == 'flag':
+        if self.mode == 'flag':
             self.flag_array = arr
-        elif self.type == 'metric':
+        elif self.mode == 'metric':
             self.metric_array = arr
         self.weights_array = warr
 
