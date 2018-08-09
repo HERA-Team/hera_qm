@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018 the HERA Project
+# Licensed under the MIT License
+
 import nose.tools as nt
 import os
 import pyuvdata.tests as uvtest

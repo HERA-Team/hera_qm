@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018 the HERA Project
+# Licensed under the MIT License
+
 from __future__ import division
 import unittest
 import nose.tools as nt
@@ -263,6 +267,7 @@ class TestLines(Template, unittest.TestCase):
 class TestBackground(Template, unittest.TestCase):
 
     def setUp(self):
+        np.random.seed(0)
         RFI = 50
         NTRIALS = 10
         NSIG = 10
