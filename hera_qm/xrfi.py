@@ -39,11 +39,15 @@ def flag_xants(uv, xants, inplace=True):
 
     if not inplace:
         if isinstance(uv, UVFlag):
-            uvo = copy.deepcopy(uv).to_flag()
+            uvo = uv.copy()
+            uvo.to_flag()
         else:
             uvo = UVFlag(uv, mode='flag')
     else:
         uvo = uv
+
+    if isinstance(uvo, UVFlag) and uvo.mode != 'flag':
+        raise ValueError('Cannot flag antennas on UVFlag obejct in mode ' + uvo.mode)
 
     if not isinstance(xants, collections.Iterable):
         xants = [xants]
@@ -59,7 +63,9 @@ def flag_xants(uv, xants, inplace=True):
         for xant in xants:
             ai = np.where(uvo.ant_array == xant)[0]
             uvo.flag_array[ai, :, :, :, :] = True
-    return uvo
+
+    if not inplace:
+        return uvo
 
 
 #############################################################################
