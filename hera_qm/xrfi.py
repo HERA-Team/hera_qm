@@ -552,9 +552,9 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
 # "Pipelines" -- these routines define the flagging strategy for some data
 #############################################################################
 
-def xrfi_h1c(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
-             freq_threshold=0.5, time_threshold=0.05, return_summary=False,
-             gains=True, chisq=False):
+def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
+                  freq_threshold=0.5, time_threshold=0.05, return_summary=False,
+                  gains=True, chisq=False):
     """xrfi excision pipeline we used for H1C. Uses detrending and watershed algorithms above.
     Args:
         uv: UVData or UVCal object to flag
@@ -684,10 +684,10 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
 
     # Flag on data
     if indata is not None:
-        uvf_f, uvf_wf, uvf_w = xrfi_h1c(uv, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
-                                        sig_adj=sig_adj, px_threshold=px_threshold,
-                                        freq_threshold=freq_threshold, time_threshold=time_threshold,
-                                        return_summary=True)
+        uvf_f, uvf_wf, uvf_w = xrfi_h1c_pipe(uv, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                             sig_adj=sig_adj, px_threshold=px_threshold,
+                                             freq_threshold=freq_threshold, time_threshold=time_threshold,
+                                             return_summary=True)
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(filename))
         basename = os.path.basename(filename)
@@ -722,9 +722,9 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                     np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of model vis file must match'
                                  'the data file.')
-        uvf_f, uvf_wf = xrfi_h1c(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
-                                 sig_adj=sig_adj, px_threshold=px_threshold,
-                                 freq_threshold=freq_threshold, time_threshold=time_threshold)
+        uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                      sig_adj=sig_adj, px_threshold=px_threshold,
+                                      freq_threshold=freq_threshold, time_threshold=time_threshold)
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(model_file))
         # Only save thresholded waterfall
@@ -742,9 +742,9 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                 raise ValueError('Time and frequency axes of calfits file must match'
                                  'the data file.')
         # By default, runs on gains
-        uvf_f, uvf_wf = xrfi_h1c(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
-                                 sig_adj=sig_adj, px_threshold=px_threshold,
-                                 freq_threshold=freq_threshold, time_threshold=time_threshold)
+        uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                      sig_adj=sig_adj, px_threshold=px_threshold,
+                                      freq_threshold=freq_threshold, time_threshold=time_threshold)
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(calfits_file))
         outfile = ''.join([os.path.basename(calfits_file), '.g', extension])
@@ -752,10 +752,10 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         uvf_wf.history += history
         uvf_wf.write(outpath)
         # repeat for chisquared
-        uvf_f, uvf_wf = xrfi_h1c(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
-                                 sig_adj=sig_adj, px_threshold=px_threshold,
-                                 freq_threshold=freq_threshold, time_threshold=time_threshold,
-                                 gains=False, chisq=True)
+        uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                      sig_adj=sig_adj, px_threshold=px_threshold,
+                                      freq_threshold=freq_threshold, time_threshold=time_threshold,
+                                      gains=False, chisq=True)
         outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
