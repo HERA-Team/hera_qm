@@ -78,7 +78,8 @@ def per_antenna_modified_z_scores(metric):
     return zscores
 
 
-def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
+def mean_Vij_metrics(data, pols, antpols, ants, bls,
+                     xants=[], rawMetric=False):
     """Calculate how an antennas's average |Vij| deviates from others.
 
     Arguments:
@@ -99,20 +100,21 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls, xants=[], rawMetric=False):
                   (ant, antpol) not in xants}
     visCounts = deepcopy(absVijMean)
     for (i, j) in bls:
-        if i==j:
+        if i == j:
             continue
         for pol in pols:
-            ants = zip((i,j),pol)
+            ants = zip((i, j), pol)
             if all([ant in xants for ant in ants]):
                 continue
             d = data[i, j, pol]
             s = np.nansum(np.abs(d))
             for ant, antpol in ants:
-		if (ant, antpol) in xants:
+                if (ant, antpol) in xants:
                     continue
                 absVijMean[(ant, antpol)] += s
                 visCounts[(ant, antpol)] += d.size
-    timeFreqMeans = {key: absVijMean[key] / visCounts[key] for key in absVijMean.keys()}
+    timeFreqMeans = {key: absVijMean[key] / visCounts[key]
+                     for key in absVijMean.keys()}
 
     if rawMetric:
         return timeFreqMeans
@@ -294,14 +296,21 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[],
     # Compute metrics for singly flipped pols and just same pols
     full_xants = exclude_partially_excluded_ants(antpols, xants)
     samePols = [pol for pol in pols if pol[0] == pol[1]]
-    redCorrMetricsSame = red_corr_metrics(data, samePols, antpols, ants, reds,
-                                          xants=full_xants, rawMetric=True)
-    redCorrMetricsCross = red_corr_metrics(data, pols, antpols, ants, reds,
-                                           xants=full_xants, rawMetric=True, crossPol=True)
+    redCorrMetricsSame = red_corr_metrics(data, samePols, antpols,
+                                          ants, reds,
+                                          xants=full_xants,
+                                          rawMetric=True)
+    redCorrMetricsCross = red_corr_metrics(data, pols, antpols,
+                                           ants, reds,
+                                           xants=full_xants,
+                                           rawMetric=True,
+                                           crossPol=True)
 
     # Compute the ratio of the cross/same metrics, saving the same value in each antpol
-    crossPolRatio = antpol_metric_sum_ratio(ants, antpols, redCorrMetricsCross,
-                                            redCorrMetricsSame, xants=full_xants)
+    crossPolRatio = antpol_metric_sum_ratio(ants, antpols,
+                                            redCorrMetricsCross,
+                                            redCorrMetricsSame,
+                                            xants=full_xants)
     if rawMetric:
         return crossPolRatio
     else:
@@ -314,8 +323,9 @@ def average_abs_metrics(metrics1, metrics2):
         error_message = ('Metrics being averaged have differnt '
                          '(ant,antpol) keys.')
         raise KeyError(error_message)
-    return {key: np.nanmean([np.abs(metrics1[key]), np.abs(metrics2[key])]) for
-            key in metrics1.keys()}
+    return {key: np.nanmean([np.abs(metrics1[key]),
+                             np.abs(metrics2[key])])
+            for key in metrics1.keys()}
 
 
 def load_antenna_metrics(metricsHDF5Filename):
@@ -390,7 +400,7 @@ class Antenna_Metrics():
         else:
             raise ValueError('Unrecognized file format ' + str(fileformat))
 
-        self.data,self.flags,self.nsamples = self.hd.read()
+        self.data, self.flags, self.nsamples = self.hd.read()
         self.ants = self.hd.get_ants()
         self.pols = [pol.lower() for pol in self.hd.get_pols()]
         self.antpols = [antpol.lower() for antpol in self.hd.get_feedpols()]
@@ -408,25 +418,31 @@ class Antenna_Metrics():
         """Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module."""
         if pols is None:
             pols = self.pols
-        return mean_Vij_metrics(self.data, pols, self.antpols, self.ants, self.bls,
-                                xants=xants, rawMetric=rawMetric)
+        return mean_Vij_metrics(self.data, pols, self.antpols,
+                                self.ants, self.bls, xants=xants,
+                                rawMetric=rawMetric)
 
     def red_corr_metrics(self, pols=None, xants=[], rawMetric=False, crossPol=False):
         """Local wrapper for red_corr_metrics in hera_qm.ant_metrics module."""
         if pols is None:
             pols = self.pols
-        return red_corr_metrics(self.data, pols, self.antpols, self.ants, self.reds,
-                                xants=xants, rawMetric=rawMetric, crossPol=crossPol)
+        return red_corr_metrics(self.data, pols, self.antpols,
+                                self.ants, self.reds, xants=xants,
+                                rawMetric=rawMetric, crossPol=crossPol)
 
     def mean_Vij_cross_pol_metrics(self, xants=[], rawMetric=False):
         """Local wrapper for mean_Vij_cross_pol_metrics in hera_qm.ant_metrics module."""
-        return mean_Vij_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants,
-                                          self.bls, xants=xants, rawMetric=rawMetric)
+        return mean_Vij_cross_pol_metrics(self.data, self.pols,
+                                          self.antpols, self.ants,
+                                          self.bls, xants=xants,
+                                          rawMetric=rawMetric)
 
     def red_corr_cross_pol_metrics(self, xants=[], rawMetric=False):
         """Local wrapper for red_corr_cross_pol_metrics in hera_qm.ant_metrics module."""
-        return red_corr_cross_pol_metrics(self.data, self.pols, self.antpols, self.ants,
-                                          self.reds, xants=xants, rawMetric=rawMetric)
+        return red_corr_cross_pol_metrics(self.data, self.pols,
+                                          self.antpols, self.ants,
+                                          self.reds, xants=xants,
+                                          rawMetric=rawMetric)
 
     def reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
@@ -441,9 +457,13 @@ class Antenna_Metrics():
         These antennas are marked as dead, but they do not appear in recorded antenna
         metrics or zscores. Their removal iteration is -1 (i.e. before iterative flagging).
         """
-        autoPowers = compute_median_auto_power_dict(self.data, self.pols, self.reds)
-        power_list_by_ant = {(ant, antpol): [] for ant in self.ants for antpol
-                             in self.antpols if (ant, antpol) not in self.xants}
+        autoPowers = compute_median_auto_power_dict(self.data,
+                                                    self.pols,
+                                                    self.reds)
+        power_list_by_ant = {(ant, antpol): []
+                             for ant in self.ants
+                             for antpol in self.antpols
+                             if (ant, antpol) not in self.xants}
         for (ant0, ant1, pol), power in autoPowers.items():
             if (ant0, pol[0]) not in self.xants and (ant1, pol[1]) not in self.xants:
                 power_list_by_ant[(ant0, pol[0])].append(power)
@@ -457,10 +477,15 @@ class Antenna_Metrics():
     def _run_all_metrics(self):
         """Designed to be run as part of AntennaMetrics.iterative_antenna_metrics_and_flagging()."""
         # Compute all raw metrics
-        meanVij = self.mean_Vij_metrics(xants=self.xants, rawMetric=True)
-        redCorr = self.red_corr_metrics(pols=['xx', 'yy'], xants=self.xants, rawMetric=True)
-        meanVijXPol = self.mean_Vij_cross_pol_metrics(xants=self.xants, rawMetric=True)
-        redCorrXPol = self.red_corr_cross_pol_metrics(xants=self.xants, rawMetric=True)
+        meanVij = self.mean_Vij_metrics(xants=self.xants,
+                                        rawMetric=True)
+        redCorr = self.red_corr_metrics(pols=['xx', 'yy'],
+                                        xants=self.xants,
+                                        rawMetric=True)
+        meanVijXPol = self.mean_Vij_cross_pol_metrics(xants=self.xants,
+                                                      rawMetric=True)
+        redCorrXPol = self.red_corr_cross_pol_metrics(xants=self.xants,
+                                                      rawMetric=True)
 
         # Save all metrics and zscores
         metrics, modzScores = {}, {}
@@ -633,8 +658,8 @@ def ant_metrics_run(files, args, history):
     # generate aa object from file
     # N.B.: assumes redunancy information is the same for all files passed in
     first_file = fullpol_file_list[0][0]
-    hd = HERAData(first_file,filetype='miriad')
-    data,flags,nsamples=hd.read()
+    hd = HERAData(first_file, filetype='miriad')
+    data, flags, nsamples = hd.read()
     aa = get_aa_from_uv(hd)
     del hd
 
@@ -644,8 +669,10 @@ def ant_metrics_run(files, args, history):
     # do the work
     for jd_list in fullpol_file_list:
         am = Antenna_Metrics(jd_list, reds, fileformat=args.vis_format)
-        am.iterative_antenna_metrics_and_flagging(crossCut=args.crossCut, deadCut=args.deadCut,
-                                                  alwaysDeadCut=args.alwaysDeadCut, verbose=args.verbose)
+        am.iterative_antenna_metrics_and_flagging(crossCut=args.crossCut,
+                                                  deadCut=args.deadCut,
+                                                  alwaysDeadCut=args.alwaysDeadCut,
+                                                  verbose=args.verbose)
 
         # add history
         am.history = am.history + history
