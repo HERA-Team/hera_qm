@@ -339,6 +339,7 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
         raise ValueError('Data must be 1D or 2D.')
     return f
 
+# TODO: Unflag
 
 def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     '''Creates a set of flags based on a "metric" type UVFlag object.
