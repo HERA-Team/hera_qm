@@ -459,7 +459,7 @@ class UVFlag():
             # Use single pol for all pols, regardless
             self.polarization_array = uv.polarization_array
             # Broadcast arrays
-            if self.type == 'flag':
+            if self.mode == 'flag':
                 self.flag_array = self.flag_array.repeat(self.polarization_array.size, axis=-1)
             else:
                 self.metric_array = self.metric_array.repeat(self.polarization_array.size, axis=-1)
@@ -517,7 +517,7 @@ class UVFlag():
             # Use single pol for all pols, regardless
             self.polarization_array = polarr
             # Broadcast arrays
-            if self.type == 'flag':
+            if self.mode == 'flag':
                 self.flag_array = self.flag_array.repeat(self.polarization_array.size, axis=-1)
             else:
                 self.metric_array = self.metric_array.repeat(self.polarization_array.size, axis=-1)
@@ -527,14 +527,17 @@ class UVFlag():
             raise ValueError('Polarizations could not be made to match.')
         # Populate arrays
         warr = np.zeros_like(uv.flag_array)
-        if self.type == 'flag':
+        if self.mode == 'flag':
             self.flag_array = np.swapaxes(self.flag_array, 0, 1)[np.newaxis, np.newaxis,
                                                                  :, :, :]
-        elif self.type == 'metric':
+            self.flag_array = self.flag_array.repeat(uv.Nants_data, axis=0)
+        elif self.mode == 'metric':
             self.metric_array = np.swapaxes(self.metric_array, 0, 1)[np.newaxis, np.newaxis,
                                                                      :, :, :]
+            self.metric_array = self.metric_array.repeat(uv.Nants_data, axis=0)
         self.weights_array = np.swapaxes(self.weights_array, 0, 1)[np.newaxis, np.newaxis,
                                                                    :, :, :]
+        self.weights_array = self.weights_array.repeat(uv.Nants_data, axis=0)
         self.ant_array = uv.ant_array
         self.history += 'Broadcast to type "antenna" with ' + hera_qm_version_str
 

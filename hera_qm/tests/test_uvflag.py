@@ -641,7 +641,175 @@ def test_to_baseline_metric():
     ind = np.where(uvf.time_array == times[1])[0]
     nt1 = len(ind)
     nt.assert_true(np.all(uvf.metric_array[ind, 0, 15, 0] == 2.1))
-    nt.assert_true(uvf.metric_array.mean() == (3.2 * nt0 + 2.1 * nt1) / uvf.metric_array.size)
+    nt.assert_true(np.isclose(uvf.metric_array.mean(),
+                              (3.2 * nt0 + 2.1 * nt1) / uvf.metric_array.size))
+
+
+def test_baseline_to_baseline():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(uv)
+    uvf2 = uvf.copy()
+    uvf.to_baseline(uv)
+    nt.assert_equal(uvf, uvf2)
+
+
+def test_to_baseline_errors():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(test_f_file)
+    uvf.to_waterfall()
+    nt.assert_raises(ValueError, uvf.to_baseline, 7.3)  # invalid matching object
+    uvf = UVFlag(uvc)
+    nt.assert_raises(ValueError, uvf.to_baseline, uv)  # Cannot pass in antenna type
+    uvf = UVFlag(test_f_file)
+    uvf.to_waterfall()
+    uvf.polarization_array[0] = -4
+    nt.assert_raises(ValueError, uvf.to_baseline, uv)  # Mismatched pols
+
+
+def test_to_baseline_force_pol():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(uv)
+    uvf.to_waterfall()
+    uvf.to_flag()
+    uvf.flag_array[0, 10, 0] = True  # Flag time0, chan10
+    uvf.flag_array[1, 15, 0] = True  # Flag time1, chan15
+    uvf.polarization_array[0] = -4  # Change pol, but force pol anyway
+    uvf.to_baseline(uv, force_pol=True)
+    nt.assert_true(np.all(uvf.baseline_array == uv.baseline_array))
+    nt.assert_true(np.all(uvf.time_array == uv.time_array))
+    nt.assert_true(np.array_equal(uvf.polarization_array, uv.polarization_array))
+    times = np.unique(uvf.time_array)
+    ntrue = 0.0
+    ind = np.where(uvf.time_array == times[0])[0]
+    ntrue += len(ind)
+    nt.assert_true(np.all(uvf.flag_array[ind, 0, 10, 0]))
+    ind = np.where(uvf.time_array == times[1])[0]
+    ntrue += len(ind)
+    nt.assert_true(np.all(uvf.flag_array[ind, 0, 15, 0]))
+    nt.assert_true(uvf.flag_array.mean() == ntrue / uvf.flag_array.size)
+
+
+def test_to_baseline_metric_force_pol():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(uv)
+    uvf.to_waterfall()
+    uvf.metric_array[0, 10, 0] = 3.2  # Fill in time0, chan10
+    uvf.metric_array[1, 15, 0] = 2.1  # Fill in time1, chan15
+    uvf.polarization_array[0] = -4
+    uvf.to_baseline(uv, force_pol=True)
+    nt.assert_true(np.all(uvf.baseline_array == uv.baseline_array))
+    nt.assert_true(np.all(uvf.time_array == uv.time_array))
+    nt.assert_true(np.array_equal(uvf.polarization_array, uv.polarization_array))
+    times = np.unique(uvf.time_array)
+    ind = np.where(uvf.time_array == times[0])[0]
+    nt0 = len(ind)
+    nt.assert_true(np.all(uvf.metric_array[ind, 0, 10, 0] == 3.2))
+    ind = np.where(uvf.time_array == times[1])[0]
+    nt1 = len(ind)
+    nt.assert_true(np.all(uvf.metric_array[ind, 0, 15, 0] == 2.1))
+    nt.assert_true(np.isclose(uvf.metric_array.mean(),
+                              (3.2 * nt0 + 2.1 * nt1) / uvf.metric_array.size))
+
+
+def test_to_antenna_flags():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    uvf.to_waterfall()
+    uvf.to_flag()
+    uvf.flag_array[0, 10, 0] = True  # Flag time0, chan10
+    uvf.flag_array[1, 15, 0] = True  # Flag time1, chan15
+    uvf.to_antenna(uvc)
+    nt.assert_true(np.all(uvf.ant_array == uvc.ant_array))
+    nt.assert_true(np.all(uvf.time_array == uvc.time_array))
+    nt.assert_true(np.all(uvf.flag_array[:, 0, 10, 0, 0]))
+    nt.assert_true(np.all(uvf.flag_array[:, 0, 15, 1, 0]))
+    nt.assert_true(uvf.flag_array.mean() == 2. * uvc.Nants_data / uvf.flag_array.size)
+
+
+def test_to_antenna_metric():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    uvf.to_waterfall()
+    uvf.metric_array[0, 10, 0] = 3.2  # Fill in time0, chan10
+    uvf.metric_array[1, 15, 0] = 2.1  # Fill in time1, chan15
+    uvf.to_antenna(uvc)
+    nt.assert_true(np.all(uvf.ant_array == uvc.ant_array))
+    nt.assert_true(np.all(uvf.time_array == uvc.time_array))
+    nt.assert_true(np.all(uvf.metric_array[:, 0, 10, 0, 0] == 3.2))
+    nt.assert_true(np.all(uvf.metric_array[:, 0, 15, 1, 0] == 2.1))
+    nt.assert_true(np.isclose(uvf.metric_array.mean(),
+                              (3.2 + 2.1) * uvc.Nants_data / uvf.metric_array.size))
+
+
+def test_antenna_to_antenna():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    uvf2 = uvf.copy()
+    uvf.to_antenna(uvc)
+    nt.assert_equal(uvf, uvf2)
+
+
+def test_to_antenna_errors():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf = UVFlag(test_f_file)
+    uvf.to_waterfall()
+    nt.assert_raises(ValueError, uvf.to_antenna, 7.3)  # invalid matching object
+    uvf = UVFlag(uv)
+    nt.assert_raises(ValueError, uvf.to_antenna, uv)  # Cannot pass in baseline type
+    uvf = UVFlag(test_f_file)
+    uvf.to_waterfall()
+    uvf.polarization_array[0] = -4
+    nt.assert_raises(ValueError, uvf.to_antenna, uvc)  # Mismatched pols
+
+
+def test_to_antenna_force_pol():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvc.select(jones=-5)
+    uvf = UVFlag(uvc)
+    uvf.to_waterfall()
+    uvf.to_flag()
+    uvf.flag_array[0, 10, 0] = True  # Flag time0, chan10
+    uvf.flag_array[1, 15, 0] = True  # Flag time1, chan15
+    uvf.polarization_array[0] = -4  # Change pol, but force pol anyway
+    uvf.to_antenna(uvc, force_pol=True)
+    nt.assert_true(np.all(uvf.ant_array == uvc.ant_array))
+    nt.assert_true(np.all(uvf.time_array == uvc.time_array))
+    nt.assert_true(np.array_equal(uvf.polarization_array, uvc.jones_array))
+    nt.assert_true(np.all(uvf.flag_array[:, 0, 10, 0, 0]))
+    nt.assert_true(np.all(uvf.flag_array[:, 0, 15, 1, 0]))
+    nt.assert_true(uvf.flag_array.mean() == 2 * uvc.Nants_data / uvf.flag_array.size)
+
+
+def test_to_antenna_metric_force_pol():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvc.select(jones=-5)
+    uvf = UVFlag(uvc)
+    uvf.to_waterfall()
+    uvf.metric_array[0, 10, 0] = 3.2  # Fill in time0, chan10
+    uvf.metric_array[1, 15, 0] = 2.1  # Fill in time1, chan15
+    uvf.polarization_array[0] = -4
+    uvf.to_antenna(uvc, force_pol=True)
+    nt.assert_true(np.all(uvf.ant_array == uvc.ant_array))
+    nt.assert_true(np.all(uvf.time_array == uvc.time_array))
+    nt.assert_true(np.array_equal(uvf.polarization_array, uvc.jones_array))
+    nt.assert_true(np.all(uvf.metric_array[:, 0, 10, 0, 0] == 3.2))
+    nt.assert_true(np.all(uvf.metric_array[:, 0, 15, 1, 0] == 2.1))
+    nt.assert_true(np.isclose(uvf.metric_array.mean(),
+                              (3.2 + 2.1) * uvc.Nants_data / uvf.metric_array.size))
 
 
 def test_copy():
