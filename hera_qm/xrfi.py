@@ -12,6 +12,7 @@ from hera_qm import utils as qm_utils
 from hera_qm.version import hera_qm_version_str
 import warnings
 import copy
+import collections
 
 
 #############################################################################
@@ -44,6 +45,8 @@ def flag_xants(uv, xants, inplace=True):
     else:
         uvo = uv
 
+    if not isinstance(xants, collections.Iterable):
+        xants = [xants]
     if isinstance(uvo, UVData) or (isinstance(uvo, UVFlag) and uvo.type == 'baseline'):
         all_ants = np.unique(np.append(uvo.ant_1_array, uvo.ant_2_array))
         for ant in all_ants:
