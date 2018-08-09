@@ -749,6 +749,24 @@ def test_to_antenna_metric():
                               (3.2 + 2.1) * uvc.Nants_data / uvf.metric_array.size))
 
 
+def test_to_antenna_flags_match_uvflag():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    uvf2 = uvf.copy()
+    uvf.to_waterfall()
+    uvf.to_flag()
+    uvf.flag_array[0, 10, 0] = True  # Flag time0, chan10
+    uvf.flag_array[1, 15, 0] = True  # Flag time1, chan15
+    uvf.to_antenna(uvf2)
+    nt.assert_true(np.all(uvf.ant_array == uvc.ant_array))
+    nt.assert_true(np.all(uvf.time_array == uvc.time_array))
+    nt.assert_true(np.all(uvf.flag_array[:, 0, 10, 0, 0]))
+    nt.assert_true(np.all(uvf.flag_array[:, 0, 15, 1, 0]))
+    nt.assert_true(uvf.flag_array.mean() == 2. * uvc.Nants_data / uvf.flag_array.size)
+
+
+
 def test_antenna_to_antenna():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
@@ -767,7 +785,7 @@ def test_to_antenna_errors():
     uvf.to_waterfall()
     nt.assert_raises(ValueError, uvf.to_antenna, 7.3)  # invalid matching object
     uvf = UVFlag(uv)
-    nt.assert_raises(ValueError, uvf.to_antenna, uv)  # Cannot pass in baseline type
+    nt.assert_raises(ValueError, uvf.to_antenna, uvc)  # Cannot pass in baseline type
     uvf = UVFlag(test_f_file)
     uvf.to_waterfall()
     uvf.polarization_array[0] = -4
@@ -865,3 +883,65 @@ def test_ior():
     nt.assert_true(np.all(uvf.flag_array[0]))
     nt.assert_false(np.any(uvf.flag_array[1]))
     nt.assert_true(np.all(uvf.flag_array[2:]))
+
+
+def test_to_flag():
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    nt.assert_true(hasattr(uvf, 'flag_array'))
+    nt.assert_false(hasattr(uvf, 'metric_array'))
+    nt.assert_true(uvf.mode == 'flag')
+    nt.assert_true('Converted to mode "flag"' in uvf.history)
+
+
+def test_flag_to_flag():
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    uvf2 = uvf.copy()
+    uvf2.to_flag()
+    nt.assert_equal(uvf, uvf2)
+
+
+def test_to_flag_unknown_mode():
+    uvf = UVFlag(test_f_file)
+    uvf.mode = 'foo'
+    nt.assert_raises(ValueError, uvf.to_flag)
+
+
+def test_to_metric():
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    nt.assert_true(hasattr(uvf, 'flag_array'))
+    nt.assert_false(hasattr(uvf, 'metric_array'))
+    nt.assert_true(uvf.mode == 'flag')
+    uvf.to_metric()
+    nt.assert_true(hasattr(uvf, 'metric_array'))
+    nt.assert_false(hasattr(uvf, 'flag_array'))
+    nt.assert_true(uvf.mode == 'metric')
+    nt.assert_true('Converted to mode "metric"' in uvf.history)
+
+
+def test_metric_to_metric():
+    uvf = UVFlag(test_f_file)
+    uvf2 = uvf.copy()
+    uvf.to_metric()
+    nt.assert_equal(uvf, uvf2)
+
+
+def test_to_metric_unknown_mode():
+    uvf = UVFlag(test_f_file)
+    uvf.mode = 'foo'
+    nt.assert_raises(ValueError, uvf.to_metric)
+
+
+def test_antpair2ind():
+    uvf = UVFlag(test_f_file)
+    ind = uvf.antpair2ind(uvf.ant_1_array[0], uvf.ant_2_array[0])
+    nt.assert_true(np.all(uvf.ant_1_array[ind] == uvf.ant_1_array[0]))
+    nt.assert_true(np.all(uvf.ant_2_array[ind] == uvf.ant_2_array[0]))
+
+
+def test_antpair2ind_nonbaseline():
+    uvf = UVFlag(test_f_file)
+    uvf.to_waterfall()
+    nt.assert_raises(ValueError, uvf.antpair2ind, 0, 3)
