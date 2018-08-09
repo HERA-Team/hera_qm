@@ -5,6 +5,7 @@ from hera_qm import ant_metrics
 import numpy as np
 from hera_qm.data import DATA_PATH
 import pyuvdata.tests as uvtest
+from hera_cal.datacontainer import DataContainer
 from hera_qm import utils
 import os
 import sys
@@ -14,18 +15,16 @@ from hera_qm.version import hera_qm_version_str
 import h5py
 import warnings
 
-class fake_data():
+def fake_data():
 
-    def __init__(self):
-        self.data = {}
-        for bl in [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]:
-            self.data[bl] = {}
-            for poli, pol in enumerate(['xx', 'xy', 'yx', 'yy']):
-                np.random.seed(bl[0] * 10 + bl[1] + 100 * poli)  # Give each bl different data
-                self.data[bl][pol] = np.random.randn(2, 3)
+    data = {}
+    for bl in [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]:
+        data[bl] = {}
+        for poli, pol in enumerate(['xx', 'xy', 'yx', 'yy']):
+            np.random.seed(bl[0] * 10 + bl[1] + 100 * poli)  # Give each bl different data
+            data[bl][pol] = np.random.randn(2, 3)
 
-    def get_data(self, i, j, pol):
-        return self.data[(i, j)][pol]
+    return DataContainer(data)
 
 
 class TestLowLevelFunctions(unittest.TestCase):
@@ -160,9 +159,8 @@ class TestLowLevelFunctions(unittest.TestCase):
         for key, p in power.items():
             testp = np.median(np.mean(np.abs(self.data.get_data(*key))**2, axis=0))
             self.assertEqual(p, testp)
-        for key in self.data.data.keys():
-            for pol in self.data.data[key].keys():
-                self.assertIn((key[0], key[1], pol), power.keys())
+        for key in self.data.keys():
+                self.assertIn((key[0], key[1], key[2]), power.keys())
 
     def test_load_antenna_metrics(self):
         # load a metrics file and check some values
@@ -394,15 +392,17 @@ class TestAntennaMetrics(unittest.TestCase):
     def test_totally_dead_ants(self):
         am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
                                           fileformat='miriad')
-        am2.data.data_array[am2.data.ant_1_array == 9, :, :, :] = 0.0
+        deadant = 9
+        for ant1,ant2 in am2.bls:
+            if deadant in (ant1,ant2):
+                for pol in am2.pols:
+                    am2.data[ant1,ant2, pol][:] = 0.0
         am2.reset_summary_stats()
         am2.find_totally_dead_ants()
-        self.assertIn((9, 'x'), am2.xants)
-        self.assertIn((9, 'y'), am2.xants)
-        self.assertIn((9, 'x'), am2.deadAntsRemoved)
-        self.assertIn((9, 'y'), am2.deadAntsRemoved)
-        self.assertEqual(am2.removalIter[(9, 'x')], -1)
-        self.assertEqual(am2.removalIter[(9, 'y')], -1)
+        for antpol in am2.antpols:
+            self.assertIn((deadant, antpol), am2.xants)
+            self.assertIn((deadant, antpol), am2.deadAntsRemoved)
+            self.assertEqual(am2.removalIter[(deadant, antpol)], -1)
 
 
 class TestAntmetricsRun(object):
