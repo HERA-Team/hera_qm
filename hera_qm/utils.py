@@ -503,7 +503,7 @@ def quadmean(a, weights=None, axis=None, returned=False):
     if returned:
         return np.sqrt(o[0]), o[1]
     else:
-        return o
+        return np.sqrt(o)
 
 # Dictionary to map different methods for averaging data.
 averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean}
