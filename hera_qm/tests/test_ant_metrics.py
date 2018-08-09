@@ -416,8 +416,6 @@ class TestAntmetricsRun(object):
         a = utils.get_metrics_ArgumentParser('ant_metrics')
         if DATA_PATH not in sys.path:
             sys.path.append(DATA_PATH)
-        calfile = 'heratest_calfile'
-        arg0 = "-C {}".format(calfile)
         arg1 = "-p xx,yy,xy,yx"
         arg2 = "--crossCut=5"
         arg3 = "--deadCut=5"
@@ -425,7 +423,7 @@ class TestAntmetricsRun(object):
         arg5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
         arg6 = "--vis_format=miriad"
         arg7 = "--alwaysDeadCut=10"
-        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+        arguments = ' '.join([arg1, arg2, arg3, arg4, arg5, arg6, arg7])
         # test running with no files
         cmd = ' '.join([arguments, ''])
         args = a.parse_args(cmd.split())
@@ -437,8 +435,6 @@ class TestAntmetricsRun(object):
             a = utils.get_metrics_ArgumentParser('ant_metrics')
             if DATA_PATH not in sys.path:
                 sys.path.append(DATA_PATH)
-            calfile = 'heratest_calfile'
-            arg0 = "-C {}".format(calfile)
             arg1 = "-p xx,yy,xy,yx"
             arg2 = "--crossCut=5"
             arg3 = "--deadCut=5"
@@ -446,7 +442,7 @@ class TestAntmetricsRun(object):
             arg5 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
             arg6 = "--vis_format=miriad"
             arg7 = "--alwaysDeadCut=10"
-            arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+            arguments = ' '.join([ arg1, arg2, arg3, arg4, arg5, arg6, arg7])
             # test running with a lone file
             lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
             cmd = ' '.join([arguments, lone_file])
