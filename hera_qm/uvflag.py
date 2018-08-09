@@ -275,10 +275,10 @@ class UVFlag():
         if not isinstance(other, this.__class__):
             raise ValueError('Only UVFlag objects can be added to a UVFlag object')
         if this.type != other.type:
-            raise ValueError('UVFlag object of type ' + other.type + ' cannot be ' +
+            raise ValueError('UVFlag object of type ' + other.type + ' cannot be '
                              'added to object of type ' + this.type + '.')
         if this.mode != other.mode:
-            raise ValueError('UVFlag object of mode ' + other.mode + ' cannot be ' +
+            raise ValueError('UVFlag object of mode ' + other.mode + ' cannot be '
                              'added to object of mode ' + this.type + '.')
 
         # Simplify axis referencing
@@ -353,7 +353,7 @@ class UVFlag():
         else:
             this = copy.deepcopy(self)
         this.flag_array += other.flag_array
-        if not other.history in this.history:
+        if other.history not in this.history:
             this.history += "Flags OR'd with: " + other.history
 
         if not inplace:
@@ -414,7 +414,7 @@ class UVFlag():
 
         if self.type == 'antenna':
             d, w = avg_f(darr, axis=(0, 1), weights=self.weights_array,
-                                  returned=True)
+                         returned=True)
             darr = np.swapaxes(d, 0, 1)
             self.weights_array = np.swapaxes(w, 0, 1)
         elif self.type == 'baseline':

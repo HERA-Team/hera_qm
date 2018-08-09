@@ -195,6 +195,7 @@ algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': d
 # RFI flagging algorithms
 #############################################################################
 
+
 def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method='quadmean',
                    inplace=True):
     '''Expands a set of flags using a watershed algorithm.
@@ -244,7 +245,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
 
     if uvf_m.type == 'baseline':
         # Pixel watershed
-        #TODO: bypass pixel-based if none
+        # TODO: bypass pixel-based if none
         for b in np.unique(uvf.baseline_array):
             i = np.where(uvf.baseline_array == b)[0]
             for pi in range(uvf.polarization_array.size):
@@ -344,6 +345,7 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
     return f
 
 # TODO: Unflag
+
 
 def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     '''Creates a set of flags based on a "metric" type UVFlag object.
@@ -592,7 +594,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
     # time_threshold is defined as fraction of time flagged to flag a given channel.
     # nsig_f is defined as significance required to flag a channel.
     uvf_wf = flag(uvf_w, nsig_p=px_threshold, nsig_f=time_threshold,
-                   nsig_t=freq_threshold)
+                  nsig_t=freq_threshold)
 
     if return_sumary:
         return uvf_f, uvf_wf, uvf_w
@@ -602,6 +604,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 #############################################################################
 # Wrappers -- Interact with input and output files
 #############################################################################
+
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                  summary=False, summary_ext='.flag_summary.h5', xrfi_path='',
@@ -723,8 +726,9 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         else:
             raise ValueError('Unrecognized input file format ' + str(model_file_format))
         if indata is not None:
-            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5, rtol=0) and
-                    np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
+            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array),
+                                atol=1e-5, rtol=0)
+                    and np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of model vis file must match'
                                  'the data file.')
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
@@ -742,8 +746,9 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         uvc = UVCal()
         uvc.read_calfits(calfits_file)
         if indata is not None:
-            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5, rtol=0) and
-                    np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
+            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array),
+                                atol=1e-5, rtol=0)
+                    and np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of calfits file must match'
                                  'the data file.')
         # By default, runs on gains

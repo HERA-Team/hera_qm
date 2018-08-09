@@ -39,6 +39,7 @@ def test_init_UVData():
     nt.assert_true('Flag object with type "baseline"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
+
 def test_init_UVData_copy_flags():
     uv = UVData()
     uv.read_miriad(test_d_file)
@@ -60,6 +61,7 @@ def test_init_UVData_copy_flags():
     nt.assert_true('Flag object with type "baseline"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
+
 def test_init_UVCal():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
@@ -79,6 +81,7 @@ def test_init_UVCal():
     nt.assert_true('Flag object with type "antenna"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
+
 def test_init_cal_copy_flags():
     uv = UVCal()
     uv.read_calfits(test_c_file)
@@ -93,6 +96,7 @@ def test_init_cal_copy_flags():
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.jones_array))
     nt.assert_true(hera_qm_version_str in uvf.history)
+
 
 def test_init_waterfall_uvd():
     uv = UVData()
@@ -111,6 +115,7 @@ def test_init_waterfall_uvd():
     nt.assert_true('Flag object with type "waterfall"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
+
 def test_init_waterfall_uvc():
     uv = UVCal()
     uv.read_calfits(test_c_file)
@@ -127,12 +132,13 @@ def test_init_waterfall_uvc():
     nt.assert_true('Flag object with type "waterfall"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
+
 def test_init_waterfall_flag():
     uv = UVCal()
     uv.read_calfits(test_c_file)
     uvf = UVFlag(uv, waterfall=True, mode='flag')
     nt.assert_true(uvf.flag_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
-    nt.assert_true(np.all(uvf.flag_array == False))
+    nt.assert_true(np.all(uvf.flag_array is False))
     nt.assert_true(uvf.weights_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
     nt.assert_true(np.all(uvf.weights_array == 0))
     nt.assert_true(uvf.type == 'waterfall')
@@ -142,6 +148,7 @@ def test_init_waterfall_flag():
     nt.assert_true(np.all(uvf.polarization_array == uv.jones_array))
     nt.assert_true('Flag object with type "waterfall"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
+
 
 def test_init_waterfall_copy_flags():
     uv = UVCal()
@@ -159,6 +166,7 @@ def test_init_waterfall_copy_flags():
     nt.assert_true('Flag object with type "waterfall"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
 
+
 def test_read_write_loop():
     uv = UVData()
     uv.read_miriad(test_d_file)
@@ -169,6 +177,7 @@ def test_read_write_loop():
     uvf.history += 'Written by ' + hera_qm_version_str
     uvf.history += ' Read by ' + hera_qm_version_str
     nt.assert_true(uvf.__eq__(uvf2, check_history=True))
+
 
 def test_read_write_ant():
     uv = UVCal()
@@ -181,6 +190,7 @@ def test_read_write_ant():
     uvf.history += ' Read by ' + hera_qm_version_str
     nt.assert_true(uvf.__eq__(uvf2, check_history=True))
 
+
 def test_read_write_nocompress():
     uv = UVData()
     uv.read_miriad(test_d_file)
@@ -192,6 +202,7 @@ def test_read_write_nocompress():
     uvf.history += ' Read by ' + hera_qm_version_str
     nt.assert_true(uvf.__eq__(uvf2, check_history=True))
 
+
 def test_read_write_nocompress_flag():
     uv = UVData()
     uv.read_miriad(test_d_file)
@@ -202,6 +213,7 @@ def test_read_write_nocompress_flag():
     uvf.history += 'Written by ' + hera_qm_version_str
     uvf.history += ' Read by ' + hera_qm_version_str
     nt.assert_true(uvf.__eq__(uvf2, check_history=True))
+
 
 def test_init_list():
     uv = UVData()
@@ -225,6 +237,7 @@ def test_init_list():
     nt.assert_true(uvf.mode == 'metric')
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
+
 
 def test_read_list():
     uv = UVData()
@@ -251,8 +264,10 @@ def test_read_list():
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
 
+
 def test_read_error():
     nt.assert_raises(IOError, UVFlag, 'foo')
+
 
 def test_read_change_type():
     uv = UVData()
@@ -273,6 +288,7 @@ def test_read_change_type():
     nt.assert_false(hasattr(uvf, 'ant_1_array'))
     nt.assert_false(hasattr(uvf, 'ant_2_array'))
 
+
 def test_read_change_mode():
     uv = UVData()
     uv.read_miriad(test_d_file)
@@ -287,9 +303,11 @@ def test_read_change_mode():
     nt.assert_true(hasattr(uvf, 'flag_array'))
     nt.assert_false(hasattr(uvf, 'metric_array'))
 
+
 def test_write_no_clobber():
     uvf = UVFlag(test_f_file)
     nt.assert_raises(ValueError, uvf.write, test_f_file)
+
 
 def test_lst_from_uv():
     uv = UVData()
@@ -297,8 +315,10 @@ def test_lst_from_uv():
     lst_array = lst_from_uv(uv)
     nt.assert_true(np.allclose(uv.lst_array, lst_array))
 
+
 def test_lst_from_uv_error():
     nt.assert_raises(ValueError, lst_from_uv, 4)
+
 
 def test_add():
     uv1 = UVFlag(test_f_file)
@@ -325,6 +345,7 @@ def test_add():
     nt.assert_true(np.array_equal(uv1.polarization_array, uv3.polarization_array))
     nt.assert_true('Data combined along time axis with ' + hera_qm_version_str in uv3.history)
 
+
 def test_add_baseline():
     uv1 = UVFlag(test_f_file)
     uv2 = copy.deepcopy(uv1)
@@ -350,6 +371,7 @@ def test_add_baseline():
     nt.assert_true(np.array_equal(uv1.polarization_array, uv3.polarization_array))
     nt.assert_true('Data combined along baseline axis with ' + hera_qm_version_str in uv3.history)
 
+
 def test_add_antenna():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
@@ -370,6 +392,7 @@ def test_add_antenna():
     nt.assert_true(uv3.mode == 'metric')
     nt.assert_true(np.array_equal(uv1.polarization_array, uv3.polarization_array))
     nt.assert_true('Data combined along antenna axis with ' + hera_qm_version_str in uv3.history)
+
 
 def test_add_frequency():
     uv1 = UVFlag(test_f_file)
@@ -392,6 +415,7 @@ def test_add_frequency():
     nt.assert_true(np.array_equal(uv1.polarization_array, uv3.polarization_array))
     nt.assert_true('Data combined along frequency axis with ' + hera_qm_version_str in uv3.history)
 
+
 def test_add_pol():
     uv1 = UVFlag(test_f_file)
     uv2 = copy.deepcopy(uv1)
@@ -412,6 +436,7 @@ def test_add_pol():
     nt.assert_true(np.array_equal(np.concatenate((uv1.polarization_array, uv2.polarization_array)),
                                   uv3.polarization_array))
     nt.assert_true('Data combined along polarization axis with ' + hera_qm_version_str in uv3.history)
+
 
 def test_add_flag():
     uv = UVData()
@@ -440,6 +465,7 @@ def test_add_flag():
     nt.assert_true(np.array_equal(uv1.polarization_array, uv3.polarization_array))
     nt.assert_true('Data combined along time axis with ' + hera_qm_version_str in uv3.history)
 
+
 def test_add_errors():
     uv = UVData()
     uv.read_miriad(test_d_file)
@@ -458,6 +484,7 @@ def test_add_errors():
     nt.assert_raises(ValueError, uv1.__add__, uv1, axis='antenna')
     nt.assert_raises(ValueError, uv2.__add__, uv2, axis='baseline')
 
+
 def test_inplace_add():
     uv1a = UVFlag(test_f_file)
     uv1b = copy.deepcopy(uv1a)
@@ -465,6 +492,7 @@ def test_inplace_add():
     uv2.time_array += 1
     uv1a += uv2
     nt.assert_true(uv1a.__eq__(uv1b + uv2))
+
 
 def test_clear_unused_attributes():
     uv = UVFlag(test_f_file)
@@ -487,6 +515,7 @@ def test_clear_unused_attributes():
     nt.assert_false(hasattr(uv, 'ant_array'))
     nt.assert_false(hasattr(uv, 'flag_array'))
 
+
 def test_not_equal():
     uvf1 = UVFlag(test_f_file)
     # different class
@@ -508,6 +537,7 @@ def test_not_equal():
     uvf2.history += 'hello'
     nt.assert_false(uvf1.__eq__(uvf2, check_history=True))
 
+
 def test_to_waterfall_bl():
     uvf = UVFlag(test_f_file)
     uvf.weights_array = np.ones_like(uvf.weights_array)
@@ -516,6 +546,7 @@ def test_to_waterfall_bl():
     nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
                                               len(uvf.polarization_array)))
     nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
+
 
 def test_to_waterfall_ant():
     uvc = UVCal()
@@ -527,6 +558,7 @@ def test_to_waterfall_ant():
     nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
                                               len(uvf.polarization_array)))
     nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
+
 
 def test_to_waterfall_waterfall():
     uvf = UVFlag(test_f_file)
