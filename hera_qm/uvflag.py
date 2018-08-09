@@ -111,9 +111,9 @@ class UVFlag():
 
         if not isinstance(input, str):
             if self.mode == 'flag':
-                self.weights_array = np.zeros(self.flag_array.shape)
+                self.weights_array = np.ones(self.flag_array.shape)
             else:
-                self.weights_array = np.zeros(self.metric_array.shape)
+                self.weights_array = np.ones(self.metric_array.shape)
 
         self.clear_unused_attributes()
 
