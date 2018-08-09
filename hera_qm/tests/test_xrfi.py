@@ -76,3 +76,76 @@ class TestFlagXants():
         uv2 = xrfi.flag_xants(uv, xant, inplace=False)
         nt.assert_true(np.all(uv2.flag_array[uv2.ant_1_array == xant, :, :, :]))
         nt.assert_true(np.all(uv2.flag_array[uv2.ant_2_array == xant, :, :, :]))
+
+
+class TestPreProcessingFunctions():
+    def __init__(self):
+        self.size = 100
+
+    def test_medmin(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+    def test_medminfilt(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+    def test_detrend_deriv(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+    def test_detrend_medminfilt(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+    def test_detrend_medfilt(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+
+class TestFlaggingFunctions():
+
+    def test_watershed_flag(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+    def test_ws_flag_waterfall(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+    def test_flag(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+    def test_unflag(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+    def test_flag_apply(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+
+class TestHighLevelFunctions():
+
+    def test_calculate_metric(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+
+class TestPipelines():
+
+    def test_xrfi_h1c_pipe(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+
+class TestWrappers():
+
+    def test_xrfi_h1c_run(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
+
+    def test_xrfi_h1c_apply(self):
+        # Do a test, add more tests as needed
+        nt.assert_true(True)
