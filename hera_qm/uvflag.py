@@ -269,7 +269,7 @@ class UVFlag():
         if inplace:
             this = self
         else:
-            this = copy.deepcopy(self)
+            this = self.copy()
 
         # Check that objects are compatible
         if not isinstance(other, this.__class__):
@@ -345,13 +345,14 @@ class UVFlag():
             other: second UVFlag object to combine with self.
             inplace: Whether to combine to self, or create a new UVFlag object. Default is False.
         '''
-        assert (self.mode == 'flag' & other.mode == 'flag'), ('UVFlag object must be in '
-                                                              '"flag" mode to use "or" function.')
+        if (self.mode != 'flag') or (other.mode != 'flag'):
+            raise ValueError('UVFlag object must be in "flag" mode to use "or" function.')
+
         # Handle in place
         if inplace:
             this = self
         else:
-            this = copy.deepcopy(self)
+            this = self.copy()
         this.flag_array += other.flag_array
         if other.history not in this.history:
             this.history += "Flags OR'd with: " + other.history
@@ -397,20 +398,19 @@ class UVFlag():
         """
         method = method.lower()
         avg_f = qm_utils.averaging_dict[method]
-        if self.type == 'waterfall' and (keep_pol or (self.Npols == 1)):
+        if self.type == 'waterfall' and (keep_pol or (len(self.polarization_array) == 1)):
             warnings.warn('This object is already a waterfall. Nothing to change.')
             return
         if self.mode == 'flag':
             darr = self.flag_array
         else:
             darr = self.metric_array
-        if (not keep_pol) and (self.Npols > 1):
+        if (not keep_pol) and (len(self.polarization_array) > 1):
             # Collapse pol dimension. But note we retain a polarization axis.
             d, w = avg_f(darr, axis=-1, weights=self.weights_array, returned=True)
             darr = np.expand_dims(d, axis=d.ndim)
             self.weights_array = np.expand_dims(w, axis=w.ndim)
-            self.polarization_array = ','.join(map(str, self.polarization_array))
-            self.Npols = 1
+            self.polarization_array = np.array([','.join(map(str, self.polarization_array))])
 
         if self.type == 'antenna':
             d, w = avg_f(darr, axis=(0, 1), weights=self.weights_array,

@@ -138,7 +138,7 @@ def test_init_waterfall_flag():
     uv.read_calfits(test_c_file)
     uvf = UVFlag(uv, waterfall=True, mode='flag')
     nt.assert_true(uvf.flag_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
-    nt.assert_true(np.all(uvf.flag_array is False))
+    nt.assert_true(not np.any(uvf.flag_array))
     nt.assert_true(uvf.weights_array.shape == (uv.Ntimes, uv.Nfreqs, uv.Njones))
     nt.assert_true(np.all(uvf.weights_array == 0))
     nt.assert_true(uvf.type == 'waterfall')
@@ -521,19 +521,19 @@ def test_not_equal():
     # different class
     nt.assert_false(uvf1.__eq__(5))
     # different mode
-    uvf2 = copy.deepcopy(uvf1)
+    uvf2 = uvf1.copy()
     uvf2.mode = 'flag'
     nt.assert_false(uvf1.__eq__(uvf2))
     # different type
-    uvf2 = copy.deepcopy(uvf1)
+    uvf2 = uvf1.copy()
     uvf2.type = 'antenna'
     nt.assert_false(uvf1.__eq__(uvf2))
     # array different
-    uvf2 = copy.deepcopy(uvf1)
+    uvf2 = uvf1.copy()
     uvf2.freq_array += 1
     nt.assert_false(uvf1.__eq__(uvf2))
     # history different
-    uvf2 = copy.deepcopy(uvf1)
+    uvf2 = uvf1.copy()
     uvf2.history += 'hello'
     nt.assert_false(uvf1.__eq__(uvf2, check_history=True))
 
@@ -543,6 +543,40 @@ def test_to_waterfall_bl():
     uvf.weights_array = np.ones_like(uvf.weights_array)
     uvf.to_waterfall()
     nt.assert_true(uvf.type == 'waterfall')
+    nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
+                                              len(uvf.polarization_array)))
+    nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
+
+
+def test_to_waterfall_bl_multi_pol():
+    uvf = UVFlag(test_f_file)
+    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf2 = uvf.copy()
+    uvf2.polarization_array[0] = -4
+    uvf.__add__(uvf2, inplace=True, axis='pol')  # Concatenate to form multi-pol object
+    uvf2 = uvf.copy()  # Keep a copy to run with keep_pol=False
+    uvf.to_waterfall()
+    nt.assert_true(uvf.type == 'waterfall')
+    nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
+                                              len(uvf.polarization_array)))
+    nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
+    nt.assert_true(len(uvf.polarization_array) == 2)
+    # Repeat with keep_pol=False
+    uvf2.to_waterfall(keep_pol=False)
+    nt.assert_true(uvf2.type == 'waterfall')
+    nt.assert_true(uvf2.metric_array.shape == (len(uvf2.time_array), len(uvf.freq_array), 1))
+    nt.assert_true(uvf2.weights_array.shape == uvf2.metric_array.shape)
+    nt.assert_true(len(uvf2.polarization_array) == 1)
+    nt.assert_true(uvf2.polarization_array[0] == ','.join(map(str, uvf.polarization_array)))
+
+
+def test_to_waterfall_bl_flags():
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf.to_waterfall()
+    nt.assert_true(uvf.type == 'waterfall')
+    nt.assert_true(uvf.mode == 'metric')
     nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
                                               len(uvf.polarization_array)))
     nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
@@ -566,3 +600,58 @@ def test_to_waterfall_waterfall():
     uvf.to_waterfall()
     uvtest.checkWarnings(uvf.to_waterfall, [], {}, nwarnings=1,
                          message='This object is already a waterfall')
+
+
+def test_copy():
+    uvf = UVFlag(test_f_file)
+    uvf2 = uvf.copy()
+    nt.assert_true(uvf == uvf2)
+    # Make sure it's a copy and not just pointing to same object
+    uvf.to_waterfall()
+    nt.assert_false(uvf == uvf2)
+
+
+def test_or():
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    uvf2 = uvf.copy()
+    uvf2.flag_array = np.ones_like(uvf2.flag_array)
+    uvf.flag_array[0] = True
+    uvf2.flag_array[0] = False
+    uvf2.flag_array[1] = False
+    uvf3 = uvf | uvf2
+    nt.assert_true(np.all(uvf3.flag_array[0]))
+    nt.assert_false(np.any(uvf3.flag_array[1]))
+    nt.assert_true(np.all(uvf3.flag_array[2:]))
+
+
+def test_or_error():
+    uvf = UVFlag(test_f_file)
+    uvf2 = uvf.copy()
+    uvf.to_flag()
+    nt.assert_raises(ValueError, uvf.__or__, uvf2)
+
+
+def test_or_add_history():
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    uvf2 = uvf.copy()
+    uvf2.history = 'Different history'
+    uvf3 = uvf | uvf2
+    nt.assert_true(uvf.history in uvf3.history)
+    nt.assert_true(uvf2.history in uvf3.history)
+    nt.assert_true("Flags OR'd with:" in uvf3.history)
+
+
+def test_ior():
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    uvf2 = uvf.copy()
+    uvf2.flag_array = np.ones_like(uvf2.flag_array)
+    uvf.flag_array[0] = True
+    uvf2.flag_array[0] = False
+    uvf2.flag_array[1] = False
+    uvf |= uvf2
+    nt.assert_true(np.all(uvf.flag_array[0]))
+    nt.assert_false(np.any(uvf.flag_array[1]))
+    nt.assert_true(np.all(uvf.flag_array[2:]))
