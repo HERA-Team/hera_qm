@@ -125,7 +125,7 @@ def sequential_diff(data, wgts=None, axis=(0,)):
         bls = uvd.get_antpairs()
         for bl in bls:
             # get blt slice
-            bl_slice = uvd.get_blt_inds(bl)
+            bl_slice = uvd.antpair2ind(bl, ordered=False)
 
             # configure data and weights
             d = data.get_data(bl, squeeze='none')[:, 0, :, :]

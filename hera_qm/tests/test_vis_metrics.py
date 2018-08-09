@@ -12,6 +12,7 @@ import pyuvdata.tests as uvtest
 import copy
 import nose.tools as nt
 import matplotlib.pyplot as plt
+from scipy import stats
 
 
 class TestMethods(unittest.TestCase):
@@ -161,6 +162,32 @@ def test_sequential_diff():
     nt.assert_raises(AssertionError, vis_metrics.sequential_diff, uvd, axis=3)
     nt.assert_raises(ValueError, vis_metrics.sequential_diff, 'foo')
 
+    # fake noise test
+    uvn = copy.deepcopy(uvd)
+    uvn.flag_array[:] = False
+    f = np.arange(uvn.Nfreqs)
+    t = np.arange(uvn.Ntimes)
+    np.random.seed(0)
+    for bl in uvn.get_antpairs():
+        # generate random noise
+        n = (stats.norm.rvs(0, 1/np.sqrt(2), uvn.Ntimes * uvn.Nfreqs) \
+             + 1j*stats.norm.rvs(0, 1/np.sqrt(2), uvn.Ntimes * uvn.Nfreqs)).reshape(uvn.Ntimes, uvn.Nfreqs)
+
+        # generate smooth signal
+        s = np.exp(1j * f[None, :]/100.0 + 1j*t[:, None]/10.0)
+
+        # add into data
+        uvn.data_array[uvn.antpair2ind(bl, ordered=False), 0, :, 0] = s + n
+
+    # run sequential diff
+    uvn_diff1 = vis_metrics.sequential_diff(uvn, axis=(0, ))
+    uvn_diff2 = vis_metrics.sequential_diff(uvn, axis=(1, ))
+    uvn_diff3 = vis_metrics.sequential_diff(uvn, axis=(0, 1))
+
+    # assert noise std * nsample is equal to 1 within sampling error
+    nt.assert_almost_equal(np.std(uvn_diff1.data_array) * np.mean(uvn_diff1.nsample_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff2.data_array) * np.mean(uvn_diff2.nsample_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff3.data_array) * np.mean(uvn_diff3.nsample_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
 
 if __name__ == '__main__':
     unittest.main()
