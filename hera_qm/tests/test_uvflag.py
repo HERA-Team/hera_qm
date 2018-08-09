@@ -766,7 +766,6 @@ def test_to_antenna_flags_match_uvflag():
     nt.assert_true(uvf.flag_array.mean() == 2. * uvc.Nants_data / uvf.flag_array.size)
 
 
-
 def test_antenna_to_antenna():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
