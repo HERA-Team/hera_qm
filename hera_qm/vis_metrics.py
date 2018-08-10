@@ -76,7 +76,8 @@ def sequential_diff(data, wgts=None, axis=(0,)):
     -------
     diff_data : ndarray or UVData object
         A 2D or 3D complex differenced data array,
-        or UVData object holding differenced data.
+        or UVData object holding differenced data
+        divided by sqrt(2).
 
     prod_wgts : ndarray
         If input data is ndarray, this is the geometric
@@ -98,8 +99,8 @@ def sequential_diff(data, wgts=None, axis=(0,)):
 
         # difference data
         for ax in axis:
-            data = utils.dynamic_slice(data, slice(1, None), axis=ax) \
-                   - utils.dynamic_slice(data, slice(None, -1), axis=ax)
+            data = (utils.dynamic_slice(data, slice(1, None), axis=ax) \
+                   - utils.dynamic_slice(data, slice(None, -1), axis=ax)) / np.sqrt(2)
             wgts = np.sqrt(utils.dynamic_slice(wgts, slice(1, None), axis=ax) \
                    * utils.dynamic_slice(wgts, slice(None, -1), axis=ax))
 
@@ -135,7 +136,6 @@ def sequential_diff(data, wgts=None, axis=(0,)):
             d, w = sequential_diff(d, wgts=w, axis=axis)
 
             # configure output weights and flags
-            w /= np.sqrt(2 * len(axis))
             f = np.isclose(w, 0.0)
 
             # assign data
@@ -405,9 +405,9 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
     bls : list
         List of antenna-pairs to plot in matrix
         
-    component : str, options=['real', 'imag', 'abs']
+    component : str, options=['real', 'imag', 'abs', 'angle']
         Component of visibility data to plot
-        
+
     whiten : bool, optional
         If True, divide data component by abs of data before plotting.
 
@@ -491,6 +491,8 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
         cast = np.real
     elif component == 'imag':
         cast = np.imag
+    elif component == 'angle':
+        cast = np.angle
     else:
         raise ValueError("Didn't recognize component {}".format(component))
 
