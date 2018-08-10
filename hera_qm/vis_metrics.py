@@ -64,10 +64,8 @@ def sequential_diff(data, wgts=None, axis=(0,)):
 
     wgts : ndarray
         A 2D or 3D ndarray containing visibility weights
-        matching data shape, or a UVData object with
-        real component of data as non-binary weights.
-        If None, and data is UVData, will use UVData
-        ~flags * nsample as weights.
+        matching data shape. If None, and data is UVData,
+        will use UVData ~flags * nsample as weights.
 
     axis : int or tuple
         Axes along which to take sequential difference

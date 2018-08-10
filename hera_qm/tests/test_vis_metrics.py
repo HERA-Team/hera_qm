@@ -130,7 +130,7 @@ def test_plot_bl_bl_scatter():
 
 def test_sequential_diff():
     uvd = UVData()
-    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA'))
+    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'))
 
     # diff across time
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=0)
@@ -183,7 +183,7 @@ def test_sequential_diff():
     uvn_diff2 = vis_metrics.sequential_diff(uvn, axis=(1, ))
     uvn_diff3 = vis_metrics.sequential_diff(uvn, axis=(0, 1))
 
-    # assert noise std * nsample is equal to 1 within sampling error
+    # assert noise std is equal to 1 within sampling error
     nt.assert_almost_equal(np.std(uvn_diff1.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
     nt.assert_almost_equal(np.std(uvn_diff2.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
     nt.assert_almost_equal(np.std(uvn_diff3.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
