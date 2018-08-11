@@ -78,6 +78,13 @@ def medmin(d):
         d (array): 2D data array of the shape (time,frequency).
     Returns:
         (float): medmin statistic.
+
+    Notes:
+        The statistic first computes the minimum value of the array along the
+        first axis (the time axis, if the array is passed in as (time, frequency,
+        so that a single spectrum is returned). The median of these values is
+        computed, multiplied by 2, and then the minimum value is subtracted off.
+        The goal is to get a proxy for the "noise" in the 2d array.
     '''
     assert (d.ndim == 2), 'Input to medmin must be 2D array.'
     mn = np.min(d, axis=0)
@@ -94,8 +101,14 @@ def medminfilt(d, Kt=8, Kf=8):
         array: filtered array with same shape as input array.
     '''
     assert (d.ndim == 2), 'Input to medminfilt must be 2D array.'
-    if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise AssertionError('Kernel size exceeds data.')
+    if Kt > d.shape[0]:
+        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
+        Kt = d.shape[0]
+    if Kf > d.shape[1]:
+        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
+        Kf = d.shape[1]
     d_sm = np.empty_like(d)
     for i in xrange(d.shape[0]):
         for j in xrange(d.shape[1]):

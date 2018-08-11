@@ -2,7 +2,7 @@
 # Copyright (c) 2018 the HERA Project
 # Licensed under the MIT License
 
-from __future__ import division
+from __future__ import print_function, division, absolute_import
 import unittest
 import nose.tools as nt
 import glob
@@ -83,12 +83,42 @@ class TestPreProcessingFunctions():
         self.size = 100
 
     def test_medmin(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # make fake data
+        data = np.zeros((self.size, self.size))
+        for i in range(data.shape[1]):
+            data[:, i] = i * np.ones_like(data[:, i])
+        # medmin should be 99 for these data
+        medmin = xrfi.medmin(data)
+        nt.assert_true(np.allclose(medmin, 99.))
 
     def test_medminfilt(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # make fake data
+        data = np.zeros((self.size, self.size))
+        for i in range(data.shape[1]):
+            data[:, i] = i * np.ones_like(data[:, i])
+        # run medmin filt
+        Kt = 8
+        Kf = 8
+        d_filt = xrfi.medminfilt(data, Kt=Kt, Kf=Kf)
+
+        # build up "answer" array
+        ans = np.zeros((self.size, self.size))
+        for i in range(data.shape[1]):
+            if i < self.size - Kt:
+                ans[:, i] = i + 7
+            else:
+                ans[:, i] = self.size - 1
+        nt.assert_true(np.allclose(d_filt, ans))
+
+        # test cases where filters are larger than data dimensions
+        Kt = 101
+        Kf = 101
+        d_filt = uvtest.checkWarnings(xrfi.medminfilt, [data, Kt, Kf], nwarnings=2,
+                                      category=[UserWarning, UserWarning],
+                                      message=['Kt value 101 is larger than the data',
+                                               'Kf value 101 is larger than the data'])
+        ans = 99. * np.ones_like(d_filt)
+        nt.assert_true(np.allclose(d_filt, ans))
 
     def test_detrend_deriv(self):
         # Do a test, add more tests as needed
