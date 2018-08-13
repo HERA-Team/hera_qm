@@ -86,7 +86,8 @@ def medmin(d):
         computed, multiplied by 2, and then the minimum value is subtracted off.
         The goal is to get a proxy for the "noise" in the 2d array.
     '''
-    assert (d.ndim == 2), 'Input to medmin must be 2D array.'
+    if d.ndim != 2:
+        raise ValueError('Input to medmin must be 2D array.')
     mn = np.min(d, axis=0)
     return 2 * np.median(mn) - np.min(mn)
 
@@ -100,7 +101,8 @@ def medminfilt(d, Kt=8, Kf=8):
     Returns:
         array: filtered array with same shape as input array.
     '''
-    assert (d.ndim == 2), 'Input to medminfilt must be 2D array.'
+    if d.ndim != 2:
+        raise ValueError('Input to medminfilt must be 2D array.')
     if Kt > d.shape[0]:
         warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
                       "using the size of the data for the kernel size".format(Kt, d.shape[0]))
@@ -129,7 +131,8 @@ def detrend_deriv(d, dt=True, df=True):
     Returns:
         array: detrended array with same shape as input array.
     '''
-    assert (d.ndim == 2), 'Input to detrend_deriv must be 2D array.'
+    if d.ndim != 2:
+        raise ValueError('Input to detrend_deriv must be 2D array.')
     if not (dt or df):
         raise ValueError("dt and df cannot both be False when calling detrend_deriv")
     if df:
@@ -165,7 +168,8 @@ def detrend_medminfilt(d, Kt=8, Kf=8):
     Returns:
         float array: float array of outlier significance metric
     """
-    assert (d.ndim == 2), 'Input to detrend_medminfilt must be 2D array.'
+    if d.ndim != 2:
+        raise ValueError('Input to detrend_medminfilt must be 2D array.')
     d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
@@ -185,7 +189,8 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     Returns:
         f: array of outlier significance metric. Same type and size as d.
     """
-    assert (d.ndim == 2), 'Input to detrend_medfilt must be 2D array.'
+    if d.ndim != 2:
+        raise ValueError('Input to detrend_medfilt must be 2D array.')
     # Delay import so scipy is not required for any use of hera_qm
     from scipy.signal import medfilt2d
 
@@ -646,7 +651,8 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                                  'The filename is used in conjunction with "extension" '
                                  'to determine the output filename.')
         else:
-            assert (isinstance(filename, str)), 'filename must be string path to file.'
+            if not isinstance(filename, str):
+                raise ValueError('filename must be string path to file.')
     else:
         filename = indata
         uvd = UVData()
