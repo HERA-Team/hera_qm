@@ -91,6 +91,9 @@ class TestPreProcessingFunctions():
         medmin = xrfi.medmin(data)
         nt.assert_true(np.allclose(medmin, self.size - 1))
 
+        # Test error when wrong dimensions are passed
+        nt.assert_raises(ValueError, xrfi.medmin, np.ones((5, 4, 3)))
+
     def test_medminfilt(self):
         # make fake data
         data = np.zeros((self.size, self.size))
@@ -119,6 +122,9 @@ class TestPreProcessingFunctions():
                                                'Kf value {:d} is larger than the data'.format(Kt)])
         ans = (self.size - 1) * np.ones_like(d_filt)
         nt.assert_true(np.allclose(d_filt, ans))
+
+        # Test error when wrong dimensions are passed
+        nt.assert_raises(ValueError, xrfi.medminfilt, np.ones((5, 4, 3)))
 
     def test_detrend_deriv(self):
         # make fake data
@@ -149,6 +155,9 @@ class TestPreProcessingFunctions():
 
         # catch error of df and dt both being False
         nt.assert_raises(ValueError, xrfi.detrend_deriv, data, False, False)
+
+        # Test error when wrong dimensions are passed
+        nt.assert_raises(ValueError, xrfi.detrend_deriv, np.ones((5, 4, 3)))
 
     def test_detrend_medminfilt(self):
         # Do a test, add more tests as needed
