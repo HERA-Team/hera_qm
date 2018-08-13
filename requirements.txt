@@ -1,1 +1,1 @@
--e git:https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git@9c94be0366eb41692f5501caac99981026a7ffe6#egg=pyuvdata
+-e git://github.com/RadioAstronomySoftwareGroup/pyuvdata.git@9c94be0366eb41692f5501caac99981026a7ffe6#egg=pyuvdata
