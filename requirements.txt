@@ -1,1 +1,1 @@
-pyuvdata==1.2
+pyuvdata==1.3.1
