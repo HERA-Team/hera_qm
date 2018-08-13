@@ -87,9 +87,9 @@ class TestPreProcessingFunctions():
         data = np.zeros((self.size, self.size))
         for i in range(data.shape[1]):
             data[:, i] = i * np.ones_like(data[:, i])
-        # medmin should be 99 for these data
+        # medmin should be self.size - 1 for these data
         medmin = xrfi.medmin(data)
-        nt.assert_true(np.allclose(medmin, 99.))
+        nt.assert_true(np.allclose(medmin, self.size - 1))
 
     def test_medminfilt(self):
         # make fake data
@@ -104,25 +104,51 @@ class TestPreProcessingFunctions():
         # build up "answer" array
         ans = np.zeros((self.size, self.size))
         for i in range(data.shape[1]):
-            if i < self.size - Kt:
-                ans[:, i] = i + 7
+            if i < self.size - Kf:
+                ans[:, i] = i + (Kf - 1)
             else:
                 ans[:, i] = self.size - 1
         nt.assert_true(np.allclose(d_filt, ans))
 
         # test cases where filters are larger than data dimensions
-        Kt = 101
-        Kf = 101
+        Kt = self.size + 1
+        Kf = self.size + 1
         d_filt = uvtest.checkWarnings(xrfi.medminfilt, [data, Kt, Kf], nwarnings=2,
                                       category=[UserWarning, UserWarning],
-                                      message=['Kt value 101 is larger than the data',
-                                               'Kf value 101 is larger than the data'])
-        ans = 99. * np.ones_like(d_filt)
+                                      message=['Kt value {:d} is larger than the data'.format(Kt),
+                                               'Kf value {:d} is larger than the data'.format(Kt)])
+        ans = (self.size - 1) * np.ones_like(d_filt)
         nt.assert_true(np.allclose(d_filt, ans))
 
     def test_detrend_deriv(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # make fake data
+        data = np.zeros((self.size, self.size))
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                data[i, j] = j * i**2 + j**3
+        # run detrend_deriv in both dimensions
+        dtdf = xrfi.detrend_deriv(data, df=True, dt=True)
+        ans = np.ones_like(dtdf)
+        nt.assert_true(np.allclose(dtdf, ans))
+
+        # only run along frequency
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                data[i, j] = j**3
+        df = xrfi.detrend_deriv(data, df=True, dt=False)
+        ans = np.ones_like(df)
+        nt.assert_true(np.allclose(df, ans))
+
+        # only run along time
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                data[i, j] = i**3
+        dt = xrfi.detrend_deriv(data, df=False, dt=True)
+        ans = np.ones_like(dt)
+        nt.assert_true(np.allclose(dt, ans))
+
+        # catch error of df and dt both being False
+        nt.assert_raises(ValueError, xrfi.detrend_deriv, data, False, False)
 
     def test_detrend_medminfilt(self):
         # Do a test, add more tests as needed

@@ -120,7 +120,8 @@ def medminfilt(d, Kt=8, Kf=8):
 
 def detrend_deriv(d, dt=True, df=True):
     ''' Detrend array by taking the derivative in either time, frequency
-        or both.
+        or both. When taking the derivative of both, the derivative in
+        frequency is performed first, then in time.
     Args:
         d (array): 2D data array of the shape (time,frequency).
         dt (bool, optional): derivative across time bins.
@@ -129,21 +130,20 @@ def detrend_deriv(d, dt=True, df=True):
         array: detrended array with same shape as input array.
     '''
     assert (d.ndim == 2), 'Input to detrend_deriv must be 2D array.'
+    if not (dt or df):
+        raise ValueError("dt and df cannot both be False when calling detrend_deriv")
     if df:
-        d_df = np.empty_like(d)
-        d_df[:, 1:-1] = (d[:, 1:-1] - .5 * (d[:, :-2] + d[:, 2:])) / np.sqrt(1.5)
-        d_df[:, 0] = (d[:, 0] - d[:, 1]) / np.sqrt(2)
-        d_df[:, -1] = (d[:, -1] - d[:, -2]) / np.sqrt(2)
+        # take gradient along frequency
+        d_df = np.gradient(d, axis=1)
     else:
         d_df = d
     if dt:
-        d_dt = np.empty_like(d_df)
-        d_dt[1:-1] = (d_df[1:-1] - .5 * (d_df[:-2] + d_df[2:])) / np.sqrt(1.5)
-        d_dt[0] = (d_df[0] - d_df[1]) / np.sqrt(2)
-        d_dt[-1] = (d_df[-1] - d_df[-2]) / np.sqrt(2)
+        # take gradient along time
+        d_dtdf = np.gradient(d_df, axis=0)
     else:
-        d_dt = d
-    d2 = np.abs(d_dt)**2
+        d_dtdf = d_df
+
+    d2 = np.abs(d_dtdf)**2
     # model sig as separable function of 2 axes
     sig_f = np.median(d2, axis=0)
     sig_f.shape = (1, -1)
@@ -151,7 +151,7 @@ def detrend_deriv(d, dt=True, df=True):
     sig_t.shape = (-1, 1)
     sig = np.sqrt(sig_f * sig_t / np.median(sig_t))
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_dt, sig, where=(np.abs(sig) > 1e-7))
+    f = np.true_divide(d_dtdf, sig, where=(np.abs(sig) > 1e-7))
     f = np.where(np.abs(sig) > 1e-7, f, np.inf)
     return f
 
