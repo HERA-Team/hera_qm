@@ -11,6 +11,7 @@ import numpy as np
 from pyuvdata import UVCal, UVData
 from pyuvdata import telescopes as uvtel
 from pyuvdata import utils as uvutils
+import copy
 
 
 # argument-generating function for *_run wrapper functions
@@ -467,14 +468,18 @@ def lst_from_uv(uv):
 
 def mean(a, weights=None, axis=None, returned=False):
     ''' Function to average data. This is similar to np.average, except it
-    handles nans (by giving them zero weight) and zero weight axes (by forcing
-    result to be nan with zero output weight).
+    handles infs (by giving them zero weight) and zero weight axes (by forcing
+    result to be inf with zero output weight).
     Args:
         a - array to process
-        weights - weights for average
-        axis - axis keyword to pass to np.mean
+        weights - weights for average. If none, will default to equal weight for
+                  all non-infinite data.
+        axis - axis keyword to pass to np.sum
         returned - whether to return sum of weights. Default is False.
     '''
+    a = copy.deepcopy(a)  # avoid changing outside
+    if weights is None:
+        weights = np.ones_like(a)
     w = weights * np.logical_not(np.isinf(a))
     a[np.isinf(a)] = 0
     wo = np.sum(w, axis=axis)

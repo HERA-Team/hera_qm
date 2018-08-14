@@ -12,6 +12,7 @@ from hera_qm.ant_metrics import get_ant_metrics_dict
 from hera_qm.firstcal_metrics import get_firstcal_metrics_dict
 from hera_qm.omnical_metrics import get_omnical_metrics_dict
 from hera_qm.utils import get_metrics_dict
+import numpy as np
 
 
 def test_get_pol():
@@ -127,3 +128,81 @@ def test_get_metrics_dict():
         nt.assert_equal(firstcal_metrics_dict[key], metrics_dict[key])
     for key in omnical_metrics_dict:
         nt.assert_equal(omnical_metrics_dict[key], metrics_dict[key])
+
+
+def test_mean_no_weights():
+    # Fake data
+    data = np.zeros((50, 25))
+    for i in range(data.shape[1]):
+        data[:, i] = i * np.ones_like(data[:, i])
+    out, wo = utils.mean(data, axis=0, returned=True)
+    nt.assert_true(np.array_equal(out, np.arange(data.shape[1])))
+    nt.assert_true(np.array_equal(wo, data.shape[0] * np.ones(data.shape[1])))
+    out, wo = utils.mean(data, axis=1, returned=True)
+    nt.assert_true(np.all(out == np.mean(np.arange(data.shape[1]))))
+    nt.assert_true(len(out) == data.shape[0])
+    nt.assert_true(np.array_equal(wo, data.shape[1] * np.ones(data.shape[0])))
+    out, wo = utils.mean(data, returned=True)
+    nt.assert_true(out == np.mean(np.arange(data.shape[1])))
+    nt.assert_true(wo == data.size)
+    out = utils.mean(data)
+    nt.assert_true(out == np.mean(np.arange(data.shape[1])))
+
+
+def test_mean_weights():
+    # Fake data
+    data = np.zeros((50, 25))
+    for i in range(data.shape[1]):
+        data[:, i] = i * np.ones_like(data[:, i]) + 1
+    w = 1. / data
+    out, wo = utils.mean(data, weights=w, axis=0, returned=True)
+    nt.assert_true(np.all(np.isclose(out * wo, data.shape[0])))
+    nt.assert_true(np.all(np.isclose(wo, float(data.shape[0]) / (np.arange(data.shape[1]) + 1))))
+    out, wo = utils.mean(data, weights=w, axis=1, returned=True)
+    nt.assert_true(np.all(np.isclose(out * wo, data.shape[1])))
+    nt.assert_true(np.all(np.isclose(wo, np.sum(1. / (np.arange(data.shape[1]) + 1)))))
+
+    # Zero weights
+    w = np.ones_like(w)
+    w[0, :] = 0
+    w[:, 0] = 0
+    out, wo = utils.mean(data, weights=w, axis=0, returned=True)
+    ans = np.arange(data.shape[1]).astype(np.float) + 1
+    ans[0] = np.inf
+    nt.assert_true(np.array_equal(out, ans))
+    ans = (data.shape[0] - 1) * np.ones(data.shape[1])
+    ans[0] = 0
+    nt.assert_true(np.all(wo == ans))
+    out, wo = utils.mean(data, weights=w, axis=1, returned=True)
+    ans = np.mean(np.arange(data.shape[1])[1:] + 1) * np.ones(data.shape[0])
+    ans[0] = np.inf
+    nt.assert_true(np.all(out == ans))
+    ans = (data.shape[1] - 1) * np.ones(data.shape[0])
+    ans[0] = 0
+    nt.assert_true(np.all(wo == ans))
+
+
+def test_mean_infs():
+    # Fake data
+    data = np.zeros((50, 25))
+    for i in range(data.shape[1]):
+        data[:, i] = i * np.ones_like(data[:, i])
+    data[:, 0] = np.inf
+    data[0, :] = np.inf
+    out, wo = utils.mean(data, axis=0, returned=True)
+    ans = np.arange(data.shape[1]).astype(np.float)
+    ans[0] = np.inf
+    nt.assert_true(np.array_equal(out, ans))
+    ans = (data.shape[0] - 1) * np.ones(data.shape[1])
+    ans[0] = 0
+    nt.assert_true(np.all(wo == ans))
+    print(data)
+    out, wo = utils.mean(data, axis=1, returned=True)
+    ans = np.mean(np.arange(data.shape[1])[1:]) * np.ones(data.shape[0])
+    ans[0] = np.inf
+    print(out)
+    print(ans)
+    nt.assert_true(np.all(out == ans))
+    ans = (data.shape[1] - 1) * np.ones(data.shape[0])
+    ans[0] = 0
+    nt.assert_true(np.all(wo == ans))
