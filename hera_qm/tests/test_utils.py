@@ -6,6 +6,7 @@ import nose.tools as nt
 import os
 import pyuvdata.tests as uvtest
 from pyuvdata import UVCal
+from pyuvdata import UVData
 from hera_qm import utils
 from hera_qm.data import DATA_PATH
 from hera_qm.ant_metrics import get_ant_metrics_dict
@@ -206,3 +207,72 @@ def test_mean_infs():
     ans = (data.shape[1] - 1) * np.ones(data.shape[0])
     ans[0] = 0
     nt.assert_true(np.all(wo == ans))
+
+
+def test_absmean():
+    # Fake data
+    data1 = np.zeros((50, 25))
+    for i in range(data1.shape[1]):
+        data1[:, i] = (-1)**i * np.ones_like(data1[:, i])
+    data2 = np.ones_like(data1)
+    out1 = utils.absmean(data1)
+    out2 = utils.absmean(data2)
+    nt.assert_equal(out1, out2)
+
+
+def test_quadmean():
+    # Fake data
+    data = np.zeros((50, 25))
+    for i in range(data.shape[1]):
+        data[:, i] = i * np.ones_like(data[:, i])
+    o1, w1 = utils.quadmean(data, returned=True)
+    o2, w2 = utils.mean(np.abs(data)**2, returned=True)
+    o3 = utils.quadmean(data)  # without returned
+    o2 = np.sqrt(o2)
+    nt.assert_equal(o1, o2)
+    nt.assert_equal(w1, w2)
+    nt.assert_equal(o1, o3)
+
+
+def test_flags2waterfall():
+    uv = UVData()
+    uv.read_uvfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvc.vis.uvfits'))
+
+    np.random.seed(0)
+    uv.flag_array = np.random.randint(0, 2, size=uv.flag_array.shape, dtype=bool)
+    wf = utils.flags2waterfall(uv)
+    nt.assert_almost_equal(np.mean(wf), np.mean(uv.flag_array))
+    nt.assert_equal(wf.shape, (uv.Ntimes, uv.Nfreqs))
+
+    wf = utils.flags2waterfall(uv, keep_pol=True)
+    nt.assert_equal(wf.shape, (uv.Ntimes, uv.Nfreqs, uv.Npols))
+
+    # Test external flag_array
+    uv.flag_array = np.zeros_like(uv.flag_array)
+    f = np.random.randint(0, 2, size=uv.flag_array.shape, dtype=bool)
+    wf = utils.flags2waterfall(uv, flag_array=f)
+    nt.assert_almost_equal(np.mean(wf), np.mean(f))
+    nt.assert_equal(wf.shape, (uv.Ntimes, uv.Nfreqs))
+
+    # UVCal version
+    uvc = UVCal()
+    uvc.read_calfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits'))
+
+    uvc.flag_array = np.random.randint(0, 2, size=uvc.flag_array.shape, dtype=bool)
+    wf = utils.flags2waterfall(uvc)
+    nt.assert_almost_equal(np.mean(wf), np.mean(uvc.flag_array))
+    nt.assert_equal(wf.shape, (uvc.Ntimes, uvc.Nfreqs))
+
+    wf = utils.flags2waterfall(uvc, keep_pol=True)
+    nt.assert_equal(wf.shape, (uvc.Ntimes, uvc.Nfreqs, uvc.Njones))
+
+
+def test_flags2waterfall_errors():
+
+    # First argument must be UVData or UVCal object
+    nt.assert_raises(ValueError, utils.flags2waterfall, 5)
+
+    uv = UVData()
+    uv.read_uvfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvc.vis.uvfits'))
+    # Flag array must have same shape as uv.flag_array
+    nt.assert_raises(ValueError, utils.flags2waterfall, uv, np.array([4, 5]))
