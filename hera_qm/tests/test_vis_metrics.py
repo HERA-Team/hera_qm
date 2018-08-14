@@ -57,7 +57,6 @@ class TestMethods(unittest.TestCase):
                           vis_metrics.check_noise_variance, self.data)
 
 
-
 def test_vis_bl_cov():
     uvd = UVData()
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
@@ -185,9 +184,9 @@ def test_sequential_diff():
     uvn_diff3 = vis_metrics.sequential_diff(uvn, axis=(0, 1))
 
     # assert noise std is equal to 1 within sampling error
-    nt.assert_almost_equal(np.std(uvn_diff1.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff2.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff3.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff1.data_array) * np.sqrt(np.median(uvn_diff1.nsample_array)), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff2.data_array) * np.sqrt(np.median(uvn_diff2.nsample_array)), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff3.data_array) * np.sqrt(np.median(uvn_diff3.nsample_array)), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
 
     # test pad
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=True)

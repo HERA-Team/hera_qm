@@ -118,7 +118,7 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=False, add_to_history=''):
         # difference data
         for ax in axis:
             data = (utils.dynamic_slice(data, slice(1, None), axis=ax) \
-                   - utils.dynamic_slice(data, slice(None, -1), axis=ax)) / np.sqrt(2)
+                   - utils.dynamic_slice(data, slice(None, -1), axis=ax))
             t_int = 1.0/(1.0/utils.dynamic_slice(t_int, slice(1, None), axis=ax) \
                          + 1.0/utils.dynamic_slice(t_int, slice(None, -1), axis=ax))
 
