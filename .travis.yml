@@ -40,7 +40,7 @@ before_script:
   - "sh -e /etc/init.d/xvfb start"
   - sleep 3
 
-script: nosetests hera_qm --with-coverage --cover-package=hera_qm
+script: nosetests hera_qm --nologcapture --with-coverage --cover-package=hera_qm
 
 after_success:
   - coveralls
