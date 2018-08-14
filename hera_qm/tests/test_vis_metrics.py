@@ -158,8 +158,9 @@ def test_sequential_diff():
     nt.assert_false(uvd_diff.get_flags(89, 96)[1:].any())
 
     # test exception
-    nt.assert_raises(AssertionError, vis_metrics.sequential_diff, uvd, axis=3)
+    nt.assert_raises(ValueError, vis_metrics.sequential_diff, uvd, axis=3)
     nt.assert_raises(ValueError, vis_metrics.sequential_diff, 'foo')
+    nt.assert_raises(ValueError, vis_metrics.sequential_diff, np.arange(10), t_int='foo')
 
     # fake noise test
     uvn = copy.deepcopy(uvd)
@@ -187,6 +188,13 @@ def test_sequential_diff():
     nt.assert_almost_equal(np.std(uvn_diff1.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
     nt.assert_almost_equal(np.std(uvn_diff2.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
     nt.assert_almost_equal(np.std(uvn_diff3.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+
+    # test pad
+    uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=True)
+    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes)
+    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs)
+    nt.assert_true(uvd_diff.flag_array[:, 0, -1, 0].all())
+    nt.assert_true(uvd_diff.select(times=np.unique(uvd_diff.time_array)[-1:], inplace=False).flag_array.all())
 
 if __name__ == '__main__':
     unittest.main()

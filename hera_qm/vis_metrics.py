@@ -50,9 +50,9 @@ def check_noise_variance(data):
     return Cij
 
 
-def sequential_diff(data, wgts=None, axis=(0,)):
+def sequential_diff(data, t_int=None, axis=(0,), pad=False):
     """
-    Take a sequential (adjacent) difference of a visibility waterfall
+    Take a sequential (forward) difference of a visibility waterfall
     as an estimate of the visibility noise.
 
     Parameters
@@ -62,13 +62,18 @@ def sequential_diff(data, wgts=None, axis=(0,)):
         shape (Ntimes, Nfreqs, :). Or UVData object
         holding visibility data.
 
-    wgts : ndarray
-        A 2D or 3D ndarray containing visibility weights
-        matching data shape. If None, and data is UVData,
-        will use UVData ~flags * nsample as weights.
+    t_int : ndarray
+        A 2D or 3D ndarray containing the integration time
+        of the visibilities matching shape of data.
+        If None and data is UVData, will use UVData ~flags *
+        nsample * integration_time as input.
 
     axis : int or tuple
         Axes along which to take sequential difference
+
+    pad : boolean
+        If True, insert an extra (flagged) column at the end
+        of axis such that diff_data has same shape as input.
 
     Returns
     -------
@@ -77,48 +82,60 @@ def sequential_diff(data, wgts=None, axis=(0,)):
         or UVData object holding differenced data
         divided by sqrt(2).
 
-    prod_wgts : ndarray
-        If input data is ndarray, this is the geometric
-        mean of all wgts in the difference.
+    diff_t_int : ndarray
+        If input data is ndarray, this is the inverse
+        sum of t_ints in the difference.
     """
     # type check
     if isinstance(axis, (int, np.integer)):
         axis = (axis,)
-    assert np.all([ax in [0, 1] for ax in axis]), "axis must be 0, 1 or both"
+    if not np.all([ax in [0, 1] for ax in axis]):
+        raise ValueError("axis must be 0, 1 or both")
 
     # perform differencing if data is an ndarray
     if isinstance(data, np.ndarray):
-        # get weights
-        if wgts is None:
-            wgts = np.ones_like(data, dtype=np.float64)
+        # get t_int
+        if t_int is None:
+            t_int = np.ones_like(data, dtype=np.float64)
         else:
-            assert isinstance(wgts, np.ndarray), \
-                   "wgts must be ndarray if data is ndarray"
+            if not isinstance(t_int, np.ndarray):
+                raise ValueError("t_int must be ndarray if data is ndarray")
+
+        # pad
+        if pad:
+            for ax in axis:
+                # get padding vector
+                p = utils.dynamic_slice(np.zeros_like(data, dtype=np.float), slice(0, 1), axis=ax)
+                # pad arrays
+                data = np.concatenate([data, p], axis=ax)
+                t_int = np.concatenate([t_int, p], axis=ax)
 
         # difference data
         for ax in axis:
             data = (utils.dynamic_slice(data, slice(1, None), axis=ax) \
                    - utils.dynamic_slice(data, slice(None, -1), axis=ax)) / np.sqrt(2)
-            wgts = np.sqrt(utils.dynamic_slice(wgts, slice(1, None), axis=ax) \
-                   * utils.dynamic_slice(wgts, slice(None, -1), axis=ax))
+            t_int = 1.0/(1.0/utils.dynamic_slice(t_int, slice(1, None), axis=ax) \
+                         + 1.0/utils.dynamic_slice(t_int, slice(None, -1), axis=ax))
 
-        return data, wgts
+        return data, t_int
 
     # iterate over bls if UVData
     elif isinstance(data, UVData):
         # copy object
         uvd = copy.deepcopy(data)
 
-        # get new time and freq arrays and UVData object
-        times = None
-        freqs = None
-        for ax in axis:
-            if ax == 0:
-                times = np.unique(uvd.time_array)[:-1]
-            elif ax == 1:
-                freqs = np.unique(uvd.freq_array)[:-1]
-        if times is not None or freqs is not None:
-            uvd.select(times=times, frequencies=freqs)
+        if not pad:
+            # get new time and freq arrays and UVData object
+            # this is equivalent to assuming a forward difference
+            times = None
+            freqs = None
+            for ax in axis:
+                if ax == 0:
+                    times = np.unique(uvd.time_array)[:-1]
+                elif ax == 1:
+                    freqs = np.unique(uvd.freq_array)[:-1]
+            if times is not None or freqs is not None:
+                uvd.select(times=times, frequencies=freqs)
 
         # iterate over baselines
         bls = uvd.get_antpairs()
@@ -126,20 +143,24 @@ def sequential_diff(data, wgts=None, axis=(0,)):
             # get blt slice
             bl_slice = uvd.antpair2ind(bl, ordered=False)
 
-            # configure data and weights
+            # configure data and t_int
             d = data.get_data(bl, squeeze='none')[:, 0, :, :]
-            w = data.get_nsamples(bl, squeeze='none')[:, 0, :, :] * (~data.get_flags(bl, squeeze='none')[:, 0, :, :]).astype(np.float64)
+            t = data.get_nsamples(bl, squeeze='none')[:, 0, :, :] \
+                * (~data.get_flags(bl, squeeze='none')[:, 0, :, :]).astype(np.float64) \
+                * data.integration_time[data.antpair2ind(bl, ordered=False)][:, None, None]
 
             # take difference
-            d, w = sequential_diff(d, wgts=w, axis=axis)
+            d, t = sequential_diff(d, t_int=t, axis=axis, pad=pad)
 
-            # configure output weights and flags
-            f = np.isclose(w, 0.0)
+            # configure output flags, nsample
+            t[np.isnan(t)] = 0.0
+            f = np.isclose(t, 0.0)
+            n = t / uvd.integration_time[uvd.antpair2ind(bl, ordered=False)][:, None, None]
 
             # assign data
             uvd.data_array[bl_slice, 0, :, :] = d
             uvd.flag_array[bl_slice, 0, :, :] = f
-            uvd.nsample_array[bl_slice, 0, :, :] = w
+            uvd.nsample_array[bl_slice, 0, :, :] = n
 
         uvd.check()
 

@@ -462,7 +462,8 @@ def dynamic_slice(arr, slice_obj, axis=-1):
     """
     if isinstance(axis, (int, np.integer)):
         axis = (axis,)
-    assert isinstance(arr, np.ndarray), "arr must be an ndarray"
+    if not isinstance(arr, np.ndarray):
+        raise ValueError("arr must be an ndarray")
     slices = [slice(None) for i in range(arr.ndim)]
     for ax in axis:
         slices[ax] = slice_obj
