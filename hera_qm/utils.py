@@ -446,6 +446,7 @@ def metrics2mc(filename, ftype):
 
     return d
 
+
 def lst_from_uv(uv):
     ''' Calculate the lst_array for a UVData or UVCal object.
     Args:
@@ -462,6 +463,7 @@ def lst_from_uv(uv):
     lat, lon, alt = tel.telescope_location_lat_lon_alt_degrees
     lst_array = uvutils.get_lst_for_time(uv.time_array, lat, lon, alt)
     return lst_array
+
 
 def mean(a, weights=None, axis=None, returned=False):
     ''' Function to average data. This is similar to np.average, except it
@@ -485,6 +487,7 @@ def mean(a, weights=None, axis=None, returned=False):
     else:
         return o
 
+
 def absmean(a, weights=None, axis=None, returned=False):
     ''' Function to average absolute value
     Args:
@@ -494,6 +497,7 @@ def absmean(a, weights=None, axis=None, returned=False):
         returned - whether to return sum of weights. Default is False.
     '''
     return mean(np.abs(a), weights=weights, axis=axis, returned=returned)
+
 
 def quadmean(a, weights=None, axis=None, returned=False):
     ''' Function to average in quadrature
@@ -509,8 +513,10 @@ def quadmean(a, weights=None, axis=None, returned=False):
     else:
         return np.sqrt(o)
 
+
 # Dictionary to map different methods for averaging data.
 averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean}
+
 
 def flags2waterfall(uv, flag_array=None, keep_pol=False):
     """
