@@ -219,16 +219,12 @@ def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
         d_df2 = np.abs(d_df)**2
         sig2 = np.median(d_df2, axis=1)
         sig2.shape = (-1, 1)
-        f[:, 0] = 1
-        f[:, -1] = 1
         f[:, 1:-1] = np.where(d_df2 / sig2 > nsig_df**2, 1, f[:, 1:-1])
     if nsig_dt > 0:
         d_dt = d[1:-1, :] - .5 * (d[:-2, :] + d[2:, :])
         d_dt2 = np.abs(d_dt)**2
         sig2 = np.median(d_dt2, axis=0)
         sig2.shape = (1, -1)
-        f[0, :] = 1
-        f[-1, :] = 1
         f[1:-1, :] = np.where(d_dt2 / sig2 > nsig_dt**2, 1, f[1:-1, :])
     if nsig_all > 0:
         ad = np.abs(d)
