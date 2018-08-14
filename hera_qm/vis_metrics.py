@@ -6,6 +6,7 @@ from pyuvdata import UVData
 import matplotlib.pyplot as plt
 from hera_qm import utils
 import copy
+from hera_qm import version
 
 
 def check_noise_variance(data):
@@ -50,7 +51,7 @@ def check_noise_variance(data):
     return Cij
 
 
-def sequential_diff(data, t_int=None, axis=(0,), pad=False):
+def sequential_diff(data, t_int=None, axis=(0,), pad=False, add_to_history=''):
     """
     Take a sequential (forward) difference of a visibility waterfall
     as an estimate of the visibility noise.
@@ -75,6 +76,10 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=False):
         If True, insert an extra (flagged) column at the end
         of axis such that diff_data has same shape as input.
 
+    add_to_history : str
+        A string to add to history of UVData if provided, in addition
+        to standard history comment.
+    
     Returns
     -------
     diff_data : ndarray or UVData object
@@ -162,7 +167,12 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=False):
             uvd.flag_array[bl_slice, 0, :, :] = f
             uvd.nsample_array[bl_slice, 0, :, :] = n
 
+        # run check
         uvd.check()
+
+        # add to history
+        uvd.history = "Took sequential visibility difference with hera_qm [{}]\n{}\n{}" \
+                       .format(version.git_hash[:10], '-'*40, uvd.history)
 
         return uvd
 
