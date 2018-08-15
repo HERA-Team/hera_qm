@@ -119,7 +119,7 @@ class TestPreProcessingFunctions():
         d_filt = uvtest.checkWarnings(xrfi.medminfilt, [data, Kt, Kf], nwarnings=2,
                                       category=[UserWarning, UserWarning],
                                       message=['Kt value {:d} is larger than the data'.format(Kt),
-                                               'Kf value {:d} is larger than the data'.format(Kt)])
+                                               'Kf value {:d} is larger than the data'.format(Kf)])
         ans = (self.size - 1) * np.ones_like(d_filt)
         nt.assert_true(np.allclose(d_filt, ans))
 
@@ -160,8 +160,23 @@ class TestPreProcessingFunctions():
         nt.assert_raises(ValueError, xrfi.detrend_deriv, np.ones((5, 4, 3)))
 
     def test_detrend_medminfilt(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # make fake data
+        data = np.zeros((self.size, self.size))
+        for i in range(data.shape[1]):
+            data[:, i] = i * np.ones_like(data[:, i])
+        # run detrend_medminfilt
+        Kt = 8
+        Kf = 8
+        dm = xrfi.detrend_medminfilt(data, Kt=Kt, Kf=Kf)
+
+        # read in "answer" array
+        # this is output that corresponds to self.size==100, Kt==8, Kf==8
+        ans_fn = os.path.join(DATA_PATH, 'test_detrend_medminfilt_ans.txt')
+        ans = np.loadtxt(ans_fn)
+        nt.assert_true(np.allclose(ans, dm))
+
+        # Test error when wrong dimensions are passed
+        nt.assert_raises(ValueError, xrfi.detrend_medminfilt, np.ones((5, 4, 3)))
 
     def test_detrend_medfilt(self):
         # Do a test, add more tests as needed
