@@ -350,6 +350,7 @@ def test_lst_from_uv():
     lst = utils.lst_from_uv(uv)
     print('uv.lst_array:', uv.lst_array)
     print('computed lst:', lst)
+    print('diff: ', uv.lst_array - lst)
     nt.assert_true(np.array_equal(uv.lst_array, lst))
 
 
