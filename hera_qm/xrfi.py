@@ -194,8 +194,16 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     # Delay import so scipy is not required for any use of hera_qm
     from scipy.signal import medfilt2d
 
-    if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise AssertionError('Kernel size exceeds data.')
+    if d.ndim != 2:
+        raise ValueError('Input to detrend_medfilt must be 2D array.')
+    if Kt > d.shape[0]:
+        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
+        Kt = d.shape[0]
+    if Kf > d.shape[1]:
+        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
+        Kf = d.shape[1]
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(d):
@@ -352,6 +360,7 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
         prevn = 0
         x = np.where(f)[0]
         while x.size != prevn:
+            prevn = x.size
             for dx in [-1, 1]:
                 xp = (x + dx).clip(0, f.size - 1)
                 i = np.where(d[xp] > nsig)[0]  # if our metric > sig

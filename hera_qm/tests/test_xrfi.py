@@ -179,15 +179,97 @@ class TestPreProcessingFunctions():
         nt.assert_raises(ValueError, xrfi.detrend_medminfilt, np.ones((5, 4, 3)))
 
     def test_detrend_medfilt(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # make fake data
+        data = np.zeros((self.size, self.size))
+        for i in range(data.shape[1]):
+            data[:, i] = i * np.ones_like(data[:, i])
+        # run detrend medfilt
+        Kt = 101
+        Kf = 101
+        dm = uvtest.checkWarnings(xrfi.detrend_medfilt, [data, Kt, Kf], nwarnings=2,
+                                  category=[UserWarning, UserWarning],
+                                  message=['Kt value {:d} is larger than the data'.format(Kt),
+                                           'Kf value {:d} is larger than the data'.format(Kf)])
+
+        # read in "answer" array
+        # this is output that corresponds to self.size==100, Kt==101, Kf==101
+        ans_fn = os.path.join(DATA_PATH, 'test_detrend_medfilt_ans.txt')
+        ans = np.loadtxt(ans_fn)
+        nt.assert_true(np.allclose(ans, dm))
+
+        # Test error when wrong dimensions are passed
+        nt.assert_raises(ValueError, xrfi.detrend_medfilt, np.ones((5, 4, 3)))
 
 
 class TestFlaggingFunctions():
 
     def test_watershed_flag(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # generate a metrics and flag UVFlag object
+        uv = UVData()
+        uv.read_miriad(test_d_file)
+        uvm = UVFlag(uv, history='I made this')
+        uvf = UVFlag(uv, mode='flag')
+
+        # set metric and flag arrays to specific values
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvm.metric_array[0, 0, 1, 0] = 7.
+        uvf.flag_array[0, 0, 0, 0] = True
+
+        # run watershed flag
+        xrfi.watershed_flag(uvm, uvf, nsig_p=2., inplace=True)
+
+        # check answer
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[0, 0, :2, 0] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test flagging channels adjacent to fully flagged ones
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvm.metric_array[:, 0, 1, 0] = 1.
+        uvf.flag_array[:, 0, 0, 0] = True
+
+        # run watershed flag
+        xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_f=0.5, inplace=True)
+
+        # check answer
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[:, 0, 0, 0] = True
+        flag_array[:, 0, 1, 0] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test flagging times adjacent to fully flagged ones
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        times = np.unique(uv.time_array)
+        inds1 = np.where(uv.time_array == times[0])[0]
+        inds2 = np.where(uv.time_array == times[1])[0]
+        uvm.metric_array[inds2, 0, :, 0] = 1.
+        uvf.flag_array[inds1, 0, :, 0] = True
+
+        # run watershed flag
+        xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_t=0.5, inplace=True)
+
+        # check answer
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[inds1, 0, :, 0] = True
+        flag_array[inds2, 0, :, 0] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+
+    def test_watershed_flag_errors(self):
+        # setup
+        uv = UVData()
+        uv.read_miriad(test_d_file)
+        uvm = UVFlag(uv, history='I made this')
+        uvf = UVFlag(uv, mode='flag')
+        uvf2 = UVFlag(uv, mode='flag', waterfall=True)
+
+        # pass in objects besides UVFlag
+        nt.assert_raises(ValueError, xrfi.watershed_flag, 1, 2)
+        nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, 2)
+        nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, uvf2)
 
     def test_ws_flag_waterfall(self):
         # Do a test, add more tests as needed
