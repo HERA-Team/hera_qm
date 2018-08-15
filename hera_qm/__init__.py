@@ -9,5 +9,6 @@ import ant_metrics
 import firstcal_metrics
 import version
 import omnical_metrics
+import metrics_io
 
 __version__ = version.version

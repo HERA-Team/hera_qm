@@ -9,9 +9,10 @@ from copy import deepcopy
 import json
 import os
 import re
+from collections import OrderedDict
 from hera_cal.io import HERAData
 from hera_qm.version import hera_qm_version_str
-from hera_qm import utils
+from hera_qm import utils, metrics_io
 import h5py
 import warnings
 
@@ -328,41 +329,9 @@ def average_abs_metrics(metrics1, metrics2):
             for key in metrics1.keys()}
 
 
-def load_antenna_metrics(metricsHDF5Filename):
+def load_antenna_metrics(metric_file):
     """Load cut decisions and metrics from an HDF5 into python dictionary."""
-    if metricsHDF5Filename.split('.')[-1] == 'json':
-        warnings.warn("JSON-type files can still be read but are no longer "
-                      "writen by default.\n"
-                      "Write to HDF5 format for future compatibility.")
-        return load_json_metrics(metricsHDF5Filename)
-
-    gvars = {'nan': np.nan, 'inf': np.inf, '-inf': -np.inf}
-    metric_dict = {}
-    with h5py.File(metricsHDF5Filename, 'r') as f:
-        header = f['/Header']
-        for key in header:
-            metric_dict[key] = str(header[key].value)
-
-        metrics = f['/Metrics']
-        for key in metrics:
-            metric_dict[key] = eval(str(metrics[key].value), gvars)
-    return metric_dict
-
-
-def load_json_metrics(metricsJSONFile):
-    """Load cut decisions and metrics from a JSON into python dictionary."""
-    with open(metricsJSONFile, 'r') as infile:
-        jsonMetrics = json.load(infile)
-    gvars = {'nan': np.nan, 'inf': np.inf, '-inf': -np.inf}
-
-    metric_dict = {}
-    for key, val in jsonMetrics.items():
-        if (key == 'version') or (key == 'history'):
-            metric_dict[key] = str(val)
-        else:
-            metric_dict[key] = eval(str(val), gvars)
-
-    return metric_dict
+    return metrics_io.load_metric_file(metric_file)
 
 
 #######################################################################
@@ -448,7 +417,7 @@ class Antenna_Metrics():
         """Reset all the internal summary statistics back to empty."""
         self.xants, self.crossedAntsRemoved, self.deadAntsRemoved = [], [], []
         self.removalIter = {}
-        self.allMetrics, self.allModzScores = [], []
+        self.allMetrics, self.allModzScores = OrderedDict(), OrderedDict()
         self.finalMetrics, self.finalModzScores = {}, {}
 
     def find_totally_dead_ants(self):
@@ -474,7 +443,7 @@ class Antenna_Metrics():
                 self.deadAntsRemoved.append(key)
                 self.removalIter[key] = -1
 
-    def _run_all_metrics(self):
+    def _run_all_metrics(self, iter=0):
         """Designed to be run as part of AntennaMetrics.iterative_antenna_metrics_and_flagging()."""
         # Compute all raw metrics
         meanVij = self.mean_Vij_metrics(xants=self.xants,
@@ -501,8 +470,8 @@ class Antenna_Metrics():
                 else:
                     self.finalMetrics[metName] = {key: metric[key]}
                     self.finalModzScores[metName] = {key: modz[key]}
-        self.allMetrics.append(metrics)
-        self.allModzScores.append(modzScores)
+        self.allMetrics.update({iter: metrics})
+        self.allModzScores.update({iter: modzScores})
 
     def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
                                                alwaysDeadCut=10,
@@ -531,17 +500,18 @@ class Antenna_Metrics():
 
         # Loop over
         for n in range(len(self.antpols) * len(self.ants)):
-            self._run_all_metrics()
+            self._run_all_metrics(iter=n)
 
             # Mostly likely dead antenna
-            deadMetrics = average_abs_metrics(self.allModzScores[-1]['meanVij'],
-                                              self.allModzScores[-1]['redCorr'])
+            last_iter = list(self.allModzScores.keys())[-1]
+            deadMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVij'],
+                                              self.allModzScores[last_iter]['redCorr'])
             worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
             worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt]) / deadCut
 
             # Most likely cross-polarized antenna
-            crossMetrics = average_abs_metrics(self.allModzScores[-1]['meanVijXPol'],
-                                               self.allModzScores[-1]['redCorrXPol'])
+            crossMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVijXPol'],
+                                               self.allModzScores[last_iter]['redCorrXPol'])
             worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
             worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt]) / crossCut
 
@@ -567,7 +537,7 @@ class Antenna_Metrics():
             else:
                 break
 
-    def save_antenna_metrics(self, metricsHDF5Filename):
+    def save_antenna_metrics(self, metric_file):
         """Output all meta-metrics and cut decisions to HDF5 file.
 
         Saves all cut decisions and meta-metrics in an HDF5 that can be loaded
@@ -577,44 +547,22 @@ class Antenna_Metrics():
             raise KeyError(('Must run AntennaMetrics.'
                             'iterative_antenna_metrics_and_flagging() first.'))
 
-        out_dict = {'xants': str(self.xants)}
-        out_dict['crossed_ants'] = str(self.crossedAntsRemoved)
-        out_dict['dead_ants'] = str(self.deadAntsRemoved)
-        out_dict['final_metrics'] = str(self.finalMetrics)
-        out_dict['all_metrics'] = str(self.allMetrics)
-        out_dict['final_mod_z_scores'] = str(self.finalModzScores)
-        out_dict['all_mod_z_scores'] = str(self.allModzScores)
-        out_dict['removal_iteration'] = str(self.removalIter)
-        out_dict['cross_pol_z_cut'] = str(self.crossCut)
-        out_dict['dead_ant_z_cut'] = str(self.deadCut)
-        out_dict['always_dead_ant_z_cut'] = str(self.alwaysDeadCut)
-        out_dict['datafile_list'] = str(self.dataFileList)
-        out_dict['reds'] = str(self.reds)
+        out_dict = {'xants': self.xants}
+        out_dict['crossed_ants'] = self.crossedAntsRemoved
+        out_dict['dead_ants'] = self.deadAntsRemoved
+        out_dict['final_metrics'] = self.finalMetrics
+        out_dict['all_metrics'] = self.allMetrics
+        out_dict['final_mod_z_scores'] = self.finalModzScores
+        out_dict['all_mod_z_scores'] = self.allModzScores
+        out_dict['removal_iteration'] = self.removalIter
+        out_dict['cross_pol_z_cut'] = self.crossCut
+        out_dict['dead_ant_z_cut'] = self.deadCut
+        out_dict['always_dead_ant_z_cut'] = self.alwaysDeadCut
+        out_dict['datafile_list'] = self.dataFileList
+        out_dict['reds'] = self.reds
 
-        if metricsHDF5Filename.split('.')[-1] == 'json':
-            warnings.warn("JSON-type files can still be written "
-                          "but are no longer writen by default.\n"
-                          "Write to HDF5 format for future compatibility.")
+        metrics_io.write_metric_file(metric_file, out_dict)
 
-            with open(metricsHDF5Filename, 'w') as outfile:
-                json.dump(out_dict, outfile, indent=4)
-        else:
-            if metricsHDF5Filename.split('.')[-1] != 'hdf5':
-                metricsHDF5Filename += '.hdf5'
-
-            with h5py.File(metricsHDF5Filename, 'w') as f:
-                header = f.create_group('Header')
-
-                if self.history != '':
-                    header['history'] = self.history
-
-                header['version'] = self.version_str
-
-                # Create group for metrics data in file
-                mgrp = f.create_group('Metrics')
-
-                for _name in out_dict:
-                    _ = mgrp.create_dataset(_name, data=out_dict[_name])
 
 # TODO: Make Metrics able to be turned on or off for a run.
 # code for running ant_metrics on a file
