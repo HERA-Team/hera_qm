@@ -11,9 +11,10 @@ import json
 import os
 import h5py
 import warnings
+import pyuvdata.tests as uvtest
 from hera_qm.data import DATA_PATH
 from hera_qm import metrics_io
-import pyuvdata.tests as uvtest
+import hera_qm.tests as qmtest
 from hera_qm.version import hera_qm_version_str
 
 
@@ -25,8 +26,30 @@ class test_class(object):
         pass
 
 
+def test_reds_list_to_dict_type():
+    """Test type returned is dict."""
+    test_list = [(1, 2), (3, 4)]
+    test_dict = metrics_io._reds_list_to_dict(test_list)
+    nt.assert_true(isinstance(test_dict, dict))
+
+
+def test_reds_dict_to_list_type():
+    """Test type returned is list."""
+    test_dict = {'0': [[0, 1], [1, 2]], '1': [[0, 2], [1, 3]]}
+    test_list = metrics_io._reds_dict_to_list(test_dict)
+    nt.assert_true(isinstance(test_list, list))
+
+
+def test_reds_list_to_dict_to_list_unchanged():
+    """Test list to dict to list conversion does not change input."""
+    test_list = [[(1, 2), (3, 4)]]
+    test_dict = metrics_io._reds_list_to_dict(test_list)
+    test_list2 = metrics_io._reds_dict_to_list(test_dict)
+    nt.assert_true(np.allclose(test_list, test_list2))
+
+
 def test_recursive_error_for_object_arrays():
-    """Test a TypeError is raised if dictionary items are np.arrays of objecsts."""
+    """Test a TypeError is raised if dictionary items are np.arrays of objects."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     path = '/'
     bad_dict = {'1': np.array(['123', 1, np.pi], dtype='object')}
@@ -67,7 +90,7 @@ def test_recursive_adds_numpy_array_to_h5file():
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
 
-        nt.assert_true(np.allclose(test_array, h5_test['0'].value))
+        nt.assert_true(np.allclose(test_array, h5_test["0"].value))
     os.remove(test_file)
 
 
@@ -76,10 +99,10 @@ def test_recursive_adds_nested_numpy_array_to_h5file():
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_array = np.arange(10)
     path = '/'
-    good_dict = {'0': {'1': test_array}}
+    good_dict = {'0': {1: test_array}}
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
-        nt.assert_true(np.allclose(test_array, h5_test['0/1'].value))
+        nt.assert_true(np.allclose(test_array, h5_test["0/1"].value))
     os.remove(test_file)
 
 
@@ -92,7 +115,7 @@ def test_recursive_adds_scalar_to_h5file():
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
 
-        nt.assert_equal(test_scalar, h5_test['0'].value)
+        nt.assert_equal(test_scalar, h5_test["0"].value)
     os.remove(test_file)
 
 
@@ -105,12 +128,12 @@ def test_recursive_adds_nested_scalar_to_h5file():
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
 
-        nt.assert_equal(test_scalar, h5_test['0/1'].value)
+        nt.assert_equal(test_scalar, h5_test["0/1"].value)
     os.remove(test_file)
 
 
 def test_write_metric_file_hdf5():
-    """Test that correct hdf4 structure created from write_metric_file."""
+    """Test that correct hdf5 structure created from write_metric_file."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_scalar = 'hello world'
     test_array = np.arange(10)
@@ -119,9 +142,9 @@ def test_write_metric_file_hdf5():
     metrics_io.write_metric_file(test_file, test_dict)
 
     with h5py.File(test_file, 'r') as test_h5:
-        nt.assert_equal(test_scalar, test_h5['/Metrics/0'].value)
-        nt.assert_equal(test_scalar, test_h5['Metrics/1/0'].value)
-        nt.assert_true(np.allclose(test_array, test_h5['Metrics/1/1'].value))
+        nt.assert_equal(test_scalar, test_h5["/Metrics/0"].value)
+        nt.assert_equal(test_scalar, test_h5["/Metrics/1/0"].value)
+        nt.assert_true(np.allclose(test_array, test_h5["Metrics/1/1"].value))
     os.remove(test_file)
 
 
@@ -145,11 +168,12 @@ def test_write_metric_warning_json():
     test_array = np.arange(10)
     test_dict = {'0': test_scalar, 1: {'0': test_scalar, '1': test_array}}
     warn_message = ["JSON-type files can still be written but are no longer "
-                    "writen by default.\n"
+                    "written by default.\n"
                     "Write to HDF5 format for future compatibility."]
     json_dict = uvtest.checkWarnings(metrics_io.write_metric_file,
                                      func_args=[json_file, test_dict],
-                                     category=UserWarning, nwarnings=1,
+                                     category=PendingDeprecationWarning,
+                                     nwarnings=1,
                                      message=warn_message)
     nt.assert_true(os.path.exists(json_file))
     os.remove(json_file)
@@ -171,7 +195,7 @@ def test_write_then_recursive_load_dict_to_group_no_nested_dicts():
 
 
 def test_write_then_recursive_load_dict_to_group_with_nested_dicts():
-    """Test recursive load can gather dictionary from a  nested group."""
+    """Test recursive load can gather dictionary from a nested group."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_scalar = 'hello world'
     path = '/'
@@ -195,7 +219,7 @@ def test_write_then_load_metric_file_hdf5():
     test_scalar = 'hello world'
     path = '/'
     good_dict = {'0': test_scalar, 'history': "this is a test",
-                 'version': hera_qm_version_str, '1': {'0': test_scalar}}
+                 'version': hera_qm_version_str, 'all_metrics': {'0': test_scalar}}
     metrics_io.write_metric_file(test_file, good_dict)
     read_dict = metrics_io.load_metric_file(test_file)
     for key in good_dict:
@@ -207,32 +231,112 @@ def test_write_then_load_metric_file_hdf5():
 
 
 def test_write_then_load_metric_warning_json_():
-    """Test the known warning is issued when writing to json."""
+    """Test the known warning is issued when writing then reading json."""
     json_file = os.path.join(DATA_PATH, 'test_output', 'test_save.json')
     test_scalar = "hello world"
     test_array = np.arange(10)
     test_dict = {'history': 'Test case', 'version': '0.0.0',
-                 '0': test_scalar, '1': {'0': str(test_scalar),
-                                         '1': test_array}}
+                 0: test_scalar, 1: {0: str(test_scalar),
+                                     1: test_array}}
+    warn_message = ["JSON-type files can still be written but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility.", ]
+    uvtest.checkWarnings(metrics_io.write_metric_file,
+                         func_args=[json_file, test_dict],
+                         category=PendingDeprecationWarning, nwarnings=1,
+                         message=warn_message)
+    nt.assert_true(os.path.exists(json_file))
+    # output_json = metrics_io.write_metric_file(json_file, test_dict)
     warn_message = ["JSON-type files can still be read but are no longer "
-                    "writen by default.\n"
+                    "written by default.\n"
                     "Write to HDF5 format for future compatibility.",
-                    "The key: 0 could not be parsed, added "
-                    "the value as a string"]
-    output_json = metrics_io.write_metric_file(json_file, test_dict)
+                    "The key: 0 has a value which could not be parsed, "
+                    "added the value as a string: hello world",
+                    "The key: 0 has a value which could not be parsed, "
+                    "added the value as a string: hello world"]
     json_dict = uvtest.checkWarnings(metrics_io.load_metric_file,
                                      func_args=[json_file],
-                                     category=UserWarning, nwarnings=2,
+                                     category=[PendingDeprecationWarning,
+                                               UserWarning, UserWarning],
+                                     nwarnings=3,
                                      message=warn_message)
-    for key in test_dict:
-        if isinstance(test_dict[key], dict):
-            for key1 in test_dict[key]:
-                if isinstance(test_dict[key][key1], np.ndarray):
-                    nt.assert_true(np.allclose(test_dict[key][key1],
-                                               json_dict[key][key1]))
-                else:
-                    nt.assert_equal(test_dict[key][key1], json_dict[key][key1])
-
-        else:
-            nt.assert_equal(test_dict[key], json_dict[key])
+    qmtest.recursive_compare_dicts(test_dict, json_dict)
     os.remove(json_file)
+
+
+def test_read_write_old_firstcal_json_files():
+    """Test the old firstcal json storage can be read and written to hdf5."""
+    json_infile = os.path.join(DATA_PATH, 'example_firstcal_metrics.json')
+    test_file = os.path.join(DATA_PATH, 'test_output',
+                             'test_firstcal_json_to_hdf5.h5')
+    warn_message = ["JSON-type files can still be read but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility.", ]
+    test_metrics = uvtest.checkWarnings(metrics_io.load_metric_file,
+                                        func_args=[json_infile],
+                                        category=PendingDeprecationWarning,
+                                        nwarnings=1,
+                                        message=warn_message)
+    metrics_io.write_metric_file(test_file, test_metrics)
+    test_metrics_in = metrics_io.load_metric_file(test_file)
+
+    test_metrics.pop('history', None)
+    test_metrics_in.pop('history', None)
+    qmtest.recursive_compare_dicts(test_metrics, test_metrics_in)
+    nt.assert_true(os.path.exists(test_file))
+    os.remove(test_file)
+
+
+def test_read_write_old_omnical_json_files():
+    """Test the old omnical json storage can be read and written to hdf5."""
+    json_infile = os.path.join(DATA_PATH, 'example_omnical_metrics.json')
+    test_file = os.path.join(DATA_PATH, 'test_output',
+                             'test_omnical_json_to_hdf5.h5')
+    warn_message = ["JSON-type files can still be read but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility.", ]
+    test_metrics = uvtest.checkWarnings(metrics_io.load_metric_file,
+                                        func_args=[json_infile],
+                                        category=PendingDeprecationWarning, nwarnings=1,
+                                        message=warn_message)
+    metrics_io.write_metric_file(test_file, test_metrics)
+    test_metrics_in = metrics_io.load_metric_file(test_file)
+    # The written hdf5 may have these keys that differ by design
+    # so ignore them.
+    test_metrics.pop('history', None)
+    test_metrics.pop('version', None)
+    test_metrics_in.pop('history', None)
+    test_metrics_in.pop('version', None)
+
+    qmtest.recursive_compare_dicts(test_metrics, test_metrics_in)
+    nt.assert_true(os.path.exists(test_file))
+    os.remove(test_file)
+
+
+def test_read_write_new_ant_json_files():
+    """Test the new ant_metric json storage can be read and written to hdf5."""
+    json_infile = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+    test_file = os.path.join(DATA_PATH, 'test_output',
+                             'test_ant_json_to_hdf5.h5')
+    warn_message = ["JSON-type files can still be read but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility.", ]
+    test_metrics = uvtest.checkWarnings(metrics_io.load_metric_file,
+                                        func_args=[json_infile],
+                                        category=PendingDeprecationWarning,
+                                        nwarnings=1,
+                                        message=warn_message)
+    metrics_io.write_metric_file(test_file, test_metrics)
+    test_metrics_in = metrics_io.load_metric_file(test_file)
+    # The written hdf5 may have these keys that differ by design
+    # so ignore them.
+    test_metrics.pop('history', None)
+    test_metrics.pop('version', None)
+    test_metrics_in.pop('history', None)
+    test_metrics_in.pop('version', None)
+    print('json:', test_metrics['reds'])
+    print('hdf5:', test_metrics_in['reds'])
+
+    qmtest.recursive_compare_dicts(test_metrics, test_metrics_in)
+    nt.assert_true(os.path.exists(test_file))
+    os.remove(test_file)
