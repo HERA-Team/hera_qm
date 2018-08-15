@@ -348,10 +348,7 @@ def test_lst_from_uv():
     uv = UVData()
     uv.read_uvfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvc.vis.uvfits'))
     lst = utils.lst_from_uv(uv)
-    print('uv.lst_array:', uv.lst_array)
-    print('computed lst:', lst)
-    print('diff: ', uv.lst_array - lst)
-    nt.assert_true(np.array_equal(uv.lst_array, lst))
+    nt.assert_true(np.allclose(uv.lst_array, lst))
 
 
 def test_lst_from_uv_errors():
