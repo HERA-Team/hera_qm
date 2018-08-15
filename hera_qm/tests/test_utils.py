@@ -276,3 +276,15 @@ def test_flags2waterfall_errors():
     uv.read_uvfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvc.vis.uvfits'))
     # Flag array must have same shape as uv.flag_array
     nt.assert_raises(ValueError, utils.flags2waterfall, uv, np.array([4, 5]))
+
+
+def test_lst_from_uv():
+    uv = UVData()
+    uv.read_uvfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvc.vis.uvfits'))
+    lst = utils.lst_from_uv(uv)
+    nt.assert_true(np.array_equal(uv.lst_array, lst))
+
+
+def test_lst_from_uv_errors():
+    # Argument must be UVData or UVCal
+    nt.assert_raises(ValueError, utils.lst_from_uv, 5)
