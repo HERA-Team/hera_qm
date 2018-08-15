@@ -55,11 +55,59 @@ def test_generate_fullpol_file_list():
     nt.assert_equal(fullpol_file_list, [])
 
 
-def test_get_metrics_ArgumentParser():
-    # raise error for requesting unknown type of parser
-    nt.assert_raises(AssertionError, utils.get_metrics_ArgumentParser, 'fake_method')
+def test_get_metrics_ArgumentParser_ant_metrics():
+    a = utils.get_metrics_ArgumentParser('ant_metrics')
+    # First try defaults - test a few of them
+    args = a.parse_args('')
+    nt.assert_equal(args.crossCut, 5.0)
+    nt.assert_equal(args.alwaysDeadCut, 10.0)
+    nt.assert_equal(args.metrics_path, '')
+    nt.assert_equal(args.verbose, True)
+    # try to set something
+    args = a.parse_args(['--extension', 'foo'])
+    nt.assert_equal(args.extension, 'foo')
 
-    # Test the delay_xrfi_run method
+
+def test_get_metrics_ArgumentParser_firstcal_metrics():
+    a = utils.get_metrics_ArgumentParser('firstcal_metrics')
+    # First try defaults - test a few of them
+    args = a.parse_args('')
+    nt.assert_equal(args.std_cut, 0.5)
+    nt.assert_equal(args.extension, '.firstcal_metrics.json')
+    nt.assert_equal(args.metrics_path, '')
+    # try to set something
+    args = a.parse_args(['--extension', 'foo'])
+    nt.assert_equal(args.extension, 'foo')
+
+
+def test_get_metrics_ArgumentParser_omnical_metrics():
+    a = utils.get_metrics_ArgumentParser('omnical_metrics')
+    # First try defaults - test a few of them
+    args = a.parse_args('')
+    nt.assert_equal(args.fc_files, None)
+    nt.assert_equal(args.phs_std_cut, 0.3)
+    nt.assert_equal(args.extension, '.omni_metrics.json')
+    nt.assert_equal(args.metrics_path, '')
+    # try to set something
+    args = a.parse_args(['--extension', 'foo'])
+    nt.assert_equal(args.extension, 'foo')
+
+
+def test_get_metrics_ArgumentParser_xrfi_run():
+    a = utils.get_metrics_ArgumentParser('xrfi_run')
+    # First try defaults - test a few of them
+    args = a.parse_args('')
+    nt.assert_equal(args.infile_format, 'miriad')
+    nt.assert_equal(args.summary_ext, '.flag_summary.npz')
+    nt.assert_equal(args.algorithm, 'xrfi_simple')
+    nt.assert_equal(args.nsig_df, 6.0)
+    nt.assert_equal(args.px_threshold, 0.2)
+    # try to set something
+    args = a.parse_args(['--px_threshold', '4.0'])
+    nt.assert_equal(args.px_threshold, 4.0)
+
+
+def test_get_metrics_ArgumentParser_delay_xrfi_run():
     a = utils.get_metrics_ArgumentParser('delay_xrfi_run')
     # First try defaults - test a few of them
     args = a.parse_args('')
@@ -73,6 +121,24 @@ def test_get_metrics_ArgumentParser():
     # try to set something
     args = a.parse_args(['--waterfalls', 'a,g'])
     nt.assert_equal(args.waterfalls, 'a,g')
+
+
+def test_get_metrics_ArgumentParser_xrfi_apply():
+    a = utils.get_metrics_ArgumentParser('xrfi_apply')
+    # First try defaults - test a few of them
+    args = a.parse_args('')
+    nt.assert_equal(args.infile_format, 'miriad')
+    nt.assert_equal(args.extension, 'R')
+    nt.assert_equal(args.flag_file, None)
+    nt.assert_equal(args.output_npz, True)
+    # try to set something
+    args = a.parse_args(['--waterfalls', 'a,g'])
+    nt.assert_equal(args.waterfalls, 'a,g')
+
+
+def test_get_metrics_ArgumentParser_error():
+    # raise error for requesting unknown type of parser
+    nt.assert_raises(AssertionError, utils.get_metrics_ArgumentParser, 'fake_method')
 
 
 def test_metrics2mc():
