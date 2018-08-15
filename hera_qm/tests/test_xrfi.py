@@ -197,6 +197,22 @@ class TestPreProcessingFunctions():
         ans = np.loadtxt(ans_fn)
         nt.assert_true(np.allclose(ans, dm))
 
+        # use complex data
+        data = np.zeros((self.size, self.size), dtype=np.complex)
+        for i in range(data.shape[1]):
+            data[:, i] = (i * np.ones_like(data[:, i], dtype=np.float)
+                          + 1j * i * np.ones_like(data[:, i], dtype=np.float))
+        # run detrend_medfilt
+        Kt = 58
+        Kf = 58
+        dm = xrfi.detrend_medfilt(data, Kt=Kt, Kf=Kf)
+
+        # read in "answer" array
+        # this is output that corresponds to self.size=100, Kt=58, Kf=58
+        ans_fn = os.path.join(DATA_PATH, 'test_detrend_medfilt_complex_ans.txt')
+        ans = np.genfromtxt(ans_fn, dtype=np.complex)
+        nt.assert_true(np.allclose(ans, dm))
+
         # Test error when wrong dimensions are passed
         nt.assert_raises(ValueError, xrfi.detrend_medfilt, np.ones((5, 4, 3)))
 
@@ -227,16 +243,15 @@ class TestFlaggingFunctions():
         # test flagging channels adjacent to fully flagged ones
         uvm.metric_array = np.zeros_like(uvm.metric_array)
         uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
-        uvm.metric_array[:, 0, 1, 0] = 1.
-        uvf.flag_array[:, 0, 0, 0] = True
+        uvm.metric_array[:, :, 1, :] = 1.
+        uvf.flag_array[:, :, 0, :] = True
 
         # run watershed flag
         xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_f=0.5, inplace=True)
 
         # check answer
         flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
-        flag_array[:, 0, 0, 0] = True
-        flag_array[:, 0, 1, 0] = True
+        flag_array[:, :, :2, :] = True
         nt.assert_true(np.allclose(uvf.flag_array, flag_array))
 
         # test flagging times adjacent to fully flagged ones
@@ -257,6 +272,102 @@ class TestFlaggingFunctions():
         flag_array[inds2, 0, :, 0] = True
         nt.assert_true(np.allclose(uvf.flag_array, flag_array))
 
+        # test antenna type objects
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvm = UVFlag(uvc, history='I made this')
+        uvf = UVFlag(uvc, mode='flag')
+
+        # set metric and flag arrays to specific values
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvm.metric_array[0, 0, 0, 1, 0] = 7.
+        uvf.flag_array[0, 0, 0, 0, 0] = True
+
+        # run watershed flag
+        xrfi.watershed_flag(uvm, uvf, nsig_p=2., inplace=True)
+
+        # check answer
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[0, 0, 0, :2, 0] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test flagging channels adjacent to fully flagged ones
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvm.metric_array[:, :, 1, :, :] = 1.
+        uvf.flag_array[:, :, 0, :, :] = True
+
+        # run watershed flag
+        uvf2 = xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_f=0.5, inplace=False)
+
+        # check answer
+        flag_array = np.zeros_like(uvf2.flag_array, dtype=np.bool)
+        flag_array[:, :, :2, :, :] = True
+        nt.assert_true(np.allclose(uvf2.flag_array, flag_array))
+        del(uvf2)
+
+        # test flagging times adjacent to fully flagged ones
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvm.metric_array[:, :, :, 1, :] = 1.
+        uvf.flag_array[:, :, :, 0, :] = True
+
+        # run watershed flag
+        xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_t=0.5, inplace=True)
+
+        # check answer
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[:, :, :, :2, :] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test waterfall types
+        uv = UVData()
+        uv.read_miriad(test_d_file)
+        uvm = UVFlag(uv, history='I made this', waterfall=True)
+        uvf = UVFlag(uv, mode='flag', waterfall=True)
+
+        # set metric and flag arrays to specific values
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvm.metric_array[0, 1, 0] = 7.
+        uvf.flag_array[0, 0, 0] = True
+
+        # run watershed flag
+        xrfi.watershed_flag(uvm, uvf, nsig_p=2., inplace=True)
+
+        # check answer
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[0, :2, 0] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test flagging channels adjacent to fully flagged ones
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvm.metric_array[:, 1, :] = 1.
+        uvf.flag_array[:, 0, :] = True
+
+        # run watershed flag
+        xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_f=0.5, inplace=True)
+
+        # check answer
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[:, :2, :] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test flagging times adjacent to fully flagged ones
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvm.metric_array[1, :, :] = 1.
+        uvf.flag_array[0, :, :] = True
+
+        # run watershed flag
+        xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_t=0.5, inplace=True)
+
+        # check answer
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[:2, :, :] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
 
     def test_watershed_flag_errors(self):
         # setup
@@ -270,6 +381,13 @@ class TestFlaggingFunctions():
         nt.assert_raises(ValueError, xrfi.watershed_flag, 1, 2)
         nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, 2)
         nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, uvf2)
+
+        # use a bogus average_method
+        nt.assert_raises(KeyError, xrfi.watershed_flag, uvm, uvf, avg_method='blah')
+
+        # set the UVFlag object to have a bogus type
+        uvm.type = 'blah'
+        nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, uvf)
 
     def test_ws_flag_waterfall(self):
         # Do a test, add more tests as needed

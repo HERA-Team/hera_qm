@@ -189,8 +189,6 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     Returns:
         f: array of outlier significance metric. Same type and size as d.
     """
-    if d.ndim != 2:
-        raise ValueError('Input to detrend_medfilt must be 2D array.')
     # Delay import so scipy is not required for any use of hera_qm
     from scipy.signal import medfilt2d
 
@@ -326,7 +324,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
         if nsig_f is not None:
             # Channel watershed
             d = avg_f(marr, axis=(0, 2), weights=warr)
-            f = np.app(farr, axis=(0, 2))
+            f = np.all(farr, axis=(0, 2))
             farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, -1, 1)
         if nsig_t is not None:
             # Time watershed
