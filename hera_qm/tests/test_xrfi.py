@@ -595,7 +595,7 @@ class TestWrappers():
             shutil.rmtree(dest_file)
         if os.path.exists(dest_flag):
             os.remove(dest_flag)
-        xrfi.xrfi_h1c_apply(test_d_file, history, xrfi_path=xrfi_path,
+        xrfi.xrfi_h1c_apply([test_d_file], history, xrfi_path=xrfi_path,
                             flag_file=test_f_file_flags, waterfalls=waterfalls)
         nt.assert_true(os.path.exists(dest_file))
         nt.assert_true(os.path.exists(dest_flag))
@@ -610,7 +610,7 @@ class TestWrappers():
         nt.assert_true(os.path.exists(dest_file))
         os.remove(dest_file)
 
-    def test_xrfi_apply_errors(self):
+    def test_xrfi_h1c_apply_errors(self):
         xrfi_path = os.path.join(DATA_PATH, 'test_output')
         wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.h5')
         wf_file2 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.x.flags.h5')
@@ -628,3 +628,9 @@ class TestWrappers():
 
         # Outfile error
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, outfile_format='bla')
+
+        dest_file = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R.uvfits')
+        if not os.path.exists(dest_file):
+            open(dest_file, 'a').close()
+        nt.assert_raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, xrfi_path=xrfi_path,
+                         flag_file=test_f_file_flags, outfile_format='uvfits', extension='R.uvfits')
