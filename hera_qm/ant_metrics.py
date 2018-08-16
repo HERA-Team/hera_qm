@@ -31,30 +31,61 @@ def get_ant_metrics_dict():
                     and descriptions as values.
     """
     metrics_dict = {'ant_metrics_meanVij': 'Mean of the absolute value of all '
-                    'visibilities associated with an antenna.',
-                    'ant_metrics_meanVijXPol': 'Ratio of mean cross-pol visibilities '
-                    'to mean same-pol visibilities: (Vxy+Vyx)/(Vxx+Vyy).',
-                    'ant_metrics_redCorr': 'Extent to which baselines involving an '
-                    'antenna do not correlate with others they are nominmally redundant with.',
-                    'ant_metrics_redCorrXPol': 'Mean correlation ratio between '
-                    'redundant visibilities and singlely-polarization flipped ones.',
-                    'ant_metrics_mod_z_scores_meanVij': 'Modified z-score of the mean of the '
-                    'absolute value of all visibilities associated with an antenna.',
-                    'ant_metrics_mod_z_scores_meanVijXPol': 'Modified z-score of the ratio '
-                    'of mean cross-pol visibilities to mean same-pol visibilities: '
-                    '(Vxy+Vyx)/(Vxx+Vyy).',
-                    'ant_metrics_mod_z_scores_redCorr': 'Modified z-score of the extent to '
-                    'which baselines involving an antenna do not correlate with others '
-                    'they are nominally redundant with.',
-                    'ant_metrics_mod_z_scores_redCorrXPol': 'Modified z-score of the mean '
-                    'correlation ratio between redundant visibilities and singlely-'
-                    'polarization flipped ones.',
-                    'ant_metrics_crossed_ants': 'Antennas deemed to be cross-polarized by '
-                    'hera_qm.ant_metrics.',
-                    'ant_metrics_removal_iteration': 'hera_qm.ant_metrics iteration number in '
-                    'which the antenna was removed.',
-                    'ant_metrics_xants': 'Antennas deemed bad by hera_qm.ant_metrics.',
-                    'ant_metrics_dead_ants': 'Antennas deemed to be dead by hera_qm.ant_metrics.'}
+                                           'visibilities associated with an '
+                                           'antenna.',
+                    'ant_metrics_meanVijXPol': 'Ratio of mean cross-pol '
+                                               'visibilities to mean same-pol '
+                                               'visibilities: '
+                                               '(Vxy+Vyx)/(Vxx+Vyy).',
+                    'ant_metrics_redCorr': 'Extent to which baselines '
+                                           'involving an antenna do not '
+                                           'correlate with others they are '
+                                           'nominmally redundant with.',
+                    'ant_metrics_redCorrXPol': 'Mean correlation ratio between'
+                                               'redundant visibilities and '
+                                               'singlely-polarization '
+                                               'flipped ones.',
+                    'ant_metrics_mod_z_scores_meanVij': 'Modified z-score of '
+                                                        'the mean of the '
+                                                        'absolute value of '
+                                                        'all visibilities '
+                                                        'associated with an '
+                                                        'antenna.',
+                    'ant_metrics_mod_z_scores_meanVijXPol': 'Modified z-score '
+                                                            'of the ratio of '
+                                                            'mean cross-pol '
+                                                            'visibilities '
+                                                            'to mean same-pol '
+                                                            'visibilities: '
+                                                            '(Vxy+Vyx)/'
+                                                            '(Vxx+Vyy).',
+                    'ant_metrics_mod_z_scores_redCorr': 'Modified z-score of '
+                                                        'the extent to which '
+                                                        'baselines involving '
+                                                        'an antenna do not '
+                                                        'correlate with others'
+                                                        ' they are nominally '
+                                                        'redundant with.',
+                    'ant_metrics_mod_z_scores_redCorrXPol': 'Modified z-score '
+                                                            'of the mean '
+                                                            'correlation ratio'
+                                                            ' between '
+                                                            'redundant '
+                                                            'visibilities and '
+                                                            'singlely-'
+                                                            'polarization '
+                                                            'flipped ones.',
+                    'ant_metrics_crossed_ants': 'Antennas deemed to be '
+                                                'cross-polarized by '
+                                                'hera_qm.ant_metrics.',
+                    'ant_metrics_removal_iteration': 'hera_qm.ant_metrics '
+                                                     'iteration number in '
+                                                     'which the antenna '
+                                                     'was removed.',
+                    'ant_metrics_xants': 'Antennas deemed bad by '
+                                         'hera_qm.ant_metrics.',
+                    'ant_metrics_dead_ants': 'Antennas deemed to be dead by '
+                                             'hera_qm.ant_metrics.'}
     return metrics_dict
 
 #######################################################################
@@ -65,8 +96,10 @@ def get_ant_metrics_dict():
 def per_antenna_modified_z_scores(metric):
     """Compute modified Z-Score over antennas for each antenna polarization.
 
-    For a given metric, stored as a (ant,antpol) dictonary, computes the per-pol modified z-score
-    for each antenna, which is the metrics, minus the median, divided by the median absolute deviation.
+    For a given metric, stored as a (ant,antpol) dictonary,
+    computes the per-pol modified z-score for each antenna,
+    which is the metrics, minus the median,
+    divided by the median absolute deviation.
     """
     zscores = {}
     antpols = set([key[1] for key in metric])
@@ -88,18 +121,21 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
     """Calculate how an antennas's average |Vij| deviates from others.
 
     Arguments:
-    data -- data for all polarizations in a format that can support data[i,j,pol]
+    data -- data for all polarizations
+            format that must support data[i,j,pol]
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
     bls -- List of tuples of antenna pairs.
-    xants -- list of antennas in the (ant,antpol) format that should be ignored.
+    xants -- list of antennas ithat should be ignored.
+             format: (ant,antpol)
     rawMetric -- return the raw mean Vij metric instead of the modified z-score
 
     Returns:
-    meanMetrics -- a dictionary indexed by (ant,antpol) of the modified z-score of the mean of the
-    absolute value of all visibilities associated with an antenna. Very small or very large numbers
-    are probably bad antennas.
+    meanMetrics -- a dictionary indexed by (ant,antpol) of the modified z-score
+                   of the mean of the absolute value of all visibilities
+                   associated with an antenna.
+                   Very small or very large numbers are probably bad antennas.
     """
     absVijMean = {(ant, antpol): 0.0 for ant in ants for antpol in antpols if
                   (ant, antpol) not in xants}
@@ -128,35 +164,44 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
 
 
 def compute_median_auto_power_dict(data, pols, reds):
-    """Compute the median over frequency of the visibility squared, averaged over time."""
+    """Compute the frequency median of the time averaged visibility squared."""
     autoPower = {}
     for pol in pols:
         for bls in reds:
             for (i, j) in bls:
-                autoPower[i, j, pol] = np.median(np.mean(np.abs(data[i, j, pol])**2, axis=0))
+                tmp_power = np.abs(data[i, j, pol])**2
+                autoPower[i, j, pol] = np.median(np.mean(tmp_power, axis=0))
     return autoPower
 
 
 def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
                      rawMetric=False, crossPol=False):
-    """Calculate the modified Z-Score over all redundant groups for each antenna.
+    """Calculate modified Z-Score over all redundant groups for each antenna.
 
-    Calculates the extent to which baselines involving an antenna do not correlate
-    with others they are nominmally redundant with.
+    Calculates the extent to which baselines involving an antenna
+    do not correlate with others they are nominmally redundant with.
+
     Arguments:
-    data -- data for all polarizations in a format that can support data[i,j,pol]
+    data -- data for all polarizations
+            format must support data[i,j,pol]
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
-    reds -- List of lists of tuples of antenna numbers that make up redundant baseline groups.
-    xants -- list of antennas in the (ant,antpol) format that should be ignored.
-    rawMetric -- return the raw power correlations instead of the modified z-score
-    crossPol -- return results only when the two visibility polarizations differ by a single flip
+    reds -- List of lists of tuples of antenna numbers
+            that make up redundant baseline groups.
+    xants -- list of antennas that should be ignored.
+             format: (ant,antpol)
+    rawMetric -- return the raw power correlations
+                 instead of the modified z-score
+    crossPol -- return results only when the two visibility polarizations
+                differ by a single flip
 
     Returns:
-    powerRedMetric -- a dictionary indexed by (ant,antpol) of the modified z-scores of the mean
-    power correlations inside redundant baseline groups that the antenna participates in.
-    Very small numbers are probably bad antennas.
+    powerRedMetric -- Dictionary indexed by (ant,antpol)
+                      of the modified z-scores of the mean power correlations
+                      inside redundant baseline groups
+                      associated with each antenna.
+                      Very small numbers are probably bad antennas.
     """
     # Compute power correlations and assign them to each antenna
     autoPower = compute_median_auto_power_dict(data, pols, reds)
@@ -168,27 +213,34 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
             iscrossed_i = (pol0[0] != pol1[0])
             iscrossed_j = (pol0[1] != pol1[1])
             onlyOnePolCrossed = (iscrossed_i ^ iscrossed_j)
-            # This function can instead record correlations for antennas whose counterpart are pol-swapped
-            if (not crossPol and (pol0 is pol1)) or (crossPol and onlyOnePolCrossed):
+            # This function can instead record correlations
+            # for antennas whose counterpart are pol-swapped
+            if ((not crossPol and (pol0 is pol1))
+                    or (crossPol and onlyOnePolCrossed)):
                 for bls in reds:
                     for n, (ant0_i, ant0_j) in enumerate(bls):
                         data0 = data[ant0_i, ant0_j, pol0]
                         for (ant1_i, ant1_j) in bls[n + 1:]:
                             data1 = data[ant1_i, ant1_j, pol1]
-                            corr = np.median(np.abs(np.mean(data0 * data1.conj(),
+                            corr = np.median(np.abs(np.mean(data0
+                                                            * data1.conj(),
                                                             axis=0)))
                             corr /= np.sqrt(autoPower[ant0_i, ant0_j, pol0] *
                                             autoPower[ant1_i, ant1_j, pol1])
-                            antsInvolved = [(ant0_i, pol0[0]), (ant0_j, pol0[1]),
-                                            (ant1_i, pol1[0]), (ant1_j, pol1[1])]
-                            if not np.any([(ant, antpol) in xants for ant, antpol
-                                           in antsInvolved]):
-                                # Only record the crossed antenna if i or j is crossed
+                            antsInvolved = [(ant0_i, pol0[0]),
+                                            (ant0_j, pol0[1]),
+                                            (ant1_i, pol1[0]),
+                                            (ant1_j, pol1[1])]
+                            if not np.any([(ant, antpol) in xants
+                                           for ant, antpol in antsInvolved]):
+                                # Only record the crossed antenna
+                                # if i or j is crossed
                                 if crossPol and iscrossed_i:
                                     antsInvolved = [(ant0_i, pol0[0]),
                                                     (ant1_i, pol1[0])]
                                 elif crossPol and iscrossed_j:
-                                    antsInvolved = [(ant0_j, pol0[1]), (ant1_j, pol1[1])]
+                                    antsInvolved = [(ant0_j, pol0[1]),
+                                                    (ant1_j, pol1[1])]
                                 for ant, antpol in antsInvolved:
                                     antCorrs[(ant, antpol)] += corr
                                     antCounts[(ant, antpol)] += 1
@@ -207,9 +259,14 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
 
 
 def exclude_partially_excluded_ants(antpols, xants):
-    """Create list of excluded antenna polarizations from list of excluded antennas.
+    """Create list of excluded antenna polarizations.
 
-    Takes a list of excluded antennas and adds on all polarizations of those antennas.
+    Arguments:
+        antpols: Single antenna polarizations to add to excluded Antennas
+        xants: List of exluded antennas
+
+    Retruns:
+        xantSet: List of all antenna-polarization combinations to exclude.
     """
     xantSet = set(xants)
     for xant in xants:
@@ -222,14 +279,17 @@ def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics,
                             xants=[]):
     """Compute ratio of two metrics summed over polarizations.
 
-    Takes the ratio of two antenna metrics, summed over both polarizations, and creates a new
+    Takes the ratio of two antenna metrics, summed over both polarizations,
+    and creates a new
     antenna metric with the same value in both polarizations for each antenna.
     """
     crossPolRatio = {}
     for ant in ants:
         if np.all([(ant, antpol) not in xants for antpol in antpols]):
-            crossSum = np.sum([crossMetrics[(ant, antpol)] for antpol in antpols])
-            sameSum = np.sum([sameMetrics[(ant, antpol)] for antpol in antpols])
+            crossSum = np.sum([crossMetrics[(ant, antpol)]
+                               for antpol in antpols])
+            sameSum = np.sum([sameMetrics[(ant, antpol)]
+                              for antpol in antpols])
             for antpol in antpols:
                 crossPolRatio[(ant, antpol)] = crossSum / sameSum
     return crossPolRatio
@@ -239,23 +299,30 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
                                rawMetric=False):
     """Calculate the ratio of cross-pol visibilities to same-pol visibilities.
 
-    Find which antennas are outliers based on the ratio of mean cross-pol visibilities
-    to mean same-pol visibilities: (Vxy+Vyx)/(Vxx+Vyy).
+    Find which antennas are outliers based on the
+    ratio of mean cross-pol visibilities to mean same-pol visibilities:
+    (Vxy+Vyx)/(Vxx+Vyy).
 
     Arguments:
-    data -- data for all polarizations in a format that can support data[i,j,pol]
+    data -- data for all polarizations
+            format must support data[i,j,pol]
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
     bls -- List of tuples of antenna pairs.
-    xants -- list of antennas in the (ant,antpol) format that should be ignored. If, e.g., (81,'y')
-            is excluded, (81,'x') cannot be identified as cross-polarized and will be excluded.
+    xants -- list of antennas  that should be ignored.
+             format (ant,antpol) format
+             e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
+                    as cross-polarized and will be excluded.
     rawMetric -- return the raw power ratio instead of the modified z-score
 
     Returns:
-    mean_Vij_cross_pol_metrics -- a dictionary indexed by (ant,antpol) of the modified z-scores of the
-            ratio of mean visibilities, (Vxy+Vyx)/(Vxx+Vyy). Results duplicated in both antpols.
-            Very large values are probably cross-polarized.
+    mean_Vij_cross_pol_metrics -- Dictionary indexed by (ant,antpol)
+                                  The modified z-scores of the
+                                  ratio of mean visibilities,
+                                  (Vxy+Vyx)/(Vxx+Vyy).
+                                  Results duplicated in both antpols.
+                                  Very large values are likely cross-polarized.
     """
     # Compute metrics and cross pols only and and same pols only
     samePols = [pol for pol in pols if pol[0] == pol[1]]
@@ -266,9 +333,11 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
     meanVijMetricsCross = mean_Vij_metrics(data, crossPols, antpols, ants, bls,
                                            xants=full_xants, rawMetric=True)
 
-    # Compute the ratio of the cross/same metrics, saving the same value in each antpol
+    # Compute the ratio of the cross/same metrics,
+    # saving the same value in each antpol
     crossPolRatio = antpol_metric_sum_ratio(ants, antpols, meanVijMetricsCross,
-                                            meanVijMetricsSame, xants=full_xants)
+                                            meanVijMetricsSame,
+                                            xants=full_xants)
     if rawMetric:
         return crossPolRatio
     else:
@@ -277,26 +346,31 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
 
 def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[],
                                rawMetric=False):
-    """Calculate modified Z-Score over redundant groups assuming cross polarization.
+    """Calculate modified Z-Score over redundant groups; assume cross-polarized.
 
     Find which antennas are part of visibilities that are significantly better
     correlated with polarization-flipped visibilities in a redundant groupself.
     Returns the modified z-score.
 
     Arguments:
-    data -- data for all polarizations in a format that can support data[i,j,pol]
+    data -- data for all polarizations format must support data[i,j,pol]
     pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols -- List of antenna polarizations (e.g. ['x', 'y'])
     ants -- List of all antenna indices.
-    reds -- List of lists of tuples of antenna numbers that make up redundant baseline groups.
-    xants -- list of antennas in the (ant,antpol) format that should be ignored. If, e.g., (81,'y')
-            is excluded, (81,'x') cannot be identified as cross-polarized and will be excluded.
-    rawMetric -- return the raw correlation ratio instead of the modified z-score
+    reds -- List of lists of tuples of antenna numbers
+            that make up redundant baseline groups.
+    xants -- list of antennas  that should be ignored.
+             format (ant,antpol) format
+             e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
+                    as cross-polarized and will be excluded.
+    rawMetric -- return the raw power ratio instead of the modified z-score
 
     Returns:
-    redCorrCrossPolMetrics -- a dictionary indexed by (ant,antpol) of the modified z-scores of the
-            mean correlation ratio between redundant visibilities and singlely-polarization flipped
-            ones. Very large values are probably cross-polarized.
+    redCorrCrossPolMetrics -- Dictionary indexed by (ant,antpol)
+                              The modified z-scores of the mean correlation
+                              ratio between redundant visibilities
+                              and singlely-polarization flipped ones.
+                              Very large values are probably cross-polarized.
     """
     # Compute metrics for singly flipped pols and just same pols
     full_xants = exclude_partially_excluded_ants(antpols, xants)
@@ -311,7 +385,8 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[],
                                            rawMetric=True,
                                            crossPol=True)
 
-    # Compute the ratio of the cross/same metrics, saving the same value in each antpol
+    # Compute the ratio of the cross/same metrics
+    # saving the same value in each antpol
     crossPolRatio = antpol_metric_sum_ratio(ants, antpols,
                                             redCorrMetricsCross,
                                             redCorrMetricsSame,

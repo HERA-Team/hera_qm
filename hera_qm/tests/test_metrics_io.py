@@ -297,7 +297,8 @@ def test_read_write_old_omnical_json_files():
                     "Write to HDF5 format for future compatibility.", ]
     test_metrics = uvtest.checkWarnings(metrics_io.load_metric_file,
                                         func_args=[json_infile],
-                                        category=PendingDeprecationWarning, nwarnings=1,
+                                        category=PendingDeprecationWarning,
+                                        nwarnings=1,
                                         message=warn_message)
     metrics_io.write_metric_file(test_file, test_metrics)
     test_metrics_in = metrics_io.load_metric_file(test_file)
