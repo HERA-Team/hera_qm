@@ -422,8 +422,89 @@ class TestFlaggingFunctions():
         nt.assert_raises(ValueError, xrfi._ws_flag_waterfall, d3, f3)
 
     def test_flag(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # setup
+        uv = UVData()
+        uv.read_miriad(test_d_file)
+        uvm = UVFlag(uv, history='I made this')
+
+        # initialize array with specific values
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvm.metric_array[0, 0, 0, 0] = 7.
+        uvf = xrfi.flag(uvm, nsig_p=6.)
+        nt.assert_true(uvf.mode == 'flag')
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[0, 0, 0, 0] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test channel flagging in baseline type
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvm.metric_array[:, :, 0, :] = 7.
+        uvm.metric_array[:, :, 1, :] = 3.
+        uvf = xrfi.flag(uvm, nsig_p=6., nsig_f=2.)
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[:, :, :2, :] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test time flagging in baseline type
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        times = np.unique(uvm.time_array)
+        inds1 = np.where(uvm.time_array == times[0])[0]
+        inds2 = np.where(uvm.time_array == times[1])[0]
+        uvm.metric_array[inds1, :, :, :] = 7.
+        uvm.metric_array[inds2, :, :, :] = 3.
+        uvf = xrfi.flag(uvm, nsig_p=6., nsig_t=2.)
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[inds1, :, :, :] = True
+        flag_array[inds2, :, :, :] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test channel flagging in antenna type
+        uv = UVCal()
+        uv.read_calfits(test_c_file)
+        uvm = UVFlag(uv, history='I made this')
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvm.metric_array[:, :, 0, :, :] = 7.
+        uvm.metric_array[:, :, 1, :, :] = 3.
+        uvf = xrfi.flag(uvm, nsig_p=7., nsig_f=2.)
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[:, :, :2, :, :] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test time flagging in antenna type
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvm.metric_array[:, :, :, 0, :] = 7.
+        uvm.metric_array[:, :, :, 1, :] = 3.
+        uvf = xrfi.flag(uvm, nsig_p=6., nsig_t=2.)
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[:, :, :, :2, :] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test channel flagging in waterfall type
+        uv = UVData()
+        uv.read_miriad(test_d_file)
+        uvm = UVFlag(uv, history='I made this', waterfall=True)
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvm.metric_array[:, 0, :] = 7.
+        uvm.metric_array[:, 1, :] = 3.
+        uvf = xrfi.flag(uvm, nsig_p=6., nsig_f=2.)
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[:, :2, :] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # test time flagging in waterfall type
+        uvm.metric_array = np.zeros_like(uvm.metric_array)
+        uvm.metric_array[0, :, :] = 7.
+        uvm.metric_array[1, :, :] = 3.
+        uvf = xrfi.flag(uvm, nsig_p=6., nsig_t=2.)
+        flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        flag_array[:2, :, :] = True
+        nt.assert_true(np.allclose(uvf.flag_array, flag_array))
+
+        # catch errors
+        nt.assert_raises(ValueError, xrfi.flag, 2)
+        nt.assert_raises(KeyError, xrfi.flag, uvm, avg_method='blah')
+        uvm.type = 'blah'
+        nt.assert_raises(ValueError, xrfi.flag, uvm)
 
     def test_unflag(self):
         # Do a test, add more tests as needed
