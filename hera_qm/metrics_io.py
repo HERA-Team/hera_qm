@@ -5,7 +5,7 @@
 
 from __future__ import print_function, division, absolute_import
 
-from builtins import range, map
+from six.moves import range, map
 import json
 import os
 import h5py
