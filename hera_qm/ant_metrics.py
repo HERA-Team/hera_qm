@@ -656,14 +656,36 @@ class AntennaMetrics():
 
 # TODO: Make Metrics able to be turned on or off for a run.
 # code for running ant_metrics on a file
-def ant_metrics_run(files, args, history):
+def ant_metrics_run(files, pol=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
+                    deadCut=5.0, alwaysDeatCut=10.0, metrics_path='',
+                    extension='.ant_metrics.hdf5', vis_format='miriad',
+                    verbose=True, history):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
     Args:
-       files -- a list of files to run ant metrics on.
-                Can be any of the 4 polarizations
-       args -- parsed arguments via argparse.ArgumentParser.parse_args
+        files: List of files to run ant metrics on.
+               Can be any of the 4 polarizations
+        pol: List of polarizations to perform metrics over.
+             Allowed polarizations: 'xx', 'yy', 'xy', 'yx'
+             Default: ['xx', 'yy', 'xy', 'yx']
+        crossCut: Modified Z-Score limit to cut cross-polarized antennas.
+                  Default: 5.0
+        deadCut: Modifized Z-Score limit to cut dead antennas.
+                 Default: 5.0
+        alwaysDeadCut: Modified Z-Score limit for antennas that are definitely dead.
+                       Antennas with above this limit are thrown away before iterative flagging.
+                       Default: 10.0
+        metrics_path: String path to directory to story output metric.
+                      Default: same directy as input data files.
+        extension: File extension to add to output files.
+                   Default: ant_metrics.hdf5
+        vis_format: File format of input visibility data.
+                    Supports: 'miriad','uvfits', 'fhd', 'ms' (see pyuvdata docs)
+                    Default: 'miriad'
+        history: The history the add to metrics.
+                 Default
+        verbose: If True print out statements during iterative flagging
     Return:
        None
 
