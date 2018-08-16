@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2018 the HERA Project
 # Licensed under the MIT License
+"""Tests for the antenna_metrics module."""
 
 from __future__ import print_function
 import unittest
@@ -23,7 +24,7 @@ import hera_qm.tests as qmtest
 
 
 def fake_data():
-
+    """Generate fake data with known values."""
     data = {}
     for bl in [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]:
         data[bl] = {}
@@ -101,9 +102,10 @@ class TestLowLevelFunctions(unittest.TestCase):
                 self.assertAlmostEqual(val, red_corr[key], places=3)
         zs = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
                                           ants, self.reds)
-        ref = {(0, 'x'): -1.445, (0, 'y'): -0.516, (1, 'x'): 1.088, (1, 'y'): -0.833,
-               (2, 'x'): -0.261, (2, 'y'): 6.033, (3, 'x'): 0.261, (3, 'y'): 0.516,
-               (99, 'x'): np.NaN, (99, 'y'): np.NaN}
+        ref = {(0, 'x'): -1.445, (0, 'y'): -0.516, (1, 'x'): 1.088,
+               (1, 'y'): -0.833, (2, 'x'): -0.261, (2, 'y'): 6.033,
+               (3, 'x'): 0.261, (3, 'y'): 0.516, (99, 'x'): np.NaN,
+               (99, 'y'): np.NaN}
         for (key, val) in ref.items():
             if np.isnan(val):
                 self.assertTrue(np.isnan(zs[key]))
@@ -188,7 +190,7 @@ class TestLowLevelFunctions(unittest.TestCase):
             testp = np.median(np.mean(np.abs(self.data.get_data(*key))**2,
                                       axis=0))
             self.assertEqual(p, testp)
-        for key in self.data:
+        for key in list(self.data.keys()):
                 self.assertIn((key[0], key[1], key[2]), power)
 
     def test_load_antenna_metrics(self):
