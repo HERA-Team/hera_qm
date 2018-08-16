@@ -96,10 +96,14 @@ def get_ant_metrics_dict():
 def per_antenna_modified_z_scores(metric):
     """Compute modified Z-Score over antennas for each antenna polarization.
 
-    For a given metric, stored as a (ant,antpol) dictonary,
-    computes the per-pol modified z-score for each antenna,
-    which is the metrics, minus the median,
-    divided by the median absolute deviation.
+
+    Computes the per-pol modified z-score of the given metric dictionary for each antenna.
+
+    modified Z-scor = 0.6745 (metric - median(all_metrics))/ median_absoulte_deviation
+        pass
+    Argument:
+        metric: Dictionary of metric data to compute z-score
+                keys are expected to have form: (ant, antpol)
     """
     zscores = {}
     antpols = set([key[1] for key in metric])
@@ -121,21 +125,20 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
     """Calculate how an antennas's average |Vij| deviates from others.
 
     Arguments:
-    data -- data for all polarizations
-            format that must support data[i,j,pol]
-    pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols -- List of antenna polarizations (e.g. ['x', 'y'])
-    ants -- List of all antenna indices.
-    bls -- List of tuples of antenna pairs.
-    xants -- list of antennas ithat should be ignored.
-             format: (ant,antpol)
-    rawMetric -- return the raw mean Vij metric instead of the modified z-score
+        data: data for all polarizations
+                format that must support data[i,j,pol]
+        pols : List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
+        antpols: List of antenna polarizations (e.g. ['x', 'y'])
+        ants: List of all antenna indices.
+        bls: List of tuples of antenna pairs.
+        xants: List of antennas ithat should be ignored.
+               format: (ant,antpol)
+        rawMetric:return the raw mean Vij metric instead of the modified z-score
 
     Returns:
-    meanMetrics -- a dictionary indexed by (ant,antpol) of the modified z-score
-                   of the mean of the absolute value of all visibilities
-                   associated with an antenna.
-                   Very small or very large numbers are probably bad antennas.
+        meanMetrics: Dictionary indexed by (ant,antpol) of the modified z-score
+                     of the mean of the absolute value of all visibilities associated with an antenna.
+                     Very small or very large numbers are probably bad antennas.
     """
     absVijMean = {(ant, antpol): 0.0 for ant in ants for antpol in antpols if
                   (ant, antpol) not in xants}
@@ -164,7 +167,19 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
 
 
 def compute_median_auto_power_dict(data, pols, reds):
-    """Compute the frequency median of the time averaged visibility squared."""
+    """Compute the frequency median of the time averaged visibility squared.
+
+    Arguments:
+        data: Dictionary of visibility data.
+              keys are in the form (ant1, ant2, pol)
+        pols: List of polarizations to compute the median auto power.
+              allowed values ['xx', 'yy', 'xy', 'yx']
+        reds: List of lists of tuples of antenna numbers that make up redundant baseline groups.
+
+    Returns:
+        autoPower: Dictionary of the meidan of time average visibility squared.
+                   keys are in the form (ant1, ant2, pol)
+    """
     autoPower = {}
     for pol in pols:
         for bls in reds:
@@ -182,26 +197,23 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
     do not correlate with others they are nominmally redundant with.
 
     Arguments:
-    data -- data for all polarizations
-            format must support data[i,j,pol]
-    pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols -- List of antenna polarizations (e.g. ['x', 'y'])
-    ants -- List of all antenna indices.
-    reds -- List of lists of tuples of antenna numbers
-            that make up redundant baseline groups.
-    xants -- list of antennas that should be ignored.
-             format: (ant,antpol)
-    rawMetric -- return the raw power correlations
-                 instead of the modified z-score
-    crossPol -- return results only when the two visibility polarizations
-                differ by a single flip
+    data: data for all polarizations
+          format must support data[i,j,pol]
+    pols: List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
+    antpols: List of antenna polarizations (e.g. ['x', 'y'])
+    ants: List of all antenna indices.
+    reds: List of lists of tuples of antenna numbers that make up redundant baseline groups.
+    xants: List of antennas that should be ignored.
+            format: (ant, antpol)
+    rawMetric: return the raw power correlations instead of the modified z-score
+    crossPol: return results only when the two visibility polarizations differ by a single flip
 
     Returns:
-    powerRedMetric -- Dictionary indexed by (ant,antpol)
-                      of the modified z-scores of the mean power correlations
-                      inside redundant baseline groups
-                      associated with each antenna.
-                      Very small numbers are probably bad antennas.
+    powerRedMetric: Dictionary indexed by (ant,antpol)
+                    of the modified z-scores of the mean power correlations
+                    inside redundant baseline groups
+                    associated with each antenna.
+                    Very small numbers are probably bad antennas.
     """
     # Compute power correlations and assign them to each antenna
     autoPower = compute_median_auto_power_dict(data, pols, reds)
@@ -263,8 +275,9 @@ def exclude_partially_excluded_ants(antpols, xants):
 
     Arguments:
         antpols: Single antenna polarizations to add to excluded Antennas
-        xants: List of exluded antennas
-
+                 list of ['x','y'], ['x'], or ['y']
+        xants: List of antennas ithat should be ignored.
+               format: (ant,antpol)
     Retruns:
         xantSet: List of all antenna-polarization combinations to exclude.
     """
@@ -279,9 +292,24 @@ def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics,
                             xants=[]):
     """Compute ratio of two metrics summed over polarizations.
 
-    Takes the ratio of two antenna metrics, summed over both polarizations,
-    and creates a new
+    Takes the ratio of two antenna metrics, summed over both polarizations, and creates a new
     antenna metric with the same value in both polarizations for each antenna.
+
+    Arguments:
+        ants: List of all antenna indices.
+        antpols: List of antenna polarizations (e.g. ['x', 'y'])
+        crossMetrics: Dict of a metrics computed with cross-polarizaed antennas
+                      keys: (ant, antpol)
+        sameMetrics: Dict of a metrics computed with non-cross-polarized antennas
+                     keys: (ant, antpol)
+        xants: List of antennas ithat should be ignored.
+               format: (ant,antpol)
+
+    Returns:
+        crossPolRatio: Dictionary of the ratio between the sum ocrossMetrics and  sum of sameMetrics
+                       for each antenna provided in ants
+                       key: (ant, antpol)
+
     """
     crossPolRatio = {}
     for ant in ants:
@@ -304,25 +332,25 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
     (Vxy+Vyx)/(Vxx+Vyy).
 
     Arguments:
-    data -- data for all polarizations
-            format must support data[i,j,pol]
-    pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols -- List of antenna polarizations (e.g. ['x', 'y'])
-    ants -- List of all antenna indices.
-    bls -- List of tuples of antenna pairs.
-    xants -- list of antennas  that should be ignored.
-             format (ant,antpol) format
-             e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
-                    as cross-polarized and will be excluded.
-    rawMetric -- return the raw power ratio instead of the modified z-score
+    data: data for all polarizations
+          format must support data[i,j,pol]
+    pols: List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
+    antpols: List of antenna polarizations (e.g. ['x', 'y'])
+    ants: List of all antenna indices.
+    bls: List of tuples of antenna pairs.
+    xants: List of antennas  that should be ignored.
+           format (ant,antpol) format
+           e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
+                  as cross-polarized and will be excluded.
+    rawMetric: return the raw power ratio instead of the modified z-score
 
     Returns:
-    mean_Vij_cross_pol_metrics -- Dictionary indexed by (ant,antpol)
-                                  The modified z-scores of the
-                                  ratio of mean visibilities,
-                                  (Vxy+Vyx)/(Vxx+Vyy).
-                                  Results duplicated in both antpols.
-                                  Very large values are likely cross-polarized.
+    mean_Vij_cross_pol_metrics: Dictionary indexed by (ant,antpol)
+                                The modified z-scores of the
+                                ratio of mean visibilities,
+                                (Vxy+Vyx)/(Vxx+Vyy).
+                                Results duplicated in both antpols.
+                                Very large values are likely cross-polarized.
     """
     # Compute metrics and cross pols only and and same pols only
     samePols = [pol for pol in pols if pol[0] == pol[1]]
@@ -353,24 +381,26 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[],
     Returns the modified z-score.
 
     Arguments:
-    data -- data for all polarizations format must support data[i,j,pol]
-    pols -- List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols -- List of antenna polarizations (e.g. ['x', 'y'])
-    ants -- List of all antenna indices.
-    reds -- List of lists of tuples of antenna numbers
-            that make up redundant baseline groups.
-    xants -- list of antennas  that should be ignored.
-             format (ant,antpol) format
-             e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
-                    as cross-polarized and will be excluded.
-    rawMetric -- return the raw power ratio instead of the modified z-score
+    data: data for all polarizations format must support data[i,j,pol]
+    pols: List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
+    antpols: List of antenna polarizations (e.g. ['x', 'y'])
+    ants: List of all antenna indices.
+    reds: List of lists of tuples of antenna numbers
+          that make up redundant baseline groups.
+    xants: List of antennas  that should be ignored.
+           format (ant,antpol) format
+           e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
+                  as cross-polarized and will be excluded.
+    rawMetric: return the raw power ratio instead of the modified z-score
+                type: Boolean
+                Default: False
 
     Returns:
-    redCorrCrossPolMetrics -- Dictionary indexed by (ant,antpol)
-                              The modified z-scores of the mean correlation
-                              ratio between redundant visibilities
-                              and singlely-polarization flipped ones.
-                              Very large values are probably cross-polarized.
+    redCorrCrossPolMetrics: Dictionary indexed by (ant,antpol)
+                            The modified z-scores of the mean correlation
+                            ratio between redundant visibilities
+                            and singlely-polarization flipped ones.
+                            Very large values are probably cross-polarized.
     """
     # Compute metrics for singly flipped pols and just same pols
     full_xants = exclude_partially_excluded_ants(antpols, xants)
@@ -398,19 +428,37 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[],
 
 
 def average_abs_metrics(metrics1, metrics2):
-    """Average the absolute value of two metrics together."""
+    """Average the absolute value of two metrics together.
+
+    Input dictionairies are averaged for each key. All keys must match exactly.
+    Arguments:
+        metrics1: Dictionairy of metric data to average
+        metrics2: Dictionairy of metric data to average
+
+    Returns:
+        mean_metrics: Dictionary with the same keys as inputs.
+                      values are mean of both input dictionaries for each key.
+    """
     if set(list(metrics1)) != set(list(metrics2)):
-        error_message = ('Metrics being averaged have differnt '
-                         '(ant,antpol) keys.')
-        raise KeyError(error_message)
+        raise KeyError(('Metrics being averaged have differnt '
+                        '(ant,antpol) keys.'))
     return {key: np.nanmean([np.abs(metrics1[key]),
                              np.abs(metrics2[key])])
             for key in metrics1}
 
 
-def load_antenna_metrics(metric_file):
-    """Load cut decisions and metrics from an HDF5 into python dictionary."""
-    return metrics_io.load_metric_file(metric_file)
+def load_antenna_metrics(filename):
+    """Load cut decisions and metrics from an HDF5 into python dictionary.
+
+    Loading is handled via hera_qm.metrics_io.load_metric_file
+    Arguments:
+        filename: Filename of the metric to load.
+                  Must be either HDF5 (recommended) or JSON (Depreciated in Future) types.
+
+    Returns:
+        Dictionary of metrics stored in the input file.
+    """
+    return metrics_io.load_metric_file(filename)
 
 
 #######################################################################
@@ -433,16 +481,12 @@ class AntennaMetrics():
         """Initilize an AntennaMetrics object.
 
         Arguments:
-        dataFileList -- List of data filenames of the four different visibility
-                        polarizations for the same observation
-        reds -- List of lists of tuples of antenna numbers
-                that make up redundant baseline groups.
-        format -- File type of data
-                  Supports: 'miriad','uvfits', 'fhd', 'ms ' (see pyuvdata docs)
-                  Default: 'miriad'.
-
+        dataFileList: List of data filenames of the four different visibility polarizations for the same observation
+        reds: List of lists of tuples of antenna numbers that make up redundant baseline groups.
+        format: File type of data
+                Supports: 'miriad','uvfits', 'fhd', 'ms ' (see pyuvdata docs)
+                Default: 'miriad'.
         """
-
         if fileformat == 'miriad':
             self.hd = HERAData(dataFileList, filetype='miriad')
         elif fileformat == 'uvfits':
@@ -467,32 +511,108 @@ class AntennaMetrics():
                              + str(self.pols) + ' and antpols = '
                              + str(self.antpols))
 
-    def mean_Vij_metrics(self, pols=None, xants=[], rawMetric=False):
-        """Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module."""
-        if pols is None:
-            pols = self.pols
+    def mean_Vij_metrics(self, pols=self.pols, xants=[], rawMetric=False):
+        """Calculate how an antennas's average |Vij| deviates from others.
+
+        Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module
+        Arguments:
+
+            pols : List of visibility polarizations (e.g. ['xx','xy','yx','yy'])
+                   Default: self.pols
+            xants: List of antennas ithat should be ignored.
+                   format: (ant,antpol)
+            rawMetric:return the raw mean Vij metric instead of the modified z-score
+
+        Returns:
+            meanMetrics: Dictionary indexed by (ant,antpol) of the modified z-score
+                         of the mean of the absolute value of all visibilities associated with an antenna.
+                         Very small or very large numbers are probably bad antennas.
+        """
         return mean_Vij_metrics(self.data, pols, self.antpols,
                                 self.ants, self.bls, xants=xants,
                                 rawMetric=rawMetric)
 
-    def red_corr_metrics(self, pols=None, xants=[], rawMetric=False,
+    def red_corr_metrics(self, pols=self.pols, xants=[], rawMetric=False,
                          crossPol=False):
-        """Local wrapper for red_corr_metrics in hera_qm.ant_metrics module."""
-        if pols is None:
-            pols = self.pols
+        """Calculate modified Z-Score over all redundant groups for each antenna.
+
+        Local wrapper for red_corr_metrics in hera_qm.ant_metrics module.
+        Calculates the extent to which baselines involving an antenna
+        do not correlate with others they are nominmally redundant with.
+
+        Arguments:
+        data: data for all polarizations
+              format must support data[i,j,pol]
+        pols: List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
+              Default: self.pols
+        xants: List of antennas that should be ignored.
+                format: (ant, antpol)
+        rawMetric: return the raw power correlations instead of the modified z-score
+        crossPol: return results only when the two visibility polarizations differ by a single flip
+
+        Returns:
+        powerRedMetric: Dictionary indexed by (ant,antpol)
+                        of the modified z-scores of the mean power correlations
+                        inside redundant baseline groups
+                        associated with each antenna.
+                        Very small numbers are probably bad antennas.
+        """
         return red_corr_metrics(self.data, pols, self.antpols,
                                 self.ants, self.reds, xants=xants,
                                 rawMetric=rawMetric, crossPol=crossPol)
 
     def mean_Vij_cross_pol_metrics(self, xants=[], rawMetric=False):
-        """Local wrapper for mean_Vij_cross_pol_metrics."""
+        """Calculate the ratio of cross-pol visibilities to same-pol visibilities.
+
+        Local wrapper for mean_Vij_cross_pol_metrics.
+        Find which antennas are outliers based on the
+        ratio of mean cross-pol visibilities to mean same-pol visibilities:
+        (Vxy+Vyx)/(Vxx+Vyy).
+
+        Arguments:
+        xants: List of antennas  that should be ignored.
+               format (ant,antpol) format
+               e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
+                      as cross-polarized and will be excluded.
+        rawMetric: return the raw power ratio instead of the modified z-score
+
+        Returns:
+        mean_Vij_cross_pol_metrics: Dictionary indexed by (ant,antpol)
+                                    The modified z-scores of the
+                                    ratio of mean visibilities,
+                                    (Vxy+Vyx)/(Vxx+Vyy).
+                                    Results duplicated in both antpols.
+                                    Very large values are likely cross-polarized.
+        """
         return mean_Vij_cross_pol_metrics(self.data, self.pols,
                                           self.antpols, self.ants,
                                           self.bls, xants=xants,
                                           rawMetric=rawMetric)
 
     def red_corr_cross_pol_metrics(self, xants=[], rawMetric=False):
-        """Local wrapper for red_corr_cross_pol_metrics."""
+        """Calculate modified Z-Score over redundant groups; assume cross-polarized.
+
+        Local wrapper for red_corr_cross_pol_metrics.
+        Find which antennas are part of visibilities that are significantly better
+        correlated with polarization-flipped visibilities in a redundant groupself.
+        Returns the modified z-score.
+
+        Arguments:
+        xants: List of antennas  that should be ignored.
+               format (ant,antpol) format
+               e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
+                      as cross-polarized and will be excluded.
+        rawMetric: return the raw power ratio instead of the modified z-score
+                    type: Boolean
+                    Default: False
+
+        Returns:
+        redCorrCrossPolMetrics: Dictionary indexed by (ant,antpol)
+                                The modified z-scores of the mean correlation
+                                ratio between redundant visibilities
+                                and singlely-polarization flipped ones.
+                                Very large values are probably cross-polarized.
+        """
         return red_corr_cross_pol_metrics(self.data, self.pols,
                                           self.antpols, self.ants,
                                           self.reds, xants=xants,
@@ -530,8 +650,13 @@ class AntennaMetrics():
                 self.deadAntsRemoved.append(key)
                 self.removalIter[key] = -1
 
+    # TODO: Add Flags Here to turn off each metric
     def _run_all_metrics(self, iter=0):
-        """Local call for all metrics as part of iterative flagging method."""
+        """Local call for all metrics as part of iterative flagging method.
+
+        Arguments:
+            iter: Integer representing the iteration number.
+        """
         # Compute all raw metrics
         meanVij = self.mean_Vij_metrics(xants=self.xants,
                                         rawMetric=True)
@@ -560,6 +685,7 @@ class AntennaMetrics():
         self.allMetrics.update({iter: metrics})
         self.allModzScores.update({iter: modzScores})
 
+    # TODO: Hook in flags here for turning metrics off
     def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
                                                alwaysDeadCut=10,
                                                verbose=False):
@@ -571,14 +697,14 @@ class AntennaMetrics():
         Saves the results internally to this this antenna metrics object.
 
         Arguments:
-        crossCut -- Modified z-score cut for most cross-polarized antennas.
-                    Default 5 "sigmas".
-        deadCut -- Modified z-score cut for most likely dead antennas.
-                   Default 5 "sigmas".
-        alwaysDeadCut -- Modified z-score cut for definitely dead antennas.
-                         Default 10 "sigmas".
-                         These are all thrown away at once without waiting
-                         to iteratively throw away only the worst offender.
+        crossCut: Modified z-score cut for most cross-polarized antennas.
+                  Default 5 "sigmas".
+        deadCut: Modified z-score cut for most likely dead antennas.
+                  Default 5 "sigmas".
+        alwaysDeadCut: Modified z-score cut for definitely dead antennas.
+                       Default 10 "sigmas".
+                       These are all thrown away at once without waiting
+                       to iteratively throw away only the worst offender.
         """
         self.reset_summary_stats()
         self.find_totally_dead_ants()
@@ -627,11 +753,14 @@ class AntennaMetrics():
             else:
                 break
 
-    def save_antenna_metrics(self, metric_file):
+    def save_antenna_metrics(self, filename):
         """Output all meta-metrics and cut decisions to HDF5 file.
 
         Saves all cut decisions and meta-metrics in an HDF5 that can be loaded
         back into a dictionary using hera_qm.ant_metrics.load_antenna_metrics()
+
+        Arguments:
+            filename: The file into which metrics will be written.
         """
         if not hasattr(self, 'xants'):
             raise KeyError(('Must run AntennaMetrics.'
@@ -651,7 +780,7 @@ class AntennaMetrics():
         out_dict['datafile_list'] = self.dataFileList
         out_dict['reds'] = self.reds
 
-        metrics_io.write_metric_file(metric_file, out_dict)
+        metrics_io.write_metric_file(filename, out_dict)
 
 
 # TODO: Make Metrics able to be turned on or off for a run.
