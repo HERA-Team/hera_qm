@@ -309,22 +309,22 @@ class TestAntennaMetrics(unittest.TestCase):
 
     def test_load_errors(self):
         with self.assertRaises(ValueError):
-            uvtest.checkWarnings(ant_metrics.Antenna_Metrics,
+            uvtest.checkWarnings(ant_metrics.AntennaMetrics,
                                  [[DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'], []],
                                  {"fileformat": 'miriad'}, nwarnings=1,
                                  message='antenna_diameters is not set')
         with self.assertRaises(IOError):
-            ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
+            ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='uvfits')
         with self.assertRaises(Exception):
-            ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
+            ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='fhd')
         with self.assertRaises(ValueError):
-            ant_metrics.Antenna_Metrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
+            ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='not_a_format')
 
     def test_init(self):
-        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+        am = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
                                          fileformat='miriad')
         self.assertEqual(len(am.ants), 19)
         self.assertEqual(set(am.pols), set(['xx', 'yy', 'xy', 'yx']))
@@ -333,7 +333,7 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertEqual(len(am.reds), 27)
 
     def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(self):
-        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+        am = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
                                          fileformat='miriad')
         with self.assertRaises(KeyError):
             filename = os.path.join(DATA_PATH,
@@ -364,7 +364,7 @@ class TestAntennaMetrics(unittest.TestCase):
         os.remove(outfile)
 
     def test_save_json(self):
-        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+        am = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
                                          fileformat='miriad')
         am.iterative_antenna_metrics_and_flagging()
         for stat in self.summaryStats:
@@ -404,8 +404,8 @@ class TestAntennaMetrics(unittest.TestCase):
             self.assertEqual(loaded[jsonStat], getattr(am, stat))
         os.remove(outfile)
 
-    def test_add_file_appelation(self):
-        am = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+    def test_add_file_appellation(self):
+        am = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
                                          fileformat='miriad')
         am.iterative_antenna_metrics_and_flagging()
         for stat in self.summaryStats:
@@ -424,7 +424,7 @@ class TestAntennaMetrics(unittest.TestCase):
         os.remove(outname)
 
     def test_cross_detection(self):
-        am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+        am2 = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
                                           fileformat='miriad')
         am2.iterative_antenna_metrics_and_flagging(crossCut=3, deadCut=10)
         for stat in self.summaryStats:
@@ -435,7 +435,7 @@ class TestAntennaMetrics(unittest.TestCase):
         self.assertIn((81, 'y'), am2.crossedAntsRemoved)
 
     def test_totally_dead_ants(self):
-        am2 = ant_metrics.Antenna_Metrics(self.dataFileList, self.reds,
+        am2 = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
                                           fileformat='miriad')
         deadant = 9
         for ant1, ant2 in am2.bls:

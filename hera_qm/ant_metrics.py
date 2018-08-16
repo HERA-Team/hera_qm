@@ -418,7 +418,7 @@ def load_antenna_metrics(metric_file):
 #######################################################################
 
 
-class Antenna_Metrics():
+class AntennaMetrics():
     """Container for holding data and meta-data for ant metrics calculations.
 
     Object for holding relevant visibility data and metadata
@@ -430,7 +430,7 @@ class Antenna_Metrics():
     """
 
     def __init__(self, dataFileList, reds, fileformat='miriad'):
-        """Initilize an Antenna_Metrics object.
+        """Initilize an AntennaMetrics object.
 
         Arguments:
         dataFileList -- List of data filenames of the four different visibility
@@ -710,7 +710,7 @@ def ant_metrics_run(files, args, history):
 
     # do the work
     for jd_list in fullpol_file_list:
-        am = Antenna_Metrics(jd_list, reds, fileformat=args.vis_format)
+        am = AntennaMetrics(jd_list, reds, fileformat=args.vis_format)
         am.iterative_antenna_metrics_and_flagging(crossCut=args.crossCut,
                                                   deadCut=args.deadCut,
                                                   alwaysDeadCut=args.alwaysDeadCut,

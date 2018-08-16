@@ -148,8 +148,8 @@ def test_write_metric_file_hdf5():
     os.remove(test_file)
 
 
-def test_write_metric_file_hdf5_no_appelation_exists():
-    """Test hdf5 file created from write_metric_file if no appelation given."""
+def test_write_metric_file_hdf5_no_appellation_exists():
+    """Test hdf5 file created from write_metric_file if no appellation given."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test')
     test_scalar = 'hello world'
     test_array = np.arange(10)
