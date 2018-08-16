@@ -22,6 +22,7 @@ from hera_qm import UVFlag
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
 test_c_file = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
 test_f_file = test_d_file + '.testuvflag.h5'
+test_f_file_flags = test_d_file + '.testuvflag.flags.h5'  # version in 'flag' mode
 test_outfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
 
 
@@ -429,3 +430,51 @@ class TestWrappers():
     def test_xrfi_h1c_apply(self):
         # Do a test, add more tests as needed
         nt.assert_true(True)
+
+    def test_xrfi_h1c_apply(self):
+        xrfi_path = os.path.join(DATA_PATH, 'test_output')
+        wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.h5')
+        wf_file2 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.x.flags.h5')
+        waterfalls = wf_file1 + ',' + wf_file2
+        history = 'history stuff'
+
+        # test running on our test data
+        dest_file = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R')
+        dest_flag = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R.flags.h5')
+        if os.path.exists(dest_file):
+            shutil.rmtree(dest_file)
+        if os.path.exists(dest_flag):
+            os.remove(dest_flag)
+        xrfi.xrfi_h1c_apply(test_d_file, history, xrfi_path=xrfi_path,
+                            flag_file=test_f_file_flags, waterfalls=waterfalls)
+        nt.assert_true(os.path.exists(dest_file))
+        nt.assert_true(os.path.exists(dest_flag))
+        shutil.rmtree(dest_file)  # clean up
+
+        # uvfits output
+        dest_file = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R.uvfits')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        xrfi.xrfi_h1c_apply(test_d_file, history, xrfi_path=xrfi_path, flag_file=test_f_file_flags,
+                            outfile_format='uvfits', extension='R.uvfits', output_uvflag=False)
+        nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
+
+    def test_xrfi_apply_errors(self):
+        xrfi_path = os.path.join(DATA_PATH, 'test_output')
+        wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.h5')
+        wf_file2 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.x.flags.h5')
+        waterfalls = wf_file1 + ',' + wf_file2
+        history = 'history stuff'
+        nt.assert_raises(AssertionError, xrfi.xrfi_h1c_apply, [], history)
+
+        # test running with two files
+        nt.assert_raises(AssertionError, xrfi.xrfi_h1c_apply, ['file1', 'file2'], history)
+
+        # Conflicting file formats
+        nt.assert_raises(IOError, xrfi.xrfi_h1c_apply, test_d_file, history, infile_format='uvfits')
+        nt.assert_raises(Exception, xrfi.xrfi_h1c_apply, test_d_file, history, infile_format='fhd')
+        nt.assert_raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, infile_format='bla')
+
+        # Outfile error
+        nt.assert_raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, outfile_format='bla')

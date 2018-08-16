@@ -495,8 +495,8 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
                 f.to_antenna(uv, force_pol=force_pol)
         # Use built-in or function
         net_flags |= f
-    uv.flag_array += f.flag_array
-    uv.history += 'FLAGGING HISTORY: ' + f.history + ' END OF FLAGGING HISTORY.'
+    uv.flag_array += net_flags.flag_array
+    uv.history += 'FLAGGING HISTORY: ' + history + ' END OF FLAGGING HISTORY.'
 
     if return_net_flags:
         return net_flags
@@ -528,7 +528,10 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
     except KeyError:
         raise KeyError('Algorithm not found in list of available functions.')
     uvf = UVFlag(uv)
-    uvf.weights_array = uv.nsample_array * np.logical_not(uv.flag_array).astype(np.float)
+    if isinstance(uv, UVData):
+        uvf.weights_array = uv.nsample_array * np.logical_not(uv.flag_array).astype(np.float)
+    else:
+        uvf.weights_array = np.logical_not(uv.flag_array).astype(np.float)
     if isinstance(uv, UVData):
         for key, d in uv.antpairpol_iter():
             ind1, ind2, pol = uv._key2inds(key)
@@ -801,9 +804,9 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     # make sure we were given files to process
     if len(filename) == 0:
         raise AssertionError('Please provide a visibility file')
-    if isinstance(filename, (list, np.array, tuple)) and len(filename) > 1:
+    if isinstance(filename, (list, np.ndarray, tuple)) and len(filename) > 1:
         raise AssertionError('xrfi_apply currently only takes a single data file.')
-    if isinstance(filename, (list, np.array, tuple)):
+    if isinstance(filename, (list, np.ndarray, tuple)):
         filename = filename[0]
     uvd = UVData()
     if infile_format == 'miriad':
@@ -813,7 +816,7 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     elif infile_format == 'fhd':
         uvd.read_fhd(filename)
     else:
-        raise ValueError('Unrecognized input file format ' + str(args.infile_format))
+        raise ValueError('Unrecognized input file format ' + str(infile_format))
 
     full_list = []
     # Read in flag file
@@ -849,5 +852,5 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
         raise ValueError('Unrecognized output file format ' + str(outfile_format))
     if output_uvflag:
         # Save an npz with the final flag array and waterfall and relevant metadata
-        outpath = outpath + out_uvflag_ext
+        outpath = outpath + output_uvflag_ext
         uvf.write(outpath)
