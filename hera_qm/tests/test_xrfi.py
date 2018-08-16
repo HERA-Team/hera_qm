@@ -391,8 +391,35 @@ class TestFlaggingFunctions():
         nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, uvf)
 
     def test_ws_flag_waterfall(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # test 1d
+        d = np.zeros((10,))
+        f = np.zeros((10,), dtype=np.bool)
+        d[1] = 3.
+        f[0] = True
+        f_out = xrfi._ws_flag_waterfall(d, f, nsig=2.)
+        ans = np.zeros_like(f_out, dtype=np.bool)
+        ans[:2] = True
+        nt.assert_true(np.allclose(f_out, ans))
+
+        # test 2d
+        d = np.zeros((10, 10))
+        f = np.zeros((10, 10), dtype=np.bool)
+        d[0, 1] = 3.
+        d[1, 0] = 3.
+        f[0, 0] = True
+        f_out = xrfi._ws_flag_waterfall(d, f, nsig=2.)
+        ans = np.zeros_like(f_out, dtype=np.bool)
+        ans[:2, 0] = True
+        ans[0, :2] = True
+        nt.assert_true(np.allclose(f_out, ans))
+
+        # catch errors
+        d1 = np.zeros((10,))
+        f2 = np.zeros((10, 10), dtype=np.bool)
+        nt.assert_raises(ValueError, xrfi._ws_flag_waterfall, d1, f2)
+        d3 = np.zeros((5, 4, 3))
+        f3 = np.zeros((5, 4, 3), dtype=np.bool)
+        nt.assert_raises(ValueError, xrfi._ws_flag_waterfall, d3, f3)
 
     def test_flag(self):
         # Do a test, add more tests as needed

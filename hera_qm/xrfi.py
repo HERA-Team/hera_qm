@@ -351,7 +351,7 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
 
     if d.shape != fin.shape:
         raise ValueError('d and f must match in shape. Shapes are: ' + str(d.shape)
-                         + ' and ' + str(f.shape))
+                         + ' and ' + str(fin.shape))
     f = copy.deepcopy(fin)
     # There may be an elegant way to combine these... for the future.
     if d.ndim == 1:
