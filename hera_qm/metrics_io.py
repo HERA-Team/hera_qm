@@ -16,8 +16,12 @@ import six
 from collections import OrderedDict
 from hera_qm.version import hera_qm_version_str
 
+# HDF5 casts all inputs to numpy arrays.
+# Define a custom numpy dtype for tuples we wish to preserve shape
+# antpol items look like (antenna, antpol) with types (int, string)
 antpol_dtype = np.dtype([('ant', np.int32),
                          ('pol', np.dtype('S1'))])
+# antpair items look like (ant1, ant2) with types (int, int)
 antpair_dtype = np.dtype([('ant1', np.int32),
                           ('ant2', np.int32)])
 
@@ -30,13 +34,29 @@ known_string_keys = ['history', 'version', 'filedir', 'cut_edges',
 
 
 def _reds_list_to_dict(reds):
-    """Convert list to ordered dict."""
+    """Convert nested list of lists to ordered dict.
+
+    HDF5 will not save lists whose sub-lists vary in size.
+    Converts lists of redundant basleine groups to ordered dict to allow
+    redundant groups to be saved separately and still preserve order.
+
+    Argument
+        reds: List of list of tuples. e.g. list of list of antenna pairs for each baseline group
+    Returns
+        reds: OrderdDict of baseline groups able to save to HDF5
+    """
     return OrderedDict([(i, np.array(reds[i], dtype=antpair_dtype))
                         for i in range(len(reds))])
 
 
 def _reds_dict_to_list(reds):
-    """Convert dict of redundant baseline groups to list."""
+    """Convert dict of redundant baseline groups to list.
+
+    Arguments
+        reds: OrderedDict of redundant baseline groups.
+    Returns
+        reds: List of lists of baseline groups.
+    """
     if isinstance(reds, dict):
         reds = list(reds.values())
 
@@ -48,6 +68,14 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
     Adds allowed types to the current group as datasets
     creates new subgroups if a given item in a dictionary is a dictionary.
+
+
+    Arguments
+        h5file: H5py file object into which data is written, this is edited in place.
+        path: absolute path in HDF5 to store the current dictionary
+        in_dict: Dictionary to be recursively walked and stored in h5file
+    Returns
+        None
     """
     allowed_types = (np.ndarray, np.float, np.int, bytes, six.text_type, list)
     compressable_types = (np.ndarray, list)
@@ -94,10 +122,19 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
         else:
             raise TypeError("Cannot save key {0} with type {1}"
                             .format(key, type(in_dict[key])))
+    return
 
 
 def _recursively_make_dict_arrays_strings(in_dict):
-    """Recursively search dict for numpy array and cast as string."""
+    """Recursively search dict for numpy array and cast as string.
+
+    Numpy arrays by default are space delimited in strings, this makes them comma delimitedself.
+
+    Arguments
+        in_dict: Dictionary to recursively search for numpy array
+    Returns
+        out_dict: Copy of in_dict with numpy arrays cast as comma delimited strings
+    """
     out_dict = {}
     for key in in_dict:
         key_str = str(key)
@@ -111,7 +148,19 @@ def _recursively_make_dict_arrays_strings(in_dict):
 
 
 def write_metric_file(filename, input_dict):
-    """Convert the input dictionary into an HDF5 File."""
+    """Convert the input dictionary into an HDF5 File.
+
+    Can write either HDF5 (recommended) or JSON (Depreciated in Future) types.
+    Will try to guess which type based on the extension of the input filename.
+    If not extension is given, HDF5 is used by default.
+
+    Arguments
+        filename: String of filename to which metrics will be written.
+                  Can include either HDF5 (recommended) or JSON (Depreciated in Future) extension.
+
+    Returns:
+        None
+    """
     input_dict = copy.deepcopy(input_dict)
     if filename.split('.')[-1] == 'json':
         warnings.warn("JSON-type files can still be written "
@@ -145,9 +194,20 @@ def write_metric_file(filename, input_dict):
             mgrp.attrs['key_is_string'] = True
             _recursively_save_dict_to_group(f, "/Metrics/", input_dict)
 
+    return
+
 
 def _recursively_load_dict_to_group(h5file, path, ordered=False):
-    """Recursively read the hdf5 file and create sub-dictionaries."""
+    """Recursively read the hdf5 file and create sub-dictionaries.
+
+    Performs opposite function of _recursively_save_dict_to_group
+
+    Arguments
+        h5file: H5py file object into which data is written, this is edited in place.
+        path: absolute path in HDF5 to read the current dictionary
+        ordered: Boolean value to set up collections.OrderedDict objects if flag is set in h5file group
+    Returns
+    """
     if ordered:
         out_dict = OrderedDict()
         key_list = h5file[path + 'key_order'].value
@@ -175,20 +235,35 @@ def _recursively_load_dict_to_group(h5file, path, ordered=False):
 
 
 def parse_key(key, gvars):
-    """Parse the input key into an int, tuple or string."""
+    """Parse the input key into an int, tuple or string.
+
+    Arguments
+        key: input string to parse
+        gvars: global variables for eval call
+    Returns
+        out_key: Parsed key as an int, tuple or string
+    """
     try:
         out_key = int(str(key))
-    except ValueError as err:
+    except ValueError:
         try:
             out_key = eval(str(key), gvars)
             if isinstance(out_key, (np.float, np.complex)):
                 out_key = str(key)
-        except (SyntaxError, NameError) as err:
+        except (SyntaxError, NameError):
             out_key = str(key)
     return out_key
 
 
 def _recursively_evaluate_json(in_dict, gvars):
+    """recursively walk dictionary from json and convert to proper types.
+
+    Arguments
+        in_dict: Dictionary of strings read from json file to convert
+        gvars: Global variables used in eval.
+    Returns
+        out_dict: dictionary with arrays/list/int/float cast to proper type.
+    """
     out_dict = {}
     for key in in_dict:
         out_key = parse_key(key, gvars)
@@ -225,9 +300,16 @@ def _recursively_evaluate_json(in_dict, gvars):
     return out_dict
 
 
-def _load_json_metrics(json_file):
-    """Load cut decisions and metrics from a JSON into python dictionary."""
-    with open(json_file, 'r') as infile:
+def _load_json_metrics(filename):
+    """Load cut decisions and metrics from a JSON into python dictionary.
+
+    reads json and recursively walks dictionaries to cast values to proper types.
+    Arguments
+        filename: JSON file to be read and walked
+    returns
+        metric_dict: dictionary with values cast as types made from hera_qm.
+    """
+    with open(filename, 'r') as infile:
         jsonMetrics = json.load(infile)
     gvars = {'nan': np.nan, 'inf': np.inf, '-inf': -np.inf, '__builtins__': {},
              'array': np.array, 'OrderedDict': OrderedDict}
@@ -238,6 +320,17 @@ def _load_json_metrics(json_file):
 
 
 def _recusively_validate_dict(in_dict, iter=0):
+    """Walk dictionary recursively and cast special types to know formats.
+
+    Walks a dictionary recursively and searches for special types of items.
+    Cast 'reds' from OrderdDict to list of list
+    Cast antpair_key and antpol_key items to tuples
+
+    Arguments
+        in_dict: Dictionary to search and cast special items.
+    Returns
+        out_dict: Copy of input dictionary with antpairs and antpols cast as tuples
+    """
     for key in in_dict:
         if key == 'reds':
             in_dict[key] = _reds_dict_to_list(in_dict[key])
@@ -253,7 +346,16 @@ def _recusively_validate_dict(in_dict, iter=0):
 
 
 def load_metric_file(filename, ordered=False):
-    """Load the given hdf5 files name into a dictionary."""
+    """Load the given hdf5 files name into a dictionary.
+
+    Loads either HDF5 (recommended) or JSON (Depreciated in Future) save files.
+    Guesses which type to load based off the file extension.
+    Arguments:
+        filename: Filename of the metric to load.
+
+    Returns:
+        Dictionary of metrics stored in the input file.
+    """
     if filename.split('.')[-1] == 'json':
         warnings.warn("JSON-type files can still be read "
                       "but are no longer written by default.\n"
