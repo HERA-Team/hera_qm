@@ -43,7 +43,7 @@ def _reds_list_to_dict(reds):
     Argument
         reds: List of list of tuples. e.g. list of list of antenna pairs for each baseline group
     Returns
-        reds: OrderdDict of baseline groups able to save to HDF5
+        reds: OrderedDict of baseline groups able to save to HDF5
     """
     return OrderedDict([(i, np.array(reds[i], dtype=antpair_dtype))
                         for i in range(len(reds))])
@@ -69,6 +69,12 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
     Adds allowed types to the current group as datasets
     creates new subgroups if a given item in a dictionary is a dictionary.
 
+    Will add attributes for HDF5 objects as follows
+        Datasets:
+            key_is_string: Boolean flag to determine if dictionary key is a string
+
+        Groups:
+            group_is_ordered: Boolean flag to determine if dict was an OrderedDict
 
     Arguments
         h5file: H5py file object into which data is written, this is edited in place.
@@ -98,23 +104,34 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
                     dset = h5file[path].create_dataset(key_str,
                                                        data=in_dict[key],
                                                        compression='lzf')
+                    # Add boolean attribute to determine if key is a string
+                    # Used to evaluate keys saved to dicts when reading
                     dset.attrs['key_is_string'] = isinstance(key, str)
-                except TypeError as e:
+                except TypeError as err:
                     raise TypeError("Input dictionary key: {0} does not have "
                                     "compatible dtype. Received this error: "
-                                    "{1}".format(key, e))
+                                    "{1}".format(key, err))
             else:
                 dset = h5file[path].create_dataset(key_str, data=in_dict[key])
+                # Add boolean attribute to determine if key is a string
+                # Used to evaluate keys saved to dicts when reading
                 dset.attrs['key_is_string'] = isinstance(key, str)
 
         elif isinstance(in_dict[key], dict):
             grp = h5file[path].create_group(key_str)
-            grp.attrs['ordered'] = False
+            # Add boolean attribute to determine if input dictionary
+            # was and OrderedDict Orde
+            grp.attrs['group_is_ordered'] = False
             if isinstance(in_dict[key], OrderedDict):
-                grp.attrs['ordered'] = True
+                grp.attrs['group_is_ordered'] = True
 
+                # Generate additional dataset in an ordered group to save
+                # the order of the group
                 key_order = list(map(str, list(in_dict[key].keys())))
                 key_set = grp.create_dataset('key_order', data=key_order)
+
+                # Add boolean attribute to determine if key is a string
+                # Used to evaluate keys saved to dicts when reading
                 key_set.attrs['key_is_string'] = True
             grp.attrs['key_is_string'] = isinstance(key, str)
             _recursively_save_dict_to_group(h5file, path + key_str + '/',
@@ -153,6 +170,14 @@ def write_metric_file(filename, input_dict):
     Can write either HDF5 (recommended) or JSON (Depreciated in Future) types.
     Will try to guess which type based on the extension of the input filename.
     If not extension is given, HDF5 is used by default.
+
+    If writing to HDF5 the following attributes will be added
+        Datasets:
+            key_is_string: Boolean flag to determine if dictionary key is a string
+
+        Groups:
+            group_is_ordered: Boolean flag to determine if dict was an OrderedDict
+
 
     Arguments
         filename: String of filename to which metrics will be written.
@@ -197,7 +222,7 @@ def write_metric_file(filename, input_dict):
     return
 
 
-def _recursively_load_dict_to_group(h5file, path, ordered=False):
+def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
     """Recursively read the hdf5 file and create sub-dictionaries.
 
     Performs opposite function of _recursively_save_dict_to_group
@@ -205,10 +230,10 @@ def _recursively_load_dict_to_group(h5file, path, ordered=False):
     Arguments
         h5file: H5py file object into which data is written, this is edited in place.
         path: absolute path in HDF5 to read the current dictionary
-        ordered: Boolean value to set up collections.OrderedDict objects if flag is set in h5file group
+        group_is_ordered: Boolean value to set up collections.OrderedDict objects if flag is set in h5file group
     Returns
     """
-    if ordered:
+    if group_is_ordered:
         out_dict = OrderedDict()
         key_list = h5file[path + 'key_order'].value
     else:
@@ -230,7 +255,11 @@ def _recursively_load_dict_to_group(h5file, path, ordered=False):
             else:
                 out_key = eval(str(key))
             out_dict[out_key] = _recursively_load_dict_to_group(h5file, (path + key + '/'),
-                                                                ordered=item.attrs["ordered"])
+                                                                group_is_ordered=item.attrs["group_is_ordered"])
+        else:
+            raise TypeError("The HDF5 path: {0} is not associated with either"
+                            " a dataset or group object."
+                            "Please verify input file.")
     return out_dict
 
 
@@ -323,7 +352,7 @@ def _recusively_validate_dict(in_dict, iter=0):
     """Walk dictionary recursively and cast special types to know formats.
 
     Walks a dictionary recursively and searches for special types of items.
-    Cast 'reds' from OrderdDict to list of list
+    Cast 'reds' from OrderedDict to list of list
     Cast antpair_key and antpol_key items to tuples
 
     Arguments
