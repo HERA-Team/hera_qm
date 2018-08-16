@@ -790,7 +790,7 @@ class AntennaMetrics():
 # TODO: Make Metrics able to be turned on or off for a run.
 # code for running ant_metrics on a file
 def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
-                    deadCut=5.0, alwaysDeatCut=10.0, metrics_path='',
+                    deadCut=5.0, alwaysDeadCut=10.0, metrics_path='',
                     extension='.ant_metrics.hdf5', vis_format='miriad',
                     verbose=True, history=''):
     """
