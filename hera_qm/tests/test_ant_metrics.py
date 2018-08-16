@@ -334,10 +334,10 @@ class TestAntennaMetrics(unittest.TestCase):
 
     def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(self):
         am = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
-                                         fileformat='miriad')
+                                        fileformat='miriad')
         with self.assertRaises(KeyError):
-            filename = os.path.join(DATA_PATH,
-                                    '/test_output/ant_metrics_output.hdf5')
+            filename = os.path.join(DATA_PATH, 'test_output',
+                                    'ant_metrics_output.hdf5')
             am.save_antenna_metrics(filename)
 
         am.iterative_antenna_metrics_and_flagging()
@@ -350,7 +350,6 @@ class TestAntennaMetrics(unittest.TestCase):
 
         outfile = os.path.join(DATA_PATH, 'test_output',
                                'ant_metrics_output.hdf5')
-        print('xants:', am.xants)
         am.save_antenna_metrics(outfile)
         loaded = ant_metrics.load_antenna_metrics(outfile)
         # json names for summary statistics
@@ -358,6 +357,7 @@ class TestAntennaMetrics(unittest.TestCase):
                      'final_metrics', 'all_metrics', 'final_mod_z_scores',
                      'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
                      'datafile_list', 'reds', 'version']
+        print('keys:', list(loaded.keys()))
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
             nt.assert_true(np.array_equal(loaded[jsonStat],
                                           getattr(am, stat)))
@@ -469,9 +469,15 @@ class TestAntmetricsRun(object):
         # test running with no files
         cmd = ' '.join([arguments, ''])
         args = a.parse_args(cmd.split())
+        pols = list(args.pol.split(','))
+
         history = cmd
+
         nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run,
-                         args.files, args, history)
+                         args.files, pols, args.crossCut, args.deadCut,
+                         args.alwaysDeadCut, args.metrics_path,
+                         args.extension, args.vis_format,
+                         args.verbose, history)
 
     def test_run_ant_metrics_one_file(self):
             a = utils.get_metrics_ArgumentParser('ant_metrics')
@@ -492,10 +498,17 @@ class TestAntmetricsRun(object):
             cmd = ' '.join([arguments, lone_file])
             args = a.parse_args(cmd.split())
             history = cmd
+            pols = list(args.pol.split(','))
+
             # this test raises a warning, then fails...
-            args = [AssertionError, ant_metrics.ant_metrics_run, args.files,
-                    args, history]
-            uvtest.checkWarnings(nt.assert_raises, args, nwarnings=1,
+            uvtest.checkWarnings(nt.assert_raises,
+                                 [AssertionError, ant_metrics.ant_metrics_run,
+                                  args.files, pols,  args.crossCut,
+                                  args.deadCut, args.alwaysDeadCut,
+                                  args.metrics_path,
+                                  args.extension, args.vis_format,
+                                  args.verbose, history],
+                                 nwarnings=1,
                                  message='Could not find')
 
     def test_ant_metrics_run_nocalfile(self):
@@ -522,7 +535,12 @@ class TestAntmetricsRun(object):
         cmd = ' '.join([arguments, xx_file])
         args = a.parse_args(cmd.split())
         history = cmd
-        ant_metrics.ant_metrics_run(args.files, args, history)
+        pols = list(args.pol.split(','))
+        ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
+                                    args.deadCut, args.alwaysDeadCut,
+                                    args.metrics_path,
+                                    args.extension, args.vis_format,
+                                    args.verbose, history)
         nt.assert_true(os.path.exists(dest_file))
         os.remove(dest_file)
 
