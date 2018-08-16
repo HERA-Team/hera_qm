@@ -563,7 +563,41 @@ class TestHighLevelFunctions():
         # setup
         uv = UVData()
         uv.read_miriad(test_d_file)
-        xrfi.calculate_metric(uv, 'detrend_medfilt')
+        # Use Kt=3 because test file only has three times
+        uvf = xrfi.calculate_metric(uv, 'detrend_medfilt', Kt=3)
+        nt.assert_equal(uvf.mode, 'metric')
+        nt.assert_equal(uvf.type, 'baseline')
+        inds = uv.antpair2ind(uv.ant_1_array[0], uv.ant_2_array[0])
+        wf = uv.get_data(uv.ant_1_array[0], uv.ant_2_array[0])
+        filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3)
+        nt.assert_true(np.allclose(filtered, uvf.metric_array[inds, 0, :, 0]))
+
+        # Cal gains version
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', Kt=3, Kf=3)
+        nt.assert_equal(uvf.mode, 'metric')
+        nt.assert_equal(uvf.type, 'antenna')
+        wf = uvc.gain_array[0, 0, :, :, 0]
+        filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3, Kf=3)
+        nt.assert_true(np.allclose(filtered, uvf.metric_array[0, 0, :, :, 0]))
+
+        # Cal chisq version
+        uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', gains=False, chisq=True,
+                                    Kt=3, Kf=3)
+        nt.assert_equal(uvf.mode, 'metric')
+        nt.assert_equal(uvf.type, 'antenna')
+        wf = uvc.quality_array[0, 0, :, :, 0]
+        filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3, Kf=3)
+        nt.assert_true(np.allclose(filtered, uvf.metric_array[0, 0, :, :, 0]))
+
+    def test_calculate_metric_errors(self):
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        nt.assert_raises(ValueError, xrfi.calculate_metric, 5, 'detrend_medfilt')
+        nt.assert_raises(KeyError, xrfi.calculate_metric, uvc, 'my_awesome_algorithm')
+        nt.assert_raises(ValueError, xrfi.calculate_metric, uvc, 'detrend_medfilt',
+                         gains=False, chisq=False)
 
 
 class TestPipelines():
