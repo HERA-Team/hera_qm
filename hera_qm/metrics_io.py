@@ -345,7 +345,7 @@ def _recusively_validate_dict(in_dict, iter=0):
             _recusively_validate_dict(in_dict[key], iter=iter+1)
 
 
-def load_metric_file(filename, ordered=False):
+def load_metric_file(filename):
     """Load the given hdf5 files name into a dictionary.
 
     Loads either HDF5 (recommended) or JSON (Depreciated in Future) save files.
@@ -364,10 +364,8 @@ def load_metric_file(filename, ordered=False):
         metric_dict = _load_json_metrics(filename)
     else:
         with h5py.File(filename, 'r') as f:
-            metric_dict = _recursively_load_dict_to_group(f, "/Header/",
-                                                          ordered=ordered)
-            metric_dict.update(_recursively_load_dict_to_group(f, "/Metrics/",
-                                                               ordered=ordered))
+            metric_dict = _recursively_load_dict_to_group(f, "/Header/")
+            metric_dict.update(_recursively_load_dict_to_group(f, "/Metrics/"))
 
     _recusively_validate_dict(metric_dict)
     return metric_dict
