@@ -421,11 +421,12 @@ def load_antenna_metrics(metric_file):
 class Antenna_Metrics():
     """Container for holding data and meta-data for ant metrics calculations.
 
-    Object for holding relevant visibility data and metadata with interfaces to four
-    antenna metrics (two for identifying dead antennas, two for identifying cross-polarized ones),
-    an iterative method for identifying one bad antenna at a time while keeping track of all
-    metrics, and for writing metrics to a HDF5. Works on raw data from a single observation
-    with all four visibility polarizations.
+    Object for holding relevant visibility data and metadata
+    interfaces to four antenna metrics:
+        Two each for identifying dead or cross-polarized antennas.
+    Can iteratively identifying bad antennas
+    Handles all metrics stroage, and supports writing metrics to HDF5.
+    Works on raw data from a single observation with all four polarizations.
     """
 
     def __init__(self, dataFileList, reds, fileformat='miriad'):
@@ -434,8 +435,11 @@ class Antenna_Metrics():
         Arguments:
         dataFileList -- List of data filenames of the four different visibility
                         polarizations for the same observation
-        reds -- List of lists of tuples of antenna numbers that make up redundant baseline groups
-        format -- default 'miriad'. Other options: 'uvfits', 'fhd', 'ms ' (see pyuvdata docs)
+        reds -- List of lists of tuples of antenna numbers
+                that make up redundant baseline groups.
+        format -- File type of data
+                  Supports: 'miriad','uvfits', 'fhd', 'ms ' (see pyuvdata docs)
+                  Default: 'miriad'.
 
         """
 
@@ -459,8 +463,9 @@ class Antenna_Metrics():
         self.history = ''
 
         if len(self.antpols) is not 2 or len(self.pols) is not 4:
-            raise ValueError('Missing polarization information. pols =' +
-                             str(self.pols) + ' and antpols = ' + str(self.antpols))
+            raise ValueError('Missing polarization information. pols ='
+                             + str(self.pols) + ' and antpols = '
+                             + str(self.antpols))
 
     def mean_Vij_metrics(self, pols=None, xants=[], rawMetric=False):
         """Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module."""
@@ -470,7 +475,8 @@ class Antenna_Metrics():
                                 self.ants, self.bls, xants=xants,
                                 rawMetric=rawMetric)
 
-    def red_corr_metrics(self, pols=None, xants=[], rawMetric=False, crossPol=False):
+    def red_corr_metrics(self, pols=None, xants=[], rawMetric=False,
+                         crossPol=False):
         """Local wrapper for red_corr_metrics in hera_qm.ant_metrics module."""
         if pols is None:
             pols = self.pols
@@ -479,14 +485,14 @@ class Antenna_Metrics():
                                 rawMetric=rawMetric, crossPol=crossPol)
 
     def mean_Vij_cross_pol_metrics(self, xants=[], rawMetric=False):
-        """Local wrapper for mean_Vij_cross_pol_metrics in hera_qm.ant_metrics module."""
+        """Local wrapper for mean_Vij_cross_pol_metrics."""
         return mean_Vij_cross_pol_metrics(self.data, self.pols,
                                           self.antpols, self.ants,
                                           self.bls, xants=xants,
                                           rawMetric=rawMetric)
 
     def red_corr_cross_pol_metrics(self, xants=[], rawMetric=False):
-        """Local wrapper for red_corr_cross_pol_metrics in hera_qm.ant_metrics module."""
+        """Local wrapper for red_corr_cross_pol_metrics."""
         return red_corr_cross_pol_metrics(self.data, self.pols,
                                           self.antpols, self.ants,
                                           self.reds, xants=xants,
@@ -500,10 +506,11 @@ class Antenna_Metrics():
         self.finalMetrics, self.finalModzScores = {}, {}
 
     def find_totally_dead_ants(self):
-        """Flag antennas whose median autoPower that they are involved in is 0.0.
+        """Flag antennas whose median autoPower is 0.0.
 
-        These antennas are marked as dead, but they do not appear in recorded antenna
-        metrics or zscores. Their removal iteration is -1 (i.e. before iterative flagging).
+        These antennas are marked as dead
+        They do not appear in recorded antenna metrics or zscores.
+        Their removal iteration is -1 (i.e. before iterative flagging).
         """
         autoPowers = compute_median_auto_power_dict(self.data,
                                                     self.pols,
@@ -513,7 +520,8 @@ class Antenna_Metrics():
                              for antpol in self.antpols
                              if (ant, antpol) not in self.xants}
         for ((ant0, ant1, pol), power) in autoPowers.items():
-            if (ant0, pol[0]) not in self.xants and (ant1, pol[1]) not in self.xants:
+            if ((ant0, pol[0]) not in self.xants
+                    and (ant1, pol[1]) not in self.xants):
                 power_list_by_ant[(ant0, pol[0])].append(power)
                 power_list_by_ant[(ant1, pol[1])].append(power)
         for (key, val) in power_list_by_ant.items():
@@ -523,7 +531,7 @@ class Antenna_Metrics():
                 self.removalIter[key] = -1
 
     def _run_all_metrics(self, iter=0):
-        """Designed to be run as part of AntennaMetrics.iterative_antenna_metrics_and_flagging()."""
+        """Local call for all metrics as part of iterative flagging method."""
         # Compute all raw metrics
         meanVij = self.mean_Vij_metrics(xants=self.xants,
                                         rawMetric=True)
@@ -569,8 +577,8 @@ class Antenna_Metrics():
                    Default 5 "sigmas".
         alwaysDeadCut -- Modified z-score cut for definitely dead antennas.
                          Default 10 "sigmas".
-            These are all thrown away at once without
-            waiting to iteratively throw away only the worst offender.
+                         These are all thrown away at once without waiting
+                         to iteratively throw away only the worst offender.
         """
         self.reset_summary_stats()
         self.find_totally_dead_ants()
@@ -595,16 +603,19 @@ class Antenna_Metrics():
             worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt]) / crossCut
 
             # Find the single worst antenna, remove it, log it, and run again
-            if worstCrossCutRatio >= worstDeadCutRatio and worstCrossCutRatio >= 1.0:
+            if (worstCrossCutRatio >= worstDeadCutRatio
+                    and worstCrossCutRatio >= 1.0):
                 for antpol in self.antpols:
                     self.xants.append((worstCrossAnt[0], antpol))
                     self.crossedAntsRemoved.append((worstCrossAnt[0], antpol))
                     self.removalIter[(worstCrossAnt[0], antpol)] = n
                     if verbose:
-                        print('On iteration', n, 'we flag', (worstCrossAnt[0], antpol))
-            elif worstDeadCutRatio > worstCrossCutRatio and worstDeadCutRatio > 1.0:
+                        print('On iteration', n, 'we flag\t', end='')
+                        print((worstCrossAnt[0], antpol))
+            elif (worstDeadCutRatio > worstCrossCutRatio
+                    and worstDeadCutRatio > 1.0):
                 dead_ants = set([worstDeadAnt])
-                for ant,metric in deadMetrics.items():
+                for (ant, metric) in deadMetrics.items():
                     if metric > alwaysDeadCut:
                         dead_ants.add(ant)
                 for dead_ant in dead_ants:
@@ -650,16 +661,18 @@ def ant_metrics_run(files, args, history):
     Run a series of ant_metrics tests on a given set of input files.
 
     Args:
-       files -- a list of files to run ant metrics on. Can be any of the 4 polarizations
+       files -- a list of files to run ant metrics on.
+                Can be any of the 4 polarizations
        args -- parsed arguments via argparse.ArgumentParser.parse_args
     Return:
        None
 
-    The funciton will take in a list of files and options. It will run the
-    series of ant metrics tests, and produce an HDF5 file containing the relevant
-    information. The file list passed in need only contain one of the polarization
-    files for a given JD, and the function will look for the other polarizations
-    in the same folder. If not all four polarizations are found, a warning is
+    The funciton will take in a list of files and options.
+    It will run the series of ant metrics tests,
+    and produce an HDF5 file containing the relevant information.
+    The file list need only contain one polarization type for a given JD,
+    the function will look for the other polarizations in the same folder.
+    If not all four polarizations are found, a warning is
     generated, since the code assumes all four polarizations are present.
     """
     from hera_cal.omni import aa_to_info
@@ -674,13 +687,15 @@ def ant_metrics_run(files, args, history):
         # default polarization list
         pol_list = ['xx', 'yy', 'xy', 'yx']
     else:
-        # assumes polarizations are passed in as comma-separated list, e.g. 'xx,xy,yx,yy'
+        # assumes polarizations are passed in as comma-separated list
+        #  e.g. 'xx,xy,yx,yy'
         pol_list = args.pol.split(',')
 
     # generate a list of all files to be read in
     fullpol_file_list = utils.generate_fullpol_file_list(files, pol_list)
     if len(fullpol_file_list) == 0:
-        raise AssertionError('Could not find all 4 polarizations for any files provided')
+        raise AssertionError('Could not find all 4 polarizations '
+                             'for any files provided')
 
     # generate aa object from file
     # N.B.: assumes redunancy information is the same for all files passed in
