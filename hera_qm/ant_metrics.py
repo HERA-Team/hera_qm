@@ -511,7 +511,7 @@ class AntennaMetrics():
                              + str(self.pols) + ' and antpols = '
                              + str(self.antpols))
 
-    def mean_Vij_metrics(self, pols=self.pols, xants=[], rawMetric=False):
+    def mean_Vij_metrics(self, pols=None, xants=[], rawMetric=False):
         """Calculate how an antennas's average |Vij| deviates from others.
 
         Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module
@@ -528,11 +528,13 @@ class AntennaMetrics():
                          of the mean of the absolute value of all visibilities associated with an antenna.
                          Very small or very large numbers are probably bad antennas.
         """
+        if pols is None:
+            pols = self.pols
         return mean_Vij_metrics(self.data, pols, self.antpols,
                                 self.ants, self.bls, xants=xants,
                                 rawMetric=rawMetric)
 
-    def red_corr_metrics(self, pols=self.pols, xants=[], rawMetric=False,
+    def red_corr_metrics(self, pols=None, xants=[], rawMetric=False,
                          crossPol=False):
         """Calculate modified Z-Score over all redundant groups for each antenna.
 
@@ -557,6 +559,8 @@ class AntennaMetrics():
                         associated with each antenna.
                         Very small numbers are probably bad antennas.
         """
+        if pols is None:
+            pols = self.pols
         return red_corr_metrics(self.data, pols, self.antpols,
                                 self.ants, self.reds, xants=xants,
                                 rawMetric=rawMetric, crossPol=crossPol)
@@ -785,17 +789,17 @@ class AntennaMetrics():
 
 # TODO: Make Metrics able to be turned on or off for a run.
 # code for running ant_metrics on a file
-def ant_metrics_run(files, pol=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
+def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
                     deadCut=5.0, alwaysDeatCut=10.0, metrics_path='',
                     extension='.ant_metrics.hdf5', vis_format='miriad',
-                    verbose=True, history):
+                    verbose=True, history=''):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
     Args:
         files: List of files to run ant metrics on.
                Can be any of the 4 polarizations
-        pol: List of polarizations to perform metrics over.
+        pols: List of polarizations to perform metrics over.
              Allowed polarizations: 'xx', 'yy', 'xy', 'yx'
              Default: ['xx', 'yy', 'xy', 'yx']
         crossCut: Modified Z-Score limit to cut cross-polarized antennas.
@@ -833,17 +837,17 @@ def ant_metrics_run(files, pol=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
     if len(files) == 0:
         raise AssertionError('Please provide a list of visibility files')
 
-    # define polarizations to look for
-    if args.pol == '':
-        # default polarization list
-        pol_list = ['xx', 'yy', 'xy', 'yx']
-    else:
-        # assumes polarizations are passed in as comma-separated list
-        #  e.g. 'xx,xy,yx,yy'
-        pol_list = args.pol.split(',')
+    # # define polarizations to look for
+    # if args.pol == '':
+    #     # default polarization list
+    #     pol_list = ['xx', 'yy', 'xy', 'yx']
+    # else:
+    #     # assumes polarizations are passed in as comma-separated list
+    #     #  e.g. 'xx,xy,yx,yy'
+    #     pol_list = args.pol.split(',')
 
     # generate a list of all files to be read in
-    fullpol_file_list = utils.generate_fullpol_file_list(files, pol_list)
+    fullpol_file_list = utils.generate_fullpol_file_list(files, pols)
     if len(fullpol_file_list) == 0:
         raise AssertionError('Could not find all 4 polarizations '
                              'for any files provided')
@@ -856,16 +860,16 @@ def ant_metrics_run(files, pol=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
     aa = get_aa_from_uv(hd)
     del hd
 
-    info = aa_to_info(aa, pols=[pol_list[-1][0]])
+    info = aa_to_info(aa, pols=[pols[-1][0]])
     reds = info.get_reds()
 
     # do the work
     for jd_list in fullpol_file_list:
-        am = AntennaMetrics(jd_list, reds, fileformat=args.vis_format)
-        am.iterative_antenna_metrics_and_flagging(crossCut=args.crossCut,
-                                                  deadCut=args.deadCut,
-                                                  alwaysDeadCut=args.alwaysDeadCut,
-                                                  verbose=args.verbose)
+        am = AntennaMetrics(jd_list, reds, fileformat=vis_format)
+        am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
+                                                  deadCut=deadCut,
+                                                  alwaysDeadCut=alwaysDeadCut,
+                                                  verbose=verbose)
 
         # add history
         am.history = am.history + history
@@ -874,13 +878,13 @@ def ant_metrics_run(files, pol=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
         abspath = os.path.abspath(base_filename)
         dirname = os.path.dirname(abspath)
         basename = os.path.basename(base_filename)
-        nopol_filename = re.sub('\.{}\.'.format(pol_list[0]), '.', basename)
-        if args.metrics_path == '':
+        nopol_filename = re.sub('\.{}\.'.format(pols[0]), '.', basename)
+        if metrics_path == '':
             # default path is same directory as file
             metrics_path = dirname
         else:
-            metrics_path = args.metrics_path
-        metrics_basename = nopol_filename + args.extension
+            metrics_path = metrics_path
+        metrics_basename = nopol_filename + extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
         am.save_antenna_metrics(metrics_filename)
 
