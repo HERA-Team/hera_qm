@@ -69,7 +69,7 @@ def per_antenna_modified_z_scores(metric):
     for each antenna, which is the metrics, minus the median, divided by the median absolute deviation.
     """
     zscores = {}
-    antpols = set([key[1] for key in list(metric)])
+    antpols = set([key[1] for key in metric])
     for antpol in antpols:
         values = np.array([val for (key, val) in metric.items()
                           if key[1] == antpol])
@@ -119,7 +119,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
                 absVijMean[(ant, antpol)] += s
                 visCounts[(ant, antpol)] += d.size
     timeFreqMeans = {key: absVijMean[key] / visCounts[key]
-                     for key in list(absVijMean)}
+                     for key in absVijMean}
 
     if rawMetric:
         return timeFreqMeans
@@ -437,11 +437,11 @@ class Antenna_Metrics():
                              for ant in self.ants
                              for antpol in self.antpols
                              if (ant, antpol) not in self.xants}
-        for (ant0, ant1, pol), power in autoPowers.items():
+        for ((ant0, ant1, pol), power) in autoPowers.items():
             if (ant0, pol[0]) not in self.xants and (ant1, pol[1]) not in self.xants:
                 power_list_by_ant[(ant0, pol[0])].append(power)
                 power_list_by_ant[(ant1, pol[1])].append(power)
-        for key, val in power_list_by_ant.items():
+        for (key, val) in power_list_by_ant.items():
             if np.median(val) == 0:
                 self.xants.append(key)
                 self.deadAntsRemoved.append(key)
@@ -467,7 +467,7 @@ class Antenna_Metrics():
             metrics[metName] = metric
             modz = per_antenna_modified_z_scores(metric)
             modzScores[metName] = modz
-            for key in metric.keys():
+            for key in metric:
                 if metName in self.finalMetrics:
                     self.finalMetrics[metName][key] = metric[key]
                     self.finalModzScores[metName][key] = modz[key]
