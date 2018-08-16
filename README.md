@@ -53,7 +53,7 @@ There are currently three primary modules which drive HERA quality metrics.
 A module to handle visibility-based metrics designed to identify misbehaving antennas.
 The module includes methods to calculate several metrics to identify cross-polarized antennas
 or dead antennas, based on either their redundancy with other antennas or their relative power.
-The primary class, `Antenna_Metrics`, includes interfaces to these methods and functions for
+The primary class, `AntennaMetrics`, includes interfaces to these methods and functions for
 loading data, iteratively running metrics and removing misbehaving antennas, and saving the
 results of those metrics in a JSON. And example of using this moduleis in
 `scripts/ant_metrics_example_notebook.ipynb`.
