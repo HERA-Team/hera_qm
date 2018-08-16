@@ -10,7 +10,10 @@ import sys
 a = utils.get_metrics_ArgumentParser('ant_metrics')
 args = a.parse_args()
 history = ' '.join(sys.argv)
-
+if args.pol == '':
+    args.pol = ['xx', 'yy', 'xy', 'xy']
+else:
+    args.pol = list(args.pol.split(','))
 ant_metrics.ant_metrics_run(args.files, pols=args.pol, crossCut=args.crossCut,
                             deadCut=args.deadCut,
                             alwaysDeatCut=args.alwaysDeatCut,
