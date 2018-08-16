@@ -260,6 +260,8 @@ def test_write_then_load_metric_warning_json_():
                                                UserWarning, UserWarning],
                                      nwarnings=3,
                                      message=warn_message)
+    # This function recursively walks dictionary and compares
+    # data types together with nt.assert_type_equal or np.allclose
     qmtest.recursive_compare_dicts(test_dict, json_dict)
     os.remove(json_file)
 
@@ -282,6 +284,9 @@ def test_read_write_old_firstcal_json_files():
 
     test_metrics.pop('history', None)
     test_metrics_in.pop('history', None)
+
+    # This function recursively walks dictionary and compares
+    # data types together with nt.assert_type_equal or np.allclose
     qmtest.recursive_compare_dicts(test_metrics, test_metrics_in)
     nt.assert_true(os.path.exists(test_file))
     os.remove(test_file)
@@ -302,6 +307,7 @@ def test_read_write_old_omnical_json_files():
                                         message=warn_message)
     metrics_io.write_metric_file(test_file, test_metrics)
     test_metrics_in = metrics_io.load_metric_file(test_file)
+
     # The written hdf5 may have these keys that differ by design
     # so ignore them.
     test_metrics.pop('history', None)
@@ -309,6 +315,8 @@ def test_read_write_old_omnical_json_files():
     test_metrics_in.pop('history', None)
     test_metrics_in.pop('version', None)
 
+    # This function recursively walks dictionary and compares
+    # data types together with nt.assert_type_equal or np.allclose
     qmtest.recursive_compare_dicts(test_metrics, test_metrics_in)
     nt.assert_true(os.path.exists(test_file))
     os.remove(test_file)
@@ -329,6 +337,7 @@ def test_read_write_new_ant_json_files():
                                         message=warn_message)
     metrics_io.write_metric_file(test_file, test_metrics)
     test_metrics_in = metrics_io.load_metric_file(test_file)
+
     # The written hdf5 may have these keys that differ by design
     # so ignore them.
     test_metrics.pop('history', None)
@@ -338,6 +347,8 @@ def test_read_write_new_ant_json_files():
     print('json:', test_metrics['reds'])
     print('hdf5:', test_metrics_in['reds'])
 
+    # This function recursively walks dictionary and compares
+    # data types together with nt.assert_type_equal or np.allclose
     qmtest.recursive_compare_dicts(test_metrics, test_metrics_in)
     nt.assert_true(os.path.exists(test_file))
     os.remove(test_file)

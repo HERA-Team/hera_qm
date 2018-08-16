@@ -239,12 +239,16 @@ class TestLowLevelFunctions(unittest.TestCase):
                                          nwarnings=1,
                                          message=warn_message)
         hdf5_dict = ant_metrics.load_antenna_metrics(hdf5_file)
+
         # The written hdf5 may have these keys that differ by design
         # so ignore them.
         json_dict.pop('history', None)
         json_dict.pop('version', None)
         hdf5_dict.pop('history', None)
         hdf5_dict.pop('version', None)
+
+        # This function recursively walks dictionary and compares
+        # data types together with nt.assert_type_equal or np.allclose
         qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
 
 
