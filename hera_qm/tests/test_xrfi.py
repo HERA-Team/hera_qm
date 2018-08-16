@@ -511,8 +511,50 @@ class TestFlaggingFunctions():
         nt.assert_true(True)
 
     def test_flag_apply(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # test applying to UVData
+        uv = UVData()
+        uv.read_miriad(test_d_file)
+        uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool)
+        uvf = UVFlag(uv, mode='flag')
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvf.flag_array[:, :, 0, :] = True
+        uvf2 = xrfi.flag_apply(uvf, uv, return_net_flags=True)
+        nt.assert_true(np.allclose(uv.flag_array, uvf2.flag_array))
+
+        # test applying to UVCal
+        uv = UVCal()
+        uv.read_calfits(test_c_file)
+        uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool)
+        uvf = UVFlag(uv, mode='flag')
+        uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool)
+        uvf.flag_array[:, :, 0, :, :] = True
+        uvf2 = xrfi.flag_apply(uvf, uv, return_net_flags=True)
+        nt.assert_true(np.allclose(uv.flag_array, uvf2.flag_array))
+
+        # test applying to waterfalls
+        uv = UVData()
+        uv.read_miriad(test_d_file)
+        uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool)
+        uvf = UVFlag(uv, mode='flag', waterfall=True)
+        uvf.flag_array[:, 0, :] = True
+        xrfi.flag_apply(uvf, uv)
+        nt.assert_true(np.allclose(uv.flag_array[:, :, 0, :], True))
+        nt.assert_true(np.allclose(uv.flag_array[:, :, 1:, :], False))
+
+        uv = UVCal()
+        uv.read_calfits(test_c_file)
+        uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool)
+        uvf = UVFlag(uv, mode='flag', waterfall=True)
+        uvf.flag_array[:, 0, :] = True
+        xrfi.flag_apply(uvf, uv)
+        nt.assert_true(np.allclose(uv.flag_array[:, :, 0, :, :], True))
+        nt.assert_true(np.allclose(uv.flag_array[:, :, 1:, :, :], False))
+
+        # catch errors
+        nt.assert_raises(ValueError, xrfi.flag_apply, uvf, 2)
+        nt.assert_raises(ValueError, xrfi.flag_apply, 2, uv)
+        uvf.mode = 'metric'
+        nt.assert_raises(ValueError, xrfi.flag_apply, uvf, uv)
 
 
 class TestHighLevelFunctions():
