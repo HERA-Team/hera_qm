@@ -73,14 +73,14 @@ class TestLowLevelFunctions(unittest.TestCase):
         ref = {(0, 'x'): 0.468, (0, 'y'): 0.479, (1, 'x'): 0.614,
                (1, 'y'): 0.472, (2, 'x'): 0.536, (2, 'y'): 0.623,
                (3, 'x'): 0.567, (3, 'y'): 0.502}
-        for key, val in ref.items():
+        for (key, val) in ref.items():
             self.assertAlmostEqual(val, red_corr[key], places=3)
         zs = ant_metrics.red_corr_metrics(self.data, self.pols, self.antpols,
                                           self.ants, self.reds)
         ref = {(0, 'x'): -1.445, (0, 'y'): -0.516, (1, 'x'): 1.088,
                (1, 'y'): -0.833, (2, 'x'): -0.261, (2, 'y'): 6.033,
                (3, 'x'): 0.261, (3, 'y'): 0.516}
-        for key, val in ref.items():
+        for (key, val) in ref.items():
             self.assertAlmostEqual(val, zs[key], places=3)
 
     def test_red_corr_metrics_NaNs(self):
@@ -94,7 +94,7 @@ class TestLowLevelFunctions(unittest.TestCase):
                (1, 'y'): 0.472, (2, 'x'): 0.536, (2, 'y'): 0.623,
                (3, 'x'): 0.567, (3, 'y'): 0.502,
                (99, 'x'): np.NaN, (99, 'y'): np.NaN}
-        for key, val in ref.items():
+        for (key, val) in ref.items():
             if np.isnan(val):
                 self.assertTrue(np.isnan(red_corr[key]))
             else:
@@ -104,7 +104,7 @@ class TestLowLevelFunctions(unittest.TestCase):
         ref = {(0, 'x'): -1.445, (0, 'y'): -0.516, (1, 'x'): 1.088, (1, 'y'): -0.833,
                (2, 'x'): -0.261, (2, 'y'): 6.033, (3, 'x'): 0.261, (3, 'y'): 0.516,
                (99, 'x'): np.NaN, (99, 'y'): np.NaN}
-        for key, val in ref.items():
+        for (key, val) in ref.items():
             if np.isnan(val):
                 self.assertTrue(np.isnan(zs[key]))
             else:
@@ -188,8 +188,8 @@ class TestLowLevelFunctions(unittest.TestCase):
             testp = np.median(np.mean(np.abs(self.data.get_data(*key))**2,
                                       axis=0))
             self.assertEqual(p, testp)
-        for key in self.data.keys():
-                self.assertIn((key[0], key[1], key[2]), power.keys())
+        for key in self.data:
+                self.assertIn((key[0], key[1], key[2]), power)
 
     def test_load_antenna_metrics(self):
         # load a metrics file and check some values
@@ -212,10 +212,9 @@ class TestLowLevelFunctions(unittest.TestCase):
                                'ant_metrics_output.hdf5')
         print(metrics['dead_ants'])
         metrics_io.write_metric_file(outpath, metrics)
-        
+
         # test reading it back in, and that the values agree
         metrics_new = ant_metrics.load_antenna_metrics(outpath)
-        print(metrics_new.keys())
         self.assertTrue(np.isnan(metrics_new['final_mod_z_scores']
                                  ['meanVijXPol'][(72, 'x')]))
         self.assertEqual(metrics_new['final_mod_z_scores']

@@ -4,6 +4,8 @@
 
 """Class and algorithms to compute per Antenna metrics."""
 from __future__ import print_function, division, absolute_import
+
+from builtins import zip
 import numpy as np
 from copy import deepcopy
 import json
@@ -67,15 +69,17 @@ def per_antenna_modified_z_scores(metric):
     for each antenna, which is the metrics, minus the median, divided by the median absolute deviation.
     """
     zscores = {}
-    antpols = set([key[1] for key in metric.keys()])
+    antpols = set([key[1] for key in list(metric)])
     for antpol in antpols:
-        values = np.array([val for key, val in metric.items() if key[1] == antpol])
+        values = np.array([val for (key, val) in metric.items()
+                          if key[1] == antpol])
         median = np.nanmedian(values)
         medAbsDev = np.nanmedian(np.abs(values - median))
-        for key, val in metric.items():
+        for (key, val) in metric.items():
             if key[1] == antpol:
+                # this factor makes it comparable to a
+                # standard z-score for gaussian data
                 zscores[key] = 0.6745 * (val - median) / medAbsDev
-                # this factor makes it comparable to a standard z-score for gaussian data
     return zscores
 
 
@@ -104,7 +108,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
         if i == j:
             continue
         for pol in pols:
-            ants = zip((i, j), pol)
+            ants = list(zip((i, j), pol))
             if all([ant in xants for ant in ants]):
                 continue
             d = data[i, j, pol]
@@ -115,7 +119,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
                 absVijMean[(ant, antpol)] += s
                 visCounts[(ant, antpol)] += d.size
     timeFreqMeans = {key: absVijMean[key] / visCounts[key]
-                     for key in absVijMean.keys()}
+                     for key in list(absVijMean)}
 
     if rawMetric:
         return timeFreqMeans
@@ -320,13 +324,13 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[],
 
 def average_abs_metrics(metrics1, metrics2):
     """Average the absolute value of two metrics together."""
-    if set(metrics1.keys()) != set(metrics2.keys()):
+    if set(list(metrics1)) != set(list(metrics2)):
         error_message = ('Metrics being averaged have differnt '
                          '(ant,antpol) keys.')
         raise KeyError(error_message)
     return {key: np.nanmean([np.abs(metrics1[key]),
                              np.abs(metrics2[key])])
-            for key in metrics1.keys()}
+            for key in metrics1}
 
 
 def load_antenna_metrics(metric_file):
@@ -503,7 +507,7 @@ class Antenna_Metrics():
             self._run_all_metrics(iter=n)
 
             # Mostly likely dead antenna
-            last_iter = list(self.allModzScores.keys())[-1]
+            last_iter = list(self.allModzScores)[-1]
             deadMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVij'],
                                               self.allModzScores[last_iter]['redCorr'])
             worstDeadAnt = max(deadMetrics, key=deadMetrics.get)

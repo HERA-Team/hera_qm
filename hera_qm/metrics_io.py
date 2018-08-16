@@ -4,13 +4,15 @@
 """I/O Handler for all metrics that can be stored as (nested) dictionaries."""
 
 from __future__ import print_function, division, absolute_import
-from __builtin__ import range, map
+
+from builtins import range, map
 import json
 import os
 import h5py
 import warnings
 import numpy as np
 import copy
+import six
 from collections import OrderedDict
 from hera_qm.version import hera_qm_version_str
 
@@ -36,7 +38,7 @@ def _reds_list_to_dict(reds):
 def _reds_dict_to_list(reds):
     """Convert dict of redundant baseline groups to list."""
     if isinstance(reds, dict):
-        reds = reds.values()
+        reds = list(reds.values())
 
     return [list(map(tuple, red)) for red in reds]
 
@@ -47,7 +49,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
     Adds allowed types to the current group as datasets
     creates new subgroups if a given item in a dictionary is a dictionary.
     """
-    allowed_types = (np.ndarray, np.float, np.int, bytes, str, list)
+    allowed_types = (np.ndarray, np.float, np.int, bytes, six.text_type, list)
     compressable_types = (np.ndarray, list)
     for key in in_dict:
         key_str = str(key)
@@ -83,7 +85,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
             if isinstance(in_dict[key], OrderedDict):
                 grp.attrs['ordered'] = True
 
-                key_order = list(map(str, in_dict[key].keys()))
+                key_order = list(map(str, list(in_dict[key].keys())))
                 key_set = grp.create_dataset('key_order', data=key_order)
                 key_set.attrs['key_is_string'] = True
             grp.attrs['key_is_string'] = isinstance(key, str)
@@ -151,7 +153,7 @@ def _recursively_load_dict_to_group(h5file, path, ordered=False):
         key_list = h5file[path + 'key_order'].value
     else:
         out_dict = {}
-        key_list = h5file[path].keys()
+        key_list = list(h5file[path].keys())
     for key in key_list:
 
         item = h5file[path + key]
@@ -196,7 +198,7 @@ def _recursively_evaluate_json(in_dict, gvars):
         elif isinstance(in_dict[key], (list, np.ndarray)):
                 try:
                     if len(in_dict[key]) > 0:
-                        if isinstance(in_dict[key][0], (unicode, np.int,
+                        if isinstance(in_dict[key][0], (six.text_type, np.int,
                                                         np.float, np.complex)):
                             out_dict[out_key] = [eval(str(val), gvars)
                                                  for val in in_dict[key]]
