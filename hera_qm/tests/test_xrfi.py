@@ -560,8 +560,10 @@ class TestFlaggingFunctions():
 class TestHighLevelFunctions():
 
     def test_calculate_metric(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+        # setup
+        uv = UVData()
+        uv.read_miriad(test_d_file)
+        xrfi.calculate_metric(uv, 'detrend_medfilt')
 
 
 class TestPipelines():
