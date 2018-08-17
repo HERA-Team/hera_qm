@@ -519,8 +519,24 @@ def quadmean(a, weights=None, axis=None, returned=False):
         return np.sqrt(o)
 
 
+def or_collapse(a, weights=None, axis=None, returned=False):
+    ''' Function to collapse axes using OR operation
+    Args:
+        a - boolean array to process
+        weights - NOT USED, but kept for symmetry with other averaging functions
+        axis - axis or axes over which to OR
+        returned - NOT USED, kept for symmetry. If set to True, will error.
+    '''
+    if a.dtype != np.bool:
+        raise ValueError('Input to or_collapse function must be boolean array')
+    if returned:
+        raise NotImplementedError('or_collapse function does not have "returned" implemented.')
+    return np.any(a, axis=axis)
+
+
 # Dictionary to map different methods for averaging data.
-averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean}
+averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean,
+                  'or': or_collapse}
 
 
 def flags2waterfall(uv, flag_array=None, keep_pol=False):

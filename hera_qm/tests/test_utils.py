@@ -300,6 +300,29 @@ def test_quadmean():
     nt.assert_equal(o1, o3)
 
 
+def test_or_collapse():
+    # Fake data
+    data = np.zeros((50, 25), np.bool)
+    data[0, 8] = True
+    o = utils.or_collapse(data, axis=0)
+    ans = np.zeros(25, np.bool)
+    ans[8] = True
+    nt.assert_true(np.array_equal(o, ans))
+    o = utils.or_collapse(data, axis=1)
+    ans = np.zeros(50, np.bool)
+    ans[0] = True
+    nt.assert_true(np.array_equal(o, ans))
+    o = utils.or_collapse(data)
+    nt.assert_true(o)
+
+
+def test_or_collapse_errors():
+    data = np.zeros(5)
+    nt.assert_raises(ValueError, utils.or_collapse, data)
+    data = np.zeros(5, np.bool)
+    nt.assert_raises(NotImplementedError, utils.or_collapse, data, returned=True)
+
+
 def test_flags2waterfall():
     uv = UVData()
     uv.read_uvfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvc.vis.uvfits'))
