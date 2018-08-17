@@ -21,7 +21,12 @@ def real_noise(size):
 
 
 def recursive_compare_dicts(d1, d2):
-    """Recursively compare dictionaries."""
+    """Recursively compare dictionaries.
+
+    Keys of each dict must match.
+    Walks through two input dicts and compares each key.
+    Makes calls to nt.asser_type_equals and np.allclose to compare values.
+    """
     nt.assert_equal(set(d1.keys()), set(d2.keys()))
     for key in d1:
         if isinstance(d1[key], (list)):
