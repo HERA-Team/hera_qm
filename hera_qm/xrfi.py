@@ -585,7 +585,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
     """
     uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, gains=gains, chisq=chisq)
     uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None)
-    uvf_f = watershed_flag(uvf, uvf_df, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+    uvf_f = watershed_flag(uvf, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
     uvf_w = copy.deepcopy(uvf_f)
     uvf_w.to_waterfall()
     # I realize the naming convention has flipped, which results in nsig_f=time_threshold.
@@ -594,7 +594,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
     uvf_wf = flag(uvf_w, nsig_p=px_threshold, nsig_f=time_threshold,
                   nsig_t=freq_threshold)
 
-    if return_sumary:
+    if return_summary:
         return uvf_f, uvf_wf, uvf_w
     else:
         return uvf_f, uvf_wf
@@ -680,7 +680,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         xants = process_ex_ants(ex_ants, metrics_json)
 
         # Flag the visibilities corresponding to the specified antennas
-        uvd = flag_xants(uvd, xants)
+        flag_xants(uvd, xants)
 
     # append to history
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
@@ -691,7 +691,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
 
     # Flag on data
     if indata is not None:
-        uvf_f, uvf_wf, uvf_w = xrfi_h1c_pipe(uv, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+        uvf_f, uvf_wf, uvf_w = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                              sig_adj=sig_adj, px_threshold=px_threshold,
                                              freq_threshold=freq_threshold, time_threshold=time_threshold,
                                              return_summary=True)
@@ -702,17 +702,17 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         outfile = ''.join([basename, extension])
         outpath = os.path.join(dirname, outfile)
         uvf_f.history += history
-        uvf_f.write(outpath)
+        uvf_f.write(outpath,clobber=True)
         # Save thresholded waterfall
-        outfile = ''.join([baseline, '.waterfall', extension])
+        outfile = ''.join([basename, '.waterfall', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
-        uvf_wf.write(outpath)
+        uvf_wf.write(outpath,clobber=True)
         if summary:
-            sum_file = ''.join([baseline, summary_ext])
+            sum_file = ''.join([basename, summary_ext])
             sum_path = os.path.join(dirname, sum_file)
             uvf_w.history += history
-            uvf_w.write(sum_path)
+            uvf_w.write(sum_path,clobber=True)
 
     if model_file is not None:
         uvm = UVData()
@@ -730,7 +730,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                     and np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of model vis file must match'
                                  'the data file.')
-        uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+        uvf_f, uvf_wf = xrfi_h1c_pipe(uvm, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold)
         if xrfi_path == '':
@@ -739,7 +739,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         outfile = ''.join([os.path.basename(model_file), extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
-        uvf_wf.write(outpath)
+        uvf_wf.write(outpath,clobber=True)
 
     if calfits_file is not None:
         uvc = UVCal()
@@ -759,13 +759,13 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         outfile = ''.join([os.path.basename(calfits_file), '.g', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
-        uvf_wf.write(outpath)
+        uvf_wf.write(outpath,clobber=True)
         # repeat for chisquared
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold,
                                       gains=False, chisq=True)
-        outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
+        outfile = ''.join([os.path.basename(calfits_file), '.x', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
         uvf_wf.write(outpath)
