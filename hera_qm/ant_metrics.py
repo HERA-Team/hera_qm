@@ -481,11 +481,11 @@ class AntennaMetrics():
         """Initilize an AntennaMetrics object.
 
         Arguments:
-        dataFileList: List of data filenames of the four different visibility polarizations for the same observation
-        reds: List of lists of tuples of antenna numbers that make up redundant baseline groups.
-        format: File type of data
-                Supports: 'miriad','uvfits', 'fhd', 'ms ' (see pyuvdata docs)
-                Default: 'miriad'.
+            dataFileList: List of data filenames of the four different visibility polarizations for the same observation
+            reds: List of lists of tuples of antenna numbers that make up redundant baseline groups.
+            format: File type of data
+                    Supports: 'miriad','uvfits', 'fhd', 'ms ' (see pyuvdata docs)
+                    Default: 'miriad'.
         """
         if fileformat == 'miriad':
             self.hd = HERAData(dataFileList, filetype='miriad')
@@ -543,21 +543,21 @@ class AntennaMetrics():
         do not correlate with others they are nominmally redundant with.
 
         Arguments:
-        data: data for all polarizations
-              format must support data[i,j,pol]
-        pols: List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-              Default: self.pols
-        xants: List of antennas that should be ignored.
-                format: (ant, antpol)
-        rawMetric: return the raw power correlations instead of the modified z-score
-        crossPol: return results only when the two visibility polarizations differ by a single flip
+            data: data for all polarizations
+                  format must support data[i,j,pol]
+            pols: List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
+                  Default: self.pols
+            xants: List of antennas that should be ignored.
+                   format: (ant, antpol)
+            rawMetric: return the raw power correlations instead of the modified z-score
+            crossPol: return results only when the two visibility polarizations differ by a single flip
 
         Returns:
-        powerRedMetric: Dictionary indexed by (ant,antpol)
-                        of the modified z-scores of the mean power correlations
-                        inside redundant baseline groups
-                        associated with each antenna.
-                        Very small numbers are probably bad antennas.
+            powerRedMetric: Dictionary indexed by (ant,antpol)
+                            of the modified z-scores of the mean power correlations
+                            inside redundant baseline groups
+                            associated with each antenna.
+                            Very small numbers are probably bad antennas.
         """
         if pols is None:
             pols = self.pols
@@ -574,19 +574,19 @@ class AntennaMetrics():
         (Vxy+Vyx)/(Vxx+Vyy).
 
         Arguments:
-        xants: List of antennas  that should be ignored.
-               format (ant,antpol) format
-               e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
-                      as cross-polarized and will be excluded.
-        rawMetric: return the raw power ratio instead of the modified z-score
+            xants: List of antennas  that should be ignored.
+                   format (ant,antpol) format
+                   e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
+                          as cross-polarized and will be excluded.
+            rawMetric: return the raw power ratio instead of the modified z-score
 
         Returns:
-        mean_Vij_cross_pol_metrics: Dictionary indexed by (ant,antpol)
-                                    The modified z-scores of the
-                                    ratio of mean visibilities,
-                                    (Vxy+Vyx)/(Vxx+Vyy).
-                                    Results duplicated in both antpols.
-                                    Very large values are likely cross-polarized.
+            mean_Vij_cross_pol_metrics: Dictionary indexed by (ant,antpol)
+                                        The modified z-scores of the
+                                        ratio of mean visibilities,
+                                        (Vxy+Vyx)/(Vxx+Vyy).
+                                        Results duplicated in both antpols.
+                                        Very large values are likely cross-polarized.
         """
         return mean_Vij_cross_pol_metrics(self.data, self.pols,
                                           self.antpols, self.ants,
@@ -602,20 +602,20 @@ class AntennaMetrics():
         Returns the modified z-score.
 
         Arguments:
-        xants: List of antennas  that should be ignored.
-               format (ant,antpol) format
-               e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
-                      as cross-polarized and will be excluded.
-        rawMetric: return the raw power ratio instead of the modified z-score
-                    type: Boolean
-                    Default: False
+            xants: List of antennas  that should be ignored.
+                   format (ant,antpol) format
+                   e.g.,  if (81,'y') is excluded, (81,'x') cannot be identified
+                          as cross-polarized and will be excluded.
+            rawMetric: return the raw power ratio instead of the modified z-score
+                        type: Boolean
+                        Default: False
 
         Returns:
-        redCorrCrossPolMetrics: Dictionary indexed by (ant,antpol)
-                                The modified z-scores of the mean correlation
-                                ratio between redundant visibilities
-                                and singlely-polarization flipped ones.
-                                Very large values are probably cross-polarized.
+            redCorrCrossPolMetrics: Dictionary indexed by (ant,antpol)
+                                    The modified z-scores of the mean correlation
+                                    ratio between redundant visibilities
+                                    and singlely-polarization flipped ones.
+                                    Very large values are probably cross-polarized.
         """
         return red_corr_cross_pol_metrics(self.data, self.pols,
                                           self.antpols, self.ants,
@@ -701,14 +701,14 @@ class AntennaMetrics():
         Saves the results internally to this this antenna metrics object.
 
         Arguments:
-        crossCut: Modified z-score cut for most cross-polarized antennas.
-                  Default 5 "sigmas".
-        deadCut: Modified z-score cut for most likely dead antennas.
-                  Default 5 "sigmas".
-        alwaysDeadCut: Modified z-score cut for definitely dead antennas.
-                       Default 10 "sigmas".
-                       These are all thrown away at once without waiting
-                       to iteratively throw away only the worst offender.
+            crossCut: Modified z-score cut for most cross-polarized antennas.
+                      Default 5 "sigmas".
+            deadCut: Modified z-score cut for most likely dead antennas.
+                      Default 5 "sigmas".
+            alwaysDeadCut: Modified z-score cut for definitely dead antennas.
+                           Default 10 "sigmas".
+                           These are all thrown away at once without waiting
+                           to iteratively throw away only the worst offender.
         """
         self.reset_summary_stats()
         self.find_totally_dead_ants()
@@ -836,15 +836,6 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
     # check that we were given some files to process
     if len(files) == 0:
         raise AssertionError('Please provide a list of visibility files')
-
-    # # define polarizations to look for
-    # if args.pol == '':
-    #     # default polarization list
-    #     pol_list = ['xx', 'yy', 'xy', 'yx']
-    # else:
-    #     # assumes polarizations are passed in as comma-separated list
-    #     #  e.g. 'xx,xy,yx,yy'
-    #     pol_list = args.pol.split(',')
 
     # generate a list of all files to be read in
     fullpol_file_list = utils.generate_fullpol_file_list(files, pols)
