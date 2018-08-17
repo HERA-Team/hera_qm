@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018 the HERA Project
+# Licensed under the MIT License
+
 from __future__ import print_function, division, absolute_import
 import re
 import os
@@ -7,6 +11,7 @@ import numpy as np
 from pyuvdata import UVCal, UVData
 from pyuvdata import telescopes as uvtel
 from pyuvdata import utils as uvutils
+import copy
 
 
 # argument-generating function for *_run wrapper functions
@@ -442,6 +447,7 @@ def metrics2mc(filename, ftype):
 
     return d
 
+
 def lst_from_uv(uv):
     ''' Calculate the lst_array for a UVData or UVCal object.
     Args:
@@ -459,16 +465,21 @@ def lst_from_uv(uv):
     lst_array = uvutils.get_lst_for_time(uv.time_array, lat, lon, alt)
     return lst_array
 
+
 def mean(a, weights=None, axis=None, returned=False):
     ''' Function to average data. This is similar to np.average, except it
-    handles nans (by giving them zero weight) and zero weight axes (by forcing
-    result to be nan with zero output weight).
+    handles infs (by giving them zero weight) and zero weight axes (by forcing
+    result to be inf with zero output weight).
     Args:
         a - array to process
-        weights - weights for average
-        axis - axis keyword to pass to np.mean
+        weights - weights for average. If none, will default to equal weight for
+                  all non-infinite data.
+        axis - axis keyword to pass to np.sum
         returned - whether to return sum of weights. Default is False.
     '''
+    a = copy.deepcopy(a)  # avoid changing outside
+    if weights is None:
+        weights = np.ones_like(a)
     w = weights * np.logical_not(np.isinf(a))
     a[np.isinf(a)] = 0
     wo = np.sum(w, axis=axis)
@@ -481,6 +492,7 @@ def mean(a, weights=None, axis=None, returned=False):
     else:
         return o
 
+
 def absmean(a, weights=None, axis=None, returned=False):
     ''' Function to average absolute value
     Args:
@@ -490,6 +502,7 @@ def absmean(a, weights=None, axis=None, returned=False):
         returned - whether to return sum of weights. Default is False.
     '''
     return mean(np.abs(a), weights=weights, axis=axis, returned=returned)
+
 
 def quadmean(a, weights=None, axis=None, returned=False):
     ''' Function to average in quadrature
@@ -503,10 +516,33 @@ def quadmean(a, weights=None, axis=None, returned=False):
     if returned:
         return np.sqrt(o[0]), o[1]
     else:
+        return np.sqrt(o)
+
+
+def or_collapse(a, weights=None, axis=None, returned=False):
+    ''' Function to collapse axes using OR operation
+    Args:
+        a - boolean array to process
+        weights - NOT USED, but kept for symmetry with other averaging functions
+        axis - axis or axes over which to OR
+        returned - whether to return dummy weights array. NOTE: the dummy weights
+                   will simply be an array of ones. Default is False.
+    '''
+    if a.dtype != np.bool:
+        raise ValueError('Input to or_collapse function must be boolean array')
+    o = np.any(a, axis=axis)
+    if (weights is not None) and not np.all(weights == weights.reshape(-1)[0]):
+        warnings.warn('Currently weights are not handled when OR-ing boolean arrays.')
+    if returned:
+        return o, np.ones_like(o, dtype=np.float)
+    else:
         return o
 
+
 # Dictionary to map different methods for averaging data.
-averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean}
+averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean,
+                  'or': or_collapse}
+
 
 def flags2waterfall(uv, flag_array=None, keep_pol=False):
     """

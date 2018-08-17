@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018 the HERA Project
+# Licensed under the MIT License
+
 import unittest
 import nose.tools as nt
 from hera_qm import ant_metrics

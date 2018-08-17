@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018 the HERA Project
+# Licensed under the MIT License
+
 from __future__ import print_function, division, absolute_import
 import numpy as np
 import os
@@ -8,6 +12,7 @@ from hera_qm import utils as qm_utils
 from hera_qm.version import hera_qm_version_str
 import warnings
 import copy
+import collections
 
 
 #############################################################################
@@ -26,7 +31,7 @@ def flag_xants(uv, xants, inplace=True):
                 uvo is a new UVFlag object with only xants flags.
     """
     # check that we got an appropriate object
-    if not isinstance(uv, (UVData, UVCal, UVFlag)):
+    if not issubclass(uv.__class__, (UVData, UVCal, UVFlag)):
         raise ValueError('First argument to flag_xants must be a UVData, UVCal, '
                          ' or UVFlag object.')
     if isinstance(uv, UVFlag) and uv.type == 'waterfall':
@@ -34,13 +39,19 @@ def flag_xants(uv, xants, inplace=True):
 
     if not inplace:
         if isinstance(uv, UVFlag):
-            uvo = copy.deepcopy(uv).to_flag()
+            uvo = uv.copy()
+            uvo.to_flag()
         else:
             uvo = UVFlag(uv, mode='flag')
     else:
         uvo = uv
 
-    if isinstance(uvo, UVData) or (isinstance(uvo, UVFlag) and uvo.type == 'baseline'):
+    if isinstance(uvo, UVFlag) and uvo.mode != 'flag':
+        raise ValueError('Cannot flag antennas on UVFlag obejct in mode ' + uvo.mode)
+
+    if not isinstance(xants, collections.Iterable):
+        xants = [xants]
+    if issubclass(uvo.__class__, UVData) or (isinstance(uvo, UVFlag) and uvo.type == 'baseline'):
         all_ants = np.unique(np.append(uvo.ant_1_array, uvo.ant_2_array))
         for ant in all_ants:
             for xant in xants:
@@ -48,11 +59,13 @@ def flag_xants(uv, xants, inplace=True):
                 uvo.flag_array[blts, :, :, :] = True
                 blts = uvo.antpair2ind(xant, ant)
                 uvo.flag_array[blts, :, :, :] = True
-    elif isinstance(uvo, UVCal) or (isinstance(uvo, UVFlag) and uvo.type == 'antenna'):
+    elif issubclass(uvo.__class__, UVCal) or (isinstance(uvo, UVFlag) and uvo.type == 'antenna'):
         for xant in xants:
             ai = np.where(uvo.ant_array == xant)[0]
             uvo.flag_array[ai, :, :, :, :] = True
-    return uvo
+
+    if not inplace:
+        return uvo
 
 
 #############################################################################
@@ -65,8 +78,16 @@ def medmin(d):
         d (array): 2D data array of the shape (time,frequency).
     Returns:
         (float): medmin statistic.
+
+    Notes:
+        The statistic first computes the minimum value of the array along the
+        first axis (the time axis, if the array is passed in as (time, frequency,
+        so that a single spectrum is returned). The median of these values is
+        computed, multiplied by 2, and then the minimum value is subtracted off.
+        The goal is to get a proxy for the "noise" in the 2d array.
     '''
-    assert (d.ndim == 2), 'Input to medmin must be 2D array.'
+    if d.ndim != 2:
+        raise ValueError('Input to medmin must be 2D array.')
     mn = np.min(d, axis=0)
     return 2 * np.median(mn) - np.min(mn)
 
@@ -80,9 +101,16 @@ def medminfilt(d, Kt=8, Kf=8):
     Returns:
         array: filtered array with same shape as input array.
     '''
-    assert (d.ndim == 2), 'Input to medminfilt must be 2D array.'
-    if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise AssertionError('Kernel size exceeds data.')
+    if d.ndim != 2:
+        raise ValueError('Input to medminfilt must be 2D array.')
+    if Kt > d.shape[0]:
+        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
+        Kt = d.shape[0]
+    if Kf > d.shape[1]:
+        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
+        Kf = d.shape[1]
     d_sm = np.empty_like(d)
     for i in xrange(d.shape[0]):
         for j in xrange(d.shape[1]):
@@ -94,7 +122,8 @@ def medminfilt(d, Kt=8, Kf=8):
 
 def detrend_deriv(d, dt=True, df=True):
     ''' Detrend array by taking the derivative in either time, frequency
-        or both.
+        or both. When taking the derivative of both, the derivative in
+        frequency is performed first, then in time.
     Args:
         d (array): 2D data array of the shape (time,frequency).
         dt (bool, optional): derivative across time bins.
@@ -102,22 +131,22 @@ def detrend_deriv(d, dt=True, df=True):
     Returns:
         array: detrended array with same shape as input array.
     '''
-    assert (d.ndim == 2), 'Input to detrend_deriv must be 2D array.'
+    if d.ndim != 2:
+        raise ValueError('Input to detrend_deriv must be 2D array.')
+    if not (dt or df):
+        raise ValueError("dt and df cannot both be False when calling detrend_deriv")
     if df:
-        d_df = np.empty_like(d)
-        d_df[:, 1:-1] = (d[:, 1:-1] - .5 * (d[:, :-2] + d[:, 2:])) / np.sqrt(1.5)
-        d_df[:, 0] = (d[:, 0] - d[:, 1]) / np.sqrt(2)
-        d_df[:, -1] = (d[:, -1] - d[:, -2]) / np.sqrt(2)
+        # take gradient along frequency
+        d_df = np.gradient(d, axis=1)
     else:
         d_df = d
     if dt:
-        d_dt = np.empty_like(d_df)
-        d_dt[1:-1] = (d_df[1:-1] - .5 * (d_df[:-2] + d_df[2:])) / np.sqrt(1.5)
-        d_dt[0] = (d_df[0] - d_df[1]) / np.sqrt(2)
-        d_dt[-1] = (d_df[-1] - d_df[-2]) / np.sqrt(2)
+        # take gradient along time
+        d_dtdf = np.gradient(d_df, axis=0)
     else:
-        d_dt = d
-    d2 = np.abs(d_dt)**2
+        d_dtdf = d_df
+
+    d2 = np.abs(d_dtdf)**2
     # model sig as separable function of 2 axes
     sig_f = np.median(d2, axis=0)
     sig_f.shape = (1, -1)
@@ -125,7 +154,7 @@ def detrend_deriv(d, dt=True, df=True):
     sig_t.shape = (-1, 1)
     sig = np.sqrt(sig_f * sig_t / np.median(sig_t))
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_dt, sig, where=(np.abs(sig) > 1e-7))
+    f = np.true_divide(d_dtdf, sig, where=(np.abs(sig) > 1e-7))
     f = np.where(np.abs(sig) > 1e-7, f, np.inf)
     return f
 
@@ -139,7 +168,8 @@ def detrend_medminfilt(d, Kt=8, Kf=8):
     Returns:
         float array: float array of outlier significance metric
     """
-    assert (d.ndim == 2), 'Input to detrend_medminfilt must be 2D array.'
+    if d.ndim != 2:
+        raise ValueError('Input to detrend_medminfilt must be 2D array.')
     d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
@@ -159,12 +189,19 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     Returns:
         f: array of outlier significance metric. Same type and size as d.
     """
-    assert (d.ndim == 2), 'Input to detrend_medfilt must be 2D array.'
     # Delay import so scipy is not required for any use of hera_qm
     from scipy.signal import medfilt2d
 
-    if Kt > d.shape[0] or Kf > d.shape[1]:
-        raise AssertionError('Kernel size exceeds data.')
+    if d.ndim != 2:
+        raise ValueError('Input to detrend_medfilt must be 2D array.')
+    if Kt > d.shape[0]:
+        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
+        Kt = d.shape[0]
+    if Kf > d.shape[1]:
+        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
+        Kf = d.shape[1]
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(d):
@@ -190,6 +227,7 @@ algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': d
 #############################################################################
 # RFI flagging algorithms
 #############################################################################
+
 
 def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method='quadmean',
                    inplace=True):
@@ -240,7 +278,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
 
     if uvf_m.type == 'baseline':
         # Pixel watershed
-        #TODO: bypass pixel-based if none
+        # TODO: bypass pixel-based if none
         for b in np.unique(uvf.baseline_array):
             i = np.where(uvf.baseline_array == b)[0]
             for pi in range(uvf.polarization_array.size):
@@ -286,7 +324,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
         if nsig_f is not None:
             # Channel watershed
             d = avg_f(marr, axis=(0, 2), weights=warr)
-            f = np.app(farr, axis=(0, 2))
+            f = np.all(farr, axis=(0, 2))
             farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, -1, 1)
         if nsig_t is not None:
             # Time watershed
@@ -313,13 +351,14 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
 
     if d.shape != fin.shape:
         raise ValueError('d and f must match in shape. Shapes are: ' + str(d.shape)
-                         + ' and ' + str(f.shape))
+                         + ' and ' + str(fin.shape))
     f = copy.deepcopy(fin)
     # There may be an elegant way to combine these... for the future.
     if d.ndim == 1:
         prevn = 0
         x = np.where(f)[0]
         while x.size != prevn:
+            prevn = x.size
             for dx in [-1, 1]:
                 xp = (x + dx).clip(0, f.size - 1)
                 i = np.where(d[xp] > nsig)[0]  # if our metric > sig
@@ -431,9 +470,9 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
     Returns:
         net_flags: (if return_net_flags is set) returns UVFlag object with net flags.
     '''
-    if isinstance(uv, UVData):
+    if issubclass(uv.__class__, UVData):
         expected_type = 'baseline'
-    elif isinstance(uv, UVCal):
+    elif issubclass(uv.__class__, UVCal):
         expected_type = 'antenna'
     else:
         raise ValueError('Flags can only be applied to UVData or UVCal objects.')
@@ -454,48 +493,11 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
                 f.to_antenna(uv, force_pol=force_pol)
         # Use built-in or function
         net_flags |= f
-    uv.flag_array += f.flag_array
-    uv.history += 'FLAGGING HISTORY: ' + f.history + ' END OF FLAGGING HISTORY.'
+    uv.flag_array += net_flags.flag_array
+    uv.history += 'FLAGGING HISTORY: ' + history + ' END OF FLAGGING HISTORY.'
 
     if return_net_flags:
         return net_flags
-
-
-def xrfi_simple(d, f=None, nsig_df=6, nsig_dt=6, nsig_all=0):
-    '''Flag RFI using derivatives in time and frequency.
-    Args:
-        d (array): 2D data array of the shape (time, frequency) to flag
-        f (array, optional): input flags, defaults to zeros
-        nsig_df (float, optional): number of sigma above median to flag in frequency direction
-        nsig_dt (float, optional): number of sigma above median to flag in time direction
-        nsig_all (float, optional): overall flag above some sigma. Skip if 0.
-    Returns:
-        bool array: mask array for flagging.
-    '''
-    if f is None:
-        f = np.zeros(d.shape, dtype=np.bool)
-    if nsig_df > 0:
-        d_df = d[:, 1:-1] - .5 * (d[:, :-2] + d[:, 2:])
-        d_df2 = np.abs(d_df)**2
-        sig2 = np.median(d_df2, axis=1)
-        sig2.shape = (-1, 1)
-        f[:, 0] = 1
-        f[:, -1] = 1
-        f[:, 1:-1] = np.where(d_df2 / sig2 > nsig_df**2, 1, f[:, 1:-1])
-    if nsig_dt > 0:
-        d_dt = d[1:-1, :] - .5 * (d[:-2, :] + d[2:, :])
-        d_dt2 = np.abs(d_dt)**2
-        sig2 = np.median(d_dt2, axis=0)
-        sig2.shape = (1, -1)
-        f[0, :] = 1
-        f[-1, :] = 1
-        f[1:-1, :] = np.where(d_dt2 / sig2 > nsig_dt**2, 1, f[1:-1, :])
-    if nsig_all > 0:
-        ad = np.abs(d)
-        med = np.median(ad)
-        sig = np.sqrt(np.median(np.abs(ad - med)**2))
-        f = np.where(ad > med + nsig_all * sig, 1, f)
-    return f
 
 
 #############################################################################
@@ -517,22 +519,25 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
     Returns:
         uvf: UVFlag object of mode 'metric' corresponding to the uv object.
     """
-    if not isinstance(uv, (UVData, UVCal)):
+    if not issubclass(uv.__class__, (UVData, UVCal)):
         raise ValueError('uv must be a UVData or UVCal object.')
     try:
         alg_func = algorithm_dict[algorithm]
     except KeyError:
         raise KeyError('Algorithm not found in list of available functions.')
     uvf = UVFlag(uv)
-    uvf.weights_array = uv.nsample_array * np.logical_not(uv.flag_array).astype(np.float)
-    if isinstance(uv, UVData):
+    if issubclass(uv.__class__, UVData):
+        uvf.weights_array = uv.nsample_array * np.logical_not(uv.flag_array).astype(np.float)
+    else:
+        uvf.weights_array = np.logical_not(uv.flag_array).astype(np.float)
+    if issubclass(uv.__class__, UVData):
         for key, d in uv.antpairpol_iter():
             ind1, ind2, pol = uv._key2inds(key)
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
                 uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), **kwargs)
-    elif isinstance(uv, UVCal):
+    elif issubclass(uv.__class__, UVCal):
         for ai in range(uv.Nants_data):
             for pi in range(uv.Njones):
                 # Note transposes are due to freq, time dimensions rather than the
@@ -552,9 +557,9 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
 # "Pipelines" -- these routines define the flagging strategy for some data
 #############################################################################
 
-def xrfi_h1c(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
-             freq_threshold=0.5, time_threshold=0.05, return_summary=False,
-             gains=True, chisq=False):
+def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
+                  freq_threshold=0.5, time_threshold=0.05, return_summary=False,
+                  gains=True, chisq=False):
     """xrfi excision pipeline we used for H1C. Uses detrending and watershed algorithms above.
     Args:
         uv: UVData or UVCal object to flag
@@ -580,16 +585,16 @@ def xrfi_h1c(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
     """
     uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, gains=gains, chisq=chisq)
     uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None)
-    uvf_f = watershed_flag(uvf, uvf_df, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+    uvf_f = watershed_flag(uvf, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
     uvf_w = copy.deepcopy(uvf_f)
     uvf_w.to_waterfall()
     # I realize the naming convention has flipped, which results in nsig_f=time_threshold.
     # time_threshold is defined as fraction of time flagged to flag a given channel.
     # nsig_f is defined as significance required to flag a channel.
     uvf_wf = flag(uvf_w, nsig_p=px_threshold, nsig_f=time_threshold,
-                   nsig_t=freq_threshold)
+                  nsig_t=freq_threshold)
 
-    if return_sumary:
+    if return_summary:
         return uvf_f, uvf_wf, uvf_w
     else:
         return uvf_f, uvf_wf
@@ -597,6 +602,7 @@ def xrfi_h1c(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 #############################################################################
 # Wrappers -- Interact with input and output files
 #############################################################################
+
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                  summary=False, summary_ext='.flag_summary.h5', xrfi_path='',
@@ -646,14 +652,15 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
             raise AssertionError('Must provide at least one of: indata, '
                                  'model_file, or calfits_file.')
         warnings.warn('indata is None, not flagging on any data visibilities.')
-    elif isinstance(indata, UVData):
+    elif issubclass(indata.__class__, UVData):
         uvd = indata
         if filename is None:
             raise AssertionError('Please provide a filename to go with UVData object. '
                                  'The filename is used in conjunction with "extension" '
                                  'to determine the output filename.')
         else:
-            assert (isinstance(filename, str)), 'filename must be string path to file.'
+            if not isinstance(filename, str):
+                raise ValueError('filename must be string path to file.')
     else:
         filename = indata
         uvd = UVData()
@@ -661,8 +668,6 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
             uvd.read_miriad(filename)
         elif infile_format == 'uvfits':
             uvd.read_uvfits(filename)
-        elif infile_format == 'fhd':
-            uvd.read_fhd(filename)
         else:
             raise ValueError('Unrecognized input file format ' + str(infile_format))
 
@@ -673,7 +678,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         xants = process_ex_ants(ex_ants, metrics_json)
 
         # Flag the visibilities corresponding to the specified antennas
-        uvd = flag_xants(uvd, xants)
+        flag_xants(uvd, xants)
 
     # append to history
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
@@ -684,10 +689,10 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
 
     # Flag on data
     if indata is not None:
-        uvf_f, uvf_wf, uvf_w = xrfi_h1c(uv, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
-                                        sig_adj=sig_adj, px_threshold=px_threshold,
-                                        freq_threshold=freq_threshold, time_threshold=time_threshold,
-                                        return_summary=True)
+        uvf_f, uvf_wf, uvf_w = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                             sig_adj=sig_adj, px_threshold=px_threshold,
+                                             freq_threshold=freq_threshold, time_threshold=time_threshold,
+                                             return_summary=True)
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(filename))
         basename = os.path.basename(filename)
@@ -695,17 +700,17 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         outfile = ''.join([basename, extension])
         outpath = os.path.join(dirname, outfile)
         uvf_f.history += history
-        uvf_f.write(outpath)
+        uvf_f.write(outpath, clobber=True)
         # Save thresholded waterfall
-        outfile = ''.join([baseline, '.waterfall', extension])
+        outfile = ''.join([basename, '.waterfall', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
-        uvf_wf.write(outpath)
+        uvf_wf.write(outpath, clobber=True)
         if summary:
-            sum_file = ''.join([baseline, summary_ext])
+            sum_file = ''.join([basename, summary_ext])
             sum_path = os.path.join(dirname, sum_file)
             uvf_w.history += history
-            uvf_w.write(sum_path)
+            uvf_w.write(sum_path, clobber=True)
 
     if model_file is not None:
         uvm = UVData()
@@ -713,50 +718,50 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
             uvm.read_miriad(model_file)
         elif model_file_format == 'uvfits':
             uvm.read_uvfits(model_file)
-        elif model_file_format == 'fhd':
-            uvm.read_fhd(model_file)
         else:
             raise ValueError('Unrecognized input file format ' + str(model_file_format))
         if indata is not None:
-            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5, rtol=0) and
-                    np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
+            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array),
+                                atol=1e-5, rtol=0)
+                    and np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of model vis file must match'
                                  'the data file.')
-        uvf_f, uvf_wf = xrfi_h1c(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
-                                 sig_adj=sig_adj, px_threshold=px_threshold,
-                                 freq_threshold=freq_threshold, time_threshold=time_threshold)
+        uvf_f, uvf_wf = xrfi_h1c_pipe(uvm, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                      sig_adj=sig_adj, px_threshold=px_threshold,
+                                      freq_threshold=freq_threshold, time_threshold=time_threshold)
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(model_file))
         # Only save thresholded waterfall
         outfile = ''.join([os.path.basename(model_file), extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
-        uvf_wf.write(outpath)
+        uvf_wf.write(outpath, clobber=True)
 
     if calfits_file is not None:
         uvc = UVCal()
         uvc.read_calfits(calfits_file)
         if indata is not None:
-            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5, rtol=0) and
-                    np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
+            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array),
+                                atol=1e-5, rtol=0)
+                    and np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
                 raise ValueError('Time and frequency axes of calfits file must match'
                                  'the data file.')
         # By default, runs on gains
-        uvf_f, uvf_wf = xrfi_h1c(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
-                                 sig_adj=sig_adj, px_threshold=px_threshold,
-                                 freq_threshold=freq_threshold, time_threshold=time_threshold)
+        uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                      sig_adj=sig_adj, px_threshold=px_threshold,
+                                      freq_threshold=freq_threshold, time_threshold=time_threshold)
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(calfits_file))
         outfile = ''.join([os.path.basename(calfits_file), '.g', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
-        uvf_wf.write(outpath)
+        uvf_wf.write(outpath, clobber=True)
         # repeat for chisquared
-        uvf_f, uvf_wf = xrfi_h1c(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
-                                 sig_adj=sig_adj, px_threshold=px_threshold,
-                                 freq_threshold=freq_threshold, time_threshold=time_threshold,
-                                 gains=False, chisq=True)
-        outfile = ''.join([os.path.basename(args.calfits_file), '.x', args.extension])
+        uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
+                                      sig_adj=sig_adj, px_threshold=px_threshold,
+                                      freq_threshold=freq_threshold, time_threshold=time_threshold,
+                                      gains=False, chisq=True)
+        outfile = ''.join([os.path.basename(calfits_file), '.x', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
         uvf_wf.write(outpath)
@@ -793,9 +798,9 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     # make sure we were given files to process
     if len(filename) == 0:
         raise AssertionError('Please provide a visibility file')
-    if isinstance(filename, (list, np.array, tuple)) and len(filename) > 1:
+    if isinstance(filename, (list, np.ndarray, tuple)) and len(filename) > 1:
         raise AssertionError('xrfi_apply currently only takes a single data file.')
-    if isinstance(filename, (list, np.array, tuple)):
+    if isinstance(filename, (list, np.ndarray, tuple)):
         filename = filename[0]
     uvd = UVData()
     if infile_format == 'miriad':
@@ -805,7 +810,7 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     elif infile_format == 'fhd':
         uvd.read_fhd(filename)
     else:
-        raise ValueError('Unrecognized input file format ' + str(args.infile_format))
+        raise ValueError('Unrecognized input file format ' + str(infile_format))
 
     full_list = []
     # Read in flag file
@@ -841,5 +846,5 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
         raise ValueError('Unrecognized output file format ' + str(outfile_format))
     if output_uvflag:
         # Save an npz with the final flag array and waterfall and relevant metadata
-        outpath = outpath + out_uvflag_ext
+        outpath = outpath + output_uvflag_ext
         uvf.write(outpath)

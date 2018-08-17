@@ -14,7 +14,8 @@ class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
     and stores all relevant information to combine flags and apply to data.
     '''
-    def __init__(self, input, mode='metric', copy_flags=False, waterfall=False, history=''):
+    def __init__(self, input, mode='metric', copy_flags=False, waterfall=False, history='',
+                 label=''):
         '''Initialize UVFlag object.
         Args:
             input: UVData object, UVCal object, or path to previously saved UVFlag object.
@@ -26,10 +27,12 @@ class UVFlag():
             waterfall: Whether to immediately initialize as a waterfall object,
                        with flag/metric axes: time, frequency, polarization. Default is False.
             history: History string to attach to object.
+            label: string used for labeling the object (e.g. 'FM')
         '''
 
         self.mode = mode.lower()  # Gets overwritten if reading file
-        self.history = history
+        self.history = ''  # Added to at the end
+        self.label = ''  # Added to at the end
         if isinstance(input, (list, tuple)):
             self.__init__(input[0], mode=mode, copy_flags=copy_flags, waterfall=waterfall, history=history)
             if len(input) > 1:
@@ -40,12 +43,12 @@ class UVFlag():
         elif isinstance(input, str):
             # Given a path, read input
             self.read(input, history)
-        elif waterfall and isinstance(input, (UVData, UVCal)):
+        elif waterfall and issubclass(input.__class__, (UVData, UVCal)):
             self.type = 'waterfall'
             self.history += 'Flag object with type "waterfall" created by ' + hera_qm_version_str
             self.time_array, ri = np.unique(input.time_array, return_index=True)
             self.freq_array = input.freq_array[0, :]
-            if isinstance(input, UVData):
+            if issubclass(input.__class__, UVData):
                 self.polarization_array = input.polarization_array
                 self.lst_array = input.lst_array[ri]
             else:
@@ -67,7 +70,7 @@ class UVFlag():
                                                  len(self.freq_array),
                                                  len(self.polarization_array)))
 
-        elif isinstance(input, UVData):
+        elif issubclass(input.__class__, UVData):
             self.type = 'baseline'
             self.history += 'Flag object with type "baseline" created by ' + hera_qm_version_str
             self.baseline_array = input.baseline_array
@@ -89,7 +92,7 @@ class UVFlag():
                 elif self.mode == 'metric':
                     self.metric_array = np.zeros_like(input.flag_array).astype(np.float)
 
-        elif isinstance(input, UVCal):
+        elif issubclass(input.__class__, UVCal):
             self.type = 'antenna'
             self.history += 'Flag object with type "antenna" created by ' + hera_qm_version_str
             self.ant_array = input.ant_array
@@ -111,9 +114,13 @@ class UVFlag():
 
         if not isinstance(input, str):
             if self.mode == 'flag':
-                self.weights_array = np.zeros(self.flag_array.shape)
+                self.weights_array = np.ones(self.flag_array.shape)
             else:
-                self.weights_array = np.zeros(self.metric_array.shape)
+                self.weights_array = np.ones(self.metric_array.shape)
+
+        if history not in self.history:
+            self.history += history
+        self.label += label
 
         self.clear_unused_attributes()
 
@@ -124,7 +131,7 @@ class UVFlag():
         """
         if not isinstance(other, self.__class__):
             return False
-        if (self.type != other.type) or (self.mode != other.mode):
+        if (self.type != other.type) or (self.mode != other.mode) or (self.label != other.label):
             return False
 
         array_list = ['weights_array', 'time_array', 'lst_array', 'freq_array',
@@ -180,6 +187,8 @@ class UVFlag():
                 self.freq_array = header['freq_array'].value
                 self.history = header['history'].value + ' Read by ' + hera_qm_version_str
                 self.history += history
+                if 'label' in header.keys():
+                    self.label = header['label'].value
                 self.polarization_array = header['polarization_array'].value
                 if self.type == 'baseline':
                     self.baseline_array = header['baseline_array'].value
@@ -226,6 +235,7 @@ class UVFlag():
             header['freq_array'] = self.freq_array
             header['polarization_array'] = self.polarization_array
             header['history'] = self.history + 'Written by ' + hera_qm_version_str
+            header['label'] = self.label
 
             if self.type == 'baseline':
                 header['baseline_array'] = self.baseline_array
@@ -269,16 +279,16 @@ class UVFlag():
         if inplace:
             this = self
         else:
-            this = copy.deepcopy(self)
+            this = self.copy()
 
         # Check that objects are compatible
         if not isinstance(other, this.__class__):
             raise ValueError('Only UVFlag objects can be added to a UVFlag object')
         if this.type != other.type:
-            raise ValueError('UVFlag object of type ' + other.type + ' cannot be ' +
+            raise ValueError('UVFlag object of type ' + other.type + ' cannot be '
                              'added to object of type ' + this.type + '.')
         if this.mode != other.mode:
-            raise ValueError('UVFlag object of mode ' + other.mode + ' cannot be ' +
+            raise ValueError('UVFlag object of mode ' + other.mode + ' cannot be '
                              'added to object of mode ' + this.type + '.')
 
         # Simplify axis referencing
@@ -345,15 +355,16 @@ class UVFlag():
             other: second UVFlag object to combine with self.
             inplace: Whether to combine to self, or create a new UVFlag object. Default is False.
         '''
-        assert (self.mode == 'flag' & other.mode == 'flag'), ('UVFlag object must be in '
-                                                              '"flag" mode to use "or" function.')
+        if (self.mode != 'flag') or (other.mode != 'flag'):
+            raise ValueError('UVFlag object must be in "flag" mode to use "or" function.')
+
         # Handle in place
         if inplace:
             this = self
         else:
-            this = copy.deepcopy(self)
+            this = self.copy()
         this.flag_array += other.flag_array
-        if not other.history in this.history:
+        if other.history not in this.history:
             this.history += "Flags OR'd with: " + other.history
 
         if not inplace:
@@ -397,24 +408,23 @@ class UVFlag():
         """
         method = method.lower()
         avg_f = qm_utils.averaging_dict[method]
-        if self.type == 'waterfall' and (keep_pol or (self.Npols == 1)):
+        if self.type == 'waterfall' and (keep_pol or (len(self.polarization_array) == 1)):
             warnings.warn('This object is already a waterfall. Nothing to change.')
             return
         if self.mode == 'flag':
             darr = self.flag_array
         else:
             darr = self.metric_array
-        if (not keep_pol) and (self.Npols > 1):
+        if (not keep_pol) and (len(self.polarization_array) > 1):
             # Collapse pol dimension. But note we retain a polarization axis.
             d, w = avg_f(darr, axis=-1, weights=self.weights_array, returned=True)
             darr = np.expand_dims(d, axis=d.ndim)
             self.weights_array = np.expand_dims(w, axis=w.ndim)
-            self.polarization_array = ','.join(map(str, self.polarization_array))
-            self.Npols = 1
+            self.polarization_array = np.array([','.join(map(str, self.polarization_array))])
 
         if self.type == 'antenna':
             d, w = avg_f(darr, axis=(0, 1), weights=self.weights_array,
-                                  returned=True)
+                         returned=True)
             darr = np.swapaxes(d, 0, 1)
             self.weights_array = np.swapaxes(w, 0, 1)
         elif self.type == 'baseline':
@@ -431,9 +441,12 @@ class UVFlag():
             darr = d
             self.weights_array = w
             self.time_array = np.unique(self.time_array)
-        self.metric_array = darr
+        if (method == 'or') and (self.mode == 'flag'):
+            self.flag_array = darr
+        else:
+            self.metric_array = darr
+            self.mode = 'metric'
         self.freq_array = self.freq_array.flatten()
-        self.mode = 'metric'
         self.type = 'waterfall'
         self.history += 'Collapsed to type "waterfall" with ' + hera_qm_version_str
         self.clear_unused_attributes()
@@ -449,7 +462,7 @@ class UVFlag():
         '''
         if self.type == 'baseline':
             return
-        if not (isinstance(uv, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline')):
+        if not (issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline')):
             raise ValueError('Must pass in UVData object or UVFlag object of type '
                              '"baseline" to match.')
         if self.type != 'waterfall':
@@ -459,7 +472,7 @@ class UVFlag():
             # Use single pol for all pols, regardless
             self.polarization_array = uv.polarization_array
             # Broadcast arrays
-            if self.type == 'flag':
+            if self.mode == 'flag':
                 self.flag_array = self.flag_array.repeat(self.polarization_array.size, axis=-1)
             else:
                 self.metric_array = self.metric_array.repeat(self.polarization_array.size, axis=-1)
@@ -469,19 +482,19 @@ class UVFlag():
             raise ValueError('Polarizations could not be made to match.')
         # Populate arrays
         warr = np.zeros_like(uv.flag_array)
-        if self.type == 'flag':
+        if self.mode == 'flag':
             arr = np.zeros_like(uv.flag_array)
             sarr = self.flag_array
-        elif self.type == 'metric':
+        elif self.mode == 'metric':
             arr = np.zeros_like(uv.flag_array, dtype=float)
             sarr = self.metric_array
         for i, t in enumerate(np.unique(uv.time_array)):
             ti = np.where(uv.time_array == t)
             arr[ti, :, :, :] = sarr[i, :, :][np.newaxis, np.newaxis, :, :]
             warr[ti, :, :, :] = self.weights_array[i, :, :][np.newaxis, np.newaxis, :, :]
-        if self.type == 'flag':
+        if self.mode == 'flag':
             self.flag_array = arr
-        elif self.type == 'metric':
+        elif self.mode == 'metric':
             self.metric_array = arr
         self.weights_array = warr
 
@@ -503,13 +516,13 @@ class UVFlag():
         '''
         if self.type == 'antenna':
             return
-        if not (isinstance(uv, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna')):
+        if not (issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna')):
             raise ValueError('Must pass in UVCal object or UVFlag object of type '
                              '"antenna" to match.')
         if self.type != 'waterfall':
             raise ValueError('Cannot convert from type "' + self.type + '" to "antenna".')
         # Deal with polarization
-        if isinstance(uv, UVCal):
+        if issubclass(uv.__class__, UVCal):
             polarr = uv.jones_array
         else:
             polarr = uv.polarization_array
@@ -517,7 +530,7 @@ class UVFlag():
             # Use single pol for all pols, regardless
             self.polarization_array = polarr
             # Broadcast arrays
-            if self.type == 'flag':
+            if self.mode == 'flag':
                 self.flag_array = self.flag_array.repeat(self.polarization_array.size, axis=-1)
             else:
                 self.metric_array = self.metric_array.repeat(self.polarization_array.size, axis=-1)
@@ -526,15 +539,17 @@ class UVFlag():
         if not np.array_equal(polarr, self.polarization_array):
             raise ValueError('Polarizations could not be made to match.')
         # Populate arrays
-        warr = np.zeros_like(uv.flag_array)
-        if self.type == 'flag':
+        if self.mode == 'flag':
             self.flag_array = np.swapaxes(self.flag_array, 0, 1)[np.newaxis, np.newaxis,
                                                                  :, :, :]
-        elif self.type == 'metric':
+            self.flag_array = self.flag_array.repeat(len(uv.ant_array), axis=0)
+        elif self.mode == 'metric':
             self.metric_array = np.swapaxes(self.metric_array, 0, 1)[np.newaxis, np.newaxis,
                                                                      :, :, :]
+            self.metric_array = self.metric_array.repeat(len(uv.ant_array), axis=0)
         self.weights_array = np.swapaxes(self.weights_array, 0, 1)[np.newaxis, np.newaxis,
                                                                    :, :, :]
+        self.weights_array = self.weights_array.repeat(len(uv.ant_array), axis=0)
         self.ant_array = uv.ant_array
         self.history += 'Broadcast to type "antenna" with ' + hera_qm_version_str
 
@@ -564,6 +579,7 @@ class UVFlag():
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to metric.')
         self.history += 'Converted to mode "metric" with ' + hera_qm_version_str
+        self.clear_unused_attributes()
 
     def antpair2ind(self, ant1, ant2):
         """
