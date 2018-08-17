@@ -316,11 +316,25 @@ def test_or_collapse():
     nt.assert_true(o)
 
 
+def test_or_collapse_weights():
+    # Fake data
+    data = np.zeros((50, 25), np.bool)
+    data[0, 8] = True
+    w = np.ones_like(data, np.float)
+    o, wo = utils.or_collapse(data, axis=0, weights=w, returned=True)
+    ans = np.zeros(25, np.bool)
+    ans[8] = True
+    nt.assert_true(np.array_equal(o, ans))
+    nt.assert_true(np.array_equal(wo, np.ones_like(o, dtype=np.float)))
+    w[0, 8] = 0.3
+    o = uvtest.checkWarnings(utils.or_collapse, [data], {'axis': 0, 'weights': w},
+                             nwarnings=1, message='Currently weights are')
+    nt.assert_true(np.array_equal(o, ans))
+
+
 def test_or_collapse_errors():
     data = np.zeros(5)
     nt.assert_raises(ValueError, utils.or_collapse, data)
-    data = np.zeros(5, np.bool)
-    nt.assert_raises(NotImplementedError, utils.or_collapse, data, returned=True)
 
 
 def test_flags2waterfall():

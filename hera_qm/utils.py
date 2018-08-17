@@ -525,13 +525,18 @@ def or_collapse(a, weights=None, axis=None, returned=False):
         a - boolean array to process
         weights - NOT USED, but kept for symmetry with other averaging functions
         axis - axis or axes over which to OR
-        returned - NOT USED, kept for symmetry. If set to True, will error.
+        returned - whether to return dummy weights array. NOTE: the dummy weights
+                   will simply be an array of ones. Default is False.
     '''
     if a.dtype != np.bool:
         raise ValueError('Input to or_collapse function must be boolean array')
+    o = np.any(a, axis=axis)
+    if (weights is not None) and not np.all(weights == weights.reshape(-1)[0]):
+        warnings.warn('Currently weights are not handled when OR-ing boolean arrays.')
     if returned:
-        raise NotImplementedError('or_collapse function does not have "returned" implemented.')
-    return np.any(a, axis=axis)
+        return o, np.ones_like(o, dtype=np.float)
+    else:
+        return o
 
 
 # Dictionary to map different methods for averaging data.
