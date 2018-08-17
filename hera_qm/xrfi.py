@@ -668,8 +668,6 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
             uvd.read_miriad(filename)
         elif infile_format == 'uvfits':
             uvd.read_uvfits(filename)
-        elif infile_format == 'fhd':
-            uvd.read_fhd(filename)
         else:
             raise ValueError('Unrecognized input file format ' + str(infile_format))
 
@@ -720,8 +718,6 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
             uvm.read_miriad(model_file)
         elif model_file_format == 'uvfits':
             uvm.read_uvfits(model_file)
-        elif model_file_format == 'fhd':
-            uvm.read_fhd(model_file)
         else:
             raise ValueError('Unrecognized input file format ' + str(model_file_format))
         if indata is not None:
