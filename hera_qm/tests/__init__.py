@@ -25,9 +25,6 @@ def recursive_compare_dicts(d1, d2):
     nt.assert_equal(set(d1.keys()), set(d2.keys()))
     for key in d1:
         if isinstance(d1[key], (list)):
-            # if len(d1[key]) == 0:
-                # nt.assert_list_equal(d1[key], list(d2[key]))
-            # else:
             try:
                 nt.assert_list_equal(d1[key], list(d2[key]))
             except (AssertionError, TypeError) as err:
@@ -50,5 +47,7 @@ def recursive_compare_dicts(d1, d2):
                     raise err
         elif isinstance(d1[key], dict):
             recursive_compare_dicts(d1[key], d2[key])
+        elif isinstance(d1[key], (float, np.float, np.float32)):
+            nt.assert_true(np.allclose(d1[key], d2[key]))
         else:
             nt.assert_equal(d1[key], d2[key])

@@ -674,8 +674,9 @@ class AntennaMetrics():
 
         # Save all metrics and zscores
         metrics, modzScores = {}, {}
-        for metName in ['meanVij', 'redCorr', 'meanVijXPol', 'redCorrXPol']:
-            metric = eval(metName)
+        metVals = [meanVij, redCorr, meanVijXPol, redCorrXPol]
+        metNames = ['meanVij', 'redCorr', 'meanVijXPol', 'redCorrXPol']
+        for metric, metName in zip(metVals, metNames):
             metrics[metName] = metric
             modz = per_antenna_modified_z_scores(metric)
             modzScores[metName] = modz

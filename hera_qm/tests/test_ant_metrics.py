@@ -405,7 +405,12 @@ class TestAntennaMetrics(unittest.TestCase):
                      'datafile_list', 'reds', 'version']
 
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
-            self.assertEqual(loaded[jsonStat], getattr(am, stat))
+            file_val = loaded[jsonStat]
+            obj_val = getattr(am, stat)
+            if isinstance(file_val, dict):
+                qmtest.recursive_compare_dicts(file_val, obj_val)
+            else:
+                self.assertEqual(file_val, obj_val)
         os.remove(outfile)
 
     def test_add_file_appellation(self):
