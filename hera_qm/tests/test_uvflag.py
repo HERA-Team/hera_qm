@@ -11,6 +11,7 @@ from hera_qm import UVFlag
 from hera_qm.utils import lst_from_uv
 from hera_qm.version import hera_qm_version_str
 import copy
+from hera_cal.io import HERAData
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
 test_c_file = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
@@ -60,6 +61,16 @@ def test_init_UVData_copy_flags():
     nt.assert_true(np.all(uvf.ant_2_array == uv.ant_2_array))
     nt.assert_true('Flag object with type "baseline"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
+
+
+def test_init_HERAData():
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+    uvf1 = UVFlag(uv)
+    hd = HERAData(test_d_file, filetype='miriad')
+    hd.read()
+    uvf2 = UVFlag(hd)
+    nt.assert_equal(uvf1, uvf2)
 
 
 def test_init_UVCal():

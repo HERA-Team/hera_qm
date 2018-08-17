@@ -31,7 +31,7 @@ def flag_xants(uv, xants, inplace=True):
                 uvo is a new UVFlag object with only xants flags.
     """
     # check that we got an appropriate object
-    if not isinstance(uv, (UVData, UVCal, UVFlag)):
+    if not issubclass(uv.__class__, (UVData, UVCal, UVFlag)):
         raise ValueError('First argument to flag_xants must be a UVData, UVCal, '
                          ' or UVFlag object.')
     if isinstance(uv, UVFlag) and uv.type == 'waterfall':
@@ -51,7 +51,7 @@ def flag_xants(uv, xants, inplace=True):
 
     if not isinstance(xants, collections.Iterable):
         xants = [xants]
-    if isinstance(uvo, UVData) or (isinstance(uvo, UVFlag) and uvo.type == 'baseline'):
+    if issubclass(uvo.__class__, UVData) or (isinstance(uvo, UVFlag) and uvo.type == 'baseline'):
         all_ants = np.unique(np.append(uvo.ant_1_array, uvo.ant_2_array))
         for ant in all_ants:
             for xant in xants:
@@ -59,7 +59,7 @@ def flag_xants(uv, xants, inplace=True):
                 uvo.flag_array[blts, :, :, :] = True
                 blts = uvo.antpair2ind(xant, ant)
                 uvo.flag_array[blts, :, :, :] = True
-    elif isinstance(uvo, UVCal) or (isinstance(uvo, UVFlag) and uvo.type == 'antenna'):
+    elif issubclass(uvo.__class__, UVCal) or (isinstance(uvo, UVFlag) and uvo.type == 'antenna'):
         for xant in xants:
             ai = np.where(uvo.ant_array == xant)[0]
             uvo.flag_array[ai, :, :, :, :] = True
@@ -470,9 +470,9 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
     Returns:
         net_flags: (if return_net_flags is set) returns UVFlag object with net flags.
     '''
-    if isinstance(uv, UVData):
+    if issubclass(uv.__class__, UVData):
         expected_type = 'baseline'
-    elif isinstance(uv, UVCal):
+    elif issubclass(uv.__class__, UVCal):
         expected_type = 'antenna'
     else:
         raise ValueError('Flags can only be applied to UVData or UVCal objects.')
@@ -519,25 +519,25 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
     Returns:
         uvf: UVFlag object of mode 'metric' corresponding to the uv object.
     """
-    if not isinstance(uv, (UVData, UVCal)):
+    if not issubclass(uv.__class__, (UVData, UVCal)):
         raise ValueError('uv must be a UVData or UVCal object.')
     try:
         alg_func = algorithm_dict[algorithm]
     except KeyError:
         raise KeyError('Algorithm not found in list of available functions.')
     uvf = UVFlag(uv)
-    if isinstance(uv, UVData):
+    if issubclass(uv.__class__, UVData):
         uvf.weights_array = uv.nsample_array * np.logical_not(uv.flag_array).astype(np.float)
     else:
         uvf.weights_array = np.logical_not(uv.flag_array).astype(np.float)
-    if isinstance(uv, UVData):
+    if issubclass(uv.__class__, UVData):
         for key, d in uv.antpairpol_iter():
             ind1, ind2, pol = uv._key2inds(key)
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
                 uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), **kwargs)
-    elif isinstance(uv, UVCal):
+    elif issubclass(uv.__class__, UVCal):
         for ai in range(uv.Nants_data):
             for pi in range(uv.Njones):
                 # Note transposes are due to freq, time dimensions rather than the
@@ -652,7 +652,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
             raise AssertionError('Must provide at least one of: indata, '
                                  'model_file, or calfits_file.')
         warnings.warn('indata is None, not flagging on any data visibilities.')
-    elif isinstance(indata, UVData):
+    elif issubclass(indata.__class__, UVData):
         uvd = indata
         if filename is None:
             raise AssertionError('Please provide a filename to go with UVData object. '

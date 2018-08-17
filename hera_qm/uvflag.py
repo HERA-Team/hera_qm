@@ -44,12 +44,12 @@ class UVFlag():
         elif isinstance(input, str):
             # Given a path, read input
             self.read(input, history)
-        elif waterfall and isinstance(input, (UVData, UVCal)):
+        elif waterfall and issubclass(input.__class__, (UVData, UVCal)):
             self.type = 'waterfall'
             self.history += 'Flag object with type "waterfall" created by ' + hera_qm_version_str
             self.time_array, ri = np.unique(input.time_array, return_index=True)
             self.freq_array = input.freq_array[0, :]
-            if isinstance(input, UVData):
+            if issubclass(input.__class__, UVData):
                 self.polarization_array = input.polarization_array
                 self.lst_array = input.lst_array[ri]
             else:
@@ -71,7 +71,7 @@ class UVFlag():
                                                  len(self.freq_array),
                                                  len(self.polarization_array)))
 
-        elif isinstance(input, UVData):
+        elif issubclass(input.__class__, UVData):
             self.type = 'baseline'
             self.history += 'Flag object with type "baseline" created by ' + hera_qm_version_str
             self.baseline_array = input.baseline_array
@@ -93,7 +93,7 @@ class UVFlag():
                 elif self.mode == 'metric':
                     self.metric_array = np.zeros_like(input.flag_array).astype(np.float)
 
-        elif isinstance(input, UVCal):
+        elif issubclass(input.__class__, UVCal):
             self.type = 'antenna'
             self.history += 'Flag object with type "antenna" created by ' + hera_qm_version_str
             self.ant_array = input.ant_array
@@ -453,7 +453,7 @@ class UVFlag():
         '''
         if self.type == 'baseline':
             return
-        if not (isinstance(uv, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline')):
+        if not (issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline')):
             raise ValueError('Must pass in UVData object or UVFlag object of type '
                              '"baseline" to match.')
         if self.type != 'waterfall':
@@ -507,13 +507,13 @@ class UVFlag():
         '''
         if self.type == 'antenna':
             return
-        if not (isinstance(uv, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna')):
+        if not (issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna')):
             raise ValueError('Must pass in UVCal object or UVFlag object of type '
                              '"antenna" to match.')
         if self.type != 'waterfall':
             raise ValueError('Cannot convert from type "' + self.type + '" to "antenna".')
         # Deal with polarization
-        if isinstance(uv, UVCal):
+        if issubclass(uv.__class__, UVCal):
             polarr = uv.jones_array
         else:
             polarr = uv.polarization_array
