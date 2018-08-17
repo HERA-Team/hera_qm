@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2018 the HERA Project
-# Licensed under the MIT License
-
 from __future__ import print_function, division, absolute_import
 import numpy as np
 import os
@@ -18,7 +14,8 @@ class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
     and stores all relevant information to combine flags and apply to data.
     '''
-    def __init__(self, input, mode='metric', copy_flags=False, waterfall=False, history=''):
+    def __init__(self, input, mode='metric', copy_flags=False, waterfall=False, history='',
+                 label=''):
         '''Initialize UVFlag object.
         Args:
             input: UVData object, UVCal object, or path to previously saved UVFlag object.
@@ -30,10 +27,12 @@ class UVFlag():
             waterfall: Whether to immediately initialize as a waterfall object,
                        with flag/metric axes: time, frequency, polarization. Default is False.
             history: History string to attach to object.
+            label: string used for labeling the object (e.g. 'FM')
         '''
 
         self.mode = mode.lower()  # Gets overwritten if reading file
-        self.history = history
+        self.history = ''  # Added to at the end
+        self.label = ''  # Added to at the end
         if isinstance(input, (list, tuple)):
             self.__init__(input[0], mode=mode, copy_flags=copy_flags, waterfall=waterfall, history=history)
             if len(input) > 1:
@@ -119,6 +118,10 @@ class UVFlag():
             else:
                 self.weights_array = np.ones(self.metric_array.shape)
 
+        if history not in self.history:
+            self.history += history
+        self.label += label
+
         self.clear_unused_attributes()
 
     def __eq__(self, other, check_history=False):
@@ -128,7 +131,7 @@ class UVFlag():
         """
         if not isinstance(other, self.__class__):
             return False
-        if (self.type != other.type) or (self.mode != other.mode):
+        if (self.type != other.type) or (self.mode != other.mode) or (self.label != other.label):
             return False
 
         array_list = ['weights_array', 'time_array', 'lst_array', 'freq_array',
@@ -184,6 +187,8 @@ class UVFlag():
                 self.freq_array = header['freq_array'].value
                 self.history = header['history'].value + ' Read by ' + hera_qm_version_str
                 self.history += history
+                if 'label' in header.keys():
+                    self.label = header['label'].value
                 self.polarization_array = header['polarization_array'].value
                 if self.type == 'baseline':
                     self.baseline_array = header['baseline_array'].value
@@ -230,6 +235,7 @@ class UVFlag():
             header['freq_array'] = self.freq_array
             header['polarization_array'] = self.polarization_array
             header['history'] = self.history + 'Written by ' + hera_qm_version_str
+            header['label'] = self.label
 
             if self.type == 'baseline':
                 header['baseline_array'] = self.baseline_array

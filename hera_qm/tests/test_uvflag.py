@@ -22,7 +22,7 @@ test_outfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
 def test_init_UVData():
     uv = UVData()
     uv.read_miriad(test_d_file)
-    uvf = UVFlag(uv, history='I made a UVFlag object')
+    uvf = UVFlag(uv, history='I made a UVFlag object', label='test')
     nt.assert_true(uvf.metric_array.shape == uv.flag_array.shape)
     nt.assert_true(np.all(uvf.metric_array == 0))
     nt.assert_true(uvf.weights_array.shape == uv.flag_array.shape)
@@ -39,6 +39,7 @@ def test_init_UVData():
     nt.assert_true('I made a UVFlag object' in uvf.history)
     nt.assert_true('Flag object with type "baseline"' in uvf.history)
     nt.assert_true(hera_qm_version_str in uvf.history)
+    nt.assert_true(uvf.label == 'test')
 
 
 def test_init_UVData_copy_flags():
@@ -181,7 +182,7 @@ def test_init_waterfall_copy_flags():
 def test_read_write_loop():
     uv = UVData()
     uv.read_miriad(test_d_file)
-    uvf = UVFlag(uv)
+    uvf = UVFlag(uv, label='test')
     uvf.write(test_outfile, clobber=True)
     uvf2 = UVFlag(test_outfile)
     # Update history to match expected additions that were made
@@ -193,7 +194,7 @@ def test_read_write_loop():
 def test_read_write_ant():
     uv = UVCal()
     uv.read_calfits(test_c_file)
-    uvf = UVFlag(uv, mode='flag')
+    uvf = UVFlag(uv, mode='flag', label='test')
     uvf.write(test_outfile, clobber=True)
     uvf2 = UVFlag(test_outfile)
     # Update history to match expected additions that were made
@@ -205,7 +206,7 @@ def test_read_write_ant():
 def test_read_write_nocompress():
     uv = UVData()
     uv.read_miriad(test_d_file)
-    uvf = UVFlag(uv)
+    uvf = UVFlag(uv, label='test')
     uvf.write(test_outfile, clobber=True, data_compression=None)
     uvf2 = UVFlag(test_outfile)
     # Update history to match expected additions that were made
@@ -217,7 +218,7 @@ def test_read_write_nocompress():
 def test_read_write_nocompress_flag():
     uv = UVData()
     uv.read_miriad(test_d_file)
-    uvf = UVFlag(uv, mode='flag')
+    uvf = UVFlag(uv, mode='flag', label='test')
     uvf.write(test_outfile, clobber=True, data_compression=None)
     uvf2 = UVFlag(test_outfile)
     # Update history to match expected additions that were made
