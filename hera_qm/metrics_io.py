@@ -241,7 +241,7 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
         key_list = list(h5file[path].keys())
     for key in key_list:
 
-        item = h5file[path + key]
+        item = h5file[path][key]
 
         if isinstance(item, h5py.Dataset):
             if item.attrs['key_is_string']:
@@ -259,7 +259,7 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
         else:
             raise TypeError("The HDF5 path: {0} is not associated with either"
                             " a dataset or group object."
-                            "Please verify input file.")
+                            "Please verify input file.".format(path))
     return out_dict
 
 

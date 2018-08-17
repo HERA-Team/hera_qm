@@ -213,6 +213,15 @@ def test_write_then_recursive_load_dict_to_group_with_nested_dicts():
     os.remove(test_file)
 
 
+def test_recursive_load_error_if_objet_not_group_or_dataset():
+    """Test the recursively loader errors if given HDF5 with non hdf5-object."""
+    test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
+    test_scalar = 'hello world'
+    good_dict = {'0': {'1': {'2': test_scalar}}}
+    nt.assert_raises(TypeError, metrics_io._recursively_load_dict_to_group,
+                     good_dict, '0')
+
+
 def test_write_then_load_metric_file_hdf5():
     """Test loaded in map is same as written one from hdf5."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
