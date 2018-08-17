@@ -702,17 +702,17 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         outfile = ''.join([basename, extension])
         outpath = os.path.join(dirname, outfile)
         uvf_f.history += history
-        uvf_f.write(outpath,clobber=True)
+        uvf_f.write(outpath, clobber=True)
         # Save thresholded waterfall
         outfile = ''.join([basename, '.waterfall', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
-        uvf_wf.write(outpath,clobber=True)
+        uvf_wf.write(outpath, clobber=True)
         if summary:
             sum_file = ''.join([basename, summary_ext])
             sum_path = os.path.join(dirname, sum_file)
             uvf_w.history += history
-            uvf_w.write(sum_path,clobber=True)
+            uvf_w.write(sum_path, clobber=True)
 
     if model_file is not None:
         uvm = UVData()
@@ -739,7 +739,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         outfile = ''.join([os.path.basename(model_file), extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
-        uvf_wf.write(outpath,clobber=True)
+        uvf_wf.write(outpath, clobber=True)
 
     if calfits_file is not None:
         uvc = UVCal()
@@ -759,7 +759,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         outfile = ''.join([os.path.basename(calfits_file), '.g', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
-        uvf_wf.write(outpath,clobber=True)
+        uvf_wf.write(outpath, clobber=True)
         # repeat for chisquared
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
