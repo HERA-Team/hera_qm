@@ -594,6 +594,29 @@ def test_to_waterfall_bl_flags():
     nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
 
 
+def test_to_waterfall_bl_flags_or():
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf.to_waterfall(method='or')
+    nt.assert_true(uvf.type == 'waterfall')
+    nt.assert_true(uvf.mode == 'flag')
+    nt.assert_true(uvf.flag_array.shape == (len(uvf.time_array), len(uvf.freq_array),
+                                            len(uvf.polarization_array)))
+    nt.assert_true(np.array_equal(uvf.weights_array, np.ones_like(uvf.flag_array, np.float)))
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf.weights_array[0, 0, 0, 0] = 0.2
+    uvtest.checkWarnings(uvf.to_waterfall, [], {'method': 'or'}, nwarnings=1,
+                         message='Currently weights are')
+    nt.assert_true(uvf.type == 'waterfall')
+    nt.assert_true(uvf.mode == 'flag')
+    nt.assert_true(uvf.flag_array.shape == (len(uvf.time_array), len(uvf.freq_array),
+                                            len(uvf.polarization_array)))
+    nt.assert_true(np.array_equal(uvf.weights_array, np.ones_like(uvf.flag_array, np.float)))
+
+
 def test_to_waterfall_ant():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)

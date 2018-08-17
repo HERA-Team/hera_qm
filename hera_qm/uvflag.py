@@ -441,9 +441,12 @@ class UVFlag():
             darr = d
             self.weights_array = w
             self.time_array = np.unique(self.time_array)
-        self.metric_array = darr
+        if (method == 'or') and (self.mode == 'flag'):
+            self.flag_array = darr
+        else:
+            self.metric_array = darr
+            self.mode = 'metric'
         self.freq_array = self.freq_array.flatten()
-        self.mode = 'metric'
         self.type = 'waterfall'
         self.history += 'Collapsed to type "waterfall" with ' + hera_qm_version_str
         self.clear_unused_attributes()
