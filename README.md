@@ -74,13 +74,23 @@ gain solutions and model visibilities) are included. For an example of how to us
 metrics see `scripts/omnical_metrics_example.ipynb`. The metrics themselves are detailed
 there as well as in the doc-strings of the source code in `hera_qm.Omnical_Metrics.run_metrics()`.
 
+### UVFlag
+The UVFlag object provides a way to handle, manipulate, and store flag arrays and metrics
+for identifying flags. There are two modes for a UVFlag object - `'flag'` and `'metric'`.
+The flag or metric arrays can match UVData (`'baseline'` type) or UVCal (`'antenna'` type)
+objects, or have (Ntimes, Nfreqs, Npols) shape (`'waterfall'` type). Reading/writing to HDF5
+file format is supported. Convenience functions to combine flags, average along axes,
+and convert between modes/types are also available.
+
 ### xrfi
-This module contains several algorithms for radio frequency interference (RFI)
-detection and flagging. `xrfi.xrfi` provides the most robust RFI excision we currently have.
-The function `xrfi.xrfi_run` demonstrates how to use and apply the RFI algorithms
-to a UVData object. `xrfi.xrfi_simple` is the legacy RFI flagger from the PAPER pipeline.
-NOTE: Default settings for each algorithm may not be the most optimal depending
-on the dataset.
+This module contains the tools to for radio frequency interference (RFI) detection
+and flagging. Low-level preprocessing functions act on 2D arrays to filter data
+and/or calculate significance metrics. Flagging algorithms implement the low-level
+functions or flag in other ways (e.g. "watershed" around existing flags). "Pipelines"
+define the flagging strategy to apply to some data. For example, `xrfi_h1c_pipe` shows
+the flagging scheme we used for H1C observing season. Wrappers handle the file I/O,
+and call pipelines. `xrfi_h1c_run` is a wrapper we retroactively made to reflect
+what we did for H1C.
 
 ## Known Issues and Planned Improvements
 Issues are tracked in the [issue log](https://github.com/HERA-Team/hera_qm/issues).
