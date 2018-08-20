@@ -845,6 +845,6 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     else:
         raise ValueError('Unrecognized output file format ' + str(outfile_format))
     if output_uvflag:
-        # Save an npz with the final flag array and waterfall and relevant metadata
+        # Save uvflag with the final flag array and relevant metadata
         outpath = outpath + output_uvflag_ext
         uvf.write(outpath)
