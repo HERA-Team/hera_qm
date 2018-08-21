@@ -13,6 +13,7 @@ import warnings
 import numpy as np
 import copy
 import six
+import re
 from collections import OrderedDict
 from hera_qm.version import hera_qm_version_str
 
@@ -31,6 +32,11 @@ known_string_keys = ['history', 'version', 'filedir', 'cut_edges',
                      'fc_filename', 'filename',  'fc_filestem', 'filestem',
                      'pol', 'ant_pol', 'chisq_good_sol', 'good_sol',
                      'ant_phs_std_good_sol']
+float_keys = ['dead_ant_z_cut', 'cross_pol_z_cut']
+antpol_dict_keys = ['removal_iteration']
+list_of_strings_keys = ['datafile_list']
+dict_of_dicts_keys = ['final_mod_z_scores', 'final_metrics']
+list_of_dict_of_dicts_keys = ['all_metrics', 'all_mod_z_scores']
 
 
 def _reds_list_to_dict(reds):
@@ -105,7 +111,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
                                                        data=in_dict[key],
                                                        compression='lzf')
                     # Add boolean attribute to determine if key is a string
-                    # Used to evaluate keys saved to dicts when reading
+                    # Used to parse keys saved to dicts when reading
                     dset.attrs['key_is_string'] = isinstance(key, str)
                 except TypeError as err:
                     raise TypeError("Input dictionary key: {0} does not have "
@@ -114,7 +120,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
             else:
                 dset = h5file[path].create_dataset(key_str, data=in_dict[key])
                 # Add boolean attribute to determine if key is a string
-                # Used to evaluate keys saved to dicts when reading
+                # Used to parse keys saved to dicts when reading
                 dset.attrs['key_is_string'] = isinstance(key, str)
 
         elif isinstance(in_dict[key], dict):
@@ -131,7 +137,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
                 key_set = grp.create_dataset('key_order', data=key_order)
 
                 # Add boolean attribute to determine if key is a string
-                # Used to evaluate keys saved to dicts when reading
+                # Used to parse keys saved to dicts when reading
                 key_set.attrs['key_is_string'] = True
             grp.attrs['key_is_string'] = isinstance(key, str)
             _recursively_save_dict_to_group(h5file, path + key_str + '/',
@@ -247,67 +253,76 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
             if item.attrs['key_is_string']:
                 out_dict[str(key)] = item.value
             else:
-                out_dict[eval(str(key))] = item.value
+                out_key = _parse_key(key)
+                out_dict[out_key] = item.value
 
         elif isinstance(item, h5py.Group):
             if item.attrs['key_is_string']:
                 out_key = str(key)
             else:
-                out_key = eval(str(key))
+                out_key = _parse_key(key)
             out_dict[out_key] = _recursively_load_dict_to_group(h5file, (path + key + '/'),
                                                                 group_is_ordered=item.attrs["group_is_ordered"])
         else:
-            raise TypeError("The HDF5 path: {0} is not associated with either"
-                            " a dataset or group object."
+            raise TypeError("The HDF5 path: {0} is not associated with either "
+                            "a dataset or group object. "
                             "Please verify input file.".format(path))
     return out_dict
 
 
-def parse_key(key, gvars):
-    """Parse the input key into an int, tuple or string.
+def _parse_key(key):
+    """Parse the input key into an int, antpol tuple, or string.
 
     Arguments
         key: input string to parse
-        gvars: global variables for eval call
     Returns
-        out_key: Parsed key as an int, tuple or string
+        out_key: Parsed key as an int, antpol tuple, or string
     """
     try:
-        out_key = int(str(key))
+        # is key an int?
+        return int(str(key))
     except ValueError:
+        # is key an antpol tuple?
+        antpol_regex = r"(\([0-9]*?, \'[xy]\'\))"
+        matches = re.findall(antpol_regex, key)
         try:
-            out_key = eval(str(key), gvars)
-            if isinstance(out_key, (np.float, np.complex)):
-                out_key = str(key)
-        except (SyntaxError, NameError):
-            out_key = str(key)
-    return out_key
+            # split tuple into antenna number and polarization
+            ant, pol = matches[0][1:-1].split(",")
+            # extract just polarization character
+            pol = pol[-2]
+            return tuple((int(ant), str(pol)))
+        except IndexError:
+            # treat it as a string
+            return str(key)
 
 
-def _recursively_evaluate_json(in_dict, gvars):
+def _recursively_parse_json(in_dict):
     """recursively walk dictionary from json and convert to proper types.
 
     Arguments
         in_dict: Dictionary of strings read from json file to convert
-        gvars: Global variables used in eval.
     Returns
         out_dict: dictionary with arrays/list/int/float cast to proper type.
     """
     out_dict = {}
     for key in in_dict:
-        out_key = parse_key(key, gvars)
+        out_key = _parse_key(key)
 
         if isinstance(in_dict[key], dict):
-            out_dict[out_key] = _recursively_evaluate_json(in_dict[key], gvars)
+            out_dict[out_key] = _recursively_parse_json(in_dict[key])
         elif isinstance(in_dict[key], (list, np.ndarray)):
                 try:
                     if len(in_dict[key]) > 0:
                         if isinstance(in_dict[key][0], (six.text_type, np.int,
                                                         np.float, np.complex)):
-                            out_dict[out_key] = [eval(str(val), gvars)
-                                                 for val in in_dict[key]]
+                            try:
+                                out_dict[out_key] = [float(val)
+                                                     for val in in_dict[key]]
+                            except ValueError:
+                                out_dict[out_key] = [complex(val)
+                                                     for val in in_dict[key]]
                     else:
-                        out_dict[out_key] = eval(str(in_dict[key]), gvars)
+                        out_dict[out_key] = str(in_dict[key])
                 except (SyntaxError, NameError) as err:
                         warnings.warn("The key: {0} has a value which "
                                       "could not be parsed, added"
@@ -315,18 +330,187 @@ def _recursively_evaluate_json(in_dict, gvars):
                                       .format(key, str(in_dict[key])))
                         out_dict[out_key] = str(in_dict[key])
         else:
+            # special handling mostly for ant_metrics json files
             if key in known_string_keys:
                 out_dict[out_key] = str(in_dict[key])
+            elif key in float_keys:
+                out_dict[out_key] = float(in_dict[key])
+            elif key in antpol_dict_keys:
+                out_dict[out_key] = _parse_dict(in_dict[key])
+            elif key in list_of_strings_keys:
+                out_dict[out_key] = _parse_list_of_strings(in_dict[key])
+                print(out_dict[out_key])
+            elif key in antpol_keys:
+                out_dict[out_key] = _parse_list_of_antpols(in_dict[key])
+            elif key in antpair_keys:
+                out_dict[out_key] = _parse_list_of_list_of_antpairs(in_dict[key])
+            elif key in dict_of_dicts_keys:
+                out_dict[out_key] = _parse_dict_of_dicts(in_dict[key])
+            elif key in list_of_dict_of_dicts_keys:
+                out_dict[out_key] = _parse_list_of_dict_of_dicts(in_dict[key])
             else:
-                try:
-                    out_dict[out_key] = eval(str(in_dict[key]), gvars)
-                except (SyntaxError, NameError) as err:
-                    warnings.warn("The key: {0} has a value which "
-                                  "could not be parsed, added"
-                                  " the value as a string: {1}"
-                                  .format(key, str(in_dict[key])))
-                    out_dict[out_key] = str(in_dict[key])
+                # save it as a string
+                out_dict[out_key] = str(in_dict[key])
     return out_dict
+
+
+def _parse_dict(input_str, value_type=int):
+    """
+    Parse a text string as a dictionary.
+
+    Arguments
+        input_str: string to be processed
+        value_type: data type to cast value as. Default is int
+    Returns
+        output: dictionary containing key-value pairs
+
+    Notes
+        This function explicitly assumes that dictionary keys are antpol tuples, where
+        the only allowed polarization values are x or y. `value_type` is typically
+        either `int` or `float`, depending on the parent key.
+    """
+    # use regex to extract keys and values
+    # assumes keys are antpols and values are numbers
+    dict_regex = r'(\([0-9]*?, \'[xy]\'\)): (.*?)[,}]'
+    key_vals = re.findall(dict_regex, input_str)
+
+    # initialize output
+    output = {}
+    for entry in key_vals:
+        # split key into individual elements
+        ant, pol = entry[0][1:-1].split(",")
+        # further refine pol -- get just the polarization, not the quotes
+        pol = pol[-2]
+        key = tuple((int(ant), str(pol)))
+        value = value_type(entry[1])
+        output[key] = value
+
+    return output
+
+
+def _parse_list_of_strings(input_str):
+    """
+    Parse a text string as a list of strings.
+
+    Arguments
+        input_str: string to be processed
+    Returns
+        files: list of strings representing input files
+    """
+    # use basic string processing to extract file paths
+    # remove brackets
+    files = input_str[1:-1]
+
+    # split on commas
+    files = files.split(',')
+
+    # strip surrounding spaces and quotes; cast as str type
+    files = [str(f.strip()[1:-1]) for f in files]
+
+    return files
+
+
+def _parse_list_of_antpols(input_str):
+    """
+    Parse a text string as a list of antpols.
+
+    Arguments
+        input_str: string to be processed
+    Returns
+        li: list of antpols
+    Notes
+        Assumes polarizations are only x or y
+    """
+    # use regex to extract entries
+    # assumes list entries are antpols
+    list_regex = r"(\([0-9]*?, \'[xy]\'\))"
+    entries = re.findall(list_regex, input_str)
+
+    # initialize output
+    li = []
+    for entry in entries:
+        ant, pol = entry[1:-1].split(",")
+        pol = pol[-2]
+        li.append(tuple((int(ant), str(pol))))
+
+    return li
+
+
+def _parse_list_of_list_of_antpairs(input_str):
+    """
+    Parse a text string as a list of list of antpairs.
+
+    Arguments
+        input_str: string to be processed
+    Returns
+        output: list of list of antpairs
+    Notes
+        Used for the `reds` key to return groups of redundant baselines.
+    """
+    # use regex to extract lists
+    list_regex = r"\[(.*?)\]"
+    lists = re.findall(list_regex, input_str[1:-1])
+
+    # initialize output
+    output = []
+    for li in lists:
+        sublist = []
+        tuple_regex = r"\((.*?)\)"
+        tuples = re.findall(tuple_regex, li)
+        for t in tuples:
+            ant1, ant2 = t.split(",")
+            sublist.append(tuple((int(ant1), int(ant2))))
+        output.append(sublist)
+    return output
+
+
+def _parse_dict_of_dicts(input_str, value_type=float):
+    """
+    Parse a text string as a dictionary of dictionaries.
+
+    Arguments
+        input_str: string to be processed
+        value_type: type to case values in nested dictionaries as. Default
+        is float.
+    Returns
+        output: dictionary of dictionaries. The keys of the outer dictionary
+        should be the names of the associated metrics.
+    """
+    # use regex to extract dictionaries
+    dict_regex = r"\'([a-zA-Z]*?)\': \{(.*?)\}"
+    dicts = re.findall(dict_regex, input_str)
+
+    # initialize output
+    output = {}
+    for d in dicts:
+        # key is first capture group
+        key = str(d[0])
+        # subdictionary is second capture group
+        subdict = _parse_dict(d[1], value_type=value_type)
+        output[key] = subdict
+
+    return output
+
+
+def _parse_list_of_dict_of_dicts(input_str):
+    """
+    Parse a text string as a list of dictionaries of dictionaries.
+
+    Arguments
+        input_str: string to be processed
+    Returns
+        li: list of dictionary of dictionaries
+    """
+    # use regex to extract lists
+    list_regex = r"\[(.*?)\]"
+    entries = re.findall(list_regex, input_str)
+
+    # initialize output
+    li = []
+    for entry in entries:
+        dict_of_dicts = _parse_dict_of_dicts(entry, value_type=float)
+        li.append(dict_of_dicts)
+    return li
 
 
 def _load_json_metrics(filename):
@@ -340,10 +524,7 @@ def _load_json_metrics(filename):
     """
     with open(filename, 'r') as infile:
         jsonMetrics = json.load(infile)
-    gvars = {'nan': np.nan, 'inf': np.inf, '-inf': -np.inf, '__builtins__': {},
-             'array': np.array, 'OrderedDict': OrderedDict}
-
-    metric_dict = _recursively_evaluate_json(jsonMetrics, gvars)
+    metric_dict = _recursively_parse_json(jsonMetrics)
 
     return metric_dict
 

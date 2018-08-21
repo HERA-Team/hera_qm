@@ -245,8 +245,7 @@ def test_write_then_load_metric_warning_json_():
     test_scalar = "hello world"
     test_array = np.arange(10)
     test_dict = {'history': 'Test case', 'version': '0.0.0',
-                 0: test_scalar, 1: {0: str(test_scalar),
-                                     1: test_array}}
+                 'dead_ant_z_cut': 5}
     warn_message = ["JSON-type files can still be written but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
@@ -257,17 +256,11 @@ def test_write_then_load_metric_warning_json_():
     nt.assert_true(os.path.exists(json_file))
     # output_json = metrics_io.write_metric_file(json_file, test_dict)
     warn_message = ["JSON-type files can still be read but are no longer "
-                    "written by default.\n"
-                    "Write to HDF5 format for future compatibility.",
-                    "The key: 0 has a value which could not be parsed, "
-                    "added the value as a string: hello world",
-                    "The key: 0 has a value which could not be parsed, "
-                    "added the value as a string: hello world"]
+                    "written by default.\n"]
     json_dict = uvtest.checkWarnings(metrics_io.load_metric_file,
                                      func_args=[json_file],
-                                     category=[PendingDeprecationWarning,
-                                               UserWarning, UserWarning],
-                                     nwarnings=3,
+                                     category=[PendingDeprecationWarning],
+                                     nwarnings=1,
                                      message=warn_message)
     # This function recursively walks dictionary and compares
     # data types together with nt.assert_type_equal or np.allclose
@@ -353,8 +346,6 @@ def test_read_write_new_ant_json_files():
     test_metrics.pop('version', None)
     test_metrics_in.pop('history', None)
     test_metrics_in.pop('version', None)
-    print('json:', test_metrics['reds'])
-    print('hdf5:', test_metrics_in['reds'])
 
     # This function recursively walks dictionary and compares
     # data types together with nt.assert_type_equal or np.allclose
