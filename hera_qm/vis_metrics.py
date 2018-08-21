@@ -51,13 +51,13 @@ def check_noise_variance(data):
     return Cij
 
 
-def sequential_diff(data, t_int=None, axis=(0,), pad=False, add_to_history=''):
+def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
     """
     Take a sequential (forward) difference of a visibility waterfall
     as an estimate of the visibility noise. Note: the 1/sqrt(2) correction
     needed after taking a difference is not applied to the data directly,
-    but is taken into account by the output t_int--or if data is a UVData
-    object, multiplied into the nsample_array.
+    but is taken into account by the output t_int. If input data is a UVData
+    object, this correction is multiplied into the nsample_array.
 
     Parameters
     ----------
@@ -79,9 +79,9 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=False, add_to_history=''):
         If True, insert an extra (flagged) column at the end
         of axis such that diff_data has same shape as input.
 
-    add_to_history : str
-        A string to add to history of UVData if provided, in addition
-        to standard history comment.
+    history : str
+        A string to prepend to history of UVData if provided,
+        in addition to a standard history comment.
     
     Returns
     -------
@@ -122,6 +122,8 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=False, add_to_history=''):
         for ax in axis:
             data = (utils.dynamic_slice(data, slice(1, None), axis=ax) \
                    - utils.dynamic_slice(data, slice(None, -1), axis=ax))
+            
+
             t_int = 1.0/(1.0/utils.dynamic_slice(t_int, slice(1, None), axis=ax) \
                          + 1.0/utils.dynamic_slice(t_int, slice(None, -1), axis=ax))
 
