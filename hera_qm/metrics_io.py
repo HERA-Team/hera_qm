@@ -32,11 +32,11 @@ known_string_keys = ['history', 'version', 'filedir', 'cut_edges',
                      'fc_filename', 'filename',  'fc_filestem', 'filestem',
                      'pol', 'ant_pol', 'chisq_good_sol', 'good_sol',
                      'ant_phs_std_good_sol']
-float_keys = ['dead_ant_z_cut', 'cross_pol_z_cut']
+float_keys = ['dead_ant_z_cut', 'cross_pol_z_cut', 'always_dead_ant_z_cut']
 antpol_dict_keys = ['removal_iteration']
 list_of_strings_keys = ['datafile_list']
 dict_of_dicts_keys = ['final_mod_z_scores', 'final_metrics']
-list_of_dict_of_dicts_keys = ['all_metrics', 'all_mod_z_scores']
+dict_of_dict_of_dicts_keys = ['all_metrics', 'all_mod_z_scores']
 
 
 def _reds_list_to_dict(reds):
@@ -304,50 +304,79 @@ def _recursively_parse_json(in_dict):
     Returns
         out_dict: dictionary with arrays/list/int/float cast to proper type.
     """
+    def _pretty_print_dict(di):
+        output = '{'
+        for key, val in di.iteritems():
+            if isinstance(val, dict):
+                tmp = _pretty_print_dict(val)
+                if key in ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']:
+                    output += "'{}': {}".format(key, tmp)
+                else:
+                    output += "{}: {}".format(key, tmp)
+            else:
+                output += "{}: {}".format(key, val)
+            output += ', '
+        output = output[:-2]
+        output += '}'
+        return output
+
     out_dict = {}
     for key in in_dict:
         out_key = _parse_key(key)
 
-        if isinstance(in_dict[key], dict):
-            out_dict[out_key] = _recursively_parse_json(in_dict[key])
-        elif isinstance(in_dict[key], (list, np.ndarray)):
-                try:
-                    if len(in_dict[key]) > 0:
-                        if isinstance(in_dict[key][0], (six.text_type, np.int,
-                                                        np.float, np.complex)):
-                            try:
-                                out_dict[out_key] = [float(val)
-                                                     for val in in_dict[key]]
-                            except ValueError:
-                                out_dict[out_key] = [complex(val)
-                                                     for val in in_dict[key]]
-                    else:
-                        out_dict[out_key] = str(in_dict[key])
-                except (SyntaxError, NameError) as err:
-                        warnings.warn("The key: {0} has a value which "
-                                      "could not be parsed, added"
-                                      " the value as a string: {1}"
-                                      .format(key, str(in_dict[key])))
-                        out_dict[out_key] = str(in_dict[key])
+        # special handling mostly for ant_metrics json files
+        if key in known_string_keys:
+            out_dict[out_key] = str(in_dict[key])
+        elif key in float_keys:
+            out_dict[out_key] = float(in_dict[key])
+        elif key in antpol_dict_keys:
+            if isinstance(in_dict[key], dict):
+                str_in = _pretty_print_dict(in_dict[key])
+            else:
+                str_in = str(in_dict[key])
+            out_dict[out_key] = _parse_dict(str_in)
+        elif key in list_of_strings_keys:
+            out_dict[out_key] = _parse_list_of_strings(in_dict[key])
+        elif key in antpol_keys:
+            str_in = "{}".format(in_dict[key])
+            out_dict[out_key] = _parse_list_of_antpols(str_in)
+        elif key in antpair_keys:
+            str_in = "{}".format(in_dict[key])
+            out_dict[out_key] = _parse_list_of_list_of_antpairs(str_in)
+        elif key in dict_of_dicts_keys:
+            if isinstance(in_dict[key], dict):
+                str_in = _pretty_print_dict(in_dict[key])
+            else:
+                str_in = str(in_dict[key])
+            out_dict[out_key] = _parse_dict_of_dicts(str_in)
+        elif key in dict_of_dict_of_dicts_keys:
+            if isinstance(in_dict[key], dict):
+                str_in = _pretty_print_dict(in_dict[key])
+            else:
+                str_in = str(in_dict[key])
+            out_dict[out_key] = _parse_dict_of_dict_of_dicts(str_in)
         else:
-            # special handling mostly for ant_metrics json files
-            if key in known_string_keys:
-                out_dict[out_key] = str(in_dict[key])
-            elif key in float_keys:
-                out_dict[out_key] = float(in_dict[key])
-            elif key in antpol_dict_keys:
-                out_dict[out_key] = _parse_dict(in_dict[key])
-            elif key in list_of_strings_keys:
-                out_dict[out_key] = _parse_list_of_strings(in_dict[key])
-                print(out_dict[out_key])
-            elif key in antpol_keys:
-                out_dict[out_key] = _parse_list_of_antpols(in_dict[key])
-            elif key in antpair_keys:
-                out_dict[out_key] = _parse_list_of_list_of_antpairs(in_dict[key])
-            elif key in dict_of_dicts_keys:
-                out_dict[out_key] = _parse_dict_of_dicts(in_dict[key])
-            elif key in list_of_dict_of_dicts_keys:
-                out_dict[out_key] = _parse_list_of_dict_of_dicts(in_dict[key])
+            if isinstance(in_dict[key], dict):
+                out_dict[out_key] = _recursively_parse_json(in_dict[key])
+            elif isinstance(in_dict[key], (list, np.ndarray)):
+                    try:
+                        if len(in_dict[key]) > 0:
+                            if isinstance(in_dict[key][0], (six.text_type, np.int,
+                                                            np.float, np.complex)):
+                                try:
+                                    out_dict[out_key] = [float(val)
+                                                         for val in in_dict[key]]
+                                except ValueError:
+                                    out_dict[out_key] = [complex(val)
+                                                         for val in in_dict[key]]
+                        else:
+                            out_dict[out_key] = str(in_dict[key])
+                    except (SyntaxError, NameError) as err:
+                            warnings.warn("The key: {0} has a value which "
+                                          "could not be parsed, added"
+                                          " the value as a string: {1}"
+                                          .format(key, str(in_dict[key])))
+                            out_dict[out_key] = str(in_dict[key])
             else:
                 # save it as a string
                 out_dict[out_key] = str(in_dict[key])
@@ -470,14 +499,14 @@ def _parse_dict_of_dicts(input_str, value_type=float):
 
     Arguments
         input_str: string to be processed
-        value_type: type to case values in nested dictionaries as. Default
+        value_type: type to cast values in nested dictionaries to. Default
         is float.
     Returns
         output: dictionary of dictionaries. The keys of the outer dictionary
         should be the names of the associated metrics.
     """
     # use regex to extract dictionaries
-    dict_regex = r"\'([a-zA-Z]*?)\': \{(.*?)\}"
+    dict_regex = r"\'([a-zA-Z]*?)\': (\{.*?\})"
     dicts = re.findall(dict_regex, input_str)
 
     # initialize output
@@ -492,25 +521,31 @@ def _parse_dict_of_dicts(input_str, value_type=float):
     return output
 
 
-def _parse_list_of_dict_of_dicts(input_str):
+def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
     """
-    Parse a text string as a list of dictionaries of dictionaries.
+    Parse a text string as a dictionary of dictionaries of dictionaries.
 
     Arguments
         input_str: string to be processed
+        value_type: type to cast values in nested dictionaries to. Default
+        is float.
     Returns
-        li: list of dictionary of dictionaries
+        output: dictionary of dictionary of dictionaries
     """
-    # use regex to extract lists
-    list_regex = r"\[(.*?)\]"
-    entries = re.findall(list_regex, input_str)
+    # use regex to extract dictionaries
+    dict_regex = r"([0-9]*?)\'?: \{(.*?\})\}"
+    dicts = re.findall(dict_regex, input_str)
 
     # initialize output
-    li = []
-    for entry in entries:
-        dict_of_dicts = _parse_dict_of_dicts(entry, value_type=float)
-        li.append(dict_of_dicts)
-    return li
+    output = {}
+    for d in dicts:
+        # key is first capture group
+        key = int(str(d[0]))
+        # subdictionary is second capture group
+        subdict = _parse_dict_of_dicts(d[1], value_type=value_type)
+        output[key] = subdict
+
+    return output
 
 
 def _load_json_metrics(filename):

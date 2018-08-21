@@ -212,7 +212,6 @@ class TestLowLevelFunctions(unittest.TestCase):
 
         outpath = os.path.join(DATA_PATH, 'test_output',
                                'ant_metrics_output.hdf5')
-        print(metrics['dead_ants'])
         metrics_io.write_metric_file(outpath, metrics)
 
         # test reading it back in, and that the values agree
@@ -361,7 +360,6 @@ class TestAntennaMetrics(unittest.TestCase):
                      'final_metrics', 'all_metrics', 'final_mod_z_scores',
                      'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
                      'datafile_list', 'reds', 'version']
-        print('keys:', list(loaded.keys()))
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
             nt.assert_true(np.array_equal(loaded[jsonStat],
                                           getattr(am, stat)))
