@@ -655,27 +655,44 @@ class AntennaMetrics():
                 self.removalIter[key] = -1
 
     # TODO: Add Flags Here to turn off each metric
-    def _run_all_metrics(self, iter=0):
+    def _run_all_metrics(self, iter=0, run_mean_vij=True, run_red_corr=True,
+                         run_cross_pols=True):
         """Local call for all metrics as part of iterative flagging method.
 
         Arguments:
             iter: Integer representing the iteration number.
         """
         # Compute all raw metrics
-        meanVij = self.mean_Vij_metrics(xants=self.xants,
-                                        rawMetric=True)
-        redCorr = self.red_corr_metrics(pols=['xx', 'yy'],
-                                        xants=self.xants,
-                                        rawMetric=True)
-        meanVijXPol = self.mean_Vij_cross_pol_metrics(xants=self.xants,
-                                                      rawMetric=True)
-        redCorrXPol = self.red_corr_cross_pol_metrics(xants=self.xants,
-                                                      rawMetric=True)
+        metNames = []
+        metVals = []
+
+        if run_mean_vij:
+            metNames.append('meanVij')
+            meanVij = self.mean_Vij_metrics(xants=self.xants,
+                                            rawMetric=True)
+            metVals.append(meanVij)
+
+        if run_red_corr:
+            metNames.append('redCorr')
+
+            redCorr = self.red_corr_metrics(pols=['xx', 'yy'],
+                                            xants=self.xants,
+                                            rawMetric=True)
+            metVals.append(redCorr)
+
+        if run_cross_pols:
+            metNames.append('meanVijXPol')
+            metNames.append('redCorrXPol')
+
+            meanVijXPol = self.mean_Vij_cross_pol_metrics(xants=self.xants,
+                                                          rawMetric=True)
+            redCorrXPol = self.red_corr_cross_pol_metrics(xants=self.xants,
+                                                          rawMetric=True)
+            metVals.append(meanVijXPol)
+            metVals.append(redCorrXPol)
 
         # Save all metrics and zscores
         metrics, modzScores = {}, {}
-        metVals = [meanVij, redCorr, meanVijXPol, redCorrXPol]
-        metNames = ['meanVij', 'redCorr', 'meanVijXPol', 'redCorrXPol']
         for metric, metName in zip(metVals, metNames):
             metrics[metName] = metric
             modz = per_antenna_modified_z_scores(metric)
@@ -693,7 +710,10 @@ class AntennaMetrics():
     # TODO: Hook in flags here for turning metrics off
     def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
                                                alwaysDeadCut=10,
-                                               verbose=False):
+                                               verbose=False,
+                                               run_mean_vij=True,
+                                               run_red_corr=True,
+                                               run_cross_pols=True):
         """Run all four antenna metrics and stores results in self.
 
         Runs all four metrics:
@@ -718,20 +738,36 @@ class AntennaMetrics():
 
         # Loop over
         for n in range(len(self.antpols) * len(self.ants)):
-            self._run_all_metrics(iter=n)
+            self._run_all_metrics(iter=n, run_mean_vij=True, run_red_corr=True,
+                                  run_cross_pols=True)
 
             # Mostly likely dead antenna
             last_iter = list(self.allModzScores)[-1]
-            deadMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVij'],
-                                              self.allModzScores[last_iter]['redCorr'])
-            worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
-            worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt]) / deadCut
-
-            # Most likely cross-polarized antenna
-            crossMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVijXPol'],
-                                               self.allModzScores[last_iter]['redCorrXPol'])
-            worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
-            worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt]) / crossCut
+            worstDeadCutRatio = None
+            worstCrossCutRatio = None
+            if run_mean_vij and run_red_corr:
+                deadMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVij'],
+                                                  self.allModzScores[last_iter]['redCorr'])
+                worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
+                worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt]) / deadCut
+            else:
+                if run_mean_vij:
+                    deadMetrics = self.allModzScores[last_iter]['meanVij'].copy()
+                    worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
+                    worstDeadCutRatio = (np.abs(deadMetrics[worstDeadAnt])
+                                         / deadCut)
+                elif run_red_corr:
+                    deadMetrics = self.allModzScores[last_iter]['redCorr'].copy()
+                    worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
+                    worstDeadCutRatio = (np.abs(deadMetrics[worstDeadAnt])
+                                         / deadCut)
+            if run_cross_pols:
+                # Most likely cross-polarized antenna
+                crossMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVijXPol'],
+                                                   self.allModzScores[last_iter]['redCorrXPol'])
+                worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
+                worstCrossCutRatio = (np.abs(crossMetrics[worstCrossAnt])
+                                      / crossCut)
 
             # Find the single worst antenna, remove it, log it, and run again
             if (worstCrossCutRatio >= worstDeadCutRatio
@@ -793,7 +829,9 @@ class AntennaMetrics():
 def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
                     deadCut=5.0, alwaysDeadCut=10.0, metrics_path='',
                     extension='.ant_metrics.hdf5', vis_format='miriad',
-                    verbose=True, history=''):
+                    verbose=True, history='',
+                    run_mean_vij=False, run_red_corr=False,
+                    run_cross_pols=False):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
@@ -833,6 +871,11 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
     """
     from hera_cal.omni import aa_to_info
     from hera_cal.utils import get_aa_from_uv
+    # check the user asked to run anything
+    if not any([run_mean_vij, run_red_corr, run_cross_pols]):
+        raise AssertionError(("No Ant Metrics have been selected to run."
+                              "Please set the correct keywords to run "
+                              "the desired metrics."))
 
     # check that we were given some files to process
     if len(files) == 0:
@@ -861,7 +904,10 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
         am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
                                                   deadCut=deadCut,
                                                   alwaysDeadCut=alwaysDeadCut,
-                                                  verbose=verbose)
+                                                  verbose=verbose,
+                                                  run_mean_vij=True,
+                                                  run_red_corr=True,
+                                                  run_cross_pols=True)
 
         # add history
         am.history = am.history + history

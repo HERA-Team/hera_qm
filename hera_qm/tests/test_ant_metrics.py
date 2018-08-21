@@ -490,15 +490,20 @@ class TestAntmetricsRun(object):
             a = utils.get_metrics_ArgumentParser('ant_metrics')
             if DATA_PATH not in sys.path:
                 sys.path.append(DATA_PATH)
-            arg1 = "-p xx,yy,xy,yx"
-            arg2 = "--crossCut=5"
-            arg3 = "--deadCut=5"
-            arg4 = "--extension=.ant_metrics.hdf5"
-            arg5 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+            arg0 = "-p xx,yy,xy,yx"
+            arg1 = "--crossCut=5"
+            arg2 = "--deadCut=5"
+            arg3 = "--extension=.ant_metrics.hdf5"
+            arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
                                                            'test_output'))
-            arg6 = "--vis_format=miriad"
-            arg7 = "--alwaysDeadCut=10"
-            arguments = ' '.join([arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+            arg5 = "--vis_format=miriad"
+            arg6 = "--alwaysDeadCut=10"
+            arg7 = "--run_mean_vij"
+            arg8 = "--run_red_corr"
+            arg9 = "--run_cross_pols"
+            arguments = ' '.join([arg1, arg2, arg3, arg4, arg5, arg6,
+                                  arg7, arg8, arg9])
+
             # test running with a lone file
             lone_file = os.path.join(DATA_PATH,
                                      'zen.2457698.40355.xx.HH.uvcAA')
@@ -514,11 +519,13 @@ class TestAntmetricsRun(object):
                                   args.deadCut, args.alwaysDeadCut,
                                   args.metrics_path,
                                   args.extension, args.vis_format,
-                                  args.verbose, history],
+                                  args.verbose, history, args.run_mean_vij,
+                                  args.run_red_corr, args.run_cross_pols],
                                  nwarnings=1,
                                  message='Could not find')
 
-    def test_ant_metrics_run_nocalfile(self):
+    def test_ant_metrics_run_no_metrics(self):
+        """Test an argument is raised if no metrics are set to True."""
         # get arguments
         a = utils.get_metrics_ArgumentParser('ant_metrics')
         if DATA_PATH not in sys.path:
@@ -543,11 +550,172 @@ class TestAntmetricsRun(object):
         args = a.parse_args(cmd.split())
         history = cmd
         pols = list(args.pol.split(','))
+        nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run,
+                         args.files,  pols, args.crossCut,
+                         args.deadCut, args.alwaysDeadCut,
+                         args.metrics_path,
+                         args.extension, args.vis_format,
+                         args.verbose, history, args.run_mean_vij,
+                         args.run_red_corr, args.run_cross_pols)
+
+    def test_ant_metrics_run_all_metrics(self):
+        # get arguments
+        a = utils.get_metrics_ArgumentParser('ant_metrics')
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        arg0 = "-p xx,yy,xy,yx"
+        arg1 = "--crossCut=5"
+        arg2 = "--deadCut=5"
+        arg3 = "--extension=.ant_metrics.hdf5"
+        arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+                                                       'test_output'))
+        arg5 = "--vis_format=miriad"
+        arg6 = "--alwaysDeadCut=10"
+        arg7 = "--run_mean_vij"
+        arg8 = "--run_red_corr"
+        arg9 = "--run_cross_pols"
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
+                              arg7, arg8, arg9])
+
+        # test running with no calfile
+        xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+        dest_file = os.path.join(DATA_PATH, 'test_output',
+                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        pols = list(args.pol.split(','))
         ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
                                     args.deadCut, args.alwaysDeadCut,
                                     args.metrics_path,
                                     args.extension, args.vis_format,
-                                    args.verbose, history)
+                                    args.verbose, history=history,
+                                    run_mean_vij=args.run_mean_vij,
+                                    run_red_corr=args.run_red_corr,
+                                    run_cross_pols=args.run_cross_pols)
+        nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
+
+    def test_ant_metrics_run_only_mean_vij(self):
+        # get arguments
+        a = utils.get_metrics_ArgumentParser('ant_metrics')
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        arg0 = "-p xx,yy,xy,yx"
+        arg1 = "--crossCut=5"
+        arg2 = "--deadCut=5"
+        arg3 = "--extension=.ant_metrics.hdf5"
+        arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+                                                       'test_output'))
+        arg5 = "--vis_format=miriad"
+        arg6 = "--alwaysDeadCut=10"
+        arg7 = "--run_mean_vij"
+        arg8 = "--skip_red_corr"
+        arg9 = "--skip_cross_pols"
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
+                              arg7, arg8, arg9])
+
+        # test running with no calfile
+        xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+        dest_file = os.path.join(DATA_PATH, 'test_output',
+                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        pols = list(args.pol.split(','))
+        ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
+                                    args.deadCut, args.alwaysDeadCut,
+                                    args.metrics_path,
+                                    args.extension, args.vis_format,
+                                    args.verbose, history=history,
+                                    run_mean_vij=args.run_mean_vij,
+                                    run_red_corr=args.run_red_corr,
+                                    run_cross_pols=args.run_cross_pols)
+        nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
+
+
+    def test_ant_metrics_run_only_red_corr(self):
+        # get arguments
+        a = utils.get_metrics_ArgumentParser('ant_metrics')
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        arg0 = "-p xx,yy,xy,yx"
+        arg1 = "--crossCut=5"
+        arg2 = "--deadCut=5"
+        arg3 = "--extension=.ant_metrics.hdf5"
+        arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+                                                       'test_output'))
+        arg5 = "--vis_format=miriad"
+        arg6 = "--alwaysDeadCut=10"
+        arg7 = "--skip_mean_vij"
+        arg8 = "--run_red_corr"
+        arg9 = "--skip_cross_pols"
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
+                              arg7, arg8, arg9])
+
+        # test running with no calfile
+        xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+        dest_file = os.path.join(DATA_PATH, 'test_output',
+                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        pols = list(args.pol.split(','))
+        ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
+                                    args.deadCut, args.alwaysDeadCut,
+                                    args.metrics_path,
+                                    args.extension, args.vis_format,
+                                    args.verbose, history=history,
+                                    run_mean_vij=args.run_mean_vij,
+                                    run_red_corr=args.run_red_corr,
+                                    run_cross_pols=args.run_cross_pols)
+        nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
+
+    def test_ant_metrics_run_only_cross_pols(self):
+        # get arguments
+        a = utils.get_metrics_ArgumentParser('ant_metrics')
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        arg0 = "-p xx,yy,xy,yx"
+        arg1 = "--crossCut=5"
+        arg2 = "--deadCut=5"
+        arg3 = "--extension=.ant_metrics.hdf5"
+        arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+                                                       'test_output'))
+        arg5 = "--vis_format=miriad"
+        arg6 = "--alwaysDeadCut=10"
+        arg7 = "--skip_mean_vij"
+        arg8 = "--skip_red_corr"
+        arg9 = "--run_cross_pols"
+        arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
+                              arg7, arg8, arg9])
+
+        # test running with no calfile
+        xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+        dest_file = os.path.join(DATA_PATH, 'test_output',
+                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        cmd = ' '.join([arguments, xx_file])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        pols = list(args.pol.split(','))
+        ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
+                                    args.deadCut, args.alwaysDeadCut,
+                                    args.metrics_path,
+                                    args.extension, args.vis_format,
+                                    args.verbose, history=history,
+                                    run_mean_vij=args.run_mean_vij,
+                                    run_red_corr=args.run_red_corr,
+                                    run_cross_pols=args.run_cross_pols)
         nt.assert_true(os.path.exists(dest_file))
         os.remove(dest_file)
 

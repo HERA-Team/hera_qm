@@ -30,8 +30,8 @@ def get_metrics_ArgumentParser(method_name):
 
     if method_name == 'ant_metrics':
         a.prog = 'ant_metrics.py'
-        a.add_argument('-C', '--cal', type=str,
-                       help='Calibration file to be used. Must be specified.')
+        # a.add_argument('-C', '--cal', type=str,
+        #                help='Calibration file to be used. Must be specified.')
         a.add_argument('-p', '--pol', default='', type=str,
                        help="Comma-separated list of polarizations included. Default is ''")
         a.add_argument('--crossCut', default=5.0, type=float,
@@ -51,6 +51,25 @@ def get_metrics_ArgumentParser(method_name):
                        help='Silence feedback to the command line.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.uv files for which to calculate ant_metrics.')
+
+        a.add_argument('--run_mean_vij', action='store_true',
+                       dest='run_mean_vij')
+        a.add_argument('--skip_mean_vij', action='store_false',
+                       dest='run_mean_vij')
+        a.set_defaults(run_mean_vij=False)
+
+        a.add_argument('--run_red_corr', action='store_true',
+                       dest='run_red_corr')
+        a.add_argument('--skip_red_corr', action='store_false',
+                       dest='run_red_corr')
+        a.set_defaults(run_red_corr=False)
+
+        a.add_argument('--run_cross_pols', action='store_true',
+                       dest='run_cross_pols')
+        a.add_argument('--skip_cross_pols', action='store_false',
+                       dest='run_cross_pols')
+        a.set_defaults(run_cross_pols=False)
+        
     elif method_name == 'firstcal_metrics':
         a.prog = 'firstcal_metrics.py'
         a.add_argument('--std_cut', default=0.5, type=float,
