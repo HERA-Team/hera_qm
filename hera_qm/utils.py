@@ -467,4 +467,4 @@ def dynamic_slice(arr, slice_obj, axis=-1):
     slices = [slice(None) for i in range(arr.ndim)]
     for ax in axis:
         slices[ax] = slice_obj
-    return arr[slices]
+    return arr[tuple(slices)]
