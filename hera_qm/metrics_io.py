@@ -297,7 +297,7 @@ def _parse_key(key):
 
 
 def _recursively_parse_json(in_dict):
-    """recursively walk dictionary from json and convert to proper types.
+    """Recursively walk dictionary from json and convert to proper types.
 
     Arguments
         in_dict: Dictionary of strings read from json file to convert
@@ -378,9 +378,33 @@ def _recursively_parse_json(in_dict):
                                           .format(key, str(in_dict[key])))
                             out_dict[out_key] = str(in_dict[key])
             else:
-                # save it as a string
-                out_dict[out_key] = str(in_dict[key])
+                # make a last attempt to cast the value to an int/float/complex
+                # otherwise make it a string
+                out_dict[out_key] = _parse_value(in_dict[key])
     return out_dict
+
+
+def _parse_value(in_val):
+    """Try to turn given input value into an int, float, or complex.
+
+    Uses builtin types to make a last attempt to cast the value as an int, float, or complex.
+    If all the types fail, returns a string.
+
+    Arguments
+        in_val: the unicode or string value to be parsed.
+    Returns
+        input value cast as an int, float or complex, otherwise a string.
+    """
+    try:
+        return int(str(in_val))
+    except ValueError:
+        try:
+            return float(str(in_val))
+        except ValueError:
+            try:
+                return np.complex(str(in_val))
+            except ValueError:
+                return str(in_val)
 
 
 def _parse_dict(input_str, value_type=int):
