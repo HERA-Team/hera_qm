@@ -654,7 +654,6 @@ class AntennaMetrics():
                 self.deadAntsRemoved.append(key)
                 self.removalIter[key] = -1
 
-    # TODO: Add Flags Here to turn off each metric
     def _run_all_metrics(self, iter=0, run_mean_vij=True, run_red_corr=True,
                          run_cross_pols=True):
         """Local call for all metrics as part of iterative flagging method.
@@ -668,7 +667,8 @@ class AntennaMetrics():
 
         if run_mean_vij:
             metNames.append('meanVij')
-            meanVij = self.mean_Vij_metrics(xants=self.xants,
+            meanVij = self.mean_Vij_metrics(pols=self.pols,
+                                            xants=self.xants,
                                             rawMetric=True)
             metVals.append(meanVij)
 
@@ -707,7 +707,7 @@ class AntennaMetrics():
         self.allMetrics.update({iter: metrics})
         self.allModzScores.update({iter: modzScores})
 
-    # TODO: Hook in flags here for turning metrics off
+
     def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
                                                alwaysDeadCut=10,
                                                verbose=False,
@@ -738,8 +738,9 @@ class AntennaMetrics():
 
         # Loop over
         for n in range(len(self.antpols) * len(self.ants)):
-            self._run_all_metrics(iter=n, run_mean_vij=True, run_red_corr=True,
-                                  run_cross_pols=True)
+            self._run_all_metrics(iter=n, run_mean_vij=run_mean_vij,
+                                  run_red_corr=run_red_corr,
+                                  run_cross_pols=run_cross_pols)
 
             # Mostly likely dead antenna
             last_iter = list(self.allModzScores)[-1]
@@ -824,14 +825,12 @@ class AntennaMetrics():
         metrics_io.write_metric_file(filename, out_dict)
 
 
-# TODO: Make Metrics able to be turned on or off for a run.
-# code for running ant_metrics on a file
 def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
                     deadCut=5.0, alwaysDeadCut=10.0, metrics_path='',
                     extension='.ant_metrics.hdf5', vis_format='miriad',
                     verbose=True, history='',
-                    run_mean_vij=False, run_red_corr=False,
-                    run_cross_pols=False):
+                    run_mean_vij=True, run_red_corr=True,
+                    run_cross_pols=True):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
@@ -905,9 +904,9 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
                                                   deadCut=deadCut,
                                                   alwaysDeadCut=alwaysDeadCut,
                                                   verbose=verbose,
-                                                  run_mean_vij=True,
-                                                  run_red_corr=True,
-                                                  run_cross_pols=True)
+                                                  run_mean_vij=run_mean_vij,
+                                                  run_red_corr=run_red_corr,
+                                                  run_cross_pols=run_cross_pols)
 
         # add history
         am.history = am.history + history

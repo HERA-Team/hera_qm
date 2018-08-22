@@ -25,7 +25,7 @@ def recursive_compare_dicts(d1, d2):
 
     Keys of each dict must match.
     Walks through two input dicts and compares each key.
-    Makes calls to nt.asser_type_equals and np.allclose to compare values.
+    Makes calls to nt.assert_type_equals and np.allclose to compare values.
     """
     nt.assert_equal(set(d1.keys()), set(d2.keys()))
     for key in d1:

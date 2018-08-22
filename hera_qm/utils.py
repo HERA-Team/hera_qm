@@ -56,20 +56,20 @@ def get_metrics_ArgumentParser(method_name):
                        dest='run_mean_vij')
         a.add_argument('--skip_mean_vij', action='store_false',
                        dest='run_mean_vij')
-        a.set_defaults(run_mean_vij=False)
+        a.set_defaults(run_mean_vij=True)
 
         a.add_argument('--run_red_corr', action='store_true',
                        dest='run_red_corr')
         a.add_argument('--skip_red_corr', action='store_false',
                        dest='run_red_corr')
-        a.set_defaults(run_red_corr=False)
+        a.set_defaults(run_red_corr=True)
 
         a.add_argument('--run_cross_pols', action='store_true',
                        dest='run_cross_pols')
         a.add_argument('--skip_cross_pols', action='store_false',
                        dest='run_cross_pols')
-        a.set_defaults(run_cross_pols=False)
-        
+        a.set_defaults(run_cross_pols=True)
+
     elif method_name == 'firstcal_metrics':
         a.prog = 'firstcal_metrics.py'
         a.add_argument('--std_cut', default=0.5, type=float,
