@@ -132,27 +132,27 @@ def test_sequential_diff():
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'))
 
     # diff across time
-    uvd_diff = vis_metrics.sequential_diff(uvd, axis=0)
+    uvd_diff = vis_metrics.sequential_diff(uvd, axis=0, pad=False)
     nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes-1)
     nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs)
 
     # diff across freq
-    uvd_diff = vis_metrics.sequential_diff(uvd, axis=1)
+    uvd_diff = vis_metrics.sequential_diff(uvd, axis=1, pad=False)
     nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes)
     nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs-1)
 
     # diff across both
-    uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1))
+    uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=False)
     nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes-1)
     nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs-1)
 
     # switch diff and test closeness to within 5 decimals
-    uvd_diff2 = vis_metrics.sequential_diff(uvd, axis=(1, 0))
+    uvd_diff2 = vis_metrics.sequential_diff(uvd, axis=(1, 0), pad=False)
     nt.assert_true(np.isclose(uvd_diff.data_array, uvd_diff2.data_array, atol=1e-5).all())
 
     # test flag propagation
     uvd.flag_array[uvd.antpair2ind(89, 96, ordered=False)[:1]] = True
-    uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0,))
+    uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0,), pad=False)
     nt.assert_true(uvd_diff.get_flags(89, 96)[0].all())
     nt.assert_false(uvd_diff.get_flags(89, 96)[1:].any())
 
@@ -179,14 +179,14 @@ def test_sequential_diff():
         uvn.data_array[uvn.antpair2ind(bl, ordered=False), 0, :, 0] = s + n
 
     # run sequential diff
-    uvn_diff1 = vis_metrics.sequential_diff(uvn, axis=(0, ))
-    uvn_diff2 = vis_metrics.sequential_diff(uvn, axis=(1, ))
-    uvn_diff3 = vis_metrics.sequential_diff(uvn, axis=(0, 1))
+    uvn_diff1 = vis_metrics.sequential_diff(uvn, axis=(0, ), pad=False)
+    uvn_diff2 = vis_metrics.sequential_diff(uvn, axis=(1, ), pad=False)
+    uvn_diff3 = vis_metrics.sequential_diff(uvn, axis=(0, 1), pad=False)
 
     # assert noise std is equal to 1 within sampling error
-    nt.assert_almost_equal(np.std(uvn_diff1.data_array) * np.sqrt(np.median(uvn_diff1.nsample_array)), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff2.data_array) * np.sqrt(np.median(uvn_diff2.nsample_array)), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff3.data_array) * np.sqrt(np.median(uvn_diff3.nsample_array)), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff1.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff2.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff3.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
 
     # test pad
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=True)

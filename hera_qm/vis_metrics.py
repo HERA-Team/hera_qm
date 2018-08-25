@@ -91,8 +91,9 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
         divided by sqrt(2).
 
     diff_t_int : ndarray
-        If input data is ndarray, this is the inverse
-        sum of t_ints in the difference.
+        If input data is ndarray, this is the average
+        integration time of differenced pixels, unless
+        one of them is 0.0 in which case output is 0.0.
     """
     # type check
     if isinstance(axis, (int, np.integer)):
@@ -118,14 +119,30 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
                 data = np.concatenate([data, p], axis=ax)
                 t_int = np.concatenate([t_int, p], axis=ax)
 
-        # difference data
         for ax in axis:
-            data = (utils.dynamic_slice(data, slice(1, None), axis=ax) \
-                   - utils.dynamic_slice(data, slice(None, -1), axis=ax))
-            
+            # difference data to get noise
+            data = utils.dynamic_slice(data, slice(1, None), axis=ax) \
+                   - utils.dynamic_slice(data, slice(None, -1), axis=ax)
 
-            t_int = 1.0/(1.0/utils.dynamic_slice(t_int, slice(1, None), axis=ax) \
-                         + 1.0/utils.dynamic_slice(t_int, slice(None, -1), axis=ax))
+            # get average t_int
+            t1 = utils.dynamic_slice(t_int, slice(1, None), axis=ax)
+            t2 = utils.dynamic_slice(t_int, slice(None, -1), axis=ax)
+            where = ~(np.isclose(t1, 0.0) + np.isclose(t2, 0.0))
+            t_int = 0.5 * (t1 + t2)
+
+            # take inverse sum
+            inv_sum = np.true_divide(1., t1, where=where) + np.true_divide(1., t2, where=where)
+            inv_t_int = np.true_divide(1., inv_sum, where=where)
+
+            # get noise correction factor
+            corr = np.sqrt(np.true_divide(inv_t_int, t_int, where=where))
+
+            # set bad pixel correction to 1.0 and t_int to 0.0 (i.e. flagged pixels)
+            corr[~where] = 1.0
+            t_int[~where] = 0.0
+
+            # normalize noise by 1. / sqrt(t_int / inv_t_int)
+            data *= corr
 
         return data, t_int
 
@@ -163,7 +180,6 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
             d, t = sequential_diff(d, t_int=t, axis=axis, pad=pad)
 
             # configure output flags, nsample
-            t[np.isnan(t)] = 0.0
             f = np.isclose(t, 0.0)
             n = t / uvd.integration_time[uvd.antpair2ind(bl, ordered=False)][:, None, None]
 
