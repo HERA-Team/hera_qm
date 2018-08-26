@@ -6,7 +6,11 @@
 import nose.tools as nt
 import sys
 import os
-from StringIO import StringIO
+try:
+    # python 2
+    from StringIO import StringIO
+except:
+    from io import StringIO
 import subprocess
 import hera_qm
 
@@ -17,13 +21,13 @@ def test_construct_version_info():
     # It does test that the __version__ attribute is set on hera_qm.
     # I can't figure out how to test the except clause in construct_version_info.
     git_origin = subprocess.check_output(['git', 'config', '--get', 'remote.origin.url'],
-                                         stderr=subprocess.STDOUT).strip()
+                                         stderr=subprocess.STDOUT).strip().decode()
     git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'],
-                                       stderr=subprocess.STDOUT).strip()
-    git_description = subprocess.check_output(['git', 'describe', '--dirty', '--tags', '--always']).strip()
+                                       stderr=subprocess.STDOUT).strip().decode()
+    git_description = subprocess.check_output(['git', 'describe', '--dirty', '--tags', '--always']).strip().decode()
     git_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                                         stderr=subprocess.STDOUT).strip()
-    git_version = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0']).strip()
+                                         stderr=subprocess.STDOUT).strip().decode()
+    git_version = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0']).strip().decode()
 
     test_version_info = {'version': hera_qm.__version__, 'git_origin': git_origin,
                          'git_hash': git_hash, 'git_description': git_description,

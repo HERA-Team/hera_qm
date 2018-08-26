@@ -4,7 +4,6 @@
 
 """
 test_firstcal_metrics.py
-
 """
 import matplotlib.pyplot as plt
 import numpy as np
@@ -37,7 +36,6 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertIn(9, self.FC.metrics['ants'])
         self.assertIn(9, self.FC.metrics['z_scores'])
         self.assertIn(9, self.FC.metrics['ant_z_scores'])
-        self.assertEqual(str, type(self.FC.metrics['version']))
         self.assertAlmostEqual(1.0, self.FC.metrics['std_cut'])
         self.assertAlmostEqual(self.FC.metrics['agg_std'], 0.044662349588061437)
         self.assertAlmostEqual(self.FC.metrics['max_std'], 0.089829821120782846)

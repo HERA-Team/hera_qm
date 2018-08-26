@@ -14,14 +14,20 @@ import astropy.stats as astats
 from collections import OrderedDict
 from hera_qm.version import hera_qm_version_str
 import json
-import cPickle as pkl
+from collections import OrderedDict as odict
+try:
+    # python 2
+    import cPickle as pkl
+except:
+    # python 3
+    import pickle as pkl
 import copy
 import os
 try:
     from sklearn import gaussian_process as gp
     sklearn_import = True
 except ImportError:
-    print "could not import sklearn"
+    print("could not import sklearn")
     sklearn_import = False
 
 
@@ -85,16 +91,11 @@ def load_firstcal_metrics(filename):
             metrics = json.load(f, object_pairs_hook=OrderedDict)
 
         # ensure keys of dicts are not strings
-        for i in metrics['ant_avg'].keys():
-            metrics['ant_avg'][int(i)] = metrics['ant_avg'].pop(i)
-        for i in metrics['ant_std'].keys():
-            metrics['ant_std'][int(i)] = metrics['ant_std'].pop(i)
-        for i in metrics['time_std'].keys():
-            metrics['time_std'][float(i)] = metrics['time_std'].pop(i)
-        for i in metrics['z_scores'].keys():
-            metrics['z_scores'][int(i)] = metrics['z_scores'].pop(i)
-        for i in metrics['ant_z_scores'].keys():
-            metrics['ant_z_scores'][int(i)] = metrics['ant_z_scores'].pop(i)
+        metrics['ant_avg'] = odict([(int(i), metrics['ant_avg'][i]) for i in metrics['ant_avg']])
+        metrics['ant_std'] = odict([(int(i), metrics['ant_std'][i]) for i in metrics['ant_std']])
+        metrics['time_std'] = odict([(float(i), metrics['time_std'][i]) for i in metrics['time_std']])
+        metrics['z_scores'] = odict([(int(i), metrics['z_scores'][i]) for i in metrics['z_scores']])
+        metrics['ant_z_scores'] = odict([(int(i), metrics['ant_z_scores'][i]) for i in metrics['ant_z_scores']])
 
     # load pickle
     elif filetype == 'pkl':
@@ -143,7 +144,7 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
     if xaxis == 'ant':
         Nants = len(metrics['ants'])
         xax = range(Nants)
-        yax = metrics['ant_std'].values()
+        yax = list(metrics['ant_std'].values())
         if 'cmap' not in kwargs:
             kwargs['cmap'] = 'Spectral'
         cmap_func = plt.get_cmap(kwargs['cmap'])
@@ -161,7 +162,7 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
 
     elif xaxis == 'time':
         xax = metrics['frac_JD']
-        yax = metrics['time_std'].values()
+        yax = list(metrics['time_std'].values())
         ax.grid(True, zorder=0)
         ax.tick_params(size=8)
         ax.plot(xax, yax, c='k', marker='.', linestyle='-', alpha=0.85, zorder=1)
@@ -219,8 +220,8 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
         ax = fig.add_subplot(111)
 
     # unpack some variables
-    z_scores = np.array(metrics['z_scores'].values())
-    ant_z_scores = np.array(metrics['ant_z_scores'].values())
+    z_scores = np.array(list(metrics['z_scores'].values()))
+    ant_z_scores = np.array(list(metrics['ant_z_scores'].values()))
     Nants = len(metrics['ants'])
     if plot_abs is True:
         z_scores = np.abs(z_scores)
@@ -385,7 +386,7 @@ class FirstCal_Metrics(object):
 
             # get delay offsets at nu = 0 Hz, and then get rotated antennas
             self.offsets = fc_phi[:, :, 0] - gain_slope * freqs[0]
-            self.rot_ants = np.unique(map(lambda x: self.ants[x], (np.isclose(np.pi, np.abs(self.offsets) % (2 * np.pi), atol=1.0)).T)).tolist()
+            self.rot_ants = np.unique(list(map(lambda x: self.ants[x], (np.isclose(np.pi, np.abs(self.offsets) % (2 * np.pi), atol=1.0)).T))).tolist()
 
         elif self.UVC.cal_type == 'delay':
             self.delays = self.UVC.delay_array.squeeze()
@@ -474,7 +475,7 @@ class FirstCal_Metrics(object):
 
         # put into dictionary
         metrics = OrderedDict()
-        metrics['good_sol'] = good_sol
+        metrics['good_sol'] = bool(good_sol)
         metrics['ants'] = self.ants
         metrics['bad_ants'] = bad_ants
         metrics['z_scores'] = z_scores
@@ -483,7 +484,7 @@ class FirstCal_Metrics(object):
         metrics['ant_std'] = ant_std
         metrics['time_std'] = time_std
         metrics['agg_std'] = agg_std
-	metrics['max_std'] = max_std
+        metrics['max_std'] = max_std
         metrics['times'] = self.times
         metrics['version'] = self.version_str
         metrics['fc_filename'] = self.fc_filename
@@ -520,14 +521,20 @@ class FirstCal_Metrics(object):
         if filetype == 'json':
             if filename.split('.')[-1] != 'json':
                 filename += '.json'
-            # change ndarrays to lists
             metrics_out = copy.deepcopy(self.metrics)
-            metrics_out['frac_JD'] = list(metrics_out['frac_JD'])
-            metrics_out['times'] = list(metrics_out['times'])
-            metrics_out['ants'] = list(metrics_out['ants'])
-            metrics_out['rot_ants'] = list(metrics_out['rot_ants'])
-            for k in metrics_out['z_scores'].keys():
-                metrics_out['z_scores'][k] = list(metrics_out['z_scores'][k])
+            # change numpy dtypes to built-in dtypes (for python3 json)
+            # change ndarrays to lists
+            for k in metrics_out:
+                if isinstance(metrics_out[k], np.ndarray):
+                    metrics_out[k] = metrics_out[k].tolist()
+                elif isinstance(metrics_out[k], np.float):
+                    metrics_out[k] = float(metrics_out[k])
+                elif isinstance(metrics_out[k], np.integer):
+                    metrics_out[k] = int(metrics_out[k])
+                elif isinstance(metrics_out[k], np.bool):
+                    metrics_out[k] = bool(metrics_out[k])
+                elif isinstance(metrics_out[k], (dict, odict)):
+                    metrics_out[k] = odict([(str(_k), metrics_out[k][_k].tolist()) if isinstance(metrics_out[k][_k], np.ndarray) else (str(_k), metrics_out[k][_k]) for _k in metrics_out[k]])
 
             with open(filename, 'w') as f:
                 json.dump(metrics_out, f, indent=4)
@@ -592,8 +599,8 @@ class FirstCal_Metrics(object):
             aggregate standard deviation of delay solutions
             across all antennas and all times
 
-	max_std : float
-            maximum antenna standard deviation of delay solutions
+    	max_std : float
+                maximum antenna standard deviation of delay solutions
 
         z_scores : ndarray, shape=(N_ant, N_times)
             z_scores (standard scores) for each (antenna, time)
