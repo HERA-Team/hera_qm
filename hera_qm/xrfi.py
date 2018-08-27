@@ -39,8 +39,8 @@ def medminfilt(d, Kt=8, Kf=8):
     if Kt > d.shape[0] or Kf > d.shape[1]:
         raise AssertionError('Kernel size exceeds data.')
     d_sm = np.empty_like(d)
-    for i in xrange(d.shape[0]):
-        for j in xrange(d.shape[1]):
+    for i in range(d.shape[0]):
+        for j in range(d.shape[1]):
             i0, j0 = max(0, i - Kt), max(0, j - Kf)
             i1, j1 = min(d.shape[0], i + Kt), min(d.shape[1], j + Kf)
             d_sm[i, j] = medmin(d[i0:i1, j0:j1])
@@ -317,7 +317,12 @@ def xrfi_run(indata, args, history):
     # Compute list of excluded antennas
     if args.ex_ants != '' or args.metrics_json != '':
         # import function from hera_cal
-        from hera_cal.omni import process_ex_ants
+        try:
+            from hera_cal.omni import process_ex_ants
+        except(ImportError):
+            from nose.plugins.skip import SkipTest
+            raise SkipTest('hera_cal.omni not detected. It must be installed for xrfi_run if xants or metrics are passed.')
+
         xants = process_ex_ants(args.ex_ants, args.metrics_json)
 
         # Flag the visibilities corresponding to the specified antennas

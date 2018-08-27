@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2018 the HERA Project
 # Licensed under the MIT License
-
 from __future__ import division
+import hera_qm.tests as qmtest
 import unittest
 import nose.tools as nt
 import glob
@@ -11,7 +11,6 @@ import shutil
 import hera_qm.xrfi as xrfi
 import numpy as np
 import pylab as plt
-import hera_qm.tests as qmtest
 from inspect import getargspec
 import pyuvdata.tests as uvtest
 from pyuvdata import UVData
@@ -32,7 +31,7 @@ def get_accuracy(f, rfi, verbose=VERBOSE):
     m[rfi] = 0
     false_positive = float(np.sum(m)) / (m.size - len(rfi[0]))
     if verbose:
-        print '\t Found RFI: %1.3f\n\t False Positive: %1.3f' % (correctly_flagged, false_positive)
+        print('\t Found RFI: %1.3f\n\t False Positive: %1.3f' % (correctly_flagged, false_positive))
     return correctly_flagged, false_positive
 
 
@@ -79,7 +78,7 @@ class Template():
                 self.assertRaises(AssertionError, func, data, *arg)
                 f = fake_flags(SIZE)
             if VERBOSE:
-                print self.__class__, func.__name__
+                print(self.__class__, func.__name__)
             f = np.where(f > nsig, 1, 0)
             cf, fp = get_accuracy(f, rfi)
             if PLOT:
@@ -87,7 +86,7 @@ class Template():
                 plot_result(f, rfi)
             if fmode:
                 if VERBOSE:
-                    print 'In failure mode now.'
+                    print('In failure mode now.')
                 try:
                     self.assertLessEqual(cf, correct_flag)
                 except AssertionError:
@@ -173,7 +172,7 @@ class TestSparseScatter(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for i in range(NTRIALS):
                 data = np.array(qmtest.real_noise((SIZE, SIZE)))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
@@ -195,7 +194,7 @@ class TestDenseScatter(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for i in range(NTRIALS):
                 data = qmtest.real_noise((SIZE, SIZE))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
@@ -219,7 +218,7 @@ class TestCluster(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for i in range(NTRIALS):
                 data = qmtest.real_noise((SIZE, SIZE))
                 x, y = (np.random.randint(SIZE - 1, size=RFI),
                         np.random.randint(SIZE - 1, size=RFI))
@@ -246,7 +245,7 @@ class TestLines(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for i in range(NTRIALS):
                 data = qmtest.real_noise((SIZE, SIZE))
                 x, y = (np.random.randint(SIZE, size=RFI),
                         np.random.randint(SIZE, size=RFI))
@@ -274,7 +273,7 @@ class TestBackground(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for i in range(NTRIALS):
                 sin_t = np.sin(np.linspace(0, 2 * np.pi, SIZE))
                 sin_t.shape = (-1, 1)
                 sin_f = np.sin(np.linspace(0, 4 * np.pi, SIZE))
@@ -406,7 +405,6 @@ class TestXrfiRun(object):
         os.remove(sum_file)
 
     def test_xrfi_run_model_and_cal(self):
-
         # get argument object
         a = utils.get_metrics_ArgumentParser('xrfi_run')
         arg0 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
@@ -460,20 +458,20 @@ class TestXrfiRun(object):
         # Test model_file_format
         uv = UVData()
         uv.read_uvfits(model_file)
-        model_file = os.path.join(DATA_PATH, 'test_output',
+        out_model_file = os.path.join(DATA_PATH, 'test_output',
                                   'zen.2457698.40355.xx.HH.uvc.vis')
-        uv.write_miriad(model_file, clobber=True)
-        dest_file = model_file + '.flags.npz'
+        uv.write_miriad(out_model_file, clobber=True)
+        dest_file = out_model_file + '.flags.npz'
         if os.path.exists(dest_file):
             os.remove(dest_file)
-        arg2 = "--model_file=" + model_file
+        arg2 = "--model_file=" + out_model_file
         arg4 = "--model_file_format=miriad"
         cmd = ' '.join([arg0, arg1, arg2, arg4, xx_file])
         args = a.parse_args(cmd.split())
         xrfi.xrfi_run(args.filename, args, cmd)
         nt.assert_true(os.path.exists(dest_file))
         os.remove(dest_file)
-        shutil.rmtree(model_file)
+        shutil.rmtree(out_model_file)
 
     def test_xrfi_run_model_and_cal_errors(self):
 
