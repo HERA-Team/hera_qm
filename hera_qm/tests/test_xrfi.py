@@ -728,7 +728,7 @@ class TestSummary(unittest.TestCase):
 
         self.assertEqual(data['times'].shape, (nt,))
         self.assertEqual(data['freqs'].shape, (nf,))
-        self.assertEqual(data['pols'], ['XX'])
+        self.assertEqual(data['pols'], [utils.parse_polstr('xx')])
         self.assertEqual(data['version'], hera_qm_version_str)
         os.remove(outfile)  # cleanup
 

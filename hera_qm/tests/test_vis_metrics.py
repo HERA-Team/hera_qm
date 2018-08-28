@@ -44,7 +44,7 @@ class TestMethods(unittest.TestCase):
         nos = vis_metrics.check_noise_variance(self.data)
         for bl in self.data.get_antpairs():
             inds = self.data.antpair2ind(*bl)
-            n = nos[bl + ('XX',)]
+            n = nos[bl + (utils.parse_polstr('xx'),)]
             self.assertEqual(n.shape, (self.data.Nfreqs - 1,))
             nsamp = self.data.channel_width * self.data.integration_time[inds][0]
             np.testing.assert_almost_equal(n, np.ones_like(n) * nsamp,
