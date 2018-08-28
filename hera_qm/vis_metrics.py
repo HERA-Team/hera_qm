@@ -192,8 +192,8 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
         uvd.check()
 
         # add to history
-        uvd.history = "Took sequential visibility difference with hera_qm [{}]\n{}\n{}" \
-                       .format(version.git_hash[:10], '-'*40, uvd.history)
+        uvd.history = "Took sequential difference with hera_qm [{}]\n{}\n{}\n{}" \
+                       .format(version.git_hash[:10], history, '-'*50, uvd.history)
 
         return uvd
 
