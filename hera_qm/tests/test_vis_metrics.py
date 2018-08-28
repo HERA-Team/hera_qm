@@ -6,6 +6,7 @@ import unittest
 from hera_qm import vis_metrics
 import numpy as np
 from pyuvdata import UVData
+from pyuvdata import utils as uvutils
 from hera_qm.data import DATA_PATH
 import os
 import pyuvdata.tests as uvtest
@@ -44,7 +45,7 @@ class TestMethods(unittest.TestCase):
         nos = vis_metrics.check_noise_variance(self.data)
         for bl in self.data.get_antpairs():
             inds = self.data.antpair2ind(*bl)
-            n = nos[bl + (utils.parse_polstr('xx'),)]
+            n = nos[bl + (uvutils.parse_polstr('xx'),)]
             self.assertEqual(n.shape, (self.data.Nfreqs - 1,))
             nsamp = self.data.channel_width * self.data.integration_time[inds][0]
             np.testing.assert_almost_equal(n, np.ones_like(n) * nsamp,

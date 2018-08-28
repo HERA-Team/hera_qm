@@ -15,6 +15,7 @@ import hera_qm.tests as qmtest
 from inspect import getargspec
 import pyuvdata.tests as uvtest
 from pyuvdata import UVData
+from pyuvdata import utils as uvutils
 import hera_qm.utils as utils
 from hera_qm.data import DATA_PATH
 
@@ -728,7 +729,7 @@ class TestSummary(unittest.TestCase):
 
         self.assertEqual(data['times'].shape, (nt,))
         self.assertEqual(data['freqs'].shape, (nf,))
-        self.assertEqual(data['pols'], [utils.parse_polstr('xx')])
+        self.assertEqual(data['pols'], [uvutils.parse_polstr('xx')])
         self.assertEqual(data['version'], hera_qm_version_str)
         os.remove(outfile)  # cleanup
 
