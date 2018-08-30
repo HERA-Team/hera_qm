@@ -712,6 +712,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
             uvf_w.history += history
             uvf_w.write(sum_path, clobber=True)
 
+    # Flag on model visibilities
     if model_file is not None:
         uvm = UVData()
         if model_file_format == 'miriad':
@@ -737,6 +738,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         uvf_wf.history += history
         uvf_wf.write(outpath, clobber=True)
 
+    # Flag on gain solutions and chisquared values
     if calfits_file is not None:
         uvc = UVCal()
         uvc.read_calfits(calfits_file)
