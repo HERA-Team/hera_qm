@@ -24,14 +24,16 @@ First install dependencies.
 
 * numpy >= 1.10
 * scipy
+* matplotlib
 * astropy >= 2.0
 * sklearn >= 0.18.0
 * aipy
 * h5py
 * pyuvdata (`pip install pyuvdata` or use https://github.com/HERA-Team/pyuvdata.git)
-* hera_cal (https://github.com/HERA-Team/hera_cal.git)
 * omnical (https://github.com/HERA-Team/omnical.git)
 * linsolve (https://github.com/HERA-Team/linsolve.git)
+* uvtools (https://github.com/HERA-Team/uvtools.git)
+* hera_cal (https://github.com/HERA-Team/hera_cal.git)
 
 For anaconda users, we suggest using conda to install astropy, numpy and scipy and conda-forge
 for aipy (```conda install -c conda-forge aipy```).
@@ -47,7 +49,7 @@ Requires installation of `nose` package.
 From the source `hera_qm` directory run: `nosetests hera_qm`.
 
 ## Package Details and Usage
-There are currently three primary modules which drive HERA quality metrics.
+There are currently five primary modules which drive HERA quality metrics.
 
 ### ant_metrics
 A module to handle visibility-based metrics designed to identify misbehaving antennas.
