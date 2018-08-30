@@ -12,6 +12,7 @@ from hera_qm.ant_metrics import get_ant_metrics_dict
 from hera_qm.firstcal_metrics import get_firstcal_metrics_dict
 from hera_qm.omnical_metrics import get_omnical_metrics_dict
 from hera_qm.utils import get_metrics_dict
+import numpy as np
 
 
 def test_get_pol():
@@ -125,3 +126,16 @@ def test_get_metrics_dict():
         nt.assert_equal(firstcal_metrics_dict[key], metrics_dict[key])
     for key in omnical_metrics_dict:
         nt.assert_equal(omnical_metrics_dict[key], metrics_dict[key])
+
+
+def test_dynamic_slice():
+    a = np.arange(10).reshape(2, 5)
+    b = utils.dynamic_slice(a, slice(1, 3))
+    nt.assert_equal(b.shape, (2, 2))
+    np.testing.assert_array_equal(b, np.array([[1, 2], [6, 7]]))
+    b = utils.dynamic_slice(a, slice(1, 3), axis=1)
+    nt.assert_equal(b.shape, (2, 2))
+    b = utils.dynamic_slice(a, slice(1, None), axis=0)
+    nt.assert_equal(b.shape, (1, 5))
+
+    nt.assert_raises(ValueError, utils.dynamic_slice, 'foo', slice(0, None))
