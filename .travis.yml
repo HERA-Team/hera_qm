@@ -26,8 +26,10 @@ install:
   - conda info -a
 
   # create environment and install dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose pip matplotlib coverage
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip coverage
   - source activate test-environment
+  - pip install --upgrade pip
+  - pip install numpy==1.15 scipy nose matplotlib
   - conda install astropy
   - conda install scikit-learn
   - conda install -c conda-forge healpy aipy
