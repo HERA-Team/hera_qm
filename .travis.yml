@@ -21,6 +21,7 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda config --remove channels defaults && conda config --add channels conda-forge
   - conda install -q conda
+  - conda update -q conda
   # Useful for debugging any issues with conda
   - conda info -a
 
