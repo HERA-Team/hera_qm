@@ -460,6 +460,14 @@ class TestXrfiRun(object):
         uv.read_uvfits(model_file)
         out_model_file = os.path.join(DATA_PATH, 'test_output',
                                   'zen.2457698.40355.xx.HH.uvc.vis')
+        # there is a problem w/ py3 about utf-8 encoding of 
+        # antenna_names parameter upon read_miriad(args.model_file).
+        # This isn't a pyuvdata issue b/c they have a 
+        # ReadUVFits_WriteMirad unit-test, but could be an issue
+        # w/ the initial uvfits file to begin with.
+        # A workaround specifically for this test in a py3 env
+        # is to encode and str() antenna_names prior to write_miriad.
+        uv.antenna_names = [str(ant.encode('utf-8')) for ant in uv.antenna_names]
         uv.write_miriad(out_model_file, clobber=True)
         dest_file = out_model_file + '.flags.npz'
         if os.path.exists(dest_file):
@@ -474,7 +482,6 @@ class TestXrfiRun(object):
         shutil.rmtree(out_model_file)
 
     def test_xrfi_run_model_and_cal_errors(self):
-
         # get argument object
         a = utils.get_metrics_ArgumentParser('xrfi_run')
         arg0 = "--xrfi_path={}".format(os.path.join(DATA_PATH, 'test_output'))
