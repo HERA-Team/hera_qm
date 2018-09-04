@@ -40,6 +40,30 @@ class UVFlag():
                     fobj = UVFlag(i, mode=mode, copy_flags=copy_flags, waterfall=waterfall, history=history)
                     self += fobj
                 del(fobj)
+        elif isinstance(input, UVFlag):
+            self.type = input.type
+            self.history = input.history + 'Copied by ' + hera_qm_version_str + history
+            self.time_array = input.time_array
+            self.freq_array = input.freq_array
+            self.polarization_array = input.polarization_array
+            self.lst_array = input.lst_array
+            if input.mode == 'flag':
+                self.flag_array = input.flag_array
+            elif input.mode == 'metric':
+                self.metric_array = input.metric_array
+            self.mode = input.mode
+            self.weights_array = input.weights_array
+            if self.type == 'baseline':
+                self.baseline_array = input.baseline_array
+                self.ant_1_array = input.ant_1_array
+                self.ant_2_array = input.ant_2_array
+            elif self.type == 'antenna':
+                self.ant_array = input.ant_array
+            if label == '':
+                self.label = input.label
+            else:
+                self.label = label
+
         elif isinstance(input, str):
             # Given a path, read input
             self.read(input, history)
