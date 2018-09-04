@@ -94,6 +94,11 @@ def test_init_UVCal():
     nt.assert_true(hera_qm_version_str in uvf.history)
 
 
+def test_init_UVFlag():
+    uv = UVFlag(test_f_file)
+    uv2 = UVFlag(uv)
+    nt.assert_equal(uv, uv2)
+
 def test_init_cal_copy_flags():
     uv = UVCal()
     uv.read_calfits(test_c_file)
