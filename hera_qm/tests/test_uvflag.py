@@ -94,10 +94,22 @@ def test_init_UVCal():
     nt.assert_true(hera_qm_version_str in uvf.history)
 
 
-def test_init_UVFlag():
+def test_init_UVFlag_baseline():
     uv = UVFlag(test_f_file)
     uv2 = UVFlag(uv)
     nt.assert_equal(uv, uv2)
+
+    uv2 = UVFlag(uv, label='foo')
+    nt.assert_equal(uv2.label, 'foo')
+
+
+def test_init_UVFlag_ant():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uv = UVFlag(uvc, mode='flag')
+    uv2 = UVFlag(uv)
+    nt.assert_equal(uv, uv2)
+
 
 def test_init_cal_copy_flags():
     uv = UVCal()

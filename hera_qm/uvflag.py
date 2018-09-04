@@ -61,8 +61,6 @@ class UVFlag():
                 self.ant_array = input.ant_array
             if label == '':
                 self.label = input.label
-            else:
-                self.label = label
 
         elif isinstance(input, str):
             # Given a path, read input
