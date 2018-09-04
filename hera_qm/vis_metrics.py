@@ -4,6 +4,9 @@
 import numpy as np
 from pyuvdata import UVData
 import matplotlib.pyplot as plt
+from hera_qm import utils
+import copy
+from hera_qm import version
 
 
 def check_noise_variance(data):
@@ -46,6 +49,156 @@ def check_noise_variance(data):
                     * (data.channel_width * integration_time))
 
     return Cij
+
+
+def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
+    """
+    Take a sequential (forward) difference of a visibility waterfall
+    as an estimate of the visibility noise. Note: the 1/sqrt(2) correction
+    needed after taking a difference is not applied to the data directly,
+    but is taken into account by the output t_int. If input data is a UVData
+    object, this correction is multiplied into the nsample_array.
+
+    Parameters
+    ----------
+    data : ndarray or UVData object
+        A 2D or 3D ndarray containing visibility data, with
+        shape (Ntimes, Nfreqs, :). Or UVData object
+        holding visibility data.
+
+    t_int : ndarray
+        A 2D or 3D ndarray containing the integration time
+        of the visibilities matching shape of data.
+        If None and data is UVData, will use UVData ~flags *
+        nsample * integration_time as input.
+
+    axis : int or tuple
+        Axes along which to take sequential difference
+
+    pad : boolean
+        If True, insert an extra (flagged) column at the end
+        of axis such that diff_data has same shape as input.
+
+    history : str
+        A string to prepend to history of UVData if provided,
+        in addition to a standard history comment.
+    
+    Returns
+    -------
+    diff_data : ndarray or UVData object
+        A 2D or 3D complex differenced data array,
+        or UVData object holding differenced data
+        divided by sqrt(2).
+
+    diff_t_int : ndarray
+        If input data is ndarray, this is the average
+        integration time of differenced pixels, unless
+        one of them is 0.0 in which case output is 0.0.
+    """
+    # type check
+    if isinstance(axis, (int, np.integer)):
+        axis = (axis,)
+    if not np.all([ax in [0, 1] for ax in axis]):
+        raise ValueError("axis must be 0, 1 or both")
+
+    # perform differencing if data is an ndarray
+    if isinstance(data, np.ndarray):
+        # get t_int
+        if t_int is None:
+            t_int = np.ones_like(data, dtype=np.float64)
+        else:
+            if not isinstance(t_int, np.ndarray):
+                raise ValueError("t_int must be ndarray if data is ndarray")
+
+        # pad
+        if pad:
+            for ax in axis:
+                # get padding vector
+                p = utils.dynamic_slice(np.zeros_like(data, dtype=np.float), slice(0, 1), axis=ax)
+                # pad arrays
+                data = np.concatenate([data, p], axis=ax)
+                t_int = np.concatenate([t_int, p], axis=ax)
+
+        for ax in axis:
+            # difference data to get noise
+            data = utils.dynamic_slice(data, slice(1, None), axis=ax) \
+                   - utils.dynamic_slice(data, slice(None, -1), axis=ax)
+
+            # get average t_int
+            t1 = utils.dynamic_slice(t_int, slice(1, None), axis=ax)
+            t2 = utils.dynamic_slice(t_int, slice(None, -1), axis=ax)
+            where = ~(np.isclose(t1, 0.0) + np.isclose(t2, 0.0))
+            t_int = 0.5 * (t1 + t2)
+
+            # take inverse sum
+            inv_sum = np.true_divide(1., t1, where=where) + np.true_divide(1., t2, where=where)
+            inv_t_int = np.true_divide(1., inv_sum, where=where)
+
+            # get noise correction factor
+            corr = np.sqrt(np.true_divide(inv_t_int, t_int, where=where))
+
+            # set bad pixel correction to 1.0 and t_int to 0.0 (i.e. flagged pixels)
+            corr[~where] = 1.0
+            t_int[~where] = 0.0
+
+            # normalize noise by 1. / sqrt(t_int / inv_t_int)
+            data *= corr
+
+        return data, t_int
+
+    # iterate over bls if UVData
+    elif isinstance(data, UVData):
+        # copy object
+        uvd = copy.deepcopy(data)
+
+        if not pad:
+            # get new time and freq arrays and UVData object
+            # this is equivalent to assuming a forward difference
+            times = None
+            freqs = None
+            for ax in axis:
+                if ax == 0:
+                    times = np.unique(uvd.time_array)[:-1]
+                elif ax == 1:
+                    freqs = np.unique(uvd.freq_array)[:-1]
+            if times is not None or freqs is not None:
+                uvd.select(times=times, frequencies=freqs)
+
+        # iterate over baselines
+        bls = uvd.get_antpairs()
+        for bl in bls:
+            # get blt slice
+            bl_slice = uvd.antpair2ind(bl, ordered=False)
+
+            # configure data and t_int
+            d = data.get_data(bl, squeeze='none')[:, 0, :, :]
+            t = data.get_nsamples(bl, squeeze='none')[:, 0, :, :] \
+                * (~data.get_flags(bl, squeeze='none')[:, 0, :, :]).astype(np.float64) \
+                * data.integration_time[data.antpair2ind(bl, ordered=False)][:, None, None]
+
+            # take difference
+            d, t = sequential_diff(d, t_int=t, axis=axis, pad=pad)
+
+            # configure output flags, nsample
+            f = np.isclose(t, 0.0)
+            n = t / uvd.integration_time[uvd.antpair2ind(bl, ordered=False)][:, None, None]
+
+            # assign data
+            uvd.data_array[bl_slice, 0, :, :] = d
+            uvd.flag_array[bl_slice, 0, :, :] = f
+            uvd.nsample_array[bl_slice, 0, :, :] = n
+
+        # run check
+        uvd.check()
+
+        # add to history
+        uvd.history = "Took sequential difference with hera_qm [{}]\n{}\n{}\n{}" \
+                       .format(version.git_hash[:10], history, '-'*50, uvd.history)
+
+        return uvd
+
+    else:
+        raise ValueError("Didn't recognize input data structure")
 
 
 def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
@@ -283,6 +436,7 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
     if newfig:
         return fig
 
+
 def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar=True,
                        axes=None, colorax='freq', alpha=1, msize=1, marker='.', grid=True,
                        one2one=True, loglog=False, freqs=None, times=None, figsize=None,
@@ -301,9 +455,9 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
     bls : list
         List of antenna-pairs to plot in matrix
         
-    component : str, options=['real', 'imag', 'abs']
+    component : str, options=['real', 'imag', 'abs', 'angle']
         Component of visibility data to plot
-        
+
     whiten : bool, optional
         If True, divide data component by abs of data before plotting.
 
@@ -387,6 +541,8 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
         cast = np.real
     elif component == 'imag':
         cast = np.imag
+    elif component == 'angle':
+        cast = np.angle
     else:
         raise ValueError("Didn't recognize component {}".format(component))
 

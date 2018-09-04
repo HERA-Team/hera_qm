@@ -391,3 +391,16 @@ def test_lst_from_uv():
 def test_lst_from_uv_errors():
     # Argument must be UVData or UVCal
     nt.assert_raises(ValueError, utils.lst_from_uv, 5)
+
+
+def test_dynamic_slice():
+    a = np.arange(10).reshape(2, 5)
+    b = utils.dynamic_slice(a, slice(1, 3))
+    nt.assert_equal(b.shape, (2, 2))
+    np.testing.assert_array_equal(b, np.array([[1, 2], [6, 7]]))
+    b = utils.dynamic_slice(a, slice(1, 3), axis=1)
+    nt.assert_equal(b.shape, (2, 2))
+    b = utils.dynamic_slice(a, slice(1, None), axis=0)
+    nt.assert_equal(b.shape, (1, 5))
+
+    nt.assert_raises(ValueError, utils.dynamic_slice, 'foo', slice(0, None))

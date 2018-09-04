@@ -585,3 +585,29 @@ def flags2waterfall(uv, flag_array=None, keep_pol=False):
                                           axis=(0, 2))
 
     return waterfall
+
+
+def dynamic_slice(arr, slice_obj, axis=-1):
+    """
+    Dynamic slicing of arr along axis given slice object.
+
+    Parameters
+    ----------
+    arr : ndarray
+
+    slice_obj : slice object
+
+    axis : integer
+
+    Returns
+    -------
+    arr_slice : ndarray
+    """
+    if isinstance(axis, (int, np.integer)):
+        axis = (axis,)
+    if not isinstance(arr, np.ndarray):
+        raise ValueError("arr must be an ndarray")
+    slices = [slice(None) for i in range(arr.ndim)]
+    for ax in axis:
+        slices[ax] = slice_obj
+    return arr[tuple(slices)]
