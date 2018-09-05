@@ -391,7 +391,7 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
                     Options are 'mean', 'absmean', and 'quadmean' (Default).
 
     Returns:
-        uvf_f: UVFlag object in 'flag' mode with flags determined from uvm.
+        uvf_f: UVFlag object in 'flag' mode with flags determined from uvf_m.
     '''
     # Check input
     if (not isinstance(uvf_m, UVFlag)) or (uvf_m.mode != 'metric'):

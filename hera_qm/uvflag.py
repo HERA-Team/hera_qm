@@ -267,27 +267,17 @@ class UVFlag():
                 header['ant_array'] = self.ant_array
 
             dgrp = f.create_group("Data")
-            if data_compression is not None:
-                wtsdata = dgrp.create_dataset('weights_array', chunks=True,
-                                              data=self.weights_array,
-                                              compression=data_compression)
-                if self.mode == 'metric':
-                    data = dgrp.create_dataset('metric_array', chunks=True,
-                                               data=self.metric_array,
-                                               compression=data_compression)
-                elif self.mode == 'flag':
-                    data = dgrp.create_dataset('flag_array', chunks=True,
-                                               data=self.flag_array,
-                                               compression=data_compression)
-            else:
-                wtsdata = dgrp.create_dataset('weights_array', chunks=True,
-                                              data=self.weights_array)
-                if self.mode == 'metric':
-                    data = dgrp.create_dataset('metric_array', chunks=True,
-                                               data=self.metric_array)
-                elif self.mode == 'flag':
-                    data = dgrp.create_dataset('flag_array', chunks=True,
-                                               data=self.flag_array)
+            wtsdata = dgrp.create_dataset('weights_array', chunks=True,
+                                          data=self.weights_array,
+                                          compression=data_compression)
+            if self.mode == 'metric':
+                data = dgrp.create_dataset('metric_array', chunks=True,
+                                           data=self.metric_array,
+                                           compression=data_compression)
+            elif self.mode == 'flag':
+                data = dgrp.create_dataset('flag_array', chunks=True,
+                                           data=self.flag_array,
+                                           compression=data_compression)
 
     def __add__(self, other, inplace=False, axis='time'):
         '''Add two UVFlag objects together along a given axis.
