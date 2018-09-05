@@ -620,13 +620,13 @@ class TestWrappers():
         # run with bad antennas specified
         uvd = UVData()
         uvd.read_miriad(test_d_file)
-        xrfi.xrfi_h1c_run(test_d_file, filename=test_d_file + '.h1c_run',
+        xrfi.xrfi_h1c_run(test_d_file, filename=test_d_file,
                           history='Just a test.', ex_ants='1,2', xrfi_path=xrfi_path,
                           kt_size=3)
 
         # catch no provided data file for flagging
         with warnings.catch_warnings(record=True) as w:
-            xrfi.xrfi_h1c_run(None, filename=test_d_file + '.h1c_run',
+            xrfi.xrfi_h1c_run(None, filename=test_d_file,
                               history='Just a test.', model_file=test_d_file,
                               model_file_format='miriad', xrfi_path=xrfi_path)
             nt.assert_true(w[0].message[0] == 'indata is None, '

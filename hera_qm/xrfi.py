@@ -662,8 +662,8 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
             if not isinstance(filename, str):
                 raise ValueError('filename must be string path to file.')
     else:
-        if filename is None or filename is '':
-            filename == indata[0]
+        if filename is None or filename == '':
+            filename = indata
         elif not isinstance(filename, str):
             raise ValueError('filename must be string path to file.')
         uvd = UVData()
