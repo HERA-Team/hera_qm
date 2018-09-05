@@ -29,7 +29,7 @@ First install dependencies.
 * sklearn >= 0.18.0
 * aipy
 * h5py
-* pyuvdata (`pip install pyuvdata` or use https://github.com/HERA-Team/pyuvdata.git)
+* pyuvdata (`pip install pyuvdata` or use https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git)
 * omnical (https://github.com/HERA-Team/omnical.git)
 * linsolve (https://github.com/HERA-Team/linsolve.git)
 * uvtools (https://github.com/HERA-Team/uvtools.git)
