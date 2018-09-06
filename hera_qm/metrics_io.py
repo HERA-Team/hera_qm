@@ -29,7 +29,7 @@ antpair_dtype = np.dtype([('ant1', np.int32),
 antpair_keys = ['reds']
 antpol_keys = ['xants', 'dead_ants', 'crossed_ants']
 known_string_keys = ['history', 'version', 'filedir', 'cut_edges',
-                     'fc_filename', 'filename',  'fc_filestem', 'filestem',
+                     'fc_filename', 'filename', 'fc_filestem', 'filestem',
                      'pol', 'ant_pol', 'chisq_good_sol', 'good_sol',
                      'ant_phs_std_good_sol']
 float_keys = ['dead_ant_z_cut', 'cross_pol_z_cut', 'always_dead_ant_z_cut']
@@ -126,7 +126,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
         elif isinstance(in_dict[key], dict):
             grp = h5file[path].create_group(key_str)
             # Add boolean attribute to determine if input dictionary
-            # was and OrderedDict Orde
+            # was an OrderedDict
             grp.attrs['group_is_ordered'] = False
             if isinstance(in_dict[key], OrderedDict):
                 grp.attrs['group_is_ordered'] = True
