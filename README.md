@@ -24,14 +24,16 @@ First install dependencies.
 
 * numpy >= 1.10
 * scipy
+* matplotlib
 * astropy >= 2.0
 * sklearn >= 0.18.0
 * aipy
 * h5py
-* pyuvdata (`pip install pyuvdata` or use https://github.com/HERA-Team/pyuvdata.git)
-* hera_cal (https://github.com/HERA-Team/hera_cal.git)
+* pyuvdata (`pip install pyuvdata` or use https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git)
 * omnical (https://github.com/HERA-Team/omnical.git)
 * linsolve (https://github.com/HERA-Team/linsolve.git)
+* uvtools (https://github.com/HERA-Team/uvtools.git)
+* hera_cal (https://github.com/HERA-Team/hera_cal.git)
 
 For anaconda users, we suggest using conda to install astropy, numpy and scipy and conda-forge
 for aipy (```conda install -c conda-forge aipy```).
@@ -47,13 +49,17 @@ Requires installation of `nose` package.
 From the source `hera_qm` directory run: `nosetests hera_qm`.
 
 ## Package Details and Usage
-There are currently three primary modules which drive HERA quality metrics.
+There are currently five primary modules which drive HERA quality metrics.
 
 ### ant_metrics
 A module to handle visibility-based metrics designed to identify misbehaving antennas.
 The module includes methods to calculate several metrics to identify cross-polarized antennas
 or dead antennas, based on either their redundancy with other antennas or their relative power.
+<<<<<<< HEAD
 The primary class, `AntennaMetrics`, includes interfaces to these methods and functions for
+=======
+The primary class, `Antenna_Metrics`, includes interfaces to these methods and functions for
+>>>>>>> master
 loading data, iteratively running metrics and removing misbehaving antennas, and saving the
 results of those metrics in a JSON. And example of using this moduleis in
 `scripts/ant_metrics_example_notebook.ipynb`.
@@ -74,13 +80,32 @@ gain solutions and model visibilities) are included. For an example of how to us
 metrics see `scripts/omnical_metrics_example.ipynb`. The metrics themselves are detailed
 there as well as in the doc-strings of the source code in `hera_qm.Omnical_Metrics.run_metrics()`.
 
+### UVFlag
+The UVFlag object provides a way to handle, manipulate, and store flag arrays and metrics
+for identifying flags. There are two modes for a UVFlag object - `'flag'` and `'metric'`.
+The flag or metric arrays can match UVData (`'baseline'` type) or UVCal (`'antenna'` type)
+objects, or have (Ntimes, Nfreqs, Npols) shape (`'waterfall'` type). Reading/writing to HDF5
+file format is supported. Convenience functions to combine flags, average along axes,
+and convert between modes/types are also available.
+
 ### xrfi
+<<<<<<< HEAD
 This module contains several algorithms for radio frequency interference (RFI)
 detection and flagging. `xrfi.xrfi` provides the most robust RFI excision we currently have.
 The function `xrfi.xrfi_run` demonstrates how to use and apply the RFI algorithms
 to a UVData object. `xrfi.xrfi_simple` is the legacy RFI flagger from the PAPER pipeline.
 NOTE: Default settings for each algorithm may not be the most optimal depending
 on the dataset.
+=======
+This module contains the tools to for radio frequency interference (RFI) detection
+and flagging. Low-level preprocessing functions act on 2D arrays to filter data
+and/or calculate significance metrics. Flagging algorithms implement the low-level
+functions or flag in other ways (e.g. "watershed" around existing flags). "Pipelines"
+define the flagging strategy to apply to some data. For example, `xrfi_h1c_pipe` shows
+the flagging scheme we used for H1C observing season. Wrappers handle the file I/O,
+and call pipelines. `xrfi_h1c_run` is a wrapper we retroactively made to reflect
+what we did for H1C.
+>>>>>>> master
 
 ## Known Issues and Planned Improvements
 Issues are tracked in the [issue log](https://github.com/HERA-Team/hera_qm/issues).
