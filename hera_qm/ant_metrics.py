@@ -234,11 +234,9 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
                         data0 = data[ant0_i, ant0_j, pol0]
                         for (ant1_i, ant1_j) in bls[n + 1:]:
                             data1 = data[ant1_i, ant1_j, pol1]
-                            corr = np.median(np.abs(np.mean(data0
-                                                            * data1.conj(),
-                                                            axis=0)))
-                            corr /= np.sqrt(autoPower[ant0_i, ant0_j, pol0] *
-                                            autoPower[ant1_i, ant1_j, pol1])
+                            corr = np.nanmedian(np.abs(np.nanmean(data0 * data1.conj(), axis=0)))
+                            corr /= np.sqrt(autoPower[ant0_i, ant0_j, pol0]
+                                            * autoPower[ant1_i, ant1_j, pol1])
                             antsInvolved = [(ant0_i, pol0[0]),
                                             (ant0_j, pol0[1]),
                                             (ant1_i, pol1[0]),
