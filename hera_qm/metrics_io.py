@@ -133,7 +133,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
                 # Generate additional dataset in an ordered group to save
                 # the order of the group
-                key_order = list(map(str, list(in_dict[key].keys())))
+                key_order = list(map(str, in_dict[key].keys()))
                 key_set = grp.create_dataset('key_order', data=key_order)
 
                 # Add boolean attribute to determine if key is a string
