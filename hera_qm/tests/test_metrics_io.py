@@ -132,6 +132,34 @@ def test_recursive_adds_nested_scalar_to_h5file():
     os.remove(test_file)
 
 
+def test_write_metric_error_for_existing_file():
+    """Test an error is raised if an existing file is given and overwrite=False."""
+    test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
+    with open(test_file, 'w') as f:
+        pass
+    nt.assert_raises(IOError, metrics_io.write_metric_file, test_file, {})
+    os.remove(test_file)
+
+
+def test_write_metric_error_for_existing_file_no_appellation():
+    """Test an error is raised if an existing file is given with no appelation and overwrite=False."""
+    test_file = os.path.join(DATA_PATH, 'test_output', 'test')
+    with open(test_file, 'w') as f:
+        pass
+    nt.assert_raises(IOError, metrics_io.write_metric_file, test_file, {})
+    os.remove(test_file)
+
+
+def test_write_metric_succeeds_for_existing_file_no_appellation_overwrite():
+    """Test an write is successful if an existing file is given and overwrite=True."""
+    test_file = os.path.join(DATA_PATH, 'test_output', 'test')
+    with open(test_file + '.hdf5', 'w') as f:
+        pass
+    metrics_io.write_metric_file(test_file, {}, True)
+    nt.assert_true(os.path.exists(test_file + '.hdf5'))
+    os.remove(test_file + '.hdf5')
+
+
 def test_write_metric_file_hdf5():
     """Test that correct hdf5 structure created from write_metric_file."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')

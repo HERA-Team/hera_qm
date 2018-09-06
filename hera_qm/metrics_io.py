@@ -170,7 +170,7 @@ def _recursively_make_dict_arrays_strings(in_dict):
     return out_dict
 
 
-def write_metric_file(filename, input_dict):
+def write_metric_file(filename, input_dict, overwrite=False):
     """Convert the input dictionary into an HDF5 File.
 
     Can write either HDF5 (recommended) or JSON (Depreciated in Future) types.
@@ -188,10 +188,15 @@ def write_metric_file(filename, input_dict):
     Arguments
         filename: String of filename to which metrics will be written.
                   Can include either HDF5 (recommended) or JSON (Depreciated in Future) extension.
+        input_dict: Dictionary to be recursively written to the given file
+        overwrite: If file exists, overwrite instead of raising error.
+                   Default False
 
     Returns:
         None
     """
+    if os.path.exists(filename) and not overwrite:
+        raise IOError('File exists and overwrite set to False.')
     input_dict = copy.deepcopy(input_dict)
     if filename.split('.')[-1] == 'json':
         warnings.warn("JSON-type files can still be written "
@@ -206,6 +211,8 @@ def write_metric_file(filename, input_dict):
     else:
         if filename.split('.')[-1] not in ('hdf5', 'h5'):
             filename += '.hdf5'
+            if os.path.exists(filename) and not overwrite:
+                raise IOError('File exists and overwrite set to False.')
 
         with h5py.File(filename, 'w') as f:
             header = f.create_group('Header')
