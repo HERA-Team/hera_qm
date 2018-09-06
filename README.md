@@ -55,11 +55,7 @@ There are currently five primary modules which drive HERA quality metrics.
 A module to handle visibility-based metrics designed to identify misbehaving antennas.
 The module includes methods to calculate several metrics to identify cross-polarized antennas
 or dead antennas, based on either their redundancy with other antennas or their relative power.
-<<<<<<< HEAD
 The primary class, `AntennaMetrics`, includes interfaces to these methods and functions for
-=======
-The primary class, `Antenna_Metrics`, includes interfaces to these methods and functions for
->>>>>>> master
 loading data, iteratively running metrics and removing misbehaving antennas, and saving the
 results of those metrics in a JSON. And example of using this moduleis in
 `scripts/ant_metrics_example_notebook.ipynb`.
@@ -89,14 +85,6 @@ file format is supported. Convenience functions to combine flags, average along 
 and convert between modes/types are also available.
 
 ### xrfi
-<<<<<<< HEAD
-This module contains several algorithms for radio frequency interference (RFI)
-detection and flagging. `xrfi.xrfi` provides the most robust RFI excision we currently have.
-The function `xrfi.xrfi_run` demonstrates how to use and apply the RFI algorithms
-to a UVData object. `xrfi.xrfi_simple` is the legacy RFI flagger from the PAPER pipeline.
-NOTE: Default settings for each algorithm may not be the most optimal depending
-on the dataset.
-=======
 This module contains the tools to for radio frequency interference (RFI) detection
 and flagging. Low-level preprocessing functions act on 2D arrays to filter data
 and/or calculate significance metrics. Flagging algorithms implement the low-level
@@ -105,7 +93,7 @@ define the flagging strategy to apply to some data. For example, `xrfi_h1c_pipe`
 the flagging scheme we used for H1C observing season. Wrappers handle the file I/O,
 and call pipelines. `xrfi_h1c_run` is a wrapper we retroactively made to reflect
 what we did for H1C.
->>>>>>> master
+
 
 ## Known Issues and Planned Improvements
 Issues are tracked in the [issue log](https://github.com/HERA-Team/hera_qm/issues).
