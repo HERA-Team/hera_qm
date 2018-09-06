@@ -10,6 +10,6 @@ from . import firstcal_metrics
 from . import omnical_metrics
 from . import metrics_io
 from . import version
-from uvflag import *
+from .uvflag import *
 
 __version__ = version.version
