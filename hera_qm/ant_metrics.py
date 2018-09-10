@@ -156,7 +156,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
                 if (ant, antpol) in xants:
                     continue
                 absVijMean[(ant, antpol)] += s
-                visCounts[(ant, antpol)] += np.isfinitie(d).sum()
+                visCounts[(ant, antpol)] += np.isfinite(d).sum()
     timeFreqMeans = {key: absVijMean[key] / visCounts[key]
                      for key in absVijMean}
 
