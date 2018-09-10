@@ -623,6 +623,7 @@ class AntennaMetrics():
     def reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
         self.xants, self.crossedAntsRemoved, self.deadAntsRemoved = [], [], []
+        self.iter = 0
         self.removalIter = {}
         self.allMetrics, self.allModzScores = OrderedDict(), OrderedDict()
         self.finalMetrics, self.finalModzScores = {}, {}
@@ -707,8 +708,8 @@ class AntennaMetrics():
                 else:
                     self.finalMetrics[metName] = {key: metric[key]}
                     self.finalModzScores[metName] = {key: modz[key]}
-        self.allMetrics.update({iter: metrics})
-        self.allModzScores.update({iter: modzScores})
+        self.allMetrics.update({self.iter: metrics})
+        self.allModzScores.update({self.iter: modzScores})
 
 
     def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
@@ -747,6 +748,7 @@ class AntennaMetrics():
 
         # Loop over
         for n in range(len(self.antpols) * len(self.ants)):
+            self.iter = n
             self._run_all_metrics(run_mean_vij=run_mean_vij,
                                   run_red_corr=run_red_corr,
                                   run_cross_pols=run_cross_pols)
