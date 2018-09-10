@@ -55,21 +55,37 @@ def get_metrics_ArgumentParser(method_name):
                        help='*.uv files for which to calculate ant_metrics.')
 
         a.add_argument('--run_mean_vij', action='store_true',
-                       dest='run_mean_vij')
+                       dest='run_mean_vij',
+                       help=('Sets boolean flag to True. Flag determines if '
+                             'mean_vij_metrics is run. Default: True'))
         a.add_argument('--skip_mean_vij', action='store_false',
-                       dest='run_mean_vij')
+                       dest='run_mean_vij',
+                       help=('Sets boolean flag to False. Flag determines if '
+                             'mean_vij_metrics is run. Default: True'))
         a.set_defaults(run_mean_vij=True)
 
         a.add_argument('--run_red_corr', action='store_true',
-                       dest='run_red_corr')
+                       dest='run_red_corr',
+                       help=('Sets boolean flag to True. Flag determines if '
+                             'red_corr_metrics is run. Default: True'))
         a.add_argument('--skip_red_corr', action='store_false',
-                       dest='run_red_corr')
+                       dest='run_red_corr',
+                       help=('Sets boolean flag to False. Flag determines if '
+                             'red_corr_metrics is run. Default: True'))
         a.set_defaults(run_red_corr=True)
 
         a.add_argument('--run_cross_pols', action='store_true',
-                       dest='run_cross_pols')
+                       dest='run_cross_pols',
+                       help=('Sets boolean flag to True. Flag determines if '
+                             'mean_Vij_cross_pol_metrics and '
+                             'red_corr_cross_pol_metrics are run. '
+                             'Default: True'))
         a.add_argument('--skip_cross_pols', action='store_false',
-                       dest='run_cross_pols')
+                       dest='run_cross_pols',
+                       help=('Sets boolean flag to False. Flag determines if '
+                             'mean_Vij_cross_pol_metrics and '
+                             'red_corr_cross_pol_metrics are run. '
+                             'Default: True'))
         a.set_defaults(run_cross_pols=True)
 
     elif method_name == 'firstcal_metrics':
