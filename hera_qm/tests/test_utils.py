@@ -143,7 +143,7 @@ def test_get_metrics_ArgumentParser_error():
 
 def test_metrics2mc():
     # test ant metrics
-    filename = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+    filename = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
     d = utils.metrics2mc(filename, ftype='ant')
     nt.assert_equal(set(d.keys()), set(['ant_metrics', 'array_metrics']))
     nt.assert_equal(len(d['array_metrics']), 0)

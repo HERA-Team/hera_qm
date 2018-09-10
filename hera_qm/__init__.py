@@ -3,12 +3,13 @@
 # Licensed under the MIT License
 
 """init file for hera_qm."""
-import xrfi
-import vis_metrics
-import ant_metrics
-import firstcal_metrics
-import version
-import omnical_metrics
-from uvflag import *
+from . import xrfi
+from . import vis_metrics
+from . import ant_metrics
+from . import firstcal_metrics
+from . import omnical_metrics
+from . import metrics_io
+from . import version
+from .uvflag import *
 
 __version__ = version.version

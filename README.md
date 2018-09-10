@@ -55,7 +55,7 @@ There are currently five primary modules which drive HERA quality metrics.
 A module to handle visibility-based metrics designed to identify misbehaving antennas.
 The module includes methods to calculate several metrics to identify cross-polarized antennas
 or dead antennas, based on either their redundancy with other antennas or their relative power.
-The primary class, `Antenna_Metrics`, includes interfaces to these methods and functions for
+The primary class, `AntennaMetrics`, includes interfaces to these methods and functions for
 loading data, iteratively running metrics and removing misbehaving antennas, and saving the
 results of those metrics in a JSON. And example of using this moduleis in
 `scripts/ant_metrics_example_notebook.ipynb`.
@@ -93,6 +93,7 @@ define the flagging strategy to apply to some data. For example, `xrfi_h1c_pipe`
 the flagging scheme we used for H1C observing season. Wrappers handle the file I/O,
 and call pipelines. `xrfi_h1c_run` is a wrapper we retroactively made to reflect
 what we did for H1C.
+
 
 ## Known Issues and Planned Improvements
 Issues are tracked in the [issue log](https://github.com/HERA-Team/hera_qm/issues).
