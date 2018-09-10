@@ -658,11 +658,11 @@ class AntennaMetrics():
         """Local call for all metrics as part of iterative flagging method.
 
         Arguments:
-            run_mean_vij: Boolean flag which determines if the mean_Vij_metrics is executed.
+            run_mean_vij: Boolean flag which determines if mean_Vij_metrics is executed.
                           Default is True
-            run_red_corr: Boolean flag which determines if the red_corr_metrics is executed.
+            run_red_corr: Boolean flag which determines if red_corr_metrics is executed.
                           Default is True
-            run_cross_pols: Boolean flag which determines if the mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
+            run_cross_pols: Boolean flag which determines if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
                           Default is True
         """
         # Compute all raw metrics
@@ -734,11 +734,11 @@ class AntennaMetrics():
                            Default 10 "sigmas".
                            These are all thrown away at once without waiting
                            to iteratively throw away only the worst offender.
-            run_mean_vij: Boolean flag which determines if the mean_Vij_metrics is executed.
+            run_mean_vij: Boolean flag which determines if mean_Vij_metrics is executed.
                           Default is True
-            run_red_corr: Boolean flag which determines if the red_corr_metrics is executed.
+            run_red_corr: Boolean flag which determines if red_corr_metrics is executed.
                           Default is True
-            run_cross_pols: Boolean flag which determines if the mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
+            run_cross_pols: Boolean flag which determines if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
                           Default is True
         """
         self.reset_summary_stats()
@@ -868,11 +868,11 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
         verbose: If True print out statements during iterative flagging
         history: The history the add to metrics.
                  Default
-        run_mean_vij: Boolean flag which determines if the mean_Vij_metrics is executed.
+        run_mean_vij: Boolean flag which determines if mean_Vij_metrics is executed.
                       Default is True
-        run_red_corr: Boolean flag which determines if the red_corr_metrics is executed.
+        run_red_corr: Boolean flag which determines if red_corr_metrics is executed.
                       Default is True
-        run_cross_pols: Boolean flag which determines if the mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
+        run_cross_pols: Boolean flag which determines if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
                       Default is True
     Return:
        None
