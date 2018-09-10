@@ -34,8 +34,6 @@ def get_metrics_ArgumentParser(method_name):
 
     if method_name == 'ant_metrics':
         a.prog = 'ant_metrics.py'
-        # a.add_argument('-C', '--cal', type=str,
-        #                help='Calibration file to be used. Must be specified.')
         a.add_argument('-p', '--pol', default='', type=str,
                        help="Comma-separated list of polarizations included. Default is ''")
         a.add_argument('--crossCut', default=5.0, type=float,
