@@ -99,7 +99,7 @@ def per_antenna_modified_z_scores(metric):
 
     Computes the per-pol modified z-score of the given metric dictionary for each antenna.
 
-    modified Z-scor = 0.6745 (metric - median(all_metrics))/ median_absoulte_deviation
+    modified Z-score = 0.6745 (metric - median(all_metrics))/ median_absoulte_deviation
         pass
     Argument:
         metric: Dictionary of metric data to compute z-score
@@ -652,12 +652,17 @@ class AntennaMetrics():
                 self.deadAntsRemoved.append(key)
                 self.removalIter[key] = -1
 
-    def _run_all_metrics(self, iter=0, run_mean_vij=True, run_red_corr=True,
+    def _run_all_metrics(self, run_mean_vij=True, run_red_corr=True,
                          run_cross_pols=True):
         """Local call for all metrics as part of iterative flagging method.
 
         Arguments:
-            iter: Integer representing the iteration number.
+            run_mean_vij: Boolean flag which determines if the mean_Vij_metrics is executed.
+                          Default is True
+            run_red_corr: Boolean flag which determines if the red_corr_metrics is executed.
+                          Default is True
+            run_cross_pols: Boolean flag which determines if the mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
+                          Default is True
         """
         # Compute all raw metrics
         metNames = []
@@ -728,15 +733,21 @@ class AntennaMetrics():
                            Default 10 "sigmas".
                            These are all thrown away at once without waiting
                            to iteratively throw away only the worst offender.
+            run_mean_vij: Boolean flag which determines if the mean_Vij_metrics is executed.
+                          Default is True
+            run_red_corr: Boolean flag which determines if the red_corr_metrics is executed.
+                          Default is True
+            run_cross_pols: Boolean flag which determines if the mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
+                          Default is True
         """
         self.reset_summary_stats()
         self.find_totally_dead_ants()
-        self.crossCut, self.deadCut = crossCut, deadCut,
+        self.crossCut, self.deadCut = crossCut, deadCut
         self.alwaysDeadCut = alwaysDeadCut
 
         # Loop over
         for n in range(len(self.antpols) * len(self.ants)):
-            self._run_all_metrics(iter=n, run_mean_vij=run_mean_vij,
+            self._run_all_metrics(run_mean_vij=run_mean_vij,
                                   run_red_corr=run_red_corr,
                                   run_cross_pols=run_cross_pols)
 
@@ -852,9 +863,15 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
         vis_format: File format of input visibility data.
                     Supports: 'miriad','uvfits', 'fhd', 'ms' (see pyuvdata docs)
                     Default: 'miriad'
+        verbose: If True print out statements during iterative flagging
         history: The history the add to metrics.
                  Default
-        verbose: If True print out statements during iterative flagging
+        run_mean_vij: Boolean flag which determines if the mean_Vij_metrics is executed.
+                      Default is True
+        run_red_corr: Boolean flag which determines if the red_corr_metrics is executed.
+                      Default is True
+        run_cross_pols: Boolean flag which determines if the mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
+                      Default is True
     Return:
        None
 
