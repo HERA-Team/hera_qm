@@ -5,14 +5,13 @@
 """Class and algorithms to compute per Antenna metrics."""
 from __future__ import print_function, division, absolute_import
 
-from six.moves import zip
+from six.moves import zip, range
 import numpy as np
 from copy import deepcopy
 import json
 import os
 import re
 from collections import OrderedDict
-from hera_cal.io import HERAData
 from hera_qm.version import hera_qm_version_str
 from hera_qm import utils, metrics_io
 import h5py
@@ -485,6 +484,8 @@ class AntennaMetrics():
                     Supports: 'miriad','uvfits', 'fhd', 'ms ' (see pyuvdata docs)
                     Default: 'miriad'.
         """
+        from hera_cal.io import HERAData
+
         if fileformat == 'miriad':
             self.hd = HERAData(dataFileList, filetype='miriad')
         elif fileformat == 'uvfits':
@@ -887,6 +888,8 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
     """
     from hera_cal.omni import aa_to_info
     from hera_cal.utils import get_aa_from_uv
+    from hera_cal.io import HERAData
+
     # check the user asked to run anything
     if not any([run_mean_vij, run_red_corr, run_cross_pols]):
         raise AssertionError(("No Ant Metrics have been selected to run."
