@@ -386,8 +386,6 @@ def test_read_old_all_string_ant_json_files():
     """Test the new ant_metric json storage can be read and written to hdf5."""
     old_json_infile = os.path.join(DATA_PATH, 'example_ant_metrics_all_string.json')
     new_json_infile = os.path.join(DATA_PATH, 'example_ant_metrics.json')
-    # test_file = os.path.join(DATA_PATH, 'test_output',
-                             # 'test_ant_json_to_hdf5.h5')
     warn_message = ["JSON-type files can still be read but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
