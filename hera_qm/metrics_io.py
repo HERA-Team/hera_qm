@@ -313,7 +313,7 @@ def _recursively_parse_json(in_dict):
     """
     def _pretty_print_dict(di):
         output = '{'
-        for key, val in di.iteritems():
+        for key, val in six.iteritems(di):
             if isinstance(val, dict):
                 tmp = _pretty_print_dict(val)
                 if key in ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']:
