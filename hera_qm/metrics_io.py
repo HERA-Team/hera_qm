@@ -552,9 +552,12 @@ def _parse_dict_of_dicts(input_str, value_type=float):
     return output
 
 
-def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
-    """
-    Parse a text string as a dictionary of dictionaries of dictionaries.
+def _parse_list_of_dict_of_dicts(input_str, value_type=float):
+    """Parse a test string as a list of dictionaries of dictionaries.
+
+    Assumes input list of dicts of dicts is from an old ant_metrics json file
+    and will convert the list of dict of dicts to a dict of dict of dicts to be
+    consistent with the new format of ant_metrics.
 
     Arguments
         input_str: string to be processed
@@ -564,6 +567,40 @@ def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
         output: dictionary of dictionary of dictionaries
     """
     # use regex to extract dictionaries
+
+    dict_of_dict_regex = r"(\{\'[A-Za-z0-9]*?\': \{.*?\}+\})"
+    dicts = re.findall(dict_of_dict_regex, input_str)
+
+    # initialize output
+    output = OrderedDict()
+    for num, d in enumerate(dicts):
+        subdict = _parse_dict_of_dicts(d, value_type=value_type)
+        output[num] = subdict
+
+    return output
+
+
+def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
+    """
+    Parse a text string as a dictionary of dictionaries of dictionaries.
+
+    Also tests if input is list of dictionaries of dictionairies for backwards
+    compatibility with older ant_metrics json files.
+
+    Arguments
+        input_str: string to be processed
+        value_type: type to cast values in nested dictionaries to. Default
+        is float.
+    Returns
+        output: dictionary of dictionary of dictionaries
+    """
+    # use regex to extract dictionaries
+    list_regex = r"\[.*\]"
+    list_match = re.match(list_regex, input_str)
+
+    if list_match:
+        return _parse_list_of_dict_of_dicts(input_str, value_type=value_type)
+
     dict_regex = r"([0-9]*?)\'?: \{(.*?\})\}"
     dicts = re.findall(dict_regex, input_str)
 
@@ -571,7 +608,8 @@ def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
     output = {}
     for d in dicts:
         # key is first capture group
-        key = int(str(d[0]))
+        # key = int(str(d[0]))
+        key = _parse_key(d[0])
         # subdictionary is second capture group
         subdict = _parse_dict_of_dicts(d[1], value_type=value_type)
         output[key] = subdict
