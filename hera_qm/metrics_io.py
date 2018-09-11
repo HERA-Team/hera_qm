@@ -595,7 +595,7 @@ def _load_json_metrics(filename):
     return metric_dict
 
 
-def _recusively_validate_dict(in_dict, iter=0):
+def _recusively_validate_dict(in_dict):
     """Walk dictionary recursively and cast special types to know formats.
 
     Walks a dictionary recursively and searches for special types of items.
@@ -618,7 +618,7 @@ def _recusively_validate_dict(in_dict, iter=0):
             in_dict[key] = list(map(tuple, in_dict[key]))
 
         if isinstance(in_dict[key], dict):
-            _recusively_validate_dict(in_dict[key], iter=iter+1)
+            _recusively_validate_dict(in_dict[key])
 
 
 def load_metric_file(filename):
