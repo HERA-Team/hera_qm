@@ -164,7 +164,7 @@ def _recursively_make_dict_arrays_strings(in_dict):
         if isinstance(in_dict[key], dict):
             out_dict[key_str] = _recursively_make_dict_arrays_strings(in_dict[key])
         elif isinstance(in_dict[key], np.ndarray):
-            out_dict[key_str] = np.array2string(in_dict[key],  separator=',')
+            out_dict[key_str] = np.array2string(in_dict[key], separator=',')
         else:
             out_dict[key_str] = str(in_dict[key])
     return out_dict
