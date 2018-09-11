@@ -107,6 +107,8 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
             if isinstance(in_dict[key], compressable_types):
                 try:
+                    if np.issubdtype(np.asarray(in_dict[key]).dtype, np.unicode_):
+                        in_dict[key] = np.asarray(in_dict[key]).astype(np.string_)
                     dset = h5file[path].create_dataset(key_str,
                                                        data=in_dict[key],
                                                        compression='lzf')
@@ -133,7 +135,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
                 # Generate additional dataset in an ordered group to save
                 # the order of the group
-                key_order = list(map(str, in_dict[key].keys()))
+                key_order = np.array(list(in_dict[key].keys())).astype('S')
                 key_set = grp.create_dataset('key_order', data=key_order)
 
                 # Add boolean attribute to determine if key is a string
@@ -252,7 +254,10 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
     else:
         out_dict = {}
         key_list = list(h5file[path].keys())
+
     for key in key_list:
+        if isinstance(key, bytes):
+            key = key.decode()
 
         item = h5file[path][key]
 
