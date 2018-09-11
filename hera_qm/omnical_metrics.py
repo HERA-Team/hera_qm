@@ -639,7 +639,7 @@ class OmniCal_Metrics(object):
         # make histogram
         ant_phs_hists = []
         for i, phs in enumerate(phs_diff):
-            h, bins = np.histogram(phs, bins=128, range=(-np.pi, np.pi), normed=True)
+            h, bins = np.histogram(phs, bins=128, range=(-np.pi, np.pi), density=True)
             bins = 0.5*(bins[1:]+bins[:-1])
             ant_phs_hists.append(h)
         ant_phs_hists = np.array(ant_phs_hists)
