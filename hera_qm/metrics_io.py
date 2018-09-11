@@ -600,7 +600,7 @@ def _load_json_metrics(filename):
     return metric_dict
 
 
-def _recusively_validate_dict(in_dict):
+def _recursively_validate_dict(in_dict):
     """Walk dictionary recursively and cast special types to know formats.
 
     Walks a dictionary recursively and searches for special types of items.
@@ -630,7 +630,7 @@ def _recusively_validate_dict(in_dict):
                 in_dict[key] = np.asarray(in_dict[key]).astype(np.str_).tolist()
 
         if isinstance(in_dict[key], dict):
-            _recusively_validate_dict(in_dict[key])
+            _recursively_validate_dict(in_dict[key])
 
 
 def load_metric_file(filename):
@@ -655,5 +655,5 @@ def load_metric_file(filename):
             metric_dict = _recursively_load_dict_to_group(f, "/Header/")
             metric_dict.update(_recursively_load_dict_to_group(f, "/Metrics/"))
 
-    _recusively_validate_dict(metric_dict)
+    _recursively_validate_dict(metric_dict)
     return metric_dict
