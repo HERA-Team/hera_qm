@@ -615,7 +615,14 @@ def _recusively_validate_dict(in_dict):
             in_dict[key] = list(map(tuple, in_dict[key]))
 
         if key in antpol_keys:
-            in_dict[key] = list(map(tuple, in_dict[key]))
+            in_dict[key] = list(map(tuple, np.array(in_dict[key], dtype=antpol_dtype)))
+
+        if key in known_string_keys and isinstance(in_dict[key], bytes):
+            in_dict[key] = in_dict[key].decode()
+
+        if key in list_of_strings_keys:
+            if np.issubdtype(np.asarray(in_dict[key]).dtype, np.bytes_):
+                in_dict[key] = np.asarray(in_dict[key]).astype(np.str_).tolist()
 
         if isinstance(in_dict[key], dict):
             _recusively_validate_dict(in_dict[key])
