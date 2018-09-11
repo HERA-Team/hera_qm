@@ -411,5 +411,5 @@ def test_read_old_all_string_ant_json_files():
     # This function recursively walks dictionary and compares
     # data types together with nt.assert_type_equal or np.allclose
     qmtest.recursive_compare_dicts(test_metrics_new, test_metrics_old)
-    # nt.assert_true(os.path.exists(test_file))
-    # os.remove(test_file)
+    nt.assert_true(os.path.exists(test_file))
+    os.remove(test_file)

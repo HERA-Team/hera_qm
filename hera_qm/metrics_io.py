@@ -608,7 +608,6 @@ def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
     output = {}
     for d in dicts:
         # key is first capture group
-        # key = int(str(d[0]))
         key = _parse_key(d[0])
         # subdictionary is second capture group
         subdict = _parse_dict_of_dicts(d[1], value_type=value_type)
