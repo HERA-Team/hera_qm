@@ -7,7 +7,9 @@ from . import xrfi
 from . import vis_metrics
 from . import ant_metrics
 from . import firstcal_metrics
-from . import version
 from . import omnical_metrics
+from . import metrics_io
+from . import version
+from .uvflag import *
 
 __version__ = version.version

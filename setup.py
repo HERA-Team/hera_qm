@@ -40,7 +40,7 @@ setup_args = {
                 'scripts/delay_xrfi_run.py'],
     'version': version.version,
     'package_data': {'hera_qm': data_files},
-    'install_requires': ['astropy>=2.0'],
+    'install_requires': ['astropy>=2.0', 'h5py'],
     'zip_safe': False,
 }
 
