@@ -13,6 +13,7 @@ from hera_qm.version import hera_qm_version_str
 import warnings
 import copy
 import collections
+from six.moves import range
 
 
 #############################################################################

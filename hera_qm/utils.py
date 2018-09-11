@@ -12,6 +12,7 @@ from pyuvdata import UVCal, UVData
 from pyuvdata import telescopes as uvtel
 from pyuvdata import utils as uvutils
 import copy
+from six.moves import range
 
 
 # argument-generating function for *_run wrapper functions

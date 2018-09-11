@@ -2,24 +2,26 @@
 # Copyright (c) 2018 the HERA Project
 # Licensed under the MIT License
 
+from __future__ import print_function, division, absolute_import
 import matplotlib.pyplot as plt
 import numpy as np
 from pyuvdata import UVCal
 import pkg_resources
-pkg_resources.require('astropy>=2.0')
 import astropy.stats as astats
 from collections import OrderedDict as odict
 from hera_qm.version import hera_qm_version_str
 import json
-try:
-    # python2 import
-    import cPickle as pkl
-except:
-    # python3 import
-    import pickle as pkl
+import six
 import copy
 import os
 from scipy.signal import medfilt
+from six.moves import range
+if six.PY2:
+    # python2
+    import cPickle as pkl
+else:
+    # python3
+    import pickle as pkl
 
 
 def get_omnical_metrics_dict():

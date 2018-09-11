@@ -5,24 +5,27 @@
 """
 FirstCal metrics
 """
+from __future__ import print_function, division, absolute_import
 import matplotlib.pyplot as plt
 import numpy as np
 from pyuvdata import UVCal
 import pkg_resources
-pkg_resources.require('astropy>=2.0')
 import astropy.stats as astats
 from collections import OrderedDict
 from hera_qm.version import hera_qm_version_str
 import json
+import six
 from collections import OrderedDict as odict
-try:
-    # python 2
-    import cPickle as pkl
-except:
-    # python 3
-    import pickle as pkl
 import copy
 import os
+from six.moves import range
+if six.PY2:
+    # python 2
+    import cPickle as pkl
+else:
+    # python 3
+    import pickle as pkl
+
 try:
     from sklearn import gaussian_process as gp
     sklearn_import = True
