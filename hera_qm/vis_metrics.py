@@ -441,7 +441,7 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
                        axes=None, colorax='freq', alpha=1, msize=1, marker='.', grid=True,
                        one2one=True, loglog=False, freqs=None, times=None, figsize=None,
                        xylim=None, cbfontsize=10, axfontsize=14, force_plot=False, 
-                       tlsize=10, facecolor='lightgrey', tightlayout=True, cmap='viridis'):
+                       tlsize=10, facecolor='lightgrey', cmap='viridis'):
     """
     Make a scatter - matrix plot, showing covariance of visibility data
     between baselines in uvd1 with baselines in uvd2.
@@ -449,12 +449,12 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
     Parameters
     ----------
     uvd1 : UVData object
-    
+
     uvd2 : UVData object
-    
+
     bls : list
         List of antenna-pairs to plot in matrix
-        
+
     component : str, options=['real', 'imag', 'abs', 'angle']
         Component of visibility data to plot
 
@@ -463,63 +463,60 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
 
     colorbar : bool
         If True, add a colorbar
-        
+
     cmap : str
         Colormap to use for scatter plot
-        
+
     axes : ndarray
         ndarray of axes objects to use in plotting
-        
+
     colorax : str, options=['freq', 'time]
         data axis to colorize
-        
+
     alpha : float
         Transparency of points
-        
+
     msize : int
         Marker size
-        
+
     marker : str
         Type of marker to use
-        
+
     grid : bool
         If True, add a grid to the scatter plots
-        
+
     one2one : bool
         If True, add a 1-to-1 line
-        
+
     loglog : bool
         If True, logscale the x and y axes
-        
+
     freqs : ndarray
         Array of frequencies to select on before plotting
-        
+
     times : ndarray
         Array of times to select on before plotting
-        
+
     figsize : tuple
         Figure size if axes is None
-        
+
     xylim : tuple
         xy limits of the subplots
-        
+
     cbfontsize : int
         Fontsize of colorbar label and ticks
-        
+
     axfontsize : int
         Fontsize of axes labels
-        
+
     force_plot : bool
         If Nbls > 10 and force_plot is False, this function exits.
-        
+
     tlsize : int
         Ticklabel size of subplots
-        
+
     facecolor : str
         Facecolor of subplots
-        
-    tightlayout : bool
-        If True, call fig.tight_layout()
 
     Returns
     -------
@@ -663,13 +660,5 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
         cbar.set_label(clabel, fontsize=cbfontsize)
         _ = [tl.set_size(cbfontsize) for tl in cbar.ax.get_yticklabels()]
                
-    # tightlayout
-    if tightlayout:
-        if colorbar:
-            rect = (0, 0, 0.9, 1)
-        else:
-            rect = None
-        fig.tight_layout(rect=rect)
-            
     if newfig:
         return fig

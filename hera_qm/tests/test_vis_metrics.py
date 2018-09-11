@@ -90,11 +90,11 @@ def test_plot_bl_cov():
     bls = [(0, 1), (11, 12), (12, 13), (13, 14), (23, 24), (24, 25)]
     vis_metrics.plot_bl_bl_cov(uvd, uvd, bls, ax=ax, component='abs', colorbar=True,
                                freqs=np.unique(uvd.freq_array)[:10])
-    plt.close()
+    plt.close('all')
     fig = vis_metrics.plot_bl_bl_cov(uvd, uvd, bls, component='real', plot_corr=True)
-    plt.close()
+    plt.close('all')
     fig = vis_metrics.plot_bl_bl_cov(uvd, uvd, bls, component='imag')
-    plt.close()
+    plt.close('all')
 
 
 def test_plot_bl_bl_scatter():
@@ -107,13 +107,13 @@ def test_plot_bl_bl_scatter():
     fig, axes = plt.subplots(Nbls, Nbls, figsize=(8, 8))
     vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, axes=axes, component='real', colorax='freq',
                                    freqs=np.unique(uvd.freq_array)[100:900], axfontsize=10)
-    plt.close()
+    plt.close('all')
     fig = vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, component='abs', colorax='time', whiten=False)
-    plt.close()
+    plt.close('all')
     fig = vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, component='imag', colorax='time', whiten=True)
-    plt.close()
+    plt.close('all')
     fig = vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, component='angle')
-    plt.close()
+    plt.close('all')
 
     # test exceptions
     nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, bls, component='foo')
@@ -125,7 +125,7 @@ def test_plot_bl_bl_scatter():
     nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uv, uv, bls)
     # once xylim specified, should pass
     fig = vis_metrics.plot_bl_bl_scatter(uv, uv, bls, xylim=(-50, 50))
-    plt.close()
+    plt.close('all')
 
 
 def test_sequential_diff():

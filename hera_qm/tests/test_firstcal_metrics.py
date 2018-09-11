@@ -95,25 +95,25 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.plot_delays(fname=fname, save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        plt.close()
+        plt.close('all')
         self.FC.plot_delays(fname=fname, save=True, plot_type='solution')
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        plt.close()
+        plt.close('all')
         self.FC.plot_delays(fname=fname, save=True, plot_type='fluctuation')
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        plt.close()
+        plt.close('all')
 
         # Check cm defaults to spectral
         self.FC.plot_delays(fname=fname, save=True, cmap='foo')
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        plt.close()
+        plt.close('all')
         # check return figs
         fig = self.FC.plot_delays()
         self.assertTrue(fig is not None)
-        plt.close()
+        plt.close('all')
 
     def test_plot_zscores(self):
         # check exception
@@ -127,15 +127,15 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.plot_zscores(fname=fname, save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        plt.close()
+        plt.close('all')
         self.FC.plot_zscores(fname=fname, plot_type='time_avg', save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        plt.close()
+        plt.close('all')
         # check return fig
         fig = self.FC.plot_zscores()
         self.assertTrue(fig is not None)
-        plt.close()
+        plt.close('all')
 
     def test_plot_stds(self):
         # check exception
@@ -149,15 +149,15 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.plot_stds(fname=fname, save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        plt.close()
+        plt.close('all')
         self.FC.plot_stds(fname=fname, xaxis='time', save=True)
         self.assertTrue(os.path.isfile(fname))
         os.remove(fname)
-        plt.close()
+        plt.close('all')
         # check return fig
         fig = self.FC.plot_stds()
         self.assertTrue(fig is not None)
-        plt.close()
+        plt.close('all')
 
     def test_rotated_metrics(self):
         infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.bad.first.calfits')
