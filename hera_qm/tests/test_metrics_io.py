@@ -382,3 +382,32 @@ def test_read_write_new_ant_json_files():
     qmtest.recursive_compare_dicts(test_metrics, test_metrics_in)
     nt.assert_true(os.path.exists(test_file))
     os.remove(test_file)
+
+
+def test_read_old_all_string_ant_json_files():
+    """Test the new ant_metric json storage can be read and written to hdf5."""
+    old_json_infile = os.path.join(DATA_PATH, 'example_ant_metrics_all_string.json')
+    new_json_infile = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+    warn_message = ["JSON-type files can still be read but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility.", ]
+    test_metrics_old = uvtest.checkWarnings(metrics_io.load_metric_file,
+                                            func_args=[old_json_infile],
+                                            category=PendingDeprecationWarning,
+                                            nwarnings=1,
+                                            message=warn_message)
+    test_metrics_new = uvtest.checkWarnings(metrics_io.load_metric_file,
+                                            func_args=[new_json_infile],
+                                            category=PendingDeprecationWarning,
+                                            nwarnings=1,
+                                            message=warn_message)
+    # The written hdf5 may have these keys that differ by design
+    # so ignore them.
+    test_metrics_old.pop('history', None)
+    test_metrics_old.pop('version', None)
+    test_metrics_new.pop('history', None)
+    test_metrics_new.pop('version', None)
+
+    # This function recursively walks dictionary and compares
+    # data types together with nt.assert_type_equal or np.allclose
+    qmtest.recursive_compare_dicts(test_metrics_new, test_metrics_old)
