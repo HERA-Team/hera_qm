@@ -33,9 +33,7 @@ install:
   - pip install git+https://github.com/HERA-Team/omnical.git
   - pip install git+https://github.com/HERA-Team/linsolve.git
   - pip install git+https://github.com/HERA-Team/uvtools.git
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      pip install git+https://github.com/HERA-Team/hera_cal.git # need to do this temporarily for Python3 upgrade
-    fi
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then pip install git+https://github.com/HERA-Team/hera_cal.git; fi
   - python setup.py install
   - conda list
 
@@ -44,9 +42,9 @@ before_script:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
   - sleep 3
+  - python -c "from pyuvdata import version; version.main()"
 
 script:
-  - python -c "from pyuvdata import version; version.main()"
   - nosetests hera_qm --nologcapture --with-coverage --cover-package=hera_qm
 
 after_success:
