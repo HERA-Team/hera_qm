@@ -16,6 +16,7 @@ import six
 import re
 from collections import OrderedDict
 from hera_qm.version import hera_qm_version_str
+import hera_qm.utils as qm_utils
 
 # HDF5 casts all inputs to numpy arrays.
 # Define a custom numpy dtype for tuples we wish to preserve shape
@@ -109,6 +110,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
                 try:
                     if np.issubdtype(np.asarray(in_dict[key]).dtype, np.unicode_):
                         in_dict[key] = np.asarray(in_dict[key]).astype(np.string_)
+
                     dset = h5file[path].create_dataset(key_str,
                                                        data=in_dict[key],
                                                        compression='lzf')
@@ -220,13 +222,13 @@ def write_metric_file(filename, input_dict, overwrite=False):
             header = f.create_group('Header')
             header.attrs['key_is_string'] = True
 
-            header['history'] = input_dict.pop('history',
-                                               'No History Found. '
-                                               'Written by '
-                                               'hera_qm.metrics_io')
+            header['history'] = qm_utils._str_to_bytes(input_dict.pop('history',
+                                                                      'No History Found. '
+                                                                      'Written by '
+                                                                      'hera_qm.metrics_io'))
             header['history'].attrs['key_is_string'] = True
 
-            header['version'] = input_dict.pop('version', hera_qm_version_str)
+            header['version'] = qm_utils._str_to_bytes(input_dict.pop('version', hera_qm_version_str))
             header['version'].attrs['key_is_string'] = True
 
             # Create group for metrics data in file
@@ -650,6 +652,10 @@ def _recursively_validate_dict(in_dict):
         out_dict: Copy of input dictionary with antpairs and antpols cast as tuples
     """
     for key in in_dict:
+        if key in ['history', 'version']:
+            if isinstance(in_dict[key], bytes):
+                in_dict[key] = qm_utils._bytes_to_str(in_dict[key])
+
         if key == 'reds':
             in_dict[key] = _reds_dict_to_list(in_dict[key])
 
@@ -663,8 +669,8 @@ def _recursively_validate_dict(in_dict):
             in_dict[key] = in_dict[key].decode()
 
         if key in list_of_strings_keys:
-            if np.issubdtype(np.asarray(in_dict[key]).dtype, np.bytes_):
-                in_dict[key] = np.asarray(in_dict[key]).astype(np.str_).tolist()
+                in_dict[key] = [qm_utils._bytes_to_str(n) if isinstance(n, bytes)
+                                else n for n in in_dict[key]]
 
         if isinstance(in_dict[key], np.int64):
             in_dict[key] = np.int(in_dict[key])

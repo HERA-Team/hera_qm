@@ -219,6 +219,7 @@ def test_write_then_recursive_load_dict_to_group_no_nested_dicts():
     with h5py.File(test_file, 'r') as h5file:
         read_dict = metrics_io._recursively_load_dict_to_group(h5file, '/Header/')
         read_dict.update(metrics_io._recursively_load_dict_to_group(h5file, '/Metrics/'))
+    metrics_io._recursively_validate_dict(read_dict)
     nt.assert_dict_equal(good_dict, read_dict)
     os.remove(test_file)
 
@@ -234,6 +235,7 @@ def test_write_then_recursive_load_dict_to_group_with_nested_dicts():
     with h5py.File(test_file, 'r') as h5file:
         read_dict = metrics_io._recursively_load_dict_to_group(h5file, '/Header/')
         read_dict.update(metrics_io._recursively_load_dict_to_group(h5file, '/Metrics/'))
+    metrics_io._recursively_validate_dict(read_dict)
     for key in good_dict:
         if isinstance(good_dict[key], dict):
             nt.assert_dict_equal(good_dict[key], read_dict[key])
