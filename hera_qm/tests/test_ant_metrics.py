@@ -9,12 +9,12 @@ import nose.tools as nt
 import numpy as np
 import os
 import sys
+import six
 import json
 import copy
 import h5py
 import warnings
 import pyuvdata.tests as uvtest
-from hera_cal.datacontainer import DataContainer
 from hera_qm import utils
 from hera_qm import ant_metrics
 from hera_qm import metrics_io
@@ -220,7 +220,7 @@ class TestLowLevelFunctions(unittest.TestCase):
 
         outpath = os.path.join(DATA_PATH, 'test_output',
                                'ant_metrics_output.hdf5')
-        metrics_io.write_metric_file(outpath, metrics)
+        metrics_io.write_metric_file(outpath, metrics, overwrite=True)
 
         # test reading it back in, and that the values agree
         metrics_new = ant_metrics.load_antenna_metrics(outpath)
@@ -259,6 +259,7 @@ class TestLowLevelFunctions(unittest.TestCase):
         qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
 
 
+@unittest.skipIf(six.PY3, "This requires hera_cal which is not yet python 3 compatible")
 class TestAntennaMetrics(unittest.TestCase):
 
     def setUp(self):
@@ -465,7 +466,8 @@ class TestAntennaMetrics(unittest.TestCase):
             self.assertEqual(am2.removalIter[(deadant, antpol)], -1)
 
 
-class TestAntmetricsRun(object):
+@unittest.skipIf(six.PY3, "This requires hera_cal which is not yet python 3 compatible")
+class TestAntmetricsRun(unittest.TestCase):
 
     def test_run_ant_metrics_no_files(self):
         # get argument object
@@ -604,7 +606,7 @@ class TestAntmetricsRun(object):
         args = a.parse_args(cmd.split())
         history = cmd
         pols = list(args.pol.split(','))
-        ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
+        ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
                                     args.deadCut, args.alwaysDeadCut,
                                     args.metrics_path,
                                     args.extension, args.vis_format,
