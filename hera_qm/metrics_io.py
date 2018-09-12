@@ -145,8 +145,8 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
             _recursively_save_dict_to_group(h5file, path + key_str + '/',
                                             in_dict[key])
         else:
-            raise TypeError("Cannot save key {0} with type {1}"
-                            .format(key, type(in_dict[key])))
+            raise TypeError("Cannot save key {0} with type {1} at path {2}"
+                            .format(key, type(in_dict[key]), path))
     return
 
 
