@@ -23,17 +23,25 @@ from hera_qm.version import hera_qm_version_str
 import hera_qm.tests as qmtest
 
 
-def fake_data():
+class fake_data():
     """Generate fake data with known values."""
-    data = {}
-    for bl in [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]:
-        data[bl] = {}
-        for poli, pol in enumerate(['xx', 'xy', 'yx', 'yy']):
-            # Give each bl different data
-            np.random.seed(bl[0] * 10 + bl[1] + 100 * poli)
-            data[bl][pol] = np.random.randn(2, 3)
+    def __init__(self):
+        self.data = {}
+        for bl in [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]:
+            # data[bl] = {}
+            for poli, pol in enumerate(['xx', 'xy', 'yx', 'yy']):
+                # Give each bl different data
+                np.random.seed(bl[0] * 10 + bl[1] + 100 * poli)
+                self.data[bl[0], bl[1], pol] = np.random.randn(2, 3)
 
-    return DataContainer(data)
+    def get_data(self, *key):
+        return self.data[key]
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def keys(self):
+        return self.data.keys()
 
 
 class TestLowLevelFunctions(unittest.TestCase):
