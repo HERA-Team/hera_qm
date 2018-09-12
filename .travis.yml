@@ -34,7 +34,7 @@ install:
   - pip install git+https://github.com/HERA-Team/linsolve.git
   - pip install git+https://github.com/HERA-Team/uvtools.git
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-        pip install git+https://github.com/HERA-Team/hera_cal.git # need to do this temporarily for Python3 upgrade
+      pip install git+https://github.com/HERA-Team/hera_cal.git # need to do this temporarily for Python3 upgrade
     fi
   - python setup.py install
   - conda list
