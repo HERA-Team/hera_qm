@@ -629,6 +629,9 @@ def _recursively_validate_dict(in_dict):
             if np.issubdtype(np.asarray(in_dict[key]).dtype, np.bytes_):
                 in_dict[key] = np.asarray(in_dict[key]).astype(np.str_).tolist()
 
+        if isinstance(in_dict[key], np.int64):
+            in_dict[key] = np.int(in_dict[key])
+
         if isinstance(in_dict[key], dict):
             _recursively_validate_dict(in_dict[key])
 
