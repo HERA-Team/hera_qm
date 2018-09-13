@@ -16,7 +16,7 @@ else:
     args.pol = list(args.pol.split(','))
 ant_metrics.ant_metrics_run(args.files, pols=args.pol, crossCut=args.crossCut,
                             deadCut=args.deadCut,
-                            alwaysDeatCut=args.alwaysDeatCut,
+                            alwaysDeadCut=args.alwaysDeadCut,
                             metrics_path=args.metrics_path,
                             extension=args.extension,
                             vis_format=args.vis_format,
