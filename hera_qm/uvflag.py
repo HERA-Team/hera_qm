@@ -7,12 +7,11 @@ import numpy as np
 import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
-from hera_qm.version import hera_qm_version_str
-from hera_qm import utils as qm_utils
+from .version import hera_qm_version_str
+from . import utils as qm_utils
 import warnings
 import h5py
 import copy
-import six
 from six.moves import map
 
 

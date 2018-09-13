@@ -12,8 +12,8 @@ import json
 import os
 import re
 from collections import OrderedDict
-from hera_qm.version import hera_qm_version_str
-from hera_qm import utils, metrics_io
+from .version import hera_qm_version_str
+from . import utils, metrics_io
 import h5py
 import warnings
 

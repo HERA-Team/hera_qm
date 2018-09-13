@@ -9,7 +9,7 @@ from pyuvdata import UVCal
 import pkg_resources
 import astropy.stats as astats
 from collections import OrderedDict as odict
-from hera_qm.version import hera_qm_version_str
+from .version import hera_qm_version_str
 import json
 import six
 import copy

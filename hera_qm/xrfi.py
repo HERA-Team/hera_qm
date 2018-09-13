@@ -8,8 +8,8 @@ import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
 from .uvflag import UVFlag
-from hera_qm import utils as qm_utils
-from hera_qm.version import hera_qm_version_str
+from . import utils as qm_utils
+from .version import hera_qm_version_str
 import warnings
 import copy
 import collections

@@ -15,8 +15,8 @@ import copy
 import six
 import re
 from collections import OrderedDict
-from hera_qm.version import hera_qm_version_str
-import hera_qm.utils as qm_utils
+from .version import hera_qm_version_str
+from . import utils as qm_utils
 
 # HDF5 casts all inputs to numpy arrays.
 # Define a custom numpy dtype for tuples we wish to preserve shape

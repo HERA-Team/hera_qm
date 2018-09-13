@@ -6,10 +6,10 @@ from __future__ import print_function, division, absolute_import
 import numpy as np
 from pyuvdata import UVData
 import matplotlib.pyplot as plt
-from hera_qm import utils
 import copy
-from hera_qm import version
 from six.moves import range
+from . import utils
+from . import version
 
 def check_noise_variance(data):
     """Calculate the noise levels of each baseline/pol relative to the autos.
