@@ -314,7 +314,7 @@ class FirstCal_Metrics(object):
             of the same polarization
 
         use_gp : bool, default=True
-            use gaussian process model to 
+            use gaussian process model to
             subtract underlying smooth delay solution
             behavior over time from fluctuations
 
@@ -404,12 +404,12 @@ class FirstCal_Metrics(object):
 
         # use gaussian process model to subtract underlying mean function
         if use_gp is True and self.sklearn_import is True:
-	    # initialize GP kernel.		
-	    # RBF is a squared exponential kernel with a minimum length_scale_bound of 0.01 JD, meaning		
-	    # the GP solution won't have time fluctuations quicker than ~0.01 JD, which will preserve 		
-	    # short time fluctuations. WhiteKernel is a Gaussian white noise component with a fiducial		
-	    # noise level of 0.01 nanoseconds. Both of these are hyperparameters that are fit for via		
-	    # a gradient descent algorithm in the GP.fit() routine, so length_scale=0.2 and		
+	    # initialize GP kernel.
+	    # RBF is a squared exponential kernel with a minimum length_scale_bound of 0.01 JD, meaning
+	    # the GP solution won't have time fluctuations quicker than ~0.01 JD, which will preserve
+	    # short time fluctuations. WhiteKernel is a Gaussian white noise component with a fiducial
+	    # noise level of 0.01 nanoseconds. Both of these are hyperparameters that are fit for via
+	    # a gradient descent algorithm in the GP.fit() routine, so length_scale=0.2 and
 	    # noise_level=0.01 are just initial conditions and are not the final hyperparameter solution
             kernel = gp.kernels.RBF(length_scale=0.2, length_scale_bounds=(0.01, 1.0)) + gp.kernels.WhiteKernel(noise_level=0.01)
             x = self.frac_JD.reshape(-1, 1)
@@ -537,7 +537,10 @@ class FirstCal_Metrics(object):
                 elif isinstance(metrics_out[k], np.bool):
                     metrics_out[k] = bool(metrics_out[k])
                 elif isinstance(metrics_out[k], (dict, odict)):
-                    metrics_out[k] = odict([(str(_k), metrics_out[k][_k].tolist()) if isinstance(metrics_out[k][_k], np.ndarray) else (str(_k), metrics_out[k][_k]) for _k in metrics_out[k]])
+                    metrics_out[k] = odict([(str(_k), metrics_out[k][_k].tolist())
+                                            if isinstance(metrics_out[k][_k], np.ndarray)
+                                            else (str(_k), metrics_out[k][_k])
+                                            for _k in metrics_out[k]])
 
             with open(filename, 'w') as f:
                 json.dump(metrics_out, f, indent=4)
@@ -859,7 +862,7 @@ def firstcal_metrics_run(files, args, history):
     for i, filename in enumerate(files):
         fm = FirstCal_Metrics(filename)
         fm.run_metrics(std_cut=args.std_cut)
-            
+
         # add history
         fm.history = fm.history + history
 
