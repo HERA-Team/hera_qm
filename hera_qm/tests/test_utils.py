@@ -404,3 +404,21 @@ def test_dynamic_slice():
     nt.assert_equal(b.shape, (1, 5))
 
     nt.assert_raises(ValueError, utils.dynamic_slice, 'foo', slice(0, None))
+
+def test_process_ex_ants():
+    ex_ants = ''
+    xants = omni.process_ex_ants(ex_ants)
+    nt.assert_equal(xants, [])
+
+    ex_ants = '0,1,2'
+    xants = omni.process_ex_ants(ex_ants)
+    nt.assert_equal(xants, [0, 1, 2])
+
+    ex_ants = '0,obvious_error'
+    nt.assert_raises(AssertionError, omni.process_ex_ants, ex_ants)
+
+    ex_ants = '0,1'
+    met_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
+    xants = omni.process_ex_ants(ex_ants, metrics_json=json_file)
+    nt.assert_equal(xants, [81])
+    return
