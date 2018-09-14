@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2018 the HERA Project
 # Licensed under the MIT License
-
 from __future__ import print_function, division, absolute_import
+
 import unittest
 import nose.tools as nt
 import glob
@@ -11,7 +11,6 @@ import shutil
 import hera_qm.xrfi as xrfi
 import numpy as np
 import warnings
-import hera_qm.tests as qmtest
 import pyuvdata.tests as uvtest
 from pyuvdata import UVData
 from pyuvdata import UVCal

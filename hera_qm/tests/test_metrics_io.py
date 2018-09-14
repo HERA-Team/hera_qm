@@ -199,7 +199,8 @@ def test_write_metric_warning_json():
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility."]
     json_dict = uvtest.checkWarnings(metrics_io.write_metric_file,
-                                     func_args=[json_file, test_dict],
+                                     [json_file, test_dict],
+                                     {'overwrite': True},
                                      category=PendingDeprecationWarning,
                                      nwarnings=1,
                                      message=warn_message)
@@ -218,6 +219,7 @@ def test_write_then_recursive_load_dict_to_group_no_nested_dicts():
     with h5py.File(test_file, 'r') as h5file:
         read_dict = metrics_io._recursively_load_dict_to_group(h5file, '/Header/')
         read_dict.update(metrics_io._recursively_load_dict_to_group(h5file, '/Metrics/'))
+    metrics_io._recursively_validate_dict(read_dict)
     nt.assert_dict_equal(good_dict, read_dict)
     os.remove(test_file)
 
@@ -233,6 +235,7 @@ def test_write_then_recursive_load_dict_to_group_with_nested_dicts():
     with h5py.File(test_file, 'r') as h5file:
         read_dict = metrics_io._recursively_load_dict_to_group(h5file, '/Header/')
         read_dict.update(metrics_io._recursively_load_dict_to_group(h5file, '/Metrics/'))
+    metrics_io._recursively_validate_dict(read_dict)
     for key in good_dict:
         if isinstance(good_dict[key], dict):
             nt.assert_dict_equal(good_dict[key], read_dict[key])
@@ -278,7 +281,8 @@ def test_write_then_load_metric_warning_json_():
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
     uvtest.checkWarnings(metrics_io.write_metric_file,
-                         func_args=[json_file, test_dict],
+                         [json_file, test_dict],
+                         {'overwrite': True},
                          category=PendingDeprecationWarning, nwarnings=1,
                          message=warn_message)
     nt.assert_true(os.path.exists(json_file))
@@ -309,7 +313,7 @@ def test_read_write_old_firstcal_json_files():
                                         category=PendingDeprecationWarning,
                                         nwarnings=1,
                                         message=warn_message)
-    metrics_io.write_metric_file(test_file, test_metrics)
+    metrics_io.write_metric_file(test_file, test_metrics, overwrite=True)
     test_metrics_in = metrics_io.load_metric_file(test_file)
 
     test_metrics.pop('history', None)
@@ -335,7 +339,7 @@ def test_read_write_old_omnical_json_files():
                                         category=PendingDeprecationWarning,
                                         nwarnings=1,
                                         message=warn_message)
-    metrics_io.write_metric_file(test_file, test_metrics)
+    metrics_io.write_metric_file(test_file, test_metrics, overwrite=True)
     test_metrics_in = metrics_io.load_metric_file(test_file)
 
     # The written hdf5 may have these keys that differ by design
@@ -365,7 +369,7 @@ def test_read_write_new_ant_json_files():
                                         category=PendingDeprecationWarning,
                                         nwarnings=1,
                                         message=warn_message)
-    metrics_io.write_metric_file(test_file, test_metrics)
+    metrics_io.write_metric_file(test_file, test_metrics, overwrite=True)
     test_metrics_in = metrics_io.load_metric_file(test_file)
 
     # The written hdf5 may have these keys that differ by design

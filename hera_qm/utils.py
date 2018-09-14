@@ -12,6 +12,21 @@ from pyuvdata import UVCal, UVData
 from pyuvdata import telescopes as uvtel
 from pyuvdata import utils as uvutils
 import copy
+from six.moves import range
+import six
+
+if six.PY2:
+    def _bytes_to_str(b):
+        return b
+
+    def _str_to_bytes(s):
+        return s
+else:
+    def _bytes_to_str(b):
+        return b.decode('utf8')
+
+    def _str_to_bytes(s):
+        return s.encode('utf8')
 
 
 # argument-generating function for *_run wrapper functions

@@ -15,7 +15,8 @@ import copy
 import six
 import re
 from collections import OrderedDict
-from hera_qm.version import hera_qm_version_str
+from .version import hera_qm_version_str
+from . import utils as qm_utils
 
 # HDF5 casts all inputs to numpy arrays.
 # Define a custom numpy dtype for tuples we wish to preserve shape
@@ -107,6 +108,9 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
             if isinstance(in_dict[key], compressable_types):
                 try:
+                    if np.issubdtype(np.asarray(in_dict[key]).dtype, np.unicode_):
+                        in_dict[key] = np.asarray(in_dict[key]).astype(np.string_)
+
                     dset = h5file[path].create_dataset(key_str,
                                                        data=in_dict[key],
                                                        compression='lzf')
@@ -133,7 +137,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
                 # Generate additional dataset in an ordered group to save
                 # the order of the group
-                key_order = list(map(str, in_dict[key].keys()))
+                key_order = np.array(list(in_dict[key].keys())).astype('S')
                 key_set = grp.create_dataset('key_order', data=key_order)
 
                 # Add boolean attribute to determine if key is a string
@@ -143,8 +147,8 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
             _recursively_save_dict_to_group(h5file, path + key_str + '/',
                                             in_dict[key])
         else:
-            raise TypeError("Cannot save key {0} with type {1}"
-                            .format(key, type(in_dict[key])))
+            raise TypeError("Cannot save key {0} with type {1} at path {2}"
+                            .format(key, type(in_dict[key]), path))
     return
 
 
@@ -164,7 +168,7 @@ def _recursively_make_dict_arrays_strings(in_dict):
         if isinstance(in_dict[key], dict):
             out_dict[key_str] = _recursively_make_dict_arrays_strings(in_dict[key])
         elif isinstance(in_dict[key], np.ndarray):
-            out_dict[key_str] = np.array2string(in_dict[key],  separator=',')
+            out_dict[key_str] = np.array2string(in_dict[key], separator=',')
         else:
             out_dict[key_str] = str(in_dict[key])
     return out_dict
@@ -218,13 +222,13 @@ def write_metric_file(filename, input_dict, overwrite=False):
             header = f.create_group('Header')
             header.attrs['key_is_string'] = True
 
-            header['history'] = input_dict.pop('history',
-                                               'No History Found. '
-                                               'Written by '
-                                               'hera_qm.metrics_io')
+            header['history'] = qm_utils._str_to_bytes(input_dict.pop('history',
+                                                                      'No History Found. '
+                                                                      'Written by '
+                                                                      'hera_qm.metrics_io'))
             header['history'].attrs['key_is_string'] = True
 
-            header['version'] = input_dict.pop('version', hera_qm_version_str)
+            header['version'] = qm_utils._str_to_bytes(input_dict.pop('version', hera_qm_version_str))
             header['version'].attrs['key_is_string'] = True
 
             # Create group for metrics data in file
@@ -252,7 +256,10 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
     else:
         out_dict = {}
         key_list = list(h5file[path].keys())
+
     for key in key_list:
+        if isinstance(key, bytes):
+            key = key.decode()
 
         item = h5file[path][key]
 
@@ -313,7 +320,7 @@ def _recursively_parse_json(in_dict):
     """
     def _pretty_print_dict(di):
         output = '{'
-        for key, val in di.iteritems():
+        for key, val in six.iteritems(di):
             if isinstance(val, dict):
                 tmp = _pretty_print_dict(val)
                 if key in ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']:
@@ -632,7 +639,7 @@ def _load_json_metrics(filename):
     return metric_dict
 
 
-def _recusively_validate_dict(in_dict, iter=0):
+def _recursively_validate_dict(in_dict):
     """Walk dictionary recursively and cast special types to know formats.
 
     Walks a dictionary recursively and searches for special types of items.
@@ -645,6 +652,10 @@ def _recusively_validate_dict(in_dict, iter=0):
         out_dict: Copy of input dictionary with antpairs and antpols cast as tuples
     """
     for key in in_dict:
+        if key in ['history', 'version']:
+            if isinstance(in_dict[key], bytes):
+                in_dict[key] = qm_utils._bytes_to_str(in_dict[key])
+
         if key == 'reds':
             in_dict[key] = _reds_dict_to_list(in_dict[key])
 
@@ -652,10 +663,20 @@ def _recusively_validate_dict(in_dict, iter=0):
             in_dict[key] = list(map(tuple, in_dict[key]))
 
         if key in antpol_keys:
-            in_dict[key] = list(map(tuple, in_dict[key]))
+            in_dict[key] = list(map(tuple, np.array(in_dict[key], dtype=antpol_dtype)))
+
+        if key in known_string_keys and isinstance(in_dict[key], bytes):
+            in_dict[key] = in_dict[key].decode()
+
+        if key in list_of_strings_keys:
+                in_dict[key] = [qm_utils._bytes_to_str(n) if isinstance(n, bytes)
+                                else n for n in in_dict[key]]
+
+        if isinstance(in_dict[key], np.int64):
+            in_dict[key] = np.int(in_dict[key])
 
         if isinstance(in_dict[key], dict):
-            _recusively_validate_dict(in_dict[key], iter=iter+1)
+            _recursively_validate_dict(in_dict[key])
 
 
 def load_metric_file(filename):
@@ -680,5 +701,5 @@ def load_metric_file(filename):
             metric_dict = _recursively_load_dict_to_group(f, "/Header/")
             metric_dict.update(_recursively_load_dict_to_group(f, "/Metrics/"))
 
-    _recusively_validate_dict(metric_dict)
+    _recursively_validate_dict(metric_dict)
     return metric_dict

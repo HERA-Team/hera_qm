@@ -8,11 +8,12 @@ import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
 from .uvflag import UVFlag
-from hera_qm import utils as qm_utils
-from hera_qm.version import hera_qm_version_str
+from . import utils as qm_utils
+from .version import hera_qm_version_str
 import warnings
 import copy
 import collections
+from six.moves import range
 
 
 #############################################################################
@@ -112,8 +113,8 @@ def medminfilt(d, Kt=8, Kf=8):
                       "using the size of the data for the kernel size".format(Kf, d.shape[1]))
         Kf = d.shape[1]
     d_sm = np.empty_like(d)
-    for i in xrange(d.shape[0]):
-        for j in xrange(d.shape[1]):
+    for i in range(d.shape[0]):
+        for j in range(d.shape[1]):
             i0, j0 = max(0, i - Kt), max(0, j - Kf)
             i1, j1 = min(d.shape[0], i + Kt), min(d.shape[1], j + Kf)
             d_sm[i, j] = medmin(d[i0:i1, j0:j1])
@@ -677,7 +678,12 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
     # Compute list of excluded antennas
     if ex_ants != '' or metrics_json != '':
         # import function from hera_cal
-        from hera_cal.omni import process_ex_ants
+        try:
+            from hera_cal.omni import process_ex_ants
+        except(ImportError):
+            from nose.plugins.skip import SkipTest
+            raise SkipTest('hera_cal.omni not detected. It must be installed for xrfi_run if xants or metrics are passed.')
+
         xants = process_ex_ants(ex_ants, metrics_json)
 
         # Flag the visibilities corresponding to the specified antennas

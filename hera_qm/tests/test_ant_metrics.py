@@ -9,12 +9,12 @@ import nose.tools as nt
 import numpy as np
 import os
 import sys
+import six
 import json
 import copy
 import h5py
 import warnings
 import pyuvdata.tests as uvtest
-from hera_cal.datacontainer import DataContainer
 from hera_qm import utils
 from hera_qm import ant_metrics
 from hera_qm import metrics_io
@@ -23,17 +23,25 @@ from hera_qm.version import hera_qm_version_str
 import hera_qm.tests as qmtest
 
 
-def fake_data():
+class fake_data():
     """Generate fake data with known values."""
-    data = {}
-    for bl in [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]:
-        data[bl] = {}
-        for poli, pol in enumerate(['xx', 'xy', 'yx', 'yy']):
-            # Give each bl different data
-            np.random.seed(bl[0] * 10 + bl[1] + 100 * poli)
-            data[bl][pol] = np.random.randn(2, 3)
+    def __init__(self):
+        self.data = {}
+        for bl in [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]:
+            # data[bl] = {}
+            for poli, pol in enumerate(['xx', 'xy', 'yx', 'yy']):
+                # Give each bl different data
+                np.random.seed(bl[0] * 10 + bl[1] + 100 * poli)
+                self.data[bl[0], bl[1], pol] = np.random.randn(2, 3)
 
-    return DataContainer(data)
+    def get_data(self, *key):
+        return self.data[key]
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def keys(self):
+        return self.data.keys()
 
 
 class TestLowLevelFunctions(unittest.TestCase):
@@ -212,7 +220,7 @@ class TestLowLevelFunctions(unittest.TestCase):
 
         outpath = os.path.join(DATA_PATH, 'test_output',
                                'ant_metrics_output.hdf5')
-        metrics_io.write_metric_file(outpath, metrics)
+        metrics_io.write_metric_file(outpath, metrics, overwrite=True)
 
         # test reading it back in, and that the values agree
         metrics_new = ant_metrics.load_antenna_metrics(outpath)
@@ -251,6 +259,7 @@ class TestLowLevelFunctions(unittest.TestCase):
         qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
 
 
+@unittest.skipIf(six.PY3, "This requires hera_cal which is not yet python 3 compatible")
 class TestAntennaMetrics(unittest.TestCase):
 
     def setUp(self):
@@ -457,7 +466,8 @@ class TestAntennaMetrics(unittest.TestCase):
             self.assertEqual(am2.removalIter[(deadant, antpol)], -1)
 
 
-class TestAntmetricsRun(object):
+@unittest.skipIf(six.PY3, "This requires hera_cal which is not yet python 3 compatible")
+class TestAntmetricsRun(unittest.TestCase):
 
     def test_run_ant_metrics_no_files(self):
         # get argument object
@@ -596,7 +606,7 @@ class TestAntmetricsRun(object):
         args = a.parse_args(cmd.split())
         history = cmd
         pols = list(args.pol.split(','))
-        ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
+        ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
                                     args.deadCut, args.alwaysDeadCut,
                                     args.metrics_path,
                                     args.extension, args.vis_format,

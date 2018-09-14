@@ -1,13 +1,18 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018 the HERA Project
+# Licensed under the MIT License
+
 from __future__ import print_function, division, absolute_import
 import numpy as np
 import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
-from hera_qm.version import hera_qm_version_str
-from hera_qm import utils as qm_utils
+from .version import hera_qm_version_str
+from . import utils as qm_utils
 import warnings
 import h5py
 import copy
+from six.moves import map
 
 
 class UVFlag():
@@ -202,15 +207,15 @@ class UVFlag():
             with h5py.File(filename, 'r') as f:
                 header = f['/Header']
 
-                self.type = header['type'].value
-                self.mode = header['mode'].value
+                self.type = qm_utils._bytes_to_str(header['type'].value)
+                self.mode = qm_utils._bytes_to_str(header['mode'].value)
                 self.time_array = header['time_array'].value
                 self.lst_array = header['lst_array'].value
                 self.freq_array = header['freq_array'].value
-                self.history = header['history'].value + ' Read by ' + hera_qm_version_str
+                self.history = qm_utils._bytes_to_str(header['history'].value) + ' Read by ' + hera_qm_version_str
                 self.history += history
                 if 'label' in header.keys():
-                    self.label = header['label'].value
+                    self.label = qm_utils._bytes_to_str(header['label'].value)
                 self.polarization_array = header['polarization_array'].value
                 if self.type == 'baseline':
                     self.baseline_array = header['baseline_array'].value
@@ -250,14 +255,14 @@ class UVFlag():
             header = f.create_group('Header')
 
             # write out metadata
-            header['type'] = self.type
-            header['mode'] = self.mode
+            header['type'] = qm_utils._str_to_bytes(self.type)
+            header['mode'] = qm_utils._str_to_bytes(self.mode)
             header['time_array'] = self.time_array
             header['lst_array'] = self.lst_array
             header['freq_array'] = self.freq_array
             header['polarization_array'] = self.polarization_array
-            header['history'] = self.history + 'Written by ' + hera_qm_version_str
-            header['label'] = self.label
+            header['history'] = qm_utils._str_to_bytes(self.history + 'Written by ' + hera_qm_version_str)
+            header['label'] = qm_utils._str_to_bytes(self.label)
 
             if self.type == 'baseline':
                 header['baseline_array'] = self.baseline_array
