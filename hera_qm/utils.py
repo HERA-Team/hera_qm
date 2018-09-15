@@ -183,10 +183,10 @@ def get_metrics_ArgumentParser(method_name):
         a.add_argument('--time_threshold', default=0.05, type=float,
                        help='Fraction of times required to trigger broadcast across'
                        ' time (single frequency). Default is 0.05.')
-        a.add_argument('--ex_ants', default='', type=str,
+        a.add_argument('--ex_ants', default=None, type=str,
                        help='Comma-separated list of antennas to exclude. Flags of visibilities '
                        'formed with these antennas will be set to True.')
-        a.add_argument('--metrics_json', default='', type=str,
+        a.add_argument('--metrics_json', default=None, type=str,
                        help='Metrics file that contains a list of excluded antennas. Flags of '
                        'visibilities formed with these antennas will be set to True.')
         a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
@@ -677,15 +677,16 @@ def process_ex_ants(ex_ants=None, metrics_file=None):
         return []
     else:
         xants = []
-        if ex_ants != '':
-            for ant in ex_ants.split(','):
-                try:
-                    if int(ant) not in xants:
-                        xants.append(int(ant))
-                except ValueError:
-                    raise AssertionError(
-                        "ex_ants must be a comma-separated list of ints")
-        if metrics_file != '':
+        if ex_ants is not None:
+            if ex_ants != '':
+                for ant in ex_ants.split(','):
+                    try:
+                        if int(ant) not in xants:
+                            xants.append(int(ant))
+                    except ValueError:
+                        raise AssertionError(
+                            "ex_ants must be a comma-separated list of ints")
+        if metrics_file is not None:
             metrics = metrics_io.load_metric_file(metrics_file)
             xants_m = metrics["xants"]
             for ant in xants_m:
