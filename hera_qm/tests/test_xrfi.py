@@ -624,20 +624,19 @@ class TestWrappers():
                           kt_size=3)
 
         # catch no provided data file for flagging
-        with warnings.catch_warnings(record=True) as w:
-            xrfi.xrfi_h1c_run(None, filename=test_d_file,
-                              history='Just a test.', model_file=test_d_file,
-                              model_file_format='miriad', xrfi_path=xrfi_path)
-            nt.assert_true(w[0].message[0] == 'indata is None, '
-                           'not flagging on any data visibilities.')
+        uvtest.checkWarnings(xrfi.xrfi_h1c_run, [None],
+                             {'filename': test_d_file, 'history': 'Just a test.',
+                              'model_file': test_d_file, 'model_file_format': 'miriad',
+                              'xrfi_path': xrfi_path}, nwarnings=191,
+                              message=['indata is None'] + 190 * ['Kt value 8'])
 
-            # test no indata provided
-            nt.assert_raises(AssertionError, xrfi.xrfi_h1c_run, None,
-                             'Just as test.', filename=test_d_file + '.h1c_run')
+        # test no indata provided
+        nt.assert_raises(AssertionError, xrfi.xrfi_h1c_run, None,
+                         'Just as test.', filename=test_d_file + '.h1c_run')
 
-            # test no filename provided
-            nt.assert_raises(AssertionError, xrfi.xrfi_h1c_run, uvd,
-                             'Just as test.', filename=None)
+        # test no filename provided
+        nt.assert_raises(AssertionError, xrfi.xrfi_h1c_run, uvd,
+                         'Just as test.', filename=None)
 
         # filename is not a string
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, uvd,
