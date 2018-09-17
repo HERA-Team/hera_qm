@@ -21,10 +21,12 @@ from hera_qm import UVFlag
 
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-test_c_file = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
+test_uvfits_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.uvfits')
+test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
 test_f_file = test_d_file + '.testuvflag.h5'
 test_f_file_flags = test_d_file + '.testuvflag.flags.h5'  # version in 'flag' mode
 test_outfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
+xrfi_path = os.path.join(DATA_PATH, 'test_output')
 
 
 class TestFlagXants():
@@ -611,11 +613,6 @@ class TestPipelines():
 class TestWrappers():
 
     def test_xrfi_h1c_run(self):
-        calfits_test = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
-        uvfits_test = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.uvfits')
-        bad_uvfits_test = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA.uvfits')
-        xrfi_path = os.path.join(DATA_PATH, 'test_output')
-
         # run with bad antennas specified
         uvd = UVData()
         uvd.read_miriad(test_d_file)
@@ -630,56 +627,73 @@ class TestWrappers():
                               'xrfi_path': xrfi_path}, nwarnings=191,
                               message=['indata is None'] + 190 * ['Kt value 8'])
 
+    def test_xrfi_h1c_run_no_indata(self):
         # test no indata provided
         nt.assert_raises(AssertionError, xrfi.xrfi_h1c_run, None,
                          'Just as test.', filename=test_d_file + '.h1c_run')
 
+    def test_xrfi_h1c_run_no_filename(self):
         # test no filename provided
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
         nt.assert_raises(AssertionError, xrfi.xrfi_h1c_run, uvd,
                          'Just as test.', filename=None)
 
+    def test_xrfi_h1c_run_filename_not_string(self):
         # filename is not a string
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, uvd,
                          'Just a test.', filename=5)
 
+    def test_xrfi_h1c_run_ms_file(self):
         # test incorrectly inputting an ms file
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, test_d_file,
                          infile_format='ms', history='Just a test.')
 
+    def test_xrfi_h1c_run_uvfits_no_xrfi_path(self):
         # test uvfits file and no xrfi path
-        outtest = uvfits_test + '.flags.h5'
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
+        outtest = test_uvfits_file + '.flags.h5'
         if os.path.exists(outtest):
             os.remove(outtest)
-        if os.path.exists(uvfits_test + '.waterfall.flags.h5'):
-            os.remove(uvfits_test + '.waterfall.flags.h5')
-        g_temp = os.path.join(xrfi_path, os.path.basename(calfits_test) + '.g.flags.h5')
-        x_temp = os.path.join(xrfi_path, os.path.basename(calfits_test) + '.x.flags.h5')
-        os.rename(calfits_test + '.g.flags.h5', g_temp)
-        os.rename(calfits_test + '.x.flags.h5', x_temp)
-        xrfi.xrfi_h1c_run(uvfits_test, infile_format='uvfits',
+        if os.path.exists(test_uvfits_file + '.waterfall.flags.h5'):
+            os.remove(test_uvfits_file + '.waterfall.flags.h5')
+        g_temp = os.path.join(xrfi_path, os.path.basename(test_c_file) + '.g.flags.h5')
+        x_temp = os.path.join(xrfi_path, os.path.basename(test_c_file) + '.x.flags.h5')
+        os.rename(test_c_file + '.g.flags.h5', g_temp)
+        os.rename(test_c_file + '.x.flags.h5', x_temp)
+        xrfi.xrfi_h1c_run(test_uvfits_file, infile_format='uvfits',
                           history='Just a test.', kt_size=3, model_file=test_d_file,
-                          model_file_format='miriad', calfits_file=calfits_test)
+                          model_file_format='miriad', calfits_file=test_c_file)
         nt.assert_true(os.path.exists(outtest))
         os.remove(outtest)
-        if os.path.exists(uvfits_test + '.waterfall.flags.h5'):
-            os.remove(uvfits_test + '.waterfall.flags.h5')
-        if os.path.exists(calfits_test + '.x.flags.h5'):
-            os.remove(calfits_test + '.x.flags.h5')
+        if os.path.exists(test_uvfits_file + '.waterfall.flags.h5'):
+            os.remove(test_uvfits_file + '.waterfall.flags.h5')
+        if os.path.exists(test_c_file + '.x.flags.h5'):
+            os.remove(test_c_file + '.x.flags.h5')
         if os.path.exists(test_d_file + '.flags.h5'):
             os.remove(test_d_file + '.flags.h5')
-        os.rename(g_temp, calfits_test + '.g.flags.h5')
-        os.rename(x_temp, calfits_test + '.x.flags.h5')
+        os.rename(g_temp, test_c_file + '.g.flags.h5')
+        os.rename(x_temp, test_c_file + '.x.flags.h5')
 
+    def test_xrfi_h1c_run_uvfits_xrfi_path(self):
         # test uvfits file with xrfi path
-        outtest = os.path.join(xrfi_path, os.path.basename(uvfits_test)) + '.flags.h5'
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
+        outtest = os.path.join(xrfi_path, os.path.basename(test_uvfits_file)) + '.flags.h5'
         if os.path.exists(outtest):
             os.remove(outtest)
-        xrfi.xrfi_h1c_run(uvfits_test, infile_format='uvfits',
+        xrfi.xrfi_h1c_run(test_uvfits_file, infile_format='uvfits',
                           history='Just a test.', kt_size=3, xrfi_path=xrfi_path)
         nt.assert_true(os.path.exists(outtest))
         os.remove(outtest)
 
+    def test_xrfi_h1c_run_miriad_model(self):
         # miriad model file test
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
         ext = '.flag'
         uvd.read_miriad(test_d_file)
         outtest = os.path.join(xrfi_path, os.path.basename(test_d_file)) + ext
@@ -690,43 +704,62 @@ class TestWrappers():
                           model_file_format='miriad', xrfi_path=xrfi_path, kt_size=3)
         nt.assert_true(os.path.exists(outtest))
 
+    def test_xrfi_h1c_run_uvfits_model(self):
         # uvfits model file test
-        outtest = os.path.join(xrfi_path, os.path.basename(uvfits_test)) + ext
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
+        ext = '.flag'
+        outtest = os.path.join(xrfi_path, os.path.basename(test_uvfits_file)) + ext
         if os.path.exists(outtest):
             os.remove(outtest)
         xrfi.xrfi_h1c_run(uvd, history='Just a test.', filename=test_d_file,
-                          extension=ext, summary=True, model_file=uvfits_test,
+                          extension=ext, summary=True, model_file=test_uvfits_file,
                           model_file_format='uvfits', xrfi_path=xrfi_path, kt_size=3)
         nt.assert_true(os.path.exists(outtest))
 
+    def test_xrfi_h1c_run_incorrect_model(self):
         # incorrect model
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
+        bad_uvfits_test = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA.uvfits')
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, uvd, 'Just a test.',
                          filename=test_d_file, model_file=bad_uvfits_test,
                          model_file_format='uvfits', xrfi_path=xrfi_path, kt_size=3)
 
+    def test_xrfi_h1c_run_unrecognized_model(self):
         # check for unrecognized model file type
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, uvd, 'Just a test.',
                          filename=test_d_file, extension='flag', summary=True,
-                         model_file=uvfits_test, model_file_format='ms', xrfi_path=xrfi_path,
+                         model_file=test_uvfits_file, model_file_format='ms', xrfi_path=xrfi_path,
                          kt_size=3)
 
+    def test_xrfi_h1c_run_input_calfits(self):
         # input calfits
-        outtest1 = os.path.join(xrfi_path, os.path.basename(calfits_test)) + '.x' + ext
-        outtest2 = os.path.join(xrfi_path, os.path.basename(calfits_test)) + '.g' + ext
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
+        ext = '.flag'
+        outtest1 = os.path.join(xrfi_path, os.path.basename(test_c_file)) + '.x' + ext
+        outtest2 = os.path.join(xrfi_path, os.path.basename(test_c_file)) + '.g' + ext
         if os.path.exists(outtest1):
             os.remove(outtest1)
         if os.path.exists(outtest2):
             os.remove(outtest2)
         xrfi.xrfi_h1c_run(uvd, history='Just a test.', filename=test_d_file,
                           extension=ext, summary=True, model_file=test_d_file,
-                          model_file_format='miriad', calfits_file=calfits_test,
+                          model_file_format='miriad', calfits_file=test_c_file,
                           xrfi_path=xrfi_path, kt_size=3)
         nt.assert_true(os.path.exists(outtest1))
         nt.assert_true(os.path.exists(outtest2))
 
+    def test_xrfi_h1c_run_incorrect_calfits(self):
         # check for calfits with incorrect time/freq axes
+        uvd = UVData()
+        uvd.read_miriad(test_d_file)
+        bad_calfits = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, uvd, 'Just a test.',
-                         filename=test_d_file, calfits_file=test_c_file,
+                         filename=test_d_file, calfits_file=bad_calfits,
                          xrfi_path=xrfi_path, kt_size=3)
 
     def test_xrfi_h1c_apply(self):
