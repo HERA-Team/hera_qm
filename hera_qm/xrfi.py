@@ -10,7 +10,7 @@ from pyuvdata import UVCal
 from .uvflag import UVFlag
 from . import utils as qm_utils
 from .version import hera_qm_version_str
-from .utils import process_ex_ants
+from .metrics_io import process_ex_ants
 import warnings
 import copy
 import collections
