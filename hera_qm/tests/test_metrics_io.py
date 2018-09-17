@@ -433,4 +433,3 @@ def test_process_ex_ants_string_and_file():
     met_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
     xants = metrics_io.process_ex_ants(ex_ants=ex_ants, metrics_file=met_file)
     nt.assert_equal(xants, [0, 1, 81])
-    return
