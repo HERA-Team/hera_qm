@@ -186,7 +186,7 @@ def get_metrics_ArgumentParser(method_name):
         a.add_argument('--ex_ants', default=None, type=str,
                        help='Comma-separated list of antennas to exclude. Flags of visibilities '
                        'formed with these antennas will be set to True.')
-        a.add_argument('--metrics_json', default=None, type=str,
+        a.add_argument('--metrics_file', default=None, type=str,
                        help='Metrics file that contains a list of excluded antennas. Flags of '
                        'visibilities formed with these antennas will be set to True.')
         a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
@@ -246,7 +246,7 @@ def get_metrics_ArgumentParser(method_name):
         x.add_argument('--ex_ants', default='', type=str,
                        help='Comma-separated list of antennas to exclude. Flags of visibilities '
                        'formed with these antennas will be set to True.')
-        x.add_argument('--metrics_json', default='', type=str,
+        x.add_argument('--metrics_file', default='', type=str,
                        help='Metrics file that contains a list of excluded antennas. Flags of '
                        'visibilities formed with these antennas will be set to True.')
         d = a.add_argument_group(title='Delay filter options', description='Options '

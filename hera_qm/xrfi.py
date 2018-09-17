@@ -611,7 +611,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                  model_file=None, model_file_format='uvfits',
                  calfits_file=None, kt_size=8, kf_size=8, sig_init=6.0, sig_adj=2.0,
                  px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05,
-                 ex_ants=None, metrics_json=None, filename=None):
+                 ex_ants=None, metrics_file=None, filename=None):
     """
     Run RFI-flagging algorithm from H1C on a single data file, and optionally calibration files,
     and store results in npz files.
@@ -639,7 +639,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                           time (single frequency). Default is 0.05.
         ex_ants -- Comma-separated list of antennas to exclude. Flags of visibilities
                    formed with these antennas will be set to True.
-        metrics_json -- Metrics file that contains a list of excluded antennas. Flags of
+        metrics_file -- Metrics file that contains a list of excluded antennas. Flags of
                         visibilities formed with these antennas will be set to True.
         filename -- File for which to flag RFI (only one file allowed).
     Return:
@@ -686,7 +686,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
     # Flag on data
     if indata is not None:
         # Flag visibilities corresponding to specified antennas
-        xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_json)
+        xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
         flag_xants(uvd, xants)
         uvf_f, uvf_wf, uvf_w = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                              sig_adj=sig_adj, px_threshold=px_threshold,
