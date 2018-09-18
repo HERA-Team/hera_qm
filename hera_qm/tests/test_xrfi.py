@@ -646,11 +646,6 @@ class TestWrappers():
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, uvd,
                          'Just a test.', filename=5)
 
-    def test_xrfi_h1c_run_ms_file(self):
-        # test incorrectly inputting an ms file
-        nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, test_d_file,
-                         infile_format='ms', history='Just a test.')
-
     def test_xrfi_h1c_run_uvfits_no_xrfi_path(self):
         # test uvfits file and no xrfi path
         uvd = UVData()
@@ -726,15 +721,6 @@ class TestWrappers():
                          filename=test_d_file, model_file=bad_uvfits_test,
                          model_file_format='uvfits', xrfi_path=xrfi_path, kt_size=3)
 
-    def test_xrfi_h1c_run_unrecognized_model(self):
-        # check for unrecognized model file type
-        uvd = UVData()
-        uvd.read_miriad(test_d_file)
-        nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, uvd, 'Just a test.',
-                         filename=test_d_file, extension='flag', summary=True,
-                         model_file=test_uvfits_file, model_file_format='ms', xrfi_path=xrfi_path,
-                         kt_size=3)
-
     def test_xrfi_h1c_run_input_calfits(self):
         # input calfits
         uvd = UVData()
@@ -791,6 +777,15 @@ class TestWrappers():
         nt.assert_true(os.path.exists(dest_file))
         os.remove(dest_file)
 
+        # uvh5 output
+        dest_file = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R.uvh5')
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        xrfi.xrfi_h1c_apply(test_d_file, history, xrfi_path=xrfi_path, flag_file=test_f_file_flags,
+                            outfile_format='uvh5', extension='R.uvh5', output_uvflag=False)
+        nt.assert_true(os.path.exists(dest_file))
+        os.remove(dest_file)
+
     def test_xrfi_h1c_apply_errors(self):
         xrfi_path = os.path.join(DATA_PATH, 'test_output')
         wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.h5')
@@ -801,11 +796,6 @@ class TestWrappers():
 
         # test running with two files
         nt.assert_raises(AssertionError, xrfi.xrfi_h1c_apply, ['file1', 'file2'], history)
-
-        # Conflicting file formats
-        nt.assert_raises(IOError, xrfi.xrfi_h1c_apply, test_d_file, history, infile_format='uvfits')
-        nt.assert_raises(Exception, xrfi.xrfi_h1c_apply, test_d_file, history, infile_format='fhd')
-        nt.assert_raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, infile_format='bla')
 
         # Outfile error
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, outfile_format='bla')
