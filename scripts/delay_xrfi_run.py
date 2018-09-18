@@ -45,4 +45,4 @@ xrfi.xrfi_h1c_run(dfil.input_data, history, infile_format=args.infile_format,
                   kt_size=args.kt_size, kf_size=args.kf_size, sig_init=args.sig_init,
                   sig_adj=args.sig_adj, px_threshold=args.px_threshold,
                   freq_threshold=args.freq_threshold, time_threshold=args.time_threshold,
-                  ex_ants=args.ex_ants, metrics_json=args.metrics_json, filename=args.filename)
+                  ex_ants=args.ex_ants, metrics_file=args.metrics_file, filename=args.filename)

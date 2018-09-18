@@ -10,6 +10,7 @@ from pyuvdata import UVCal
 from .uvflag import UVFlag
 from . import utils as qm_utils
 from .version import hera_qm_version_str
+from .metrics_io import process_ex_ants
 import warnings
 import copy
 import collections
@@ -610,7 +611,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                  model_file=None, model_file_format='uvfits',
                  calfits_file=None, kt_size=8, kf_size=8, sig_init=6.0, sig_adj=2.0,
                  px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05,
-                 ex_ants='', metrics_json='', filename=None):
+                 ex_ants=None, metrics_file=None, filename=None):
     """
     Run RFI-flagging algorithm from H1C on a single data file, and optionally calibration files,
     and store results in npz files.
@@ -638,7 +639,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                           time (single frequency). Default is 0.05.
         ex_ants -- Comma-separated list of antennas to exclude. Flags of visibilities
                    formed with these antennas will be set to True.
-        metrics_json -- Metrics file that contains a list of excluded antennas. Flags of
+        metrics_file -- Metrics file that contains a list of excluded antennas. Flags of
                         visibilities formed with these antennas will be set to True.
         filename -- File for which to flag RFI (only one file allowed).
     Return:
@@ -675,20 +676,6 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         else:
             raise ValueError('Unrecognized input file format ' + str(infile_format))
 
-    # Compute list of excluded antennas
-    if ex_ants != '' or metrics_json != '':
-        # import function from hera_cal
-        try:
-            from hera_cal.omni import process_ex_ants
-        except(ImportError):
-            from nose.plugins.skip import SkipTest
-            raise SkipTest('hera_cal.omni not detected. It must be installed for xrfi_run if xants or metrics are passed.')
-
-        xants = process_ex_ants(ex_ants, metrics_json)
-
-        # Flag the visibilities corresponding to the specified antennas
-        flag_xants(uvd, xants)
-
     # append to history
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
 
@@ -698,6 +685,9 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
 
     # Flag on data
     if indata is not None:
+        # Flag visibilities corresponding to specified antennas
+        xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+        flag_xants(uvd, xants)
         uvf_f, uvf_wf, uvf_w = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                              sig_adj=sig_adj, px_threshold=px_threshold,
                                              freq_threshold=freq_threshold, time_threshold=time_threshold,
