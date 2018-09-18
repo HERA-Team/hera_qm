@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018 the HERA Project
+# Licensed under the MIT License
 
 import sys
 import numpy as np
@@ -17,14 +20,10 @@ history = ' '.join(sys.argv)
 uv = UVData()
 uv.read_miriad(filename)
 # apply a priori waterfall flags
-waterfalls = []
 if args.waterfalls is not None:
-    for wfile in args.waterfalls.split(','):
-        d = np.load(wfile)
-        waterfalls.append(d['waterfall'])
+    waterfalls = args.waterfalls.split(',')
     if len(waterfalls) > 0:
-        wf_full = sum(waterfalls).astype(bool)
-        uv.flag_array += xrfi.waterfall2flags(wf_full, uv)
+        xrfi.flag_apply(waterfalls, uv, force_pol=True)
 
 # set kwargs
 kwargs = {}
@@ -39,4 +38,11 @@ dfil.run_filter(standoff=args.standoff, horizon=args.horizon, tol=args.tol,
 io.update_uvdata(dfil.input_data, data=dfil.filtered_residuals, flags=dfil.flags)
 
 # Run xrfi
-xrfi.xrfi_run(dfil.input_data, args, history)
+xrfi.xrfi_h1c_run(dfil.input_data, history, infile_format=args.infile_format,
+                  extension=args.extension, summary=args.summary, summary_ext=args.summary_ext,
+                  xrfi_path=args.xrfi_path, model_file=args.model_file,
+                  model_file_format=args.model_file_format, calfits_file=args.calfits_file,
+                  kt_size=args.kt_size, kf_size=args.kf_size, sig_init=args.sig_init,
+                  sig_adj=args.sig_adj, px_threshold=args.px_threshold,
+                  freq_threshold=args.freq_threshold, time_threshold=args.time_threshold,
+                  ex_ants=args.ex_ants, metrics_file=args.metrics_file, filename=args.filename)

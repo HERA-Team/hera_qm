@@ -1,16 +1,27 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018 the HERA Project
+# Licensed under the MIT License
+
+from __future__ import print_function, division, absolute_import
 import matplotlib.pyplot as plt
 import numpy as np
 from pyuvdata import UVCal
 import pkg_resources
-pkg_resources.require('astropy>=2.0')
 import astropy.stats as astats
-from collections import OrderedDict
-from hera_qm.version import hera_qm_version_str
+from collections import OrderedDict as odict
+from .version import hera_qm_version_str
 import json
-import cPickle as pkl
+import six
 import copy
 import os
 from scipy.signal import medfilt
+from six.moves import range
+if six.PY2:
+    # python2
+    import cPickle as pkl
+else:
+    # python3
+    import pickle as pkl
 
 
 def get_omnical_metrics_dict():
@@ -59,26 +70,20 @@ def load_omnical_metrics(filename):
     # load json
     if filetype == 'json':
         with open(filename, 'r') as f:
-            metrics = json.load(f, object_pairs_hook=OrderedDict)
+            metrics = json.load(f, object_pairs_hook=odict)
 
         # ensure keys of ant_dicts are not strings
         # loop over pols
         for h, p in enumerate(metrics.keys()):
             # loop over items in each pol metric dict
             for k in metrics[p].keys():
-                if type(metrics[p][k]) is OrderedDict:
-                    for i in metrics[p][k].keys():
-                        if type(metrics[p][k][i]) is list:
-                            metrics[p][k][i] = np.array(metrics[p][k].pop(i))
-                        metrics[p][k][int(i)] = metrics[p][k].pop(i)
-                        # check for complex array
-                        try:
-                            if metrics[p][k][int(i)].dtype.type == np.unicode_:
-                                metrics[p][k][int(i)] = metrics[p][k][int(i)].astype(np.complex128)
-                        except:
-                            pass
+                if isinstance(metrics[p][k], (dict, odict)):
+                    if isinstance(list(metrics[p][k].values())[0], list):
+                        metrics[p][k] = odict([(int(i), np.array(metrics[p][k][i])) for i in metrics[p][k]])
+                    elif isinstance(list(metrics[p][k].values())[0], (np.unicode, np.unicode_)):
+                        metrics[p][k] = odict([(int(i), metrics[p][k][i].astype(np.complex128)) for i in metrics[p][k]])
 
-                elif type(metrics[p][k]) is list:
+                elif isinstance(metrics[p][k], list):
                     metrics[p][k] = np.array(metrics[p][k])
 
     # load pickle
@@ -107,7 +112,7 @@ def write_metrics(metrics, filename=None, filetype='json'):
         specify file format of output metrics file
     """
     # get pols
-    pols = metrics.keys()
+    pols = list(metrics.keys())
 
     if filename is None:
         filename = os.path.join(metrics[pols[0]]['filedir'], metrics[pols[0]]['filestem'] + '.omni_metrics')
@@ -123,18 +128,18 @@ def write_metrics(metrics, filename=None, filetype='json'):
         for h, pol in enumerate(metrics_out.keys()):
             # loop over keys
             for i, k in enumerate(metrics_out[pol].keys()):
-                if type(metrics_out[pol][k]) is np.ndarray:
-                    metrics_out[pol][k] = metrics_out[pol][k].tolist()
-                elif type(metrics_out[pol][k]) is OrderedDict:
-                    # loop over keys
-                    for j in metrics_out[pol][k].keys():
-                        if type(metrics_out[pol][k][j]) is np.ndarray:
-                            # check for complex
-                            if metrics_out[pol][k][j].dtype.type == np.complex128:
-                                metrics_out[pol][k][j] = metrics_out[pol][k][j].astype(np.str)
-                            metrics_out[pol][k][j] = metrics_out[pol][k][j].tolist()
-                elif type(metrics_out[pol][k]) is np.bool_:
+                if isinstance(metrics_out[pol][k], np.ndarray):
+                    metrics_out[pol][k] = metrics[pol][k].tolist()
+                elif isinstance(metrics_out[pol][k], (dict, odict)):
+                    if list(metrics_out[pol][k].values())[0].dtype == np.complex:
+                        metrics_out[pol][k] = odict([(j, metrics_out[pol][k][j].astype(np.str)) for j in metrics_out[pol][k]])
+                    metrics_out[pol][k] = odict([(str(j), metrics_out[pol][k][j].tolist()) for j in metrics_out[pol][k]])
+                elif isinstance(metrics_out[pol][k], (np.bool, np.bool_)):
                     metrics_out[pol][k] = bool(metrics_out[pol][k])
+                elif isinstance(metrics_out[pol][k], np.float):
+                    metrics_out[pol][k] = float(metrics_out[pol][k])
+                elif isinstance(metrics_out[pol][k], np.integer):
+                    metrics_out[pol][k] = int(metrics_out[pol][k])
 
         with open(filename, 'w') as f:
             json.dump(metrics_out, f, indent=4)
@@ -155,7 +160,7 @@ def load_firstcal_gains(fc_file):
         path to firstcal .calfits file (single polarization)
 
     jones2pol : dict
-        dictionary containing jones integers as keys and 
+        dictionary containing jones integers as keys and
         X-Y pols as values
 
     """
@@ -209,7 +214,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
 
     if plot_type == 'std':
         # get y data
-        ant_phs_std = np.array(metrics['ant_phs_std'].values())
+        ant_phs_std = np.array(list(metrics['ant_phs_std'].values()))
         phs_std_cut = metrics['phs_std_cut']
         ant_phs_std_max = metrics['ant_phs_std_max']
         ymax = np.max([ant_phs_std.max() * 1.1, phs_std_cut * 1.2])
@@ -232,7 +237,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         ax.set_title("{0}".format(metrics['filename']))
 
     if plot_type == 'hist':
-        ylines = np.array(metrics['ant_phs_hists'].values())
+        ylines = np.array(list(metrics['ant_phs_hists'].values()))
         ax.grid(True)
         p = [ax.plot(metrics['ant_phs_hist_bins'], ylines[i], alpha=0.75) for i in range(len(ylines))]
         ax.set_xlabel('gain phase [radians]', fontsize=14)
@@ -242,7 +247,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         ax.set_title("gain phase histogram for {0}".format(metrics['filename']))
 
     if plot_type == 'ft':
-        ylines = np.abs(np.array(metrics['ant_gain_fft'].values()))
+        ylines = np.abs(np.array(list(metrics['ant_gain_fft'].values())))
         ax.grid(True)
         p = [ax.plot(metrics['ant_gain_dly']*1e9, ylines[i], alpha=0.75) for i in range(len(ylines))]
         ax.set_xlabel('delay [ns]', fontsize=14)
@@ -302,7 +307,7 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
     yloc = metrics['chisq_ant_std_loc']
     ysig = metrics['chisq_ant_std_scale']
     ycut = yloc + metrics['chisq_std_zscore_cut'] * ysig
-    chisq_ant_std = np.array(metrics['chisq_ant_std'].values())
+    chisq_ant_std = np.array(list(metrics['chisq_ant_std'].values()))
     ymax = np.max([chisq_ant_std.max() * 1.2, ycut + ysig])
 
     # make grid and plots
@@ -378,7 +383,7 @@ class OmniCal_Metrics(object):
         self.freqs = self.uv.freq_array.squeeze()
         self.Nfreqs = len(self.freqs)
         self.jones = self.uv.jones_array
-        self.pols = np.array(map(lambda x: self.jones2pol[x], self.jones))
+        self.pols = np.array([self.jones2pol[x] for x in self.jones])
         self.Npols = len(self.pols)
         self.times = self.uv.time_array
         self.Ntimes = self.uv.Ntimes
@@ -411,7 +416,7 @@ class OmniCal_Metrics(object):
             self.load_firstcal_gains(fcfiles)
             run_fc_metrics = True
 
-        full_metrics = OrderedDict()
+        full_metrics = odict()
 
         # loop over polarization
         for i, pol in enumerate(self.pols):
@@ -435,7 +440,7 @@ class OmniCal_Metrics(object):
                  ant_phs_hist_bins) = self.phs_std_metric(self.gain_diff[:, :, :, i], phs_std_cut=phs_std_cut)
 
             # initialize metrics
-            metrics = OrderedDict()
+            metrics = odict()
 
             metrics['chisq_avg'] = chisq_avg
             metrics['chisq_tot_avg'] = chisq_tot_avg
@@ -537,8 +542,8 @@ class OmniCal_Metrics(object):
         # Get chisq statistics
         chisq_avg = np.median(np.median(chisq[:, :, self.band], axis=0), axis=1).astype(np.float64)
         chisq_tot_avg = astats.biweight_location(chisq[:, :, self.band]).astype(np.float64)
-        chisq_ant_avg = np.array(map(astats.biweight_location, chisq[:, :, self.band])).astype(np.float64)
-        chisq_ant_std = np.sqrt(np.array(map(astats.biweight_midvariance, chisq[:, :, self.band])))
+        chisq_ant_avg = np.array(list(map(astats.biweight_location, chisq[:, :, self.band]))).astype(np.float64)
+        chisq_ant_std = np.sqrt(np.array(list(map(astats.biweight_midvariance, chisq[:, :, self.band]))))
         chisq_ant_std_loc = astats.biweight_location(chisq_ant_std).astype(np.float64)
         chisq_ant_std_scale = np.sqrt(astats.biweight_midvariance(chisq_ant_std))
         chisq_ant_std_zscore = (chisq_ant_std - chisq_ant_std_loc) / chisq_ant_std_scale
@@ -547,8 +552,8 @@ class OmniCal_Metrics(object):
 
         # convert to dictionaries
         if return_dict is True:
-            chisq_ant_std = OrderedDict(zip(self.ant_array, chisq_ant_std))
-            chisq_ant_avg = OrderedDict(zip(self.ant_array, chisq_ant_avg))
+            chisq_ant_std = odict(zip(self.ant_array, chisq_ant_std))
+            chisq_ant_avg = odict(zip(self.ant_array, chisq_ant_avg))
 
         return (chisq_avg, chisq_tot_avg, chisq_ant_avg, chisq_ant_std, chisq_ant_std_loc,
                 chisq_ant_std_scale, chisq_ant_std_zscore, chisq_ant_std_zscore_max, chisq_good_sol)
@@ -582,7 +587,7 @@ class OmniCal_Metrics(object):
         ant_gain_fft = np.median(ant_gain_fft, axis=1)
 
         if return_dict is True:
-            ant_gain_fft = OrderedDict(zip(self.ant_array, ant_gain_fft))
+            ant_gain_fft = odict(zip(self.ant_array, ant_gain_fft))
 
         return ant_gain_fft, ant_gain_dly
 
@@ -624,7 +629,7 @@ class OmniCal_Metrics(object):
         phs_diff -= phs_diff_mean[:, :, np.newaxis]
 
         # take standard deviation across time & freq
-        ant_phs_std = np.sqrt(np.array(map(astats.biweight_midvariance, phs_diff[:, :, self.band])))
+        ant_phs_std = np.sqrt(np.array(list(map(astats.biweight_midvariance, phs_diff[:, :, self.band]))))
         ant_phs_std_max = np.max(ant_phs_std)
         ant_phs_std_good_sol = ant_phs_std_max < phs_std_cut
 
@@ -634,7 +639,7 @@ class OmniCal_Metrics(object):
         # make histogram
         ant_phs_hists = []
         for i, phs in enumerate(phs_diff):
-            h, bins = np.histogram(phs, bins=128, range=(-np.pi, np.pi), normed=True)
+            h, bins = np.histogram(phs, bins=128, range=(-np.pi, np.pi), density=True)
             bins = 0.5*(bins[1:]+bins[:-1])
             ant_phs_hists.append(h)
         ant_phs_hists = np.array(ant_phs_hists)
@@ -642,9 +647,9 @@ class OmniCal_Metrics(object):
         ant_phs_hist_bins = bins
 
         if return_dict is True:
-            ant_phs_std = OrderedDict(zip(self.ant_array, ant_phs_std))
-            ant_phs_std_per_time = OrderedDict(zip(self.ant_array, ant_phs_std_per_time))
-            ant_phs_hists = OrderedDict(zip(self.ant_array, ant_phs_hists))
+            ant_phs_std = odict(zip(self.ant_array, ant_phs_std))
+            ant_phs_std_per_time = odict(zip(self.ant_array, ant_phs_std_per_time))
+            ant_phs_hists = odict(zip(self.ant_array, ant_phs_hists))
 
         return ant_phs_std, ant_phs_std_max, ant_phs_std_good_sol, ant_phs_std_per_time, ant_phs_hists, ant_phs_hist_bins
 
@@ -692,7 +697,7 @@ class OmniCal_Metrics(object):
         if ants is None:
             ants = np.arange(self.Nants)
         else:
-            ants = np.array(map(lambda x: np.where(self.ant_array == x)[0][0], ants))
+            ants = np.array(list(map(lambda x: np.where(self.ant_array == x)[0][0], ants)))
 
         if plot_type == 'phs':
             # make grid and plot
@@ -779,7 +784,7 @@ class OmniCal_Metrics(object):
         if ants is None:
             ants = np.arange(self.Nants)
         else:
-            ants = np.array(map(lambda x: np.where(self.ant_array == x)[0][0], ants))
+            ants = np.array(list(map(lambda x: np.where(self.ant_array == x)[0][0], ants)))
 
         # make grid and plots
         ax.grid(True)
@@ -802,9 +807,9 @@ class OmniCal_Metrics(object):
                 fname = os.path.join(self.filedir, fname)
             else:
                 fname = os.path.join(outpath, fname)
-        if custom_ax == False:
+        if (custom_ax is False) and save:
             fig.savefig(fname, bbox_inches='tight')
-        else:
+        elif save:
             ax.figure.savefig(fname, bbox_inches='tight')
 
         if custom_ax is False:
@@ -851,7 +856,7 @@ def omnical_metrics_run(files, args, history):
     for i, filename in enumerate(files):
         om = OmniCal_Metrics(filename, history=history)
         if args.fc_files is not None:
-            fc_files = map(lambda x: x.split(','), args.fc_files.split('|'))
+            fc_files = list(map(lambda x: x.split(','), args.fc_files.split('|')))
             full_metrics = om.run_metrics(fcfiles=fc_files[i],
                                           cut_edges=args.no_bandcut is False,
                                           phs_std_cut=args.phs_std_cut,
