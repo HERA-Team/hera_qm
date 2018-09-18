@@ -826,6 +826,8 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
         if os.path.exists(outpath) and not overwrite:
             raise ValueError('File exists: skipping')
         uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
+    elif outfile_format == 'uvh5':
+        uvd.write_uvh5(outpath, clobber=overwrite)
     else:
         raise ValueError('Unrecognized output file format ' + str(outfile_format))
     if output_uvflag:
