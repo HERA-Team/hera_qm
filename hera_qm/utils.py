@@ -138,7 +138,7 @@ def get_metrics_ArgumentParser(method_name):
     elif method_name == 'xrfi_run':
         a.prog = 'xrfi_run.py'
         a.add_argument('--infile_format', default='miriad', type=str,
-                       help='File format for input files. Default is miriad.')
+                       help='File format for input files. DEPRECATED, but kept for legacy.')
         a.add_argument('--extension', default='.flags.npz', type=str,
                        help='Extension to be appended to input file name. Default is ".flags.npz".')
         a.add_argument('--summary', action='store_true', default=False,
@@ -153,7 +153,7 @@ def get_metrics_ArgumentParser(method_name):
         a.add_argument('--model_file', default=None, type=str, help='Model visibility '
                        'file to flag on.')
         a.add_argument('--model_file_format', default='uvfits', type=str,
-                       help='File format for input files. Default is uvfits.')
+                       help='File format for input files. DEPRECATED, but kept for legacy.')
         a.add_argument('--calfits_file', default=None, type=str, help='Calfits file '
                        'to use to flag on gains and/or chisquared values.')
         a.add_argument('--nsig_df', default=6.0, type=float, help='Number of sigma '
@@ -198,7 +198,7 @@ def get_metrics_ArgumentParser(method_name):
         x = a.add_argument_group(title='XRFI options', description='Options related to '
                                  'the RFI flagging routine.')
         x.add_argument('--infile_format', default='miriad', type=str,
-                       help='File format for input files. Default is miriad.')
+                       help='File format for input files. DEPRECATED, but kept for legacy.')
         x.add_argument('--extension', default='.flags.npz', type=str,
                        help='Extension to be appended to input file name. Default is ".flags.npz".')
         x.add_argument('--summary', action='store_true', default=False,
@@ -213,7 +213,7 @@ def get_metrics_ArgumentParser(method_name):
         x.add_argument('--model_file', default=None, type=str, help='Model visibility '
                        'file to flag on.')
         x.add_argument('--model_file_format', default='uvfits', type=str,
-                       help='File format for input files. Default is uvfits.')
+                       help='File format for input files. DEPRECATED, but kept for legacy.')
         x.add_argument('--calfits_file', default=None, type=str, help='Calfits file '
                        'to use to flag on gains and/or chisquared values.')
         x.add_argument('--nsig_df', default=6.0, type=float, help='Number of sigma '
@@ -267,7 +267,7 @@ def get_metrics_ArgumentParser(method_name):
     elif method_name == 'xrfi_apply':
         a.prog = 'xrfi_apply.py'
         a.add_argument('--infile_format', default='miriad', type=str,
-                       help='File format for input files. Default is miriad.')
+                       help='File format for input files. DEPRECATED, but kept for legacy.')
         a.add_argument('--xrfi_path', default='', type=str,
                        help='Path to save output to. Default is same directory as input file.')
         a.add_argument('--outfile_format', default='miriad', type=str,
