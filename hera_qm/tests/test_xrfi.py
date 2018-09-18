@@ -748,6 +748,10 @@ class TestWrappers():
                          filename=test_d_file, calfits_file=bad_calfits,
                          xrfi_path=xrfi_path, kt_size=3)
 
+    def test_xrfi_h1c_run_indata_string_filename_not_string(self):
+        nt.assert_raises(ValueError, xrfi.xrfi_h1c_run, 'foo', 'Just a test.',
+                         filename=3)
+
     def test_xrfi_h1c_apply(self):
         xrfi_path = os.path.join(DATA_PATH, 'test_output')
         wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.h5')
