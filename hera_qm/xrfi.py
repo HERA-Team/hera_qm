@@ -619,13 +619,17 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
     Args:
         indata -- Either UVData object or data file to run RFI flagging on.
         history -- history string to include in files
-        infile_format -- File format for input files. Default is miriad.
+        infile_format -- File format for input files. Not currently used while
+                         we use pyuvdata's generic read function, But will
+                         be implemented for partial io.
         extension -- Extension to be appended to input file name. Default is ".flags.h5"
         summary -- Run summary of RFI flags and store in h5 file. Default is False.
         summary_ext -- Extension for summary file. Default is ".flag_summary.h5"
         xrfi_path -- Path to save flag files to. Default is same directory as input file.
         model_file -- Model visibility file to flag on.
-        model_file_format -- File format for input model file. Default is uvfits.
+        model_file_format -- File format for input model file. Not currently used while
+                         we use pyuvdata's generic read function, But will
+                         be implemented for partial io.
         calfits_file -- Calfits file to use to flag on gains and/or chisquared values.
         kt_size -- Size of kernel in time dimension for detrend in xrfi algorithm. Default is 8.
         kf_size -- Size of kernel in frequency dimension for detrend in xrfi. Default is 8.
@@ -669,12 +673,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         elif not isinstance(filename, str):
             raise ValueError('filename must be string path to file.')
         uvd = UVData()
-        if infile_format == 'miriad':
-            uvd.read_miriad(filename)
-        elif infile_format == 'uvfits':
-            uvd.read_uvfits(filename)
-        else:
-            raise ValueError('Unrecognized input file format ' + str(infile_format))
+        uvd.read(filename)
 
     # append to history
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
@@ -714,12 +713,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
     # Flag on model visibilities
     if model_file is not None:
         uvm = UVData()
-        if model_file_format == 'miriad':
-            uvm.read_miriad(model_file)
-        elif model_file_format == 'uvfits':
-            uvm.read_uvfits(model_file)
-        else:
-            raise ValueError('Unrecognized input file format ' + str(model_file_format))
+        uvm.read(model_file)
         if indata is not None:
             if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array),
                                 atol=1e-5, rtol=0)
@@ -782,7 +776,9 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     Args:
         filename -- Data file in which update flag array.
         history -- history string to include in files
-        infile_format -- File format for input files. Default is miriad.
+        infile_format -- File format for input files. Not currently used while
+                         we use pyuvdata's generic read function, But will
+                         be implemented for partial io.
         xrfi_path -- Path to save output to. Default is same directory as input file.
         outfile_format -- File format for output files. Default is miriad.
         extension -- Extension to be appended to input file name. Default is "R".
@@ -804,14 +800,7 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     if isinstance(filename, (list, np.ndarray, tuple)):
         filename = filename[0]
     uvd = UVData()
-    if infile_format == 'miriad':
-        uvd.read_miriad(filename)
-    elif infile_format == 'uvfits':
-        uvd.read_uvfits(filename)
-    elif infile_format == 'fhd':
-        uvd.read_fhd(filename)
-    else:
-        raise ValueError('Unrecognized input file format ' + str(infile_format))
+    uvd.read(filename)
 
     full_list = []
     # Read in flag file
@@ -843,6 +832,8 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
         if os.path.exists(outpath) and not overwrite:
             raise ValueError('File exists: skipping')
         uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
+    elif outfile_format == 'uvh5':
+        uvd.write_uvh5(outpath, clobber=overwrite)
     else:
         raise ValueError('Unrecognized output file format ' + str(outfile_format))
     if output_uvflag:
