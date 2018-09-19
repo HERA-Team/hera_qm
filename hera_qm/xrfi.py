@@ -619,13 +619,17 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
     Args:
         indata -- Either UVData object or data file to run RFI flagging on.
         history -- history string to include in files
-        infile_format -- File format for input files. DEPRECATED, but kept for legacy.
+        infile_format -- File format for input files. Not currently used while
+                         we use pyuvdata's generic read function, But will
+                         be implemented for partial io.
         extension -- Extension to be appended to input file name. Default is ".flags.h5"
         summary -- Run summary of RFI flags and store in h5 file. Default is False.
         summary_ext -- Extension for summary file. Default is ".flag_summary.h5"
         xrfi_path -- Path to save flag files to. Default is same directory as input file.
         model_file -- Model visibility file to flag on.
-        model_file_format -- File format for input model file. DEPRECATED, but kept for legacy.
+        model_file_format -- File format for input model file. Not currently used while
+                         we use pyuvdata's generic read function, But will
+                         be implemented for partial io.
         calfits_file -- Calfits file to use to flag on gains and/or chisquared values.
         kt_size -- Size of kernel in time dimension for detrend in xrfi algorithm. Default is 8.
         kf_size -- Size of kernel in frequency dimension for detrend in xrfi. Default is 8.
@@ -772,7 +776,9 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     Args:
         filename -- Data file in which update flag array.
         history -- history string to include in files
-        infile_format -- File format for input files. DEPRECATED, but kept for legacy.
+        infile_format -- File format for input files. Not currently used while
+                         we use pyuvdata's generic read function, But will
+                         be implemented for partial io.
         xrfi_path -- Path to save output to. Default is same directory as input file.
         outfile_format -- File format for output files. Default is miriad.
         extension -- Extension to be appended to input file name. Default is "R".
