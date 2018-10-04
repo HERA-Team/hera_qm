@@ -612,8 +612,6 @@ def test_collapse_pol():
     print(uvf2.polarization_array)
     uvf2.collapse_pol()
     nt.assert_true(len(uvf2.polarization_array) == 1)
-    print(uvf2.polarization_array)
-    print(uvf.polarization_array)
     nt.assert_true(uvf2.polarization_array[0] == ','.join(map(str, uvf.polarization_array)))
 
 
@@ -628,8 +626,6 @@ def test_collapse_pol_flag():
     print(uvf2.polarization_array)
     uvf2.collapse_pol()
     nt.assert_true(len(uvf2.polarization_array) == 1)
-    print(uvf2.polarization_array)
-    print(uvf.polarization_array)
     nt.assert_true(uvf2.polarization_array[0] == ','.join(map(str, uvf.polarization_array)))
 
 
