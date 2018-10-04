@@ -428,16 +428,13 @@ class UVFlag():
         if self.type == 'waterfall' and (keep_pol or (len(self.polarization_array) == 1)):
             warnings.warn('This object is already a waterfall. Nothing to change.')
             return
+        if (not keep_pol) and (len(self.polarization_array) > 1):
+            self.collapse_pol(method)
+
         if self.mode == 'flag':
             darr = self.flag_array
         else:
             darr = self.metric_array
-        if (not keep_pol) and (len(self.polarization_array) > 1):
-            # Collapse pol dimension. But note we retain a polarization axis.
-            d, w = avg_f(darr, axis=-1, weights=self.weights_array, returned=True)
-            darr = np.expand_dims(d, axis=d.ndim)
-            self.weights_array = np.expand_dims(w, axis=w.ndim)
-            self.polarization_array = np.array([','.join(map(str, self.polarization_array))])
 
         if self.type == 'antenna':
             d, w = avg_f(darr, axis=(0, 1), weights=self.weights_array,
@@ -467,6 +464,31 @@ class UVFlag():
         self.type = 'waterfall'
         self.history += 'Collapsed to type "waterfall" with ' + hera_qm_version_str
         self.clear_unused_attributes()
+
+    def collapse_pol(self, method='quadmean'):
+        """
+        Collapse the polarization axis using a given method.
+        Args:
+            method: How to collapse the dimension(s)
+        """
+        method = method.lower()
+        avg_f = qm_utils.averaging_dict[method]
+        if self.mode == 'flag':
+            darr = self.flag_array
+        else:
+            darr = self.metric_array
+        if len(self.polarization_array) > 1:
+            # Collapse pol dimension. But note we retain a polarization axis.
+            d, w = avg_f(darr, axis=-1, weights=self.weights_array, returned=True)
+            darr = np.expand_dims(d, axis=d.ndim)
+            self.weights_array = np.expand_dims(w, axis=w.ndim)
+            self.polarization_array = np.array([','.join(map(str, self.polarization_array))])
+        else:
+            warnings.warn('Cannot collapse polarization axis when only one pol present.')
+        if self.mode == 'flag':
+            self.flag_array = darr
+        else:
+            self.metric_array = darr
 
     def to_baseline(self, uv, force_pol=False):
         '''Convert a UVFlag object of type "waterfall" to type "baseline".
