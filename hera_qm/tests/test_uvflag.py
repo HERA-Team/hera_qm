@@ -609,10 +609,18 @@ def test_collapse_pol():
     uvf2.polarization_array[0] = -4
     uvf.__add__(uvf2, inplace=True, axis='pol')  # Concatenate to form multi-pol object
     uvf2 = uvf.copy()
-    print(uvf2.polarization_array)
     uvf2.collapse_pol()
     nt.assert_true(len(uvf2.polarization_array) == 1)
     nt.assert_true(uvf2.polarization_array[0] == ','.join(map(str, uvf.polarization_array)))
+
+
+def test_collapse_single_pol():
+    uvf = UVFlag(test_f_file)
+    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf2 = uvf.copy()
+    uvtest.checkWarnings(uvf.collapse_pol, [], {}, nwarnings=1,
+                         message='Cannot collapse polarization')
+    nt.assert_equal(uvf, uvf2)
 
 
 def test_collapse_pol_flag():
@@ -623,7 +631,6 @@ def test_collapse_pol_flag():
     uvf2.polarization_array[0] = -4
     uvf.__add__(uvf2, inplace=True, axis='pol')  # Concatenate to form multi-pol object
     uvf2 = uvf.copy()
-    print(uvf2.polarization_array)
     uvf2.collapse_pol()
     nt.assert_true(len(uvf2.polarization_array) == 1)
     nt.assert_true(uvf2.polarization_array[0] == ','.join(map(str, uvf.polarization_array)))

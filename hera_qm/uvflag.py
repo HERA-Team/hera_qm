@@ -483,6 +483,8 @@ class UVFlag():
             darr = np.expand_dims(d, axis=d.ndim)
             self.weights_array = np.expand_dims(w, axis=w.ndim)
             self.polarization_array = np.array([','.join(map(str, self.polarization_array))])
+        else:
+            warnings.warn('Cannot collapse polarization axis when only one pol present.')
         if self.mode == 'flag':
             self.flag_array = darr
         else:
