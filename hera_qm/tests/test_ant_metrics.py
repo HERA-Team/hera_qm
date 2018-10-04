@@ -328,10 +328,10 @@ class TestAntennaMetrics(unittest.TestCase):
         with self.assertRaises(IOError):
             ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='uvfits')
-        with self.assertRaises(Exception):
+        with self.assertRaises(NotImplementedError):
             ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='fhd')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
                                         [], fileformat='not_a_format')
 

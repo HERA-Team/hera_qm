@@ -481,19 +481,12 @@ class AntennaMetrics():
             dataFileList: List of data filenames of the four different visibility polarizations for the same observation
             reds: List of lists of tuples of antenna numbers that make up redundant baseline groups.
             format: File type of data
-                    Supports: 'miriad','uvfits', 'fhd', 'ms ' (see pyuvdata docs)
+                    Supports: 'miriad', 'uvh5', 'uvfits', 'fhd', 'ms ' (see pyuvdata docs)
                     Default: 'miriad'.
         """
         from hera_cal.io import HERAData
 
-        if fileformat == 'miriad':
-            self.hd = HERAData(dataFileList, filetype='miriad')
-        elif fileformat == 'uvfits':
-            self.hd = HERAData(dataFileList, filetype='uvfits')
-        elif fileformat == 'fhd':
-            raise NotImplemented(str(fileformat) + 'not supported')
-        else:
-            raise ValueError('Unrecognized file format ' + str(fileformat))
+        self.hd = HERAData(dataFileList, filetype=fileformat)
 
         self.data, self.flags, self.nsamples = self.hd.read()
         self.ants = self.hd.get_ants()
@@ -864,7 +857,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
         extension: File extension to add to output files.
                    Default: ant_metrics.hdf5
         vis_format: File format of input visibility data.
-                    Supports: 'miriad','uvfits', 'fhd', 'ms' (see pyuvdata docs)
+                    Supports: 'miriad', 'uvh5', 'uvfits', 'fhd', 'ms' (see pyuvdata docs)
                     Default: 'miriad'
         verbose: If True print out statements during iterative flagging
         history: The history the add to metrics.
@@ -909,7 +902,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
     # generate aa object from file
     # N.B.: assumes redunancy information is the same for all files passed in
     first_file = fullpol_file_list[0][0]
-    hd = HERAData(first_file, filetype='miriad')
+    hd = HERAData(first_file, filetype=vis_format)
     data, flags, nsamples = hd.read()
     aa = get_aa_from_uv(hd)
     del hd
