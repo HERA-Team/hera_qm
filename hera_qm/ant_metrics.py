@@ -879,9 +879,8 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
     If not all four polarizations are found, a warning is
     generated, since the code assumes all four polarizations are present.
     """
-    from hera_cal.omni import aa_to_info
-    from hera_cal.utils import get_aa_from_uv
     from hera_cal.io import HERAData
+    from hera_cal.redcal import get_pos_reds
 
     # check the user asked to run anything
     if not any([run_mean_vij, run_red_corr, run_cross_pols]):
@@ -899,16 +898,10 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
         raise AssertionError('Could not find all 4 polarizations '
                              'for any files provided')
 
-    # generate aa object from file
-    # N.B.: assumes redunancy information is the same for all files passed in
-    first_file = fullpol_file_list[0][0]
-    hd = HERAData(first_file, filetype=vis_format)
-    data, flags, nsamples = hd.read()
-    aa = get_aa_from_uv(hd)
+    # get list of lists of redundant baselines, assuming redunancy information is the same for all files
+    hd = HERAData(fullpol_file_list[0][0], filetype=vis_format)
+    reds = get_pos_reds(hd.read()[0].antpos)
     del hd
-
-    info = aa_to_info(aa, pols=[pols[-1][0]])
-    reds = info.get_reds()
 
     # do the work
     for jd_list in fullpol_file_list:
