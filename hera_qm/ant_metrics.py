@@ -830,7 +830,7 @@ class AntennaMetrics():
         metrics_io.write_metric_file(filename, out_dict)
 
 
-def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'xy'], crossCut=5.0,
+def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
                     deadCut=5.0, alwaysDeadCut=10.0, metrics_path='',
                     extension='.ant_metrics.hdf5', vis_format='miriad',
                     verbose=True, history='',
