@@ -809,7 +809,7 @@ class TestWrappers():
         # Outfile error
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, outfile_format='bla')
 
-        basename = utils.strip_extension(path.basename(test_d_file))
+        basename = utils.strip_extension(os.path.basename(test_d_file))
         dest_file = os.path.join(xrfi_path, basename + '.R.uvfits')
         if not os.path.exists(dest_file):
             open(dest_file, 'a').close()
