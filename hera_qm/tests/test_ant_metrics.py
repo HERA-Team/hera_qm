@@ -596,16 +596,17 @@ class TestAntmetricsRun(unittest.TestCase):
         arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
                               arg7, arg8, arg9])
 
-
         xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
+                                 'zen.2458002.47754.HH.ant_metrics.hdf5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, xx_file])
         args = a.parse_args(cmd.split())
         history = cmd
         pols = list(args.pol.split(','))
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
         ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
                                     args.deadCut, args.alwaysDeadCut,
                                     args.metrics_path,
@@ -636,17 +637,18 @@ class TestAntmetricsRun(unittest.TestCase):
         arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
                               arg7, arg8, arg9])
 
-
         xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
+                                 'zen.2458002.47754.HH.ant_metrics.hdf5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, xx_file])
         args = a.parse_args(cmd.split())
         history = cmd
         pols = list(args.pol.split(','))
-        ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
                                     args.deadCut, args.alwaysDeadCut,
                                     args.metrics_path,
                                     args.extension, args.vis_format,
@@ -656,7 +658,6 @@ class TestAntmetricsRun(unittest.TestCase):
                                     run_cross_pols=args.run_cross_pols)
         nt.assert_true(os.path.exists(dest_file))
         os.remove(dest_file)
-
 
     def test_ant_metrics_run_only_red_corr(self):
         # get arguments
@@ -677,17 +678,18 @@ class TestAntmetricsRun(unittest.TestCase):
         arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
                               arg7, arg8, arg9])
 
-
         xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
+                                 'zen.2458002.47754.HH.ant_metrics.hdf5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, xx_file])
         args = a.parse_args(cmd.split())
         history = cmd
         pols = list(args.pol.split(','))
-        ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
                                     args.deadCut, args.alwaysDeadCut,
                                     args.metrics_path,
                                     args.extension, args.vis_format,
@@ -720,14 +722,16 @@ class TestAntmetricsRun(unittest.TestCase):
 
         xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2458002.47754.HH.uvA.ant_metrics.hdf5')
+                                 'zen.2458002.47754.HH.ant_metrics.hdf5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, xx_file])
         args = a.parse_args(cmd.split())
         history = cmd
         pols = list(args.pol.split(','))
-        ant_metrics.ant_metrics_run(args.files,  pols, args.crossCut,
+        if os.path.exists(dest_file):
+            os.remove(dest_file)
+        ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
                                     args.deadCut, args.alwaysDeadCut,
                                     args.metrics_path,
                                     args.extension, args.vis_format,
