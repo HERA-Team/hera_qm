@@ -141,13 +141,13 @@ def get_metrics_ArgumentParser(method_name):
                        help='File format for input files. Not currently used while '
                        'we use generic read function in pyuvdata, But will '
                        'be implemented for partial io.')
-        a.add_argument('--extension', default='.flags.npz', type=str,
-                       help='Extension to be appended to input file name. Default is ".flags.npz".')
+        a.add_argument('--extension', default='flags.h5', type=str,
+                       help='Extension to be appended to input file name. Default is "flags.h5".')
         a.add_argument('--summary', action='store_true', default=False,
                        help='Run summary of RFI flags and store in npz file.')
-        a.add_argument('--summary_ext', default='.flag_summary.npz',
+        a.add_argument('--summary_ext', default='flag_summary.h5',
                        type=str, help='Extension to be appended to input file name'
-                       ' for summary file. Default is ".flag_summary.npz"')
+                       ' for summary file. Default is "flag_summary.h5"')
         a.add_argument('--xrfi_path', default='', type=str,
                        help='Path to save flag files to. Default is same directory as input file.')
         a.add_argument('--algorithm', default='xrfi_simple', type=str,
