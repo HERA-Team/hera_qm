@@ -67,7 +67,7 @@ def test_vis_bl_cov():
     cov = vis_metrics.vis_bl_bl_cov(uvd, uvd, bls)
     nt.assert_equal(cov.shape, (6, 6, 1, 1))
     nt.assert_equal(cov.dtype, np.complex128)
-    nt.assert_almost_equal(cov[0,0,0,0], (51.06967733738634+0j))
+    nt.assert_almost_equal(cov[0, 0, 0, 0], (51.06967733738634 + 0j))
 
     # test iterax
     cov = vis_metrics.vis_bl_bl_cov(uvd, uvd, bls, iterax='freq')
@@ -78,7 +78,7 @@ def test_vis_bl_cov():
     # test corr
     corr = vis_metrics.vis_bl_bl_cov(uvd, uvd, bls, return_corr=True)
     nt.assert_true(np.isclose(np.abs(corr).max(), 1.0))
-    nt.assert_almost_equal(corr[1, 0, 0, 0], (0.4204243425812837-0.3582194575457562j))
+    nt.assert_almost_equal(corr[1, 0, 0, 0], (0.4204243425812837 - 0.3582194575457562j))
 
 
 def test_plot_bl_cov():
@@ -102,7 +102,7 @@ def test_plot_bl_bl_scatter():
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
 
     # basic execution
-    bls = uvd.get_antpairs()[:3] # should use redundant bls, but this is just a test...
+    bls = uvd.get_antpairs()[:3]  # should use redundant bls, but this is just a test...
     Nbls = len(bls)
     fig, axes = plt.subplots(Nbls, Nbls, figsize=(8, 8))
     vis_metrics.plot_bl_bl_scatter(uvd, uvd, bls, axes=axes, component='real', colorax='freq',
@@ -134,18 +134,18 @@ def test_sequential_diff():
 
     # diff across time
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=0, pad=False)
-    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes-1)
+    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes - 1)
     nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs)
 
     # diff across freq
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=1, pad=False)
     nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes)
-    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs-1)
+    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs - 1)
 
     # diff across both
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=False)
-    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes-1)
-    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs-1)
+    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes - 1)
+    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs - 1)
 
     # switch diff and test closeness to within 5 decimals
     uvd_diff2 = vis_metrics.sequential_diff(uvd, axis=(1, 0), pad=False)
@@ -170,11 +170,11 @@ def test_sequential_diff():
     np.random.seed(0)
     for bl in uvn.get_antpairs():
         # generate random noise
-        n = (stats.norm.rvs(0, 1/np.sqrt(2), uvn.Ntimes * uvn.Nfreqs) \
-             + 1j*stats.norm.rvs(0, 1/np.sqrt(2), uvn.Ntimes * uvn.Nfreqs)).reshape(uvn.Ntimes, uvn.Nfreqs)
+        n = (stats.norm.rvs(0, 1 / np.sqrt(2), uvn.Ntimes * uvn.Nfreqs)
+             + 1j * stats.norm.rvs(0, 1 / np.sqrt(2), uvn.Ntimes * uvn.Nfreqs)).reshape(uvn.Ntimes, uvn.Nfreqs)
 
         # generate smooth signal
-        s = np.exp(1j * f[None, :]/100.0 + 1j*t[:, None]/10.0)
+        s = np.exp(1j * f[None, :] / 100.0 + 1j * t[:, None] / 10.0)
 
         # add into data
         uvn.data_array[uvn.antpair2ind(bl, ordered=False), 0, :, 0] = s + n
@@ -185,9 +185,12 @@ def test_sequential_diff():
     uvn_diff3 = vis_metrics.sequential_diff(uvn, axis=(0, 1), pad=False)
 
     # assert noise std is equal to 1 within sampling error
-    nt.assert_almost_equal(np.std(uvn_diff1.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff2.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff3.data_array), 1.0, delta=1/np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff1.data_array), 1.0, delta=1
+                           / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff2.data_array), 1.0, delta=1
+                           / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff3.data_array), 1.0, delta=1
+                           / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
 
     # test pad
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=True)
@@ -195,6 +198,7 @@ def test_sequential_diff():
     nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs)
     nt.assert_true(uvd_diff.flag_array[:, 0, -1, 0].all())
     nt.assert_true(uvd_diff.select(times=np.unique(uvd_diff.time_array)[-1:], inplace=False).flag_array.all())
+
 
 if __name__ == '__main__':
     unittest.main()
