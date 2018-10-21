@@ -625,7 +625,7 @@ class TestWrappers():
                              {'filename': test_d_file, 'history': 'Just a test.',
                               'model_file': test_d_file, 'model_file_format': 'miriad',
                               'xrfi_path': xrfi_path}, nwarnings=191,
-                              message=['indata is None'] + 190 * ['Kt value 8'])
+                             message=['indata is None'] + 190 * ['Kt value 8'])
 
     def test_xrfi_h1c_run_no_indata(self):
         # test no indata provided

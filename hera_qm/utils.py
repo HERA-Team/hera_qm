@@ -311,7 +311,7 @@ def get_pol(fname):
     # the 'd' values are the 7-digit Julian day and 5-digit fractional Julian
     # date. The 'pp' is the polarization extracted. It need not be 2 characters,
     # and the parser will return everying between the two periods.
-    fn = re.findall('zen\.\d{7}\.\d{5}\..*', fname)[0]
+    fn = re.findall(r'zen\.\d{7}\.\d{5}\..*', fname)[0]
     return fn.split('.')[3]
 
 
@@ -474,7 +474,7 @@ def metrics2mc(filename, ftype):
                     if metrics[met] is None:
                         continue
                     d['array_metrics'][catmet] = metrics[met]
-                except:
+                except KeyError:
                     pass
 
             # pack antenna metrics, only uses auto pol (i.e. XX or YY)
@@ -492,7 +492,7 @@ def metrics2mc(filename, ftype):
                     # if not, assign it
                     else:
                         d['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]]
-                except:
+                except KeyError:
                     pass
 
     else:

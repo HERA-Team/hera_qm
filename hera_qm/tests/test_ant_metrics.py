@@ -143,7 +143,7 @@ class TestLowLevelFunctions(unittest.TestCase):
                                                                     self.antpols, self.ants,
                                                                     self.reds, rawMetric=True)
         ref = {(0, 'x'): 1.062, (0, 'y'): 1.062, (1, 'x'): 0.934,
-               (1, 'y'): 0.934,  (2, 'x'): 0.917, (2, 'y'): 0.917,
+               (1, 'y'): 0.934, (2, 'x'): 0.917, (2, 'y'): 0.917,
                (3, 'x'): 1.027, (3, 'y'): 1.027}
         for key, val in ref.items():
             self.assertAlmostEqual(val, red_corr_cross_pol[key], places=3)
@@ -301,7 +301,7 @@ class TestAntennaMetrics(unittest.TestCase):
                       (97, 105), (10, 9), (89, 64)],
                      [(53, 97), (64, 112), (80, 81), (104, 10)],
                      [(9, 64), (10, 89), (20, 53), (31, 104),
-                      (43, 65), (53, 80),  (65, 96), (72, 105), (22, 9),
+                      (43, 65), (53, 80), (65, 96), (72, 105), (22, 9),
                       (81, 20), (112, 22), (89, 31), (97, 81), (105, 88)],
                      [(9, 112), (20, 97), (53, 81), (31, 10),
                       (80, 20), (64, 22), (96, 43), (88, 72), (104, 89)],
@@ -327,17 +327,17 @@ class TestAntennaMetrics(unittest.TestCase):
                                  message='antenna_diameters is not set')
         with self.assertRaises(IOError):
             ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
-                                        [], fileformat='uvfits')
+                                       [], fileformat='uvfits')
         with self.assertRaises(NotImplementedError):
             ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
-                                        [], fileformat='fhd')
+                                       [], fileformat='fhd')
         with self.assertRaises(NotImplementedError):
             ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
-                                        [], fileformat='not_a_format')
+                                       [], fileformat='not_a_format')
 
     def test_init(self):
         am = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
-                                         fileformat='miriad')
+                                        fileformat='miriad')
         self.assertEqual(len(am.ants), 19)
         self.assertEqual(set(am.pols), set(['xx', 'yy', 'xy', 'yx']))
         self.assertEqual(set(am.antpols), set(['x', 'y']))
@@ -376,7 +376,7 @@ class TestAntennaMetrics(unittest.TestCase):
 
     def test_save_json(self):
         am = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
-                                         fileformat='miriad')
+                                        fileformat='miriad')
         am.iterative_antenna_metrics_and_flagging()
         for stat in self.summaryStats:
             self.assertTrue(hasattr(am, stat))
@@ -441,7 +441,7 @@ class TestAntennaMetrics(unittest.TestCase):
 
     def test_cross_detection(self):
         am2 = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
-                                          fileformat='miriad')
+                                         fileformat='miriad')
         am2.iterative_antenna_metrics_and_flagging(crossCut=3, deadCut=10)
         for stat in self.summaryStats:
             self.assertTrue(hasattr(am2, stat))
@@ -452,7 +452,7 @@ class TestAntennaMetrics(unittest.TestCase):
 
     def test_totally_dead_ants(self):
         am2 = ant_metrics.AntennaMetrics(self.dataFileList, self.reds,
-                                          fileformat='miriad')
+                                         fileformat='miriad')
         deadant = 9
         for ant1, ant2 in am2.bls:
             if deadant in (ant1, ant2):
@@ -531,7 +531,7 @@ class TestAntmetricsRun(unittest.TestCase):
             # this test raises a warning, then fails...
             uvtest.checkWarnings(nt.assert_raises,
                                  [AssertionError, ant_metrics.ant_metrics_run,
-                                  args.files, pols,  args.crossCut,
+                                  args.files, pols, args.crossCut,
                                   args.deadCut, args.alwaysDeadCut,
                                   args.metrics_path,
                                   args.extension, args.vis_format,
@@ -570,7 +570,7 @@ class TestAntmetricsRun(unittest.TestCase):
         history = cmd
         pols = list(args.pol.split(','))
         nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run,
-                         args.files,  pols, args.crossCut,
+                         args.files, pols, args.crossCut,
                          args.deadCut, args.alwaysDeadCut,
                          args.metrics_path,
                          args.extension, args.vis_format,
@@ -718,7 +718,6 @@ class TestAntmetricsRun(unittest.TestCase):
         arg9 = "--run_cross_pols"
         arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
                               arg7, arg8, arg9])
-
 
         xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
         dest_file = os.path.join(DATA_PATH, 'test_output',

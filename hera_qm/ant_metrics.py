@@ -705,7 +705,6 @@ class AntennaMetrics():
         self.allMetrics.update({self.iter: metrics})
         self.allModzScores.update({self.iter: modzScores})
 
-
     def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
                                                alwaysDeadCut=10,
                                                verbose=False,
@@ -921,7 +920,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
         abspath = os.path.abspath(base_filename)
         dirname = os.path.dirname(abspath)
         basename = os.path.basename(base_filename)
-        nopol_filename = re.sub('\.{}\.'.format(pols[0]), '.', basename)
+        nopol_filename = re.sub(r'\.{}\.'.format(pols[0]), '.', basename)
         if metrics_path == '':
             # default path is same directory as file
             metrics_path = dirname
