@@ -39,7 +39,7 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         # test execution
         try:
             del self.gain_diff
-        except NameError:
+        except AttributeError:
             pass
         self.OM.load_firstcal_gains(self.fc_file)
         self.assertTrue(hasattr(self.OM, 'gain_diff'))
