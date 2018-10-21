@@ -13,6 +13,7 @@ import pkg_resources
 import astropy.stats as astats
 from collections import OrderedDict
 from .version import hera_qm_version_str
+from . import utils
 import json
 import six
 from collections import OrderedDict as odict
@@ -184,6 +185,7 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
     if custom_ax is False:
         return fig
 
+
 def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6),
                  save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
     """
@@ -294,6 +296,7 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
     if custom_ax is False:
         return fig
 
+
 class FirstCal_Metrics(object):
     """
     FirstCal_Metrics class for holding firstcal data,
@@ -363,7 +366,7 @@ class FirstCal_Metrics(object):
             calfits_file = calfits_files
         self.fc_basename = os.path.basename(calfits_file)
         self.fc_filename = calfits_file
-        self.fc_filestem = '.'.join(self.fc_filename.split('.')[:-1])
+        self.fc_filestem = utils.strip_extension(self.fc_filename)
 
         # get other relevant arrays
         self.times = self.UVC.time_array
@@ -384,7 +387,7 @@ class FirstCal_Metrics(object):
             d_nu = np.median(np.diff(freqs))
             d_phi = np.median(fc_phi[:, :, 1:] - fc_phi[:, :, :-1], axis=2)
             gain_slope = (d_phi / d_nu)
-            self.delays = gain_slope / (-2*np.pi)
+            self.delays = gain_slope / (-2 * np.pi)
             self.gains = fc_gains
 
             # get delay offsets at nu = 0 Hz, and then get rotated antennas
@@ -404,13 +407,13 @@ class FirstCal_Metrics(object):
 
         # use gaussian process model to subtract underlying mean function
         if use_gp is True and self.sklearn_import is True:
-	    # initialize GP kernel.
-	    # RBF is a squared exponential kernel with a minimum length_scale_bound of 0.01 JD, meaning
-	    # the GP solution won't have time fluctuations quicker than ~0.01 JD, which will preserve
-	    # short time fluctuations. WhiteKernel is a Gaussian white noise component with a fiducial
-	    # noise level of 0.01 nanoseconds. Both of these are hyperparameters that are fit for via
-	    # a gradient descent algorithm in the GP.fit() routine, so length_scale=0.2 and
-	    # noise_level=0.01 are just initial conditions and are not the final hyperparameter solution
+            # initialize GP kernel.
+            # RBF is a squared exponential kernel with a minimum length_scale_bound of 0.01 JD, meaning
+            # the GP solution won't have time fluctuations quicker than ~0.01 JD, which will preserve
+            # short time fluctuations. WhiteKernel is a Gaussian white noise component with a fiducial
+            # noise level of 0.01 nanoseconds. Both of these are hyperparameters that are fit for via
+            # a gradient descent algorithm in the GP.fit() routine, so length_scale=0.2 and
+            # noise_level=0.01 are just initial conditions and are not the final hyperparameter solution
             kernel = gp.kernels.RBF(length_scale=0.2, length_scale_bounds=(0.01, 1.0)) + gp.kernels.WhiteKernel(noise_level=0.01)
             x = self.frac_JD.reshape(-1, 1)
             self.delay_smooths = []
@@ -428,7 +431,6 @@ class FirstCal_Metrics(object):
                 self.delay_fluctuations[i] -= ymodel
                 self.delay_smooths.append(ymodel)
             self.delay_smooths = np.array(self.delay_smooths)
-
 
     def run_metrics(self, std_cut=0.5):
         """
@@ -605,7 +607,7 @@ class FirstCal_Metrics(object):
             aggregate standard deviation of delay solutions
             across all antennas and all times
 
-    	max_std : float
+        max_std : float
                 maximum antenna standard deviation of delay solutions
 
         z_scores : ndarray, shape=(N_ant, N_times)
@@ -804,11 +806,11 @@ class FirstCal_Metrics(object):
             plotting kwargs
         """
         # make sure metrics has been run
-        if hasattr(self, 'metrics') == False:
-            raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
-                            "in order to plot delay z_scores")
+        if hasattr(self, 'metrics') is False:
+            raise NameError("You need to run FirstCal_Metrics.run_metrics() "
+                            + "in order to plot delay z_scores")
         fig = plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
-                     save=save, kwargs=kwargs, plot_abs=plot_abs)
+                           save=save, kwargs=kwargs, plot_abs=plot_abs)
         return fig
 
     def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
@@ -835,9 +837,9 @@ class FirstCal_Metrics(object):
 
         """
         # make sure metrics has been run
-        if hasattr(self, 'metrics') == False:
-            raise NameError("You need to run FirstCal_Metrics.run_metrics() " +
-                            "in order to plot delay stds")
+        if hasattr(self, 'metrics') is False:
+            raise NameError("You need to run FirstCal_Metrics.run_metrics() "
+                            + "in order to plot delay stds")
         fig = plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
         return fig
 
@@ -875,6 +877,6 @@ def firstcal_metrics_run(files, args, history):
         else:
             metrics_path = args.metrics_path
             print(metrics_path)
-        metrics_basename = os.path.basename(filename) + args.extension
+        metrics_basename = utils.strip_extension(os.path.basename(filename)) + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
         fm.write_metrics(filename=metrics_filename)
