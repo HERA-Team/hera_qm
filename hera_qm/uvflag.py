@@ -19,6 +19,7 @@ class UVFlag():
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
     and stores all relevant information to combine flags and apply to data.
     '''
+
     def __init__(self, input, mode='metric', copy_flags=False, waterfall=False, history='',
                  label=''):
         '''Initialize UVFlag object.
@@ -90,12 +91,12 @@ class UVFlag():
             else:
                 if self.mode == 'flag':
                     self.flag_array = np.zeros((len(self.time_array),
-                                               len(self.freq_array),
-                                               len(self.polarization_array)), np.bool)
+                                                len(self.freq_array),
+                                                len(self.polarization_array)), np.bool)
                 elif self.mode == 'metric':
                     self.metric_array = np.zeros((len(self.time_array),
-                                                 len(self.freq_array),
-                                                 len(self.polarization_array)))
+                                                  len(self.freq_array),
+                                                  len(self.polarization_array)))
 
         elif issubclass(input.__class__, UVData):
             self.type = 'baseline'

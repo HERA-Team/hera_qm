@@ -513,7 +513,7 @@ class OmniCal_Metrics(object):
             list of paths to firstcal files
         """
         # check if fcfiles is a str, if so change to list
-        if type(fc_files) is str:
+        if isinstance(fc_files, str):
             fc_files = [fc_files]
 
         firstcal_delays = []

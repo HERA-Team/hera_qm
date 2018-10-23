@@ -373,24 +373,24 @@ def _recursively_parse_json(in_dict):
             if isinstance(in_dict[key], dict):
                 out_dict[out_key] = _recursively_parse_json(in_dict[key])
             elif isinstance(in_dict[key], (list, np.ndarray)):
-                    try:
-                        if len(in_dict[key]) > 0:
-                            if isinstance(in_dict[key][0], (six.text_type, np.int,
-                                                            np.float, np.complex)):
-                                try:
-                                    out_dict[out_key] = [float(val)
-                                                         for val in in_dict[key]]
-                                except ValueError:
-                                    out_dict[out_key] = [complex(val)
-                                                         for val in in_dict[key]]
-                        else:
-                            out_dict[out_key] = str(in_dict[key])
-                    except (SyntaxError, NameError) as err:
-                            warnings.warn("The key: {0} has a value which "
-                                          "could not be parsed, added"
-                                          " the value as a string: {1}"
-                                          .format(key, str(in_dict[key])))
-                            out_dict[out_key] = str(in_dict[key])
+                try:
+                    if len(in_dict[key]) > 0:
+                        if isinstance(in_dict[key][0], (six.text_type, np.int,
+                                                        np.float, np.complex)):
+                            try:
+                                out_dict[out_key] = [float(val)
+                                                     for val in in_dict[key]]
+                            except ValueError:
+                                out_dict[out_key] = [complex(val)
+                                                     for val in in_dict[key]]
+                    else:
+                        out_dict[out_key] = str(in_dict[key])
+                except (SyntaxError, NameError) as err:
+                    warnings.warn("The key: {0} has a value which "
+                                  "could not be parsed, added"
+                                  " the value as a string: {1}"
+                                  .format(key, str(in_dict[key])))
+                    out_dict[out_key] = str(in_dict[key])
             else:
                 # make a last attempt to cast the value to an int/float/complex
                 # otherwise make it a string
@@ -669,8 +669,8 @@ def _recursively_validate_dict(in_dict):
             in_dict[key] = in_dict[key].decode()
 
         if key in list_of_strings_keys:
-                in_dict[key] = [qm_utils._bytes_to_str(n) if isinstance(n, bytes)
-                                else n for n in in_dict[key]]
+            in_dict[key] = [qm_utils._bytes_to_str(n) if isinstance(n, bytes)
+                            else n for n in in_dict[key]]
 
         if isinstance(in_dict[key], np.int64):
             in_dict[key] = np.int(in_dict[key])
