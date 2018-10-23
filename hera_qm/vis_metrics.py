@@ -11,6 +11,7 @@ from six.moves import range
 from . import utils
 from . import version
 
+
 def check_noise_variance(data):
     """Calculate the noise levels of each baseline/pol relative to the autos.
 
@@ -84,7 +85,7 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
     history : str
         A string to prepend to history of UVData if provided,
         in addition to a standard history comment.
-    
+
     Returns
     -------
     diff_data : ndarray or UVData object
@@ -123,8 +124,8 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
 
         for ax in axis:
             # difference data to get noise
-            data = utils.dynamic_slice(data, slice(1, None), axis=ax) \
-                   - utils.dynamic_slice(data, slice(None, -1), axis=ax)
+            data = (utils.dynamic_slice(data, slice(1, None), axis=ax)
+                    - utils.dynamic_slice(data, slice(None, -1), axis=ax))
 
             # get average t_int
             t1 = utils.dynamic_slice(t_int, slice(1, None), axis=ax)
@@ -195,7 +196,7 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
 
         # add to history
         uvd.history = "Took sequential difference with hera_qm [{}]\n{}\n{}\n{}" \
-                       .format(version.git_hash[:10], history, '-'*50, uvd.history)
+                      .format(version.git_hash[:10], history, '-' * 50, uvd.history)
 
         return uvd
 
@@ -209,7 +210,7 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
     from uvd between specified baselines, optionally
     as a fuction of frequency _or_ time.
 
-    If return_corr == True, the correlation matrix holds the 
+    If return_corr == True, the correlation matrix holds the
     covariance between baseline1 and baseline2 divided
     by the stand. dev. of baseline1 * stand. dev. of baseline2.
 
@@ -233,20 +234,20 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
     bl_bl_cov : ndarray
         A covariance (or correlation) matrix across baselines.
         This ndarray is 4 dimensional, with shape (Nbls, Nbls, Ntimes, Nfreqs)
-        where 
+        where
             Ntimes == 1 if iterax != 'time'
             Nfreqs == 1 if iterax != 'freq'
     """
     # type checks
     assert isinstance(uvd1, UVData) and isinstance(uvd2, UVData), \
-            "uvd1 and uvd2 must be UVData objects"
-    assert uvd1.Npols == 1 and uvd2.Npols==1, \
-            "uvd1 and uvd2 must be single-polarization objects"
+        "uvd1 and uvd2 must be UVData objects"
+    assert uvd1.Npols == 1 and uvd2.Npols == 1, \
+        "uvd1 and uvd2 must be single-polarization objects"
     assert isinstance(bls, (list, np.ndarray)), "bls must be a list of baselines"
     if isinstance(bls[0], (int, np.integer)):
         bls = [uvd.baseline_to_antnums(bl) for bl in bls]
     assert iterax in [None, 'time', 'freq'], \
-           "iterax {} not recognized".format(iterax)
+        "iterax {} not recognized".format(iterax)
     assert uvd1.Ntimes == uvd2.Ntimes, "Ntimes must agree between uvd1 and uvd2"
     assert uvd1.Nfreqs == uvd2.Nfreqs, "Nfreqs must agree between uvd1 and uvd2"
 
@@ -276,10 +277,10 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
         d2[bl] = uvd2.get_data(bl)
         w1[bl] = (~uvd1.get_flags(bl)).astype(np.float)
         w2[bl] = (~uvd2.get_flags(bl)).astype(np.float)
-        m1[bl] = np.sum(d1[bl] * w1[bl], axis=sumaxes, keepdims=True) \
-                 / np.sum(w1[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)
-        m2[bl] = np.sum(d2[bl] * w2[bl], axis=sumaxes, keepdims=True) \
-                 / np.sum(w2[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)
+        m1[bl] = (np.sum(d1[bl] * w1[bl], axis=sumaxes, keepdims=True)
+                  / np.sum(w1[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf))
+        m2[bl] = (np.sum(d2[bl] * w2[bl], axis=sumaxes, keepdims=True)
+                  / np.sum(w2[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf))
 
     # setup empty cov array
     Nbls = len(bls)
@@ -311,16 +312,18 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
         std = np.empty((2, Nbls, Ntimes, Nfreqs), dtype=np.complex) * np.nan
         for i, bl in enumerate(bls):
             d1diff = d1[bl] - m1[bl]
-            std[0, i] = np.sqrt(np.abs(np.sum(d1diff * d1diff.conj() * w1[bl], axis=sumaxes, keepdims=True) \
-                        / np.sum(w1[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
+            std[0, i] = np.sqrt(np.abs(np.sum(d1diff * d1diff.conj() * w1[bl],
+                                              axis=sumaxes, keepdims=True)
+                                       / np.sum(w1[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
             d2diff = d2[bl] - m2[bl]
-            std[1, i] = np.sqrt(np.abs(np.sum(d2diff * d2diff.conj() * w2[bl], axis=sumaxes, keepdims=True) \
-                        / np.sum(w2[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
+            std[1, i] = np.sqrt(np.abs(np.sum(d2diff * d2diff.conj() * w2[bl],
+                                              axis=sumaxes, keepdims=True)
+                                       / np.sum(w2[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
 
         # turn cov into corr
         for i in range(Nbls):
             for j in range(Nbls):
-                cov[i, j] /= std[0, i] * std [1, j]
+                cov[i, j] /= std[0, i] * std[1, j]
     return cov
 
 
@@ -341,7 +344,7 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
     plot_corr : bool, optional
         If True, calculate and plot correlation matrix instead.
         Default: False.
-    
+
     ax : matplotlib.axes.Axis object
 
     cmap : str
@@ -381,7 +384,7 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
     """
     # selections
     assert times is None or freqs is None, \
-           "times and freqs cannot both be fed at the same time"
+        "times and freqs cannot both be fed at the same time"
     if times is not None or freqs is not None:
         uvd1 = uvd1.select(times=times, frequencies=freqs, inplace=False, run_check=False)
         uvd2 = uvd2.select(times=times, frequencies=freqs, inplace=False, run_check=False)
@@ -406,7 +409,7 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
         fig = ax.get_figure()
         newfig = False
 
-    # plot 
+    # plot
     cax = ax.matshow(bl_bl_cov, vmin=vmin, vmax=vmax, cmap=cmap, aspect='auto')
 
     # ticks
@@ -426,7 +429,7 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
         else:
             action = "cov"
         label = r"$\rm {}\ {}(V_{{1}}, V_{{2}})\ [{}\ \cdot\ {}]$" \
-                 .format(component, action, uvd1.vis_units, uvd2.vis_units)
+                .format(component, action, uvd1.vis_units, uvd2.vis_units)
         cbar.set_label(label, fontsize=12)
 
     # axes labels
@@ -442,7 +445,7 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
 def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar=True,
                        axes=None, colorax='freq', alpha=1, msize=1, marker='.', grid=True,
                        one2one=True, loglog=False, freqs=None, times=None, figsize=None,
-                       xylim=None, cbfontsize=10, axfontsize=14, force_plot=False, 
+                       xylim=None, cbfontsize=10, axfontsize=14, force_plot=False,
                        tlsize=10, facecolor='lightgrey', cmap='viridis'):
     """
     Make a scatter - matrix plot, showing covariance of visibility data
@@ -527,7 +530,7 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
     """
     # selections
     assert times is None or freqs is None, \
-           "times and freqs cannot both be fed at the same time"
+        "times and freqs cannot both be fed at the same time"
     if times is not None or freqs is not None:
         uvd1 = uvd1.select(times=times, frequencies=freqs, inplace=False, run_check=False)
         uvd2 = uvd2.select(times=times, frequencies=freqs, inplace=False, run_check=False)
@@ -547,7 +550,7 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
 
     # setup figure
     Nbls = len(bls)
-    if Nbls >= 10 and force_plot == False:
+    if Nbls >= 10 and force_plot is False:
         raise ValueError("Trying to plot >= 10 bls and force_plot = False, quitting...")
     if axes is None:
         fig, axes = plt.subplots(Nbls, Nbls, figsize=figsize)
@@ -565,7 +568,7 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
         clabel = r"$\rm Frequency\ [MHz]$"
     elif colorax == 'time':
         jd = int(np.floor(np.median(uvd1.time_array)))
-        c = np.repeat(np.unique(uvd1.time_array)[:, None] % jd ,uvd1.Nfreqs, axis=1).ravel()
+        c = np.repeat(np.unique(uvd1.time_array)[:, None] % jd, uvd1.Nfreqs, axis=1).ravel()
         clabel = r"$\rm Julian\ Date\ \%\ {}$".format(jd)
     else:
         raise ValueError("Didn't recognize colorax {}".format(colorax))
@@ -606,7 +609,7 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
 
             # plot
             cax = ax.scatter(d1, d2, alpha=alpha, s=msize, cmap=cmap, c=c, marker=marker)
-            if (i == 0 and j == 0 ) and (f1.all() or f2.all()) and (xylim is None):
+            if (i == 0 and j == 0) and (f1.all() or f2.all()) and (xylim is None):
                 raise ValueError("xylim was not specified and is therefore determined by\n"
                                  "range of first bl-pair, but these data are completely flagged.")
 
@@ -648,7 +651,7 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
             else:
                 # not first column, get rid of tick labels
                 ax.set_yticklabels([])
-                
+
             # plot one2one
             if one2one:
                 ax.plot([neg, pos], [neg, pos], color='k', lw=1, ls='--')
@@ -661,6 +664,6 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
         cbar = fig.colorbar(cax, ax=cbax, fraction=0.75, aspect=40)
         cbar.set_label(clabel, fontsize=cbfontsize)
         _ = [tl.set_size(cbfontsize) for tl in cbar.ax.get_yticklabels()]
-               
+
     if newfig:
         return fig

@@ -606,8 +606,8 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 #############################################################################
 
 
-def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
-                 summary=False, summary_ext='.flag_summary.h5', xrfi_path='',
+def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
+                 summary=False, summary_ext='flag_summary.h5', xrfi_path='',
                  model_file=None, model_file_format='uvfits',
                  calfits_file=None, kt_size=8, kf_size=8, sig_init=6.0, sig_adj=2.0,
                  px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05,
@@ -622,9 +622,9 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         infile_format -- File format for input files. Not currently used while
                          we use pyuvdata's generic read function, But will
                          be implemented for partial io.
-        extension -- Extension to be appended to input file name. Default is ".flags.h5"
+        extension -- Extension to be appended to input file name. Default is "flags.h5"
         summary -- Run summary of RFI flags and store in h5 file. Default is False.
-        summary_ext -- Extension for summary file. Default is ".flag_summary.h5"
+        summary_ext -- Extension for summary file. Default is "flag_summary.h5"
         xrfi_path -- Path to save flag files to. Default is same directory as input file.
         model_file -- Model visibility file to flag on.
         model_file_format -- File format for input model file. Not currently used while
@@ -693,19 +693,19 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                                              return_summary=True)
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(filename))
-        basename = os.path.basename(filename)
+        basename = qm_utils.strip_extension(os.path.basename(filename))
         # Save watersheded flags
-        outfile = ''.join([basename, extension])
+        outfile = '.'.join([basename, extension])
         outpath = os.path.join(dirname, outfile)
         uvf_f.history += history
         uvf_f.write(outpath, clobber=True)
         # Save thresholded waterfall
-        outfile = ''.join([basename, '.waterfall', extension])
+        outfile = '.'.join([basename, 'waterfall', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
         uvf_wf.write(outpath, clobber=True)
         if summary:
-            sum_file = ''.join([basename, summary_ext])
+            sum_file = '.'.join([basename, summary_ext])
             sum_path = os.path.join(dirname, sum_file)
             uvf_w.history += history
             uvf_w.write(sum_path, clobber=True)
@@ -726,7 +726,8 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(model_file))
         # Only save thresholded waterfall
-        outfile = ''.join([os.path.basename(model_file), extension])
+        basename = qm_utils.strip_extension(os.path.basename(model_file))
+        outfile = '.'.join([basename, extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
         uvf_wf.write(outpath, clobber=True)
@@ -747,7 +748,8 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                                       freq_threshold=freq_threshold, time_threshold=time_threshold)
         if xrfi_path == '':
             dirname = os.path.dirname(os.path.abspath(calfits_file))
-        outfile = ''.join([os.path.basename(calfits_file), '.g', extension])
+        basename = qm_utils.strip_extension(os.path.basename(calfits_file))
+        outfile = '.'.join([basename, 'g', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
         uvf_wf.write(outpath, clobber=True)
@@ -756,7 +758,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold,
                                       gains=False, chisq=True)
-        outfile = ''.join([os.path.basename(calfits_file), '.x', extension])
+        outfile = '.'.join([basename, 'x', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
         uvf_wf.write(outpath)
@@ -767,7 +769,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='.flags.h5',
 def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
                    outfile_format='miriad', extension='R', overwrite=False,
                    flag_file=None, waterfalls=None, output_uvflag=True,
-                   output_uvflag_ext='.flags.h5'):
+                   output_uvflag_ext='flags.h5'):
     """
     Apply flags in the fashion of H1C.
     Read in a flag array and optionally several waterfall flags, and insert into
@@ -788,7 +790,7 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
                       to broadcast to full flag array and union with flag array in flag_file.
         output_uvflag -- Whether to save uvflag with the final flag array.
                       The flag array will be identical to what is stored in the data.
-        output_uvflag_ext -- Extension to be appended to input file name. Default is ".flags.h5".
+        output_uvflag_ext -- Extension to be appended to input file name. Default is "flags.h5".
     Return:
         None
     """
@@ -823,20 +825,24 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
         dirname = os.path.dirname(abspath)
     else:
         dirname = xrfi_path
-    basename = os.path.basename(filename)
-    outfile = ''.join([basename, extension])
+    basename = qm_utils.strip_extension(os.path.basename(filename))
+    outfile = '.'.join([basename, extension])
     outpath = os.path.join(dirname, outfile)
+    extension_dict = {'miriad': '.uv', 'uvfits': '.uvfits', 'uvh5': '.uvh5'}
+    try:
+        outpath += extension_dict[outfile_format]
+    except KeyError:
+        raise ValueError('Unrecognized output file format ' + str(outfile_format))
     if outfile_format == 'miriad':
         uvd.write_miriad(outpath, clobber=overwrite)
     elif outfile_format == 'uvfits':
         if os.path.exists(outpath) and not overwrite:
-            raise ValueError('File exists: skipping')
+            raise ValueError('File ' + outpath + ' exists: skipping')
         uvd.write_uvfits(outpath, force_phase=True, spoof_nonessential=True)
     elif outfile_format == 'uvh5':
         uvd.write_uvh5(outpath, clobber=overwrite)
-    else:
-        raise ValueError('Unrecognized output file format ' + str(outfile_format))
     if output_uvflag:
         # Save uvflag with the final flag array and relevant metadata
-        outpath = outpath + output_uvflag_ext
+        outfile = '.'.join([basename, extension, output_uvflag_ext])
+        outpath = os.path.join(dirname, outfile)
         uvf.write(outpath)

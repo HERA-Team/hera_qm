@@ -141,13 +141,13 @@ def get_metrics_ArgumentParser(method_name):
                        help='File format for input files. Not currently used while '
                        'we use generic read function in pyuvdata, But will '
                        'be implemented for partial io.')
-        a.add_argument('--extension', default='.flags.npz', type=str,
-                       help='Extension to be appended to input file name. Default is ".flags.npz".')
+        a.add_argument('--extension', default='flags.h5', type=str,
+                       help='Extension to be appended to input file name. Default is "flags.h5".')
         a.add_argument('--summary', action='store_true', default=False,
                        help='Run summary of RFI flags and store in npz file.')
-        a.add_argument('--summary_ext', default='.flag_summary.npz',
+        a.add_argument('--summary_ext', default='flag_summary.h5',
                        type=str, help='Extension to be appended to input file name'
-                       ' for summary file. Default is ".flag_summary.npz"')
+                       ' for summary file. Default is "flag_summary.h5"')
         a.add_argument('--xrfi_path', default='', type=str,
                        help='Path to save flag files to. Default is same directory as input file.')
         a.add_argument('--algorithm', default='xrfi_simple', type=str,
@@ -203,13 +203,13 @@ def get_metrics_ArgumentParser(method_name):
                                  'the RFI flagging routine.')
         x.add_argument('--infile_format', default='miriad', type=str,
                        help='File format for input files. DEPRECATED, but kept for legacy.')
-        x.add_argument('--extension', default='.flags.npz', type=str,
-                       help='Extension to be appended to input file name. Default is ".flags.npz".')
+        x.add_argument('--extension', default='flags.h5', type=str,
+                       help='Extension to be appended to input file name. Default is "flags.h5".')
         x.add_argument('--summary', action='store_true', default=False,
                        help='Run summary of RFI flags and store in npz file.')
-        x.add_argument('--summary_ext', default='.flag_summary.npz',
+        x.add_argument('--summary_ext', default='flag_summary.h5',
                        type=str, help='Extension to be appended to input file name'
-                       ' for summary file. Default is ".flag_summary.npz"')
+                       ' for summary file. Default is "flag_summary.h5"')
         x.add_argument('--xrfi_path', default='', type=str,
                        help='Path to save flag files to. Default is same directory as input file.')
         x.add_argument('--algorithm', default='xrfi_simple', type=str,
@@ -290,8 +290,8 @@ def get_metrics_ArgumentParser(method_name):
         a.add_argument('--output_uvflag', default=True, type=bool,
                        help='Whether to save a uvflag object with the final flag array. '
                        'The flag array will be identical to what is stored in the data.')
-        a.add_argument('--out_uvflag_ext', default='.flags.h5', type=str,
-                       help='Extension to be appended to input file name. Default is ".flags.h5".')
+        a.add_argument('--out_uvflag_ext', default='flags.h5', type=str,
+                       help='Extension to be appended to input file name. Default is "flags.h5".')
         a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
                        help='file for which to flag RFI (only one file allowed).')
     return a
@@ -311,7 +311,7 @@ def get_pol(fname):
     # the 'd' values are the 7-digit Julian day and 5-digit fractional Julian
     # date. The 'pp' is the polarization extracted. It need not be 2 characters,
     # and the parser will return everying between the two periods.
-    fn = re.findall('zen\.\d{7}\.\d{5}\..*', fname)[0]
+    fn = re.findall(r'zen\.\d{7}\.\d{5}\..*', fname)[0]
     return fn.split('.')[3]
 
 
@@ -474,7 +474,7 @@ def metrics2mc(filename, ftype):
                     if metrics[met] is None:
                         continue
                     d['array_metrics'][catmet] = metrics[met]
-                except:
+                except KeyError:
                     pass
 
             # pack antenna metrics, only uses auto pol (i.e. XX or YY)
@@ -492,7 +492,7 @@ def metrics2mc(filename, ftype):
                     # if not, assign it
                     else:
                         d['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]]
-                except:
+                except KeyError:
                     pass
 
     else:
@@ -665,3 +665,29 @@ def dynamic_slice(arr, slice_obj, axis=-1):
     for ax in axis:
         slices[ax] = slice_obj
     return arr[tuple(slices)]
+
+
+def strip_extension(path, return_ext=False):
+    """
+    Function to strip the extension off a path. Note this calls os.path.splitext,
+    but we change the output slightly for convenience in our filename building.
+
+    Parameters
+    ----------
+    path : str
+        Path you wish to strip of its extension
+    return_ext : bool
+        If True, return the extension as well. Default is False.
+
+    Returns
+    -------
+    root : str
+        The input path without its extension.
+    ext : str, optional
+        The extension of the input path (without the leading ".")
+    """
+    if return_ext:
+        root, ext = os.path.splitext(path)
+        return (root, ext[1:])
+    else:
+        return os.path.splitext(path)[0]

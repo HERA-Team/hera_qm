@@ -10,6 +10,7 @@ import pkg_resources
 import astropy.stats as astats
 from collections import OrderedDict as odict
 from .version import hera_qm_version_str
+from . import utils
 import json
 import six
 import copy
@@ -96,6 +97,7 @@ def load_omnical_metrics(filename):
 
     return metrics
 
+
 def write_metrics(metrics, filename=None, filetype='json'):
     """
     Write metrics to file after running self.run_metrics()
@@ -115,7 +117,8 @@ def write_metrics(metrics, filename=None, filetype='json'):
     pols = list(metrics.keys())
 
     if filename is None:
-        filename = os.path.join(metrics[pols[0]]['filedir'], metrics[pols[0]]['filestem'] + '.omni_metrics')
+        filename = os.path.join(metrics[pols[0]]['filedir'],
+                                metrics[pols[0]]['filestem'] + '.omni_metrics')
 
     # write to file
     if filetype == 'json':
@@ -168,9 +171,9 @@ def load_firstcal_gains(fc_file):
     uvf.read_calfits(fc_file)
     freqs = uvf.freq_array.squeeze()
     fc_gains = np.moveaxis(uvf.gain_array, 2, 3)[:, 0, :, :, 0]
-    d_nu = np.mean(freqs[1:]-freqs[:-1])
+    d_nu = np.mean(freqs[1:] - freqs[:-1])
     d_phi = np.abs(np.mean(np.angle(fc_gains)[:, :, 1:] - np.angle(fc_gains)[:, :, :-1], axis=2))
-    fc_delays = (d_phi / d_nu)/(2*np.pi)
+    fc_delays = (d_phi / d_nu) / (2 * np.pi)
     fc_pol = uvf.jones_array[0]
     return fc_delays, fc_gains, fc_pol
 
@@ -249,7 +252,8 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
     if plot_type == 'ft':
         ylines = np.abs(np.array(list(metrics['ant_gain_fft'].values())))
         ax.grid(True)
-        p = [ax.plot(metrics['ant_gain_dly']*1e9, ylines[i], alpha=0.75) for i in range(len(ylines))]
+        p = [ax.plot(metrics['ant_gain_dly'] * 1e9, ylines[i], alpha=0.75)
+             for i in range(len(ylines))]
         ax.set_xlabel('delay [ns]', fontsize=14)
         ax.set_ylabel(r'radians sec$^{-1}$', fontsize=14)
         ax.set_yscale('log')
@@ -260,18 +264,20 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
 
     if save is True:
         if fname is None:
-            fname = metrics['filename'] + '.phs_{0}.png'.format(plot_type)
+            fname = (utils.strip_extension(metrics['filename'])
+                     + '.phs_{0}.png'.format(plot_type))
         if outpath is None:
             fname = os.path.join(metrics['filedir'], fname)
         else:
             fname = os.path.join(outpath, fname)
-        if custom_ax == False:
+        if custom_ax is False:
             fig.savefig(fname, bbox_inches='tight')
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
     if custom_ax is False:
         return fig
+
 
 def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
                       plot_kwargs={'marker': 'o', 'color': 'k', 'linestyle': '', 'markersize': 6}):
@@ -332,18 +338,19 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
 
     if save is True:
         if fname is None:
-            fname = metrics['filename'] + '.chisq_std.png'
+            fname = utils.strip_extension(metrics['filename']) + '.chisq_std.png'
         if outpath is None:
             fname = os.path.join(metrics['filedir'], fname)
         else:
             fname = os.path.join(outpath, fname)
-        if custom_ax == False:
+        if custom_ax is False:
             fig.savefig(fname, bbox_inches='tight')
         else:
             ax.figure.savefig(fname, bbox_inches='tight')
 
     if custom_ax is False:
         return fig
+
 
 class OmniCal_Metrics(object):
     """
@@ -581,7 +588,8 @@ class OmniCal_Metrics(object):
         # take fft of complex gains over frequency per-antenna
         ant_gain_fft = np.fft.fftshift(np.fft.fft(gain_diff[:, :, self.band], axis=2))
         Nfreq = len(self.band)
-        ant_gain_dly = np.arange(-Nfreq//2, Nfreq//2)/(self.freqs[self.band][-1]-self.freqs[self.band][0])
+        ant_gain_dly = (np.arange(-Nfreq // 2, Nfreq // 2)
+                        / (self.freqs[self.band][-1] - self.freqs[self.band][0]))
 
         # median over time
         ant_gain_fft = np.median(ant_gain_fft, axis=1)
@@ -640,7 +648,7 @@ class OmniCal_Metrics(object):
         ant_phs_hists = []
         for i, phs in enumerate(phs_diff):
             h, bins = np.histogram(phs, bins=128, range=(-np.pi, np.pi), density=True)
-            bins = 0.5*(bins[1:]+bins[:-1])
+            bins = 0.5 * (bins[1:] + bins[:-1])
             ant_phs_hists.append(h)
         ant_phs_hists = np.array(ant_phs_hists)
 
@@ -705,7 +713,7 @@ class OmniCal_Metrics(object):
             gains = self.omni_gains[ants, time_index, :, pol_index].T
             if divide_fc is True:
                 gains = self.gain_diff[ants, time_index, :, pol_index].T
-            p = np.array(ax.plot(self.freqs/1e6, np.angle(gains), **plot_kwargs)).ravel()
+            p = np.array(ax.plot(self.freqs / 1e6, np.angle(gains), **plot_kwargs)).ravel()
 
             # axes
             ax.set_xlabel('frequency [MHz]', fontsize=14)
@@ -721,7 +729,7 @@ class OmniCal_Metrics(object):
             gains = self.omni_gains[ants, time_index, :, pol_index].T.copy()
             if divide_fc is True:
                 gains /= self.firstcal_gains[ants, time_index, :, pol_index].T
-            p = np.array(ax.plot(self.freqs/1e6, np.abs(gains), **plot_kwargs)).ravel()
+            p = np.array(ax.plot(self.freqs / 1e6, np.abs(gains), **plot_kwargs)).ravel()
 
             # axes
             ax.set_xlabel('frequency [MHz]', fontsize=14)
@@ -733,19 +741,18 @@ class OmniCal_Metrics(object):
 
         if save is True:
             if fname is None:
-                fname = self.filename + '.gain_{0}.png'.format(plot_type)
+                fname = utils.strip_extension(self.filename) + '.gain_{0}.png'.format(plot_type)
             if outpath is None:
                 fname = os.path.join(self.filedir, fname)
             else:
                 fname = os.path.join(outpath, fname)
-            if custom_ax == False:
+            if custom_ax is False:
                 fig.savefig(fname, bbox_inches='tight')
             else:
                 ax.figure.savefig(fname, bbox_inches='tight')
 
         if custom_ax is False:
             return fig
-
 
     def plot_chisq_tavg(self, pol_index=0, ants=None, ax=None, save=False, fname=None, outpath=None):
         """
@@ -789,11 +796,11 @@ class OmniCal_Metrics(object):
         # make grid and plots
         ax.grid(True)
         ydata = self.chisq_tavg[ants, :, pol_index].T
-        ylim = np.percentile(ydata.ravel(), 75)*3
+        ylim = np.percentile(ydata.ravel(), 75) * 3
         p = ax.plot(self.freqs / 1e6, ydata)
         ax.set_xlabel('frequency [MHz]', fontsize=14)
         ax.set_ylabel('chi-square avg over time', fontsize=14)
-        ax.set_ylim(0, ylim*2)
+        ax.set_ylim(0, ylim * 2)
         ax.set_title("{0} : {1} pol".format(self.filename, self.pols[pol_index]))
 
         ax = ax.figure.add_axes([0.99, 0.1, 0.02, 0.8])
@@ -802,7 +809,7 @@ class OmniCal_Metrics(object):
 
         if save is True:
             if fname is None:
-                fname = self.filename + '.chisq_tavg.png'
+                fname = utils.strip_extension(self.filename) + '.chisq_tavg.png'
             if outpath is None:
                 fname = os.path.join(self.filedir, fname)
             else:
@@ -880,6 +887,6 @@ def omnical_metrics_run(files, args, history):
         else:
             metrics_path = args.metrics_path
             print(metrics_path)
-        metrics_basename = os.path.basename(filename) + args.extension
+        metrics_basename = utils.strip_extension(os.path.basename(filename)) + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
         write_metrics(full_metrics, filename=metrics_filename)

@@ -9,7 +9,7 @@ import os
 try:
     # python 2
     from StringIO import StringIO
-except:
+except ImportError:
     from io import StringIO
 import subprocess
 import hera_qm

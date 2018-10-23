@@ -98,7 +98,7 @@ def test_get_metrics_ArgumentParser_xrfi_run():
     # First try defaults - test a few of them
     args = a.parse_args('')
     nt.assert_equal(args.infile_format, 'miriad')
-    nt.assert_equal(args.summary_ext, '.flag_summary.npz')
+    nt.assert_equal(args.summary_ext, 'flag_summary.h5')
     nt.assert_equal(args.algorithm, 'xrfi_simple')
     nt.assert_equal(args.nsig_df, 6.0)
     nt.assert_equal(args.px_threshold, 0.2)
@@ -404,3 +404,21 @@ def test_dynamic_slice():
     nt.assert_equal(b.shape, (1, 5))
 
     nt.assert_raises(ValueError, utils.dynamic_slice, 'foo', slice(0, None))
+
+
+def test_strip_extension():
+    path = 'goo/foo.boo/hoo/woo.two'
+    root = utils.strip_extension(path)
+    nt.assert_equal(root, path[:-4])
+
+
+def test_strip_extension_return_ext_basename():
+    path = 'goo/foo.boo/hoo/woo.two'
+    root, ext = utils.strip_extension(path, return_ext=True)
+    nt.assert_equal(root, path[:-4])
+
+
+def test_strip_extension_return_ext_extension():
+    path = 'goo/foo.boo/hoo/woo.two'
+    root, ext = utils.strip_extension(path, return_ext=True)
+    nt.assert_equal(ext, path[-3:])

@@ -173,10 +173,11 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
         np.random.seed(0)
         FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=False)
-        self.assertAlmostEqual(FC.delay_fluctuations[0,0], 0.043740587980040324, delta=0.000001)
+        self.assertAlmostEqual(FC.delay_fluctuations[0, 0], 0.043740587980040324, delta=0.000001)
         np.random.seed(0)
         FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=True)
-        self.assertAlmostEqual(FC.delay_fluctuations[0,0], 0.024669144881121961, delta=0.000001)
+        self.assertAlmostEqual(FC.delay_fluctuations[0, 0], 0.024669144881121961, delta=0.000001)
+
 
 class TestFirstcalMetricsRun(unittest.TestCase):
     def test_firstcal_metrics_run(self):
@@ -200,8 +201,8 @@ class TestFirstcalMetricsRun(unittest.TestCase):
         # Test running with file
         filename = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2457555.50099.yy.HH.uvcA.first.calfits.' +
-                                 'firstcal_metrics.json')
+                                 'zen.2457555.50099.yy.HH.uvcA.first.'
+                                 + 'firstcal_metrics.json')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, filename])

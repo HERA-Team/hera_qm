@@ -625,7 +625,7 @@ class TestWrappers():
                              {'filename': test_d_file, 'history': 'Just a test.',
                               'model_file': test_d_file, 'model_file_format': 'miriad',
                               'xrfi_path': xrfi_path}, nwarnings=191,
-                              message=['indata is None'] + 190 * ['Kt value 8'])
+                             message=['indata is None'] + 190 * ['Kt value 8'])
 
     def test_xrfi_h1c_run_no_indata(self):
         # test no indata provided
@@ -650,34 +650,33 @@ class TestWrappers():
         # test uvfits file and no xrfi path
         uvd = UVData()
         uvd.read_miriad(test_d_file)
-        outtest = test_uvfits_file + '.flags.h5'
+        basename = utils.strip_extension(test_uvfits_file)
+        outtest = basename + '.flags.h5'
         if os.path.exists(outtest):
             os.remove(outtest)
-        if os.path.exists(test_uvfits_file + '.waterfall.flags.h5'):
-            os.remove(test_uvfits_file + '.waterfall.flags.h5')
-        g_temp = os.path.join(xrfi_path, os.path.basename(test_c_file) + '.g.flags.h5')
-        x_temp = os.path.join(xrfi_path, os.path.basename(test_c_file) + '.x.flags.h5')
-        os.rename(test_c_file + '.g.flags.h5', g_temp)
-        os.rename(test_c_file + '.x.flags.h5', x_temp)
+        if os.path.exists(basename + '.waterfall.flags.h5'):
+            os.remove(basename + '.waterfall.flags.h5')
+        cbasename = utils.strip_extension(test_c_file)
+        g_temp = os.path.join(cbasename + '.g.flags.h5')
+        x_temp = os.path.join(cbasename + '.x.flags.h5')
         xrfi.xrfi_h1c_run(test_uvfits_file, infile_format='uvfits',
                           history='Just a test.', kt_size=3, model_file=test_d_file,
                           model_file_format='miriad', calfits_file=test_c_file)
         nt.assert_true(os.path.exists(outtest))
         os.remove(outtest)
-        if os.path.exists(test_uvfits_file + '.waterfall.flags.h5'):
-            os.remove(test_uvfits_file + '.waterfall.flags.h5')
-        if os.path.exists(test_c_file + '.x.flags.h5'):
-            os.remove(test_c_file + '.x.flags.h5')
-        if os.path.exists(test_d_file + '.flags.h5'):
-            os.remove(test_d_file + '.flags.h5')
-        os.rename(g_temp, test_c_file + '.g.flags.h5')
-        os.rename(x_temp, test_c_file + '.x.flags.h5')
+        if os.path.exists(basename + '.waterfall.flags.h5'):
+            os.remove(basename + '.waterfall.flags.h5')
+        if os.path.exists(utils.strip_extension(test_d_file) + '.flags.h5'):
+            os.remove(utils.strip_extension(test_d_file) + '.flags.h5')
+        os.remove(g_temp)
+        os.remove(x_temp)
 
     def test_xrfi_h1c_run_uvfits_xrfi_path(self):
         # test uvfits file with xrfi path
         uvd = UVData()
         uvd.read_miriad(test_d_file)
-        outtest = os.path.join(xrfi_path, os.path.basename(test_uvfits_file)) + '.flags.h5'
+        basename = utils.strip_extension(os.path.basename(test_uvfits_file))
+        outtest = os.path.join(xrfi_path, basename) + '.flags.h5'
         if os.path.exists(outtest):
             os.remove(outtest)
         xrfi.xrfi_h1c_run(test_uvfits_file, infile_format='uvfits',
@@ -689,9 +688,10 @@ class TestWrappers():
         # miriad model file test
         uvd = UVData()
         uvd.read_miriad(test_d_file)
-        ext = '.flag'
+        ext = 'flag'
         uvd.read_miriad(test_d_file)
-        outtest = os.path.join(xrfi_path, os.path.basename(test_d_file)) + ext
+        basename = os.path.basename(utils.strip_extension(test_d_file))
+        outtest = '.'.join([os.path.join(xrfi_path, basename), ext])
         if os.path.exists(outtest):
             os.remove(outtest)
         xrfi.xrfi_h1c_run(uvd, history='Just a test.', filename=test_d_file,
@@ -703,8 +703,9 @@ class TestWrappers():
         # uvfits model file test
         uvd = UVData()
         uvd.read_miriad(test_d_file)
-        ext = '.flag'
-        outtest = os.path.join(xrfi_path, os.path.basename(test_uvfits_file)) + ext
+        ext = 'flag'
+        basename = os.path.basename(utils.strip_extension(test_uvfits_file))
+        outtest = '.'.join([os.path.join(xrfi_path, basename), ext])
         if os.path.exists(outtest):
             os.remove(outtest)
         xrfi.xrfi_h1c_run(uvd, history='Just a test.', filename=test_d_file,
@@ -725,9 +726,10 @@ class TestWrappers():
         # input calfits
         uvd = UVData()
         uvd.read_miriad(test_d_file)
-        ext = '.flag'
-        outtest1 = os.path.join(xrfi_path, os.path.basename(test_c_file)) + '.x' + ext
-        outtest2 = os.path.join(xrfi_path, os.path.basename(test_c_file)) + '.g' + ext
+        ext = 'flag'
+        cbasename = os.path.basename(utils.strip_extension(test_c_file))
+        outtest1 = '.'.join([os.path.join(xrfi_path, cbasename), 'x', ext])
+        outtest2 = '.'.join([os.path.join(xrfi_path, cbasename), 'g', ext])
         if os.path.exists(outtest1):
             os.remove(outtest1)
         if os.path.exists(outtest2):
@@ -760,8 +762,9 @@ class TestWrappers():
         history = 'history stuff'
 
         # test running on our test data
-        dest_file = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R')
-        dest_flag = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R.flags.h5')
+        basename, ext = utils.strip_extension(os.path.basename(test_d_file), return_ext=True)
+        dest_file = os.path.join(xrfi_path, basename + '.R.uv')
+        dest_flag = os.path.join(xrfi_path, basename + '.R.flags.h5')
         if os.path.exists(dest_file):
             shutil.rmtree(dest_file)
         if os.path.exists(dest_flag):
@@ -773,20 +776,22 @@ class TestWrappers():
         shutil.rmtree(dest_file)  # clean up
 
         # uvfits output
-        dest_file = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R.uvfits')
+        basename = os.path.basename(utils.strip_extension(test_d_file))
+        dest_file = os.path.join(xrfi_path, basename + '.R.uvfits')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         xrfi.xrfi_h1c_apply(test_d_file, history, xrfi_path=xrfi_path, flag_file=test_f_file_flags,
-                            outfile_format='uvfits', extension='R.uvfits', output_uvflag=False)
+                            outfile_format='uvfits', extension='R', output_uvflag=False)
         nt.assert_true(os.path.exists(dest_file))
         os.remove(dest_file)
 
         # uvh5 output
-        dest_file = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R.uvh5')
+        basename = os.path.basename(utils.strip_extension(test_d_file))
+        dest_file = os.path.join(xrfi_path, basename + '.R.uvh5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         xrfi.xrfi_h1c_apply(test_d_file, history, xrfi_path=xrfi_path, flag_file=test_f_file_flags,
-                            outfile_format='uvh5', extension='R.uvh5', output_uvflag=False)
+                            outfile_format='uvh5', extension='R', output_uvflag=False)
         nt.assert_true(os.path.exists(dest_file))
         os.remove(dest_file)
 
@@ -804,8 +809,9 @@ class TestWrappers():
         # Outfile error
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, outfile_format='bla')
 
-        dest_file = os.path.join(xrfi_path, os.path.basename(test_d_file) + 'R.uvfits')
+        basename = utils.strip_extension(os.path.basename(test_d_file))
+        dest_file = os.path.join(xrfi_path, basename + '.R.uvfits')
         if not os.path.exists(dest_file):
             open(dest_file, 'a').close()
         nt.assert_raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, xrfi_path=xrfi_path,
-                         flag_file=test_f_file_flags, outfile_format='uvfits', extension='R.uvfits')
+                         flag_file=test_f_file_flags, outfile_format='uvfits', extension='R')
