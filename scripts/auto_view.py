@@ -36,7 +36,7 @@ if not args.show:
     # use a matplotlib backend that doesn't require an X session
     mpl.use('Agg')
 # this has to be called after matplotlibs use()
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # noqa
 
 # Get auto data
 autos = {}
@@ -181,7 +181,7 @@ xr = antpos[ants_connected, 0].max() - antpos[ants_connected, 0].min()
 yr = antpos[ants_connected, 1].max() - antpos[ants_connected, 1].min()
 plt.xlim([antpos[ants_connected, 0].min() - 0.05 * xr, antpos[ants_connected, 0].max() + 0.2 * xr])
 plt.ylim([antpos[ants_connected, 1].min() - 0.05 * yr, antpos[ants_connected, 1].max() + 0.1 * yr])
-plt.title(str(latest.datetime) + ' UTC; JD='+str(latest.jd))
+plt.title(str(latest.datetime) + ' UTC; JD=' + str(latest.jd))
 # Add polarization key
 for pol in ['xx', 'yy']:
     x = antpos[ants_connected, 0].min()
@@ -208,7 +208,7 @@ for rxr in np.unique(rxr_nums[ants_connected]):
                                                 vmin=vmin, vmax=vmax, cmap=goodbad)
                 else:
                     axarr[rxr - 1].scatter(0, i + 0.3 * poli[pol], marker='x', color='k')
-            except:
+            except BaseException:
                 axarr[rxr - 1].scatter(0, i + 0.3 * poli[pol], marker='x', color='k')
         axarr[rxr - 1].annotate(str(ant) + ',' + pams[ant], xy=[0.01, i])
     axarr[rxr - 1].set_yticks([])
@@ -272,23 +272,24 @@ for ai, ant in enumerate(ants):
     ax.set_ylim([vmin, 1.3 * vmax])
     if ai == 0:
         plt.legend(loc='best')
-f.suptitle(str(latest.datetime) + ' UTC; JD='+str(latest.jd))
+f.suptitle(str(latest.datetime) + ' UTC; JD=' + str(latest.jd))
 filename = os.path.join(outpath, basename + '.auto_specs.png')
 plt.savefig(filename)
 
 # Plot rms values at input of ADC's
+
+
 def plot_rms(data, POL='xx'):
     """Plots rms values at input to ADC's by looking at the autos.
 
     Args:
         data (dict): Dictionary of auto's.
         POL (str): String of polarization."""
-    f = plt.figure(figsize = (20, 12))
+    f = plt.figure(figsize=(20, 12))
     CHUNK = 256
     BINS = 24
     rmscolors = 'bgrcmy'
-    ants = [i for (i, pp) in data if pp == POL]
-    ants.sort()
+    ants = sorted([i for (i, pp) in data if pp == POL])
     N = np.ceil(np.sqrt(len(ants)))
     M = np.ceil(len(ants) / float(N))
     bins = np.logspace(-2, 4, BINS, base=2.)
@@ -316,8 +317,8 @@ def plot_rms(data, POL='xx'):
         else:
             plt.xlabel(r'$V_{\rm rms}$ [bits]')
         plt.grid()
-    f.suptitle(str(latest.datetime) + ' UTC' + '    {0}'.format(POL)+ '; JD='+str(latest.jd))
-    plt.tight_layout(rect=(0,0,1,.95))
+    f.suptitle(str(latest.datetime) + ' UTC' + '    {0}'.format(POL) + '; JD=' + str(latest.jd))
+    plt.tight_layout(rect=(0, 0, 1, .95))
 
 
 for pol in ['xx', 'yy']:

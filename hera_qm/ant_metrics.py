@@ -108,7 +108,7 @@ def per_antenna_modified_z_scores(metric):
     antpols = set([key[1] for key in metric])
     for antpol in antpols:
         values = np.array([val for (key, val) in metric.items()
-                          if key[1] == antpol])
+                           if key[1] == antpol])
         median = np.nanmedian(values)
         medAbsDev = np.nanmedian(np.abs(values - median))
         for (key, val) in metric.items():

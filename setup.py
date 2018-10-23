@@ -23,6 +23,8 @@ def package_files(package_dir, subdirectory):
             path = path.replace(package_dir + '/', '')
             paths.append(os.path.join(path, filename))
     return paths
+
+
 data_files = package_files('hera_qm', 'data')
 
 setup_args = {

@@ -25,6 +25,7 @@ import hera_qm.tests as qmtest
 
 class fake_data():
     """Generate fake data with known values."""
+
     def __init__(self):
         self.data = {}
         for bl in [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]:
@@ -199,7 +200,7 @@ class TestLowLevelFunctions(unittest.TestCase):
                                       axis=0))
             self.assertEqual(p, testp)
         for key in list(self.data.keys()):
-                self.assertIn((key[0], key[1], key[2]), power)
+            self.assertIn((key[0], key[1], key[2]), power)
 
     def test_load_antenna_metrics(self):
         # load a metrics file and check some values
@@ -503,42 +504,42 @@ class TestAntmetricsRun(unittest.TestCase):
                          args.run_red_corr, args.run_cross_pols)
 
     def test_run_ant_metrics_one_file(self):
-            a = utils.get_metrics_ArgumentParser('ant_metrics')
-            if DATA_PATH not in sys.path:
-                sys.path.append(DATA_PATH)
-            arg0 = "-p xx,yy,xy,yx"
-            arg1 = "--crossCut=5"
-            arg2 = "--deadCut=5"
-            arg3 = "--extension=.ant_metrics.hdf5"
-            arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
-                                                           'test_output'))
-            arg5 = "--vis_format=miriad"
-            arg6 = "--alwaysDeadCut=10"
-            arg7 = "--run_mean_vij"
-            arg8 = "--run_red_corr"
-            arg9 = "--run_cross_pols"
-            arguments = ' '.join([arg1, arg2, arg3, arg4, arg5, arg6,
-                                  arg7, arg8, arg9])
+        a = utils.get_metrics_ArgumentParser('ant_metrics')
+        if DATA_PATH not in sys.path:
+            sys.path.append(DATA_PATH)
+        arg0 = "-p xx,yy,xy,yx"
+        arg1 = "--crossCut=5"
+        arg2 = "--deadCut=5"
+        arg3 = "--extension=.ant_metrics.hdf5"
+        arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+                                                       'test_output'))
+        arg5 = "--vis_format=miriad"
+        arg6 = "--alwaysDeadCut=10"
+        arg7 = "--run_mean_vij"
+        arg8 = "--run_red_corr"
+        arg9 = "--run_cross_pols"
+        arguments = ' '.join([arg1, arg2, arg3, arg4, arg5, arg6,
+                              arg7, arg8, arg9])
 
-            # test running with a lone file
-            lone_file = os.path.join(DATA_PATH,
-                                     'zen.2457698.40355.xx.HH.uvcAA')
-            cmd = ' '.join([arguments, lone_file])
-            args = a.parse_args(cmd.split())
-            history = cmd
-            pols = list(args.pol.split(','))
+        # test running with a lone file
+        lone_file = os.path.join(DATA_PATH,
+                                 'zen.2457698.40355.xx.HH.uvcAA')
+        cmd = ' '.join([arguments, lone_file])
+        args = a.parse_args(cmd.split())
+        history = cmd
+        pols = list(args.pol.split(','))
 
-            # this test raises a warning, then fails...
-            uvtest.checkWarnings(nt.assert_raises,
-                                 [AssertionError, ant_metrics.ant_metrics_run,
-                                  args.files, pols, args.crossCut,
-                                  args.deadCut, args.alwaysDeadCut,
-                                  args.metrics_path,
-                                  args.extension, args.vis_format,
-                                  args.verbose, history, args.run_mean_vij,
-                                  args.run_red_corr, args.run_cross_pols],
-                                 nwarnings=1,
-                                 message='Could not find')
+        # this test raises a warning, then fails...
+        uvtest.checkWarnings(nt.assert_raises,
+                             [AssertionError, ant_metrics.ant_metrics_run,
+                              args.files, pols, args.crossCut,
+                              args.deadCut, args.alwaysDeadCut,
+                              args.metrics_path,
+                              args.extension, args.vis_format,
+                              args.verbose, history, args.run_mean_vij,
+                              args.run_red_corr, args.run_cross_pols],
+                             nwarnings=1,
+                             message='Could not find')
 
     def test_ant_metrics_run_no_metrics(self):
         """Test an argument is raised if no metrics are set to True."""
