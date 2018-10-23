@@ -360,7 +360,7 @@ class FirstCal_Metrics(object):
                              '"y" are currently supported.')
 
         # get file prefix
-        if type(calfits_files) is list:
+        if isinstance(calfits_files, list):
             calfits_file = calfits_files[0]
         else:
             calfits_file = calfits_files

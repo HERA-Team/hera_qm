@@ -73,7 +73,7 @@ class Template():
         for data, rfi in self.rfi_gen():
             try:
                 f = func(data, *arg)
-            except:
+            except BaseException:
                 # AssertionError check to make sure kernel size isn't too big
                 self.assertRaises(AssertionError, func, data, *arg)
                 f = fake_flags(SIZE)
