@@ -728,8 +728,8 @@ class TestWrappers():
         uvd.read_miriad(test_d_file)
         ext = 'flag'
         cbasename = os.path.basename(utils.strip_extension(test_c_file))
-        outtest1 = os.path.join(xrfi_path, cbasename) + '.x.' + ext
-        outtest2 = os.path.join(xrfi_path, cbasename) + '.g.' + ext
+        outtest1 = '.'.join([os.path.join(xrfi_path, cbasename), 'x', ext])
+        outtest2 = '.'.join([os.path.join(xrfi_path, cbasename), 'g', ext])
         if os.path.exists(outtest1):
             os.remove(outtest1)
         if os.path.exists(outtest2):

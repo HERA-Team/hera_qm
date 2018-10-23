@@ -185,12 +185,12 @@ def test_sequential_diff():
     uvn_diff3 = vis_metrics.sequential_diff(uvn, axis=(0, 1), pad=False)
 
     # assert noise std is equal to 1 within sampling error
-    nt.assert_almost_equal(np.std(uvn_diff1.data_array), 1.0, delta=1
-                           / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff2.data_array), 1.0, delta=1
-                           / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff3.data_array), 1.0, delta=1
-                           / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff1.data_array), 1.0,
+                           delta=1 / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff2.data_array), 1.0,
+                           delta=1 / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    nt.assert_almost_equal(np.std(uvn_diff3.data_array), 1.0,
+                           delta=1 / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
 
     # test pad
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=True)

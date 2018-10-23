@@ -412,8 +412,13 @@ def test_strip_extension():
     nt.assert_equal(root, path[:-4])
 
 
-def test_strip_extension_return_ext():
+def test_strip_extension_return_ext_basename():
     path = 'goo/foo.boo/hoo/woo.two'
     root, ext = utils.strip_extension(path, return_ext=True)
     nt.assert_equal(root, path[:-4])
+
+
+def test_strip_extension_return_ext_extension():
+    path = 'goo/foo.boo/hoo/woo.two'
+    root, ext = utils.strip_extension(path, return_ext=True)
     nt.assert_equal(ext, path[-3:])
