@@ -54,13 +54,10 @@ def check_noise_variance(data):
     return Cij
 
 
-def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
+def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, history=''):
     """
     Take a sequential (forward) difference of a visibility waterfall
-    as an estimate of the visibility noise. Note: the 1/sqrt(2) correction
-    needed after taking a difference is not applied to the data directly,
-    but is taken into account by the output t_int. If input data is a UVData
-    object, this correction is multiplied into the nsample_array.
+    as an estimate of the visibility noise.
 
     Parameters
     ----------
@@ -81,6 +78,9 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
     pad : boolean
         If True, insert an extra (flagged) column at the end
         of axis such that diff_data has same shape as input.
+
+    run_check : boolean
+        If True, run the UVData.check() function when complete.
 
     history : str
         A string to prepend to history of UVData if provided,
@@ -138,7 +138,9 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
             inv_t_int = np.true_divide(1., inv_sum, where=where)
 
             # get noise correction factor
-            corr = np.sqrt(np.true_divide(inv_t_int, t_int, where=where))
+            corr = np.true_divide(inv_t_int, t_int, where=where)
+            corr[np.isclose(corr, 0.0) + (corr < 0) + np.isnan(corr)] = 0.0   # fixes invalid value in sqrt RuntimeWarning
+            corr = np.sqrt(corr)
 
             # set bad pixel correction to 1.0 and t_int to 0.0 (i.e. flagged pixels)
             corr[~where] = 1.0
@@ -192,7 +194,8 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, history=''):
             uvd.nsample_array[bl_slice, 0, :, :] = n
 
         # run check
-        uvd.check()
+        if run_check:
+            uvd.check()
 
         # add to history
         uvd.history = "Took sequential difference with hera_qm [{}]\n{}\n{}\n{}" \
