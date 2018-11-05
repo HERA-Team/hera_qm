@@ -56,8 +56,7 @@ def check_noise_variance(data):
 
 def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, history=''):
     """
-    Take a sequential (forward) difference of a visibility waterfall
-    as an estimate of the visibility noise.
+    Take a sequential (forward) difference to estimate visibility noise.
 
     Parameters
     ----------
