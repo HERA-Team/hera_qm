@@ -30,7 +30,7 @@ install:
   # create environment and install dependencies
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip coverage
   - source activate test-environment
-  - conda install numpy scipy nose matplotlib astropy scikit-learn h5py coveralls aipy six pycodestyle
+  - conda install 'numpy <1.15.3' scipy nose matplotlib astropy scikit-learn h5py coveralls aipy six pycodestyle
   - pip install git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git
   - pip install git+https://github.com/HERA-Team/omnical.git
   - pip install git+https://github.com/HERA-Team/linsolve.git
