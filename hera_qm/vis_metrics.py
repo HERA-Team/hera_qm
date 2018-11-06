@@ -138,7 +138,8 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
 
             # get noise correction factor
             corr = np.true_divide(inv_t_int, t_int, where=where)
-            corr[np.isclose(corr, 0.0) + (corr < 0) + np.isnan(corr)] = 0.0   # fixes invalid value in sqrt RuntimeWarning
+            # remove potentially invalid entries from masked values in true_divide
+            corr[~where] = 0.
             corr = np.sqrt(corr)
 
             # set bad pixel correction to 1.0 and t_int to 0.0 (i.e. flagged pixels)
