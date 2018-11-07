@@ -7,6 +7,7 @@ import numpy as np
 import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
+from pyuvdata import utils as uvutils
 from .version import hera_qm_version_str
 from . import utils as qm_utils
 import warnings
@@ -63,6 +64,7 @@ class UVFlag():
                 self.baseline_array = input.baseline_array
                 self.ant_1_array = input.ant_1_array
                 self.ant_2_array = input.ant_2_array
+                self.Nants_telescope = input.Nants_telescope
             elif self.type == 'antenna':
                 self.ant_array = input.ant_array
             if label == '':
@@ -108,6 +110,7 @@ class UVFlag():
             self.lst_array = input.lst_array
             self.freq_array = input.freq_array
             self.polarization_array = input.polarization_array
+            self.Nants_telescope = input.Nants_telescope
             if copy_flags:
                 self.flag_array = input.flag_array
                 self.history += ' Flags copied from ' + str(input.__class__) + ' object.'
@@ -167,7 +170,7 @@ class UVFlag():
         if self.type == 'antenna':
             array_list += ['ant_array']
         elif self.type == 'baseline':
-            array_list += ['baseline_array', 'ant_1_array', 'ant_2_array']
+            array_list += ['baseline_array', 'ant_1_array', 'ant_2_array', 'Nants_telescope']
         if self.mode == 'flag':
             array_list += ['flag_array']
         elif self.mode == 'metric':
@@ -222,6 +225,12 @@ class UVFlag():
                     self.baseline_array = header['baseline_array'].value
                     self.ant_1_array = header['ant_1_array'].value
                     self.ant_2_array = header['ant_2_array'].value
+                    try:
+                        self.Nants_telescope = header['Nants_telescope'].value
+                    except KeyError:
+                        warnings.warn('Nants_telescope not available in file, '
+                                      'assuming < 2048.')
+                        self.Nants_telescope = None
                 elif self.type == 'antenna':
                     self.ant_array = header['ant_array'].value
 
@@ -269,6 +278,7 @@ class UVFlag():
                 header['baseline_array'] = self.baseline_array
                 header['ant_1_array'] = self.ant_1_array
                 header['ant_2_array'] = self.ant_2_array
+                header['Nants_telescope'] = self.Nants_telescope
             elif self.type == 'antenna':
                 header['ant_array'] = self.ant_array
 
@@ -406,6 +416,8 @@ class UVFlag():
             del(self.ant_1_array)
         if hasattr(self, 'ant_2_array') and self.type != 'baseline':
             del(self.ant_2_array)
+        if hasattr(self, 'Nants_telescope') and self.type != 'baseline':
+            del(self.Nants_telescope)
         if hasattr(self, 'ant_array') and self.type != 'antenna':
             del(self.ant_array)
         if hasattr(self, 'metric_array') and self.mode != 'metric':
@@ -543,6 +555,7 @@ class UVFlag():
         self.ant_2_array = uv.ant_2_array
         self.time_array = uv.time_array
         self.lst_array = uv.lst_array
+        self.Nants_telescope = uv.Nants_telescope
         self.history += 'Broadcast to type "baseline" with ' + hera_qm_version_str
 
     def to_antenna(self, uv, force_pol=False):
@@ -629,3 +642,30 @@ class UVFlag():
             raise ValueError('UVFlag object of type ' + self.type + ' does not '
                              'contain antenna pairs to index.')
         return np.where((self.ant_1_array == ant1) & (self.ant_2_array == ant2))[0]
+
+    def baseline_to_antnums(self, baseline):
+        """
+        Get the antenna numbers corresponding to a given baseline number.
+
+        Args:
+            baseline(int): baseline number
+
+        Returns:
+            (tuple): Antenna numbers corresponding to baseline.
+        """
+        assert self.type == 'baseline', 'Must be "baseline" type UVFlag object.'
+        return uvutils.baseline_to_antnums(baseline, self.Nants_telescope)
+
+    def get_baseline_nums(self):
+        """
+        Returns numpy array of unique baseline numbers in data.
+        """
+        assert self.type == 'baseline', 'Must be "baseline" type UVFlag object.'
+        return np.unique(self.baseline_array)
+
+    def get_antpairs(self):
+        """
+        Returns list of unique antpair tuples (ant1, ant2) in data.
+        """
+        assert self.type == 'baseline', 'Must be "baseline" type UVFlag object.'
+        return [self.baseline_to_antnums(bl) for bl in self.get_baseline_nums()]
