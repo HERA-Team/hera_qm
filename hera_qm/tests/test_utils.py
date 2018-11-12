@@ -131,6 +131,7 @@ def test_get_metrics_ArgumentParser_xrfi_apply():
     nt.assert_equal(args.extension, 'R')
     nt.assert_equal(args.flag_file, None)
     nt.assert_equal(args.output_uvflag, True)
+    nt.assert_equal(args.output_uvflag_ext, 'flags.h5')
     # try to set something
     args = a.parse_args(['--waterfalls', 'a,g'])
     nt.assert_equal(args.waterfalls, 'a,g')
