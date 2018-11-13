@@ -290,7 +290,7 @@ def get_metrics_ArgumentParser(method_name):
         a.add_argument('--output_uvflag', default=True, type=bool,
                        help='Whether to save a uvflag object with the final flag array. '
                        'The flag array will be identical to what is stored in the data.')
-        a.add_argument('--out_uvflag_ext', default='flags.h5', type=str,
+        a.add_argument('--output_uvflag_ext', default='flags.h5', type=str,
                        help='Extension to be appended to input file name. Default is "flags.h5".')
         a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
                        help='file for which to flag RFI (only one file allowed).')
