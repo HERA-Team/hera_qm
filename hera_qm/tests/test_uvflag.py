@@ -1033,3 +1033,10 @@ def test_antpair2ind_nonbaseline():
     uvf = UVFlag(test_f_file)
     uvf.to_waterfall()
     nt.assert_raises(ValueError, uvf.antpair2ind, 0, 3)
+
+
+def test_antenna_flag_file():
+    # Test data file for hera_cal, test that it does what we want.
+    uvf = UVFlag(os.path.join(DATA_PATH, 'antenna_flags.h5'))
+    nt.assert_equal(uvf.type, 'antenna')
+    nt.assert_equal(uvf.mode, 'flag')
