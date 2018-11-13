@@ -700,6 +700,7 @@ def test_to_baseline_flags():
     uvf.flag_array[0, 10, 0] = True  # Flag time0, chan10
     uvf.flag_array[1, 15, 0] = True  # Flag time1, chan15
     uvf.to_baseline(uv)
+    nt.assert_equal(uvf.type, 'baseline')
     nt.assert_true(np.all(uvf.baseline_array == uv.baseline_array))
     nt.assert_true(np.all(uvf.time_array == uv.time_array))
     times = np.unique(uvf.time_array)
@@ -815,6 +816,7 @@ def test_to_antenna_flags():
     uvf.flag_array[0, 10, 0] = True  # Flag time0, chan10
     uvf.flag_array[1, 15, 0] = True  # Flag time1, chan15
     uvf.to_antenna(uvc)
+    nt.assert_true(uvf.type == 'antenna')
     nt.assert_true(np.all(uvf.ant_array == uvc.ant_array))
     nt.assert_true(np.all(uvf.time_array == uvc.time_array))
     nt.assert_true(np.all(uvf.flag_array[:, 0, 10, 0, 0]))
