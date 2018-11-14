@@ -556,6 +556,7 @@ class UVFlag():
         self.time_array = uv.time_array
         self.lst_array = uv.lst_array
         self.Nants_telescope = uv.Nants_telescope
+        self.type = 'baseline'
         self.history += 'Broadcast to type "baseline" with ' + hera_qm_version_str
 
     def to_antenna(self, uv, force_pol=False):
@@ -604,6 +605,7 @@ class UVFlag():
                                                                    :, :, :]
         self.weights_array = self.weights_array.repeat(len(uv.ant_array), axis=0)
         self.ant_array = uv.ant_array
+        self.type = 'antenna'
         self.history += 'Broadcast to type "antenna" with ' + hera_qm_version_str
 
     def to_flag(self):
