@@ -10,8 +10,10 @@ from hera_qm.data import DATA_PATH
 from hera_qm import UVFlag
 from hera_qm.utils import lst_from_uv
 from hera_qm.version import hera_qm_version_str
+import shutil
 import copy
 import six
+import h5py
 if six.PY2:
     from hera_cal.io import HERAData
 
@@ -529,11 +531,11 @@ def test_inplace_add():
 def test_clear_unused_attributes():
     uv = UVFlag(test_f_file)
     nt.assert_true(hasattr(uv, 'baseline_array') & hasattr(uv, 'ant_1_array')
-                   & hasattr(uv, 'ant_2_array'))
+                   & hasattr(uv, 'ant_2_array') & hasattr(uv, 'Nants_telescope'))
     uv.type = 'antenna'
     uv.clear_unused_attributes()
     nt.assert_false(hasattr(uv, 'baseline_array') | hasattr(uv, 'ant_1_array')
-                    | hasattr(uv, 'ant_2_array'))
+                    | hasattr(uv, 'ant_2_array') | hasattr(uv, 'Nants_telescope'))
     uv.mode = 'flag'
     nt.assert_true(hasattr(uv, 'metric_array'))
     uv.clear_unused_attributes()
@@ -1042,3 +1044,40 @@ def test_antenna_flag_file():
     uvf = UVFlag(os.path.join(DATA_PATH, 'antenna_flags.h5'))
     nt.assert_equal(uvf.type, 'antenna')
     nt.assert_equal(uvf.mode, 'flag')
+
+
+def test_baseline_to_antnums():
+    uvf = UVFlag(test_f_file)
+    a1, a2 = uvf.baseline_to_antnums(uvf.baseline_array[0])
+    nt.assert_equal(a1, uvf.ant_1_array[0])
+    nt.assert_equal(a2, uvf.ant_2_array[0])
+
+
+def test_get_baseline_nums():
+    uvf = UVFlag(test_f_file)
+    bls = uvf.get_baseline_nums()
+    nt.assert_true(np.array_equal(bls, np.unique(uvf.baseline_array)))
+
+
+def test_get_antpairs():
+    uvf = UVFlag(test_f_file)
+    antpairs = uvf.get_antpairs()
+    for a1, a2 in antpairs:
+        ind = np.where((uvf.ant_1_array == a1) & (uvf.ant_2_array == a2))[0]
+        nt.assert_true(len(ind) > 0)
+    for a1, a2 in zip(uvf.ant_1_array, uvf.ant_2_array):
+        nt.assert_true((a1, a2) in antpairs)
+
+
+def test_missing_Nants_telescope():
+    testfile = os.path.join(DATA_PATH, 'test_missing_Nants.h5')
+    shutil.copyfile(test_f_file, testfile)
+
+    with h5py.File(testfile, 'r+') as f:
+        del(f['/Header/Nants_telescope'])
+    uvf = uvtest.checkWarnings(UVFlag, [testfile], {}, nwarnings=1,
+                               message='Nants_telescope not availabe')
+    uvf2 = UVFlag(test_f_file)
+    uvf2.Nants_telescope = None
+    nt.assert_true(uvf == uvf2)
+    os.remove(testfile)
