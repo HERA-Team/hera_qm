@@ -391,7 +391,7 @@ class TestAntennaMetrics(unittest.TestCase):
                         "but are no longer written by default.\n"
                         "Write to HDF5 format for future compatibility."]
         uvtest.checkWarnings(am.save_antenna_metrics,
-                             func_args=[outfile],
+                             func_args=[outfile], func_kwargs={'overwrite': True},
                              category=PendingDeprecationWarning, nwarnings=1,
                              message=warn_message)
 
@@ -433,7 +433,8 @@ class TestAntennaMetrics(unittest.TestCase):
 
         outfile = os.path.join(DATA_PATH, 'test_output',
                                'ant_metrics_output')
-        am.save_antenna_metrics(outfile)
+
+        am.save_antenna_metrics(outfile, overwrite=True)
         outname = os.path.join(DATA_PATH, 'test_output',
                                'ant_metrics_output.hdf5')
         nt.assert_true(os.path.isfile(outname))
