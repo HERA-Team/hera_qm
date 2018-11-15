@@ -498,7 +498,7 @@ def _parse_list_of_antpols(input_str):
     for entry in entries:
         ant, pol = entry[1:-1].split(",")
         pol = pol[-2]
-        li.append(tuple((int(ant), str(pol))))
+        li.append(tuple((int(ant), qm_utils._str_to_bytes(str(pol)))))
 
     return li
 
@@ -663,7 +663,9 @@ def _recursively_validate_dict(in_dict):
             in_dict[key] = list(map(tuple, in_dict[key]))
 
         if key in antpol_keys:
-            in_dict[key] = list(map(tuple, np.array(in_dict[key], dtype=antpol_dtype)))
+            # in_dict[key] = list(map(tuple, np.array(in_dict[key], dtype=antpol_dtype)))
+            in_dict[key] = [tuple((ant, qm_utils._bytes_to_str(pol)))
+                            for (ant, pol) in in_dict[key]]
 
         if key in known_string_keys and isinstance(in_dict[key], bytes):
             in_dict[key] = in_dict[key].decode()
