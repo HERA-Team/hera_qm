@@ -14,8 +14,7 @@ import shutil
 import copy
 import six
 import h5py
-if six.PY2:
-    from hera_cal.io import HERAData
+from hera_cal.io import HERAData
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
 test_c_file = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
