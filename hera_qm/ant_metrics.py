@@ -748,8 +748,9 @@ class AntennaMetrics():
 
             # Mostly likely dead antenna
             last_iter = list(self.allModzScores)[-1]
-            worstDeadCutRatio = None
-            worstCrossCutRatio = None
+            worstDeadCutRatio = -1
+            worstCrossCutRatio = -1
+
             if run_mean_vij and run_red_corr:
                 deadMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVij'],
                                                   self.allModzScores[last_iter]['redCorr'])
@@ -799,7 +800,7 @@ class AntennaMetrics():
             else:
                 break
 
-    def save_antenna_metrics(self, filename):
+    def save_antenna_metrics(self, filename, overwrite=False):
         """Output all meta-metrics and cut decisions to HDF5 file.
 
         Saves all cut decisions and meta-metrics in an HDF5 that can be loaded
@@ -826,7 +827,7 @@ class AntennaMetrics():
         out_dict['datafile_list'] = self.dataFileList
         out_dict['reds'] = self.reds
 
-        metrics_io.write_metric_file(filename, out_dict)
+        metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
 
 def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
