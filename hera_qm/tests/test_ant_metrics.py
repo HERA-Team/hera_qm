@@ -260,7 +260,6 @@ class TestLowLevelFunctions(unittest.TestCase):
         qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
 
 
-@unittest.skipIf(six.PY3, "This requires hera_cal which is not yet python 3 compatible")
 class TestAntennaMetrics(unittest.TestCase):
 
     def setUp(self):
@@ -467,7 +466,6 @@ class TestAntennaMetrics(unittest.TestCase):
             self.assertEqual(am2.removalIter[(deadant, antpol)], -1)
 
 
-@unittest.skipIf(six.PY3, "This requires hera_cal which is not yet python 3 compatible")
 class TestAntmetricsRun(unittest.TestCase):
 
     def test_run_ant_metrics_no_files(self):

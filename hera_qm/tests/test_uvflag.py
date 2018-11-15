@@ -68,7 +68,6 @@ def test_init_UVData_copy_flags():
     nt.assert_true(hera_qm_version_str in uvf.history)
 
 
-@unittest.skipIf(six.PY3, "This requires hera_cal which is not yet python 3 compatible")
 def test_init_HERAData():
     uv = UVData()
     uv.read_miriad(test_d_file)
