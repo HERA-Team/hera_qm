@@ -1042,8 +1042,11 @@ def test_antpair2ind_nonbaseline():
 def test_antenna_flag_file():
     # Test data file for hera_cal, test that it does what we want.
     uvf = UVFlag(os.path.join(DATA_PATH, 'antenna_flags.h5'))
+    uvc = UVCal()
+    uvc.read_calfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits'))
     nt.assert_equal(uvf.type, 'antenna')
     nt.assert_equal(uvf.mode, 'flag')
+    nt.assert_equal(uvf.flag_array.shape, uvc.gain_array.shape)
 
 
 def test_baseline_to_antnums():
