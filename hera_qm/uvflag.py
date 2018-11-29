@@ -435,6 +435,10 @@ class UVFlag():
         Args:
             method: How to collapse the dimension(s)
             keep_pol: Whether to also collapse the polarization dimension
+                      If keep_pol is False, and the original UVFlag object has more
+                      than one polarization, the resulting polarization_array
+                      will be a single element array with a comma separated string
+                      encoding the original polarizations.
         """
         method = method.lower()
         avg_f = qm_utils.averaging_dict[method]
@@ -481,6 +485,11 @@ class UVFlag():
     def collapse_pol(self, method='quadmean'):
         """
         Collapse the polarization axis using a given method.
+
+        If the original UVFlag object has more than one polarization,
+        the resulting polarization_array will be a single element array with a
+        comma separated string encoding the original polarizations.
+
         Args:
             method: How to collapse the dimension(s)
         """
