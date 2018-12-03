@@ -612,6 +612,25 @@ def test_collapse_pol():
     uvf2.collapse_pol()
     nt.assert_true(len(uvf2.polarization_array) == 1)
     nt.assert_true(uvf2.polarization_array[0] == ','.join(map(str, uvf.polarization_array)))
+    nt.assert_equal(uvf2.mode, 'metric')
+    nt.assert_true(hasattr(uvf2, 'metric_array'))
+    nt.assert_false(hasattr(uvf2, 'flag_array'))
+
+
+def test_collapse_pol_or():
+    uvf = UVFlag(test_f_file)
+    uvf.to_flag()
+    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf2 = uvf.copy()
+    uvf2.polarization_array[0] = -4
+    uvf.__add__(uvf2, inplace=True, axis='pol')  # Concatenate to form multi-pol object
+    uvf2 = uvf.copy()
+    uvf2.collapse_pol(method='or')
+    nt.assert_true(len(uvf2.polarization_array) == 1)
+    nt.assert_true(uvf2.polarization_array[0] == ','.join(map(str, uvf.polarization_array)))
+    nt.assert_equal(uvf2.mode, 'flag')
+    nt.assert_true(hasattr(uvf2, 'flag_array'))
+    nt.assert_false(hasattr(uvf2, 'metric_array'))
 
 
 def test_collapse_single_pol():
@@ -634,6 +653,9 @@ def test_collapse_pol_flag():
     uvf2.collapse_pol()
     nt.assert_true(len(uvf2.polarization_array) == 1)
     nt.assert_true(uvf2.polarization_array[0] == ','.join(map(str, uvf.polarization_array)))
+    nt.assert_equal(uvf2.mode, 'metric')
+    nt.assert_true(hasattr(uvf2, 'metric_array'))
+    nt.assert_false(hasattr(uvf2, 'flag_array'))
 
 
 def test_to_waterfall_bl_flags():

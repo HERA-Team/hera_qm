@@ -435,6 +435,10 @@ class UVFlag():
         Args:
             method: How to collapse the dimension(s)
             keep_pol: Whether to also collapse the polarization dimension
+                      If keep_pol is False, and the original UVFlag object has more
+                      than one polarization, the resulting polarization_array
+                      will be a single element array with a comma separated string
+                      encoding the original polarizations.
         """
         method = method.lower()
         avg_f = qm_utils.averaging_dict[method]
@@ -481,6 +485,11 @@ class UVFlag():
     def collapse_pol(self, method='quadmean'):
         """
         Collapse the polarization axis using a given method.
+
+        If the original UVFlag object has more than one polarization,
+        the resulting polarization_array will be a single element array with a
+        comma separated string encoding the original polarizations.
+
         Args:
             method: How to collapse the dimension(s)
         """
@@ -498,10 +507,13 @@ class UVFlag():
             self.polarization_array = np.array([','.join(map(str, self.polarization_array))])
         else:
             warnings.warn('Cannot collapse polarization axis when only one pol present.')
-        if self.mode == 'flag':
+            return
+        if (method == 'or') and (self.mode == 'flag'):
             self.flag_array = darr
         else:
             self.metric_array = darr
+            self.mode = 'metric'
+        self.clear_unused_attributes()
 
     def to_baseline(self, uv, force_pol=False):
         '''Convert a UVFlag object of type "waterfall" to type "baseline".
