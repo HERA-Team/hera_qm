@@ -23,6 +23,7 @@ from . import utils as qm_utils
 # antpol items look like (antenna, antpol) with types (int, string)
 antpol_dtype = np.dtype([('ant', np.int32),
                          ('pol', np.dtype('S1'))])
+
 # antpair items look like (ant1, ant2) with types (int, int)
 antpair_dtype = np.dtype([('ant1', np.int32),
                           ('ant2', np.int32)])
@@ -710,13 +711,13 @@ def load_metric_file(filename):
 def process_ex_ants(ex_ants=None, metrics_file=None):
     """
     Return list of excluded antennas from command line argument.
+
     Input:
        ex_ants -- comma-separated value list of excluded antennas
        metrics_file -- file containing array info from hera_qm
     Output:
        list of excluded antennas
     """
-
     # test that there are ex_ants to process
     if ex_ants is None and metrics_file is None:
         return []
