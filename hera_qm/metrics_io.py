@@ -222,13 +222,13 @@ def write_metric_file(filename, input_dict, overwrite=False):
             header = f.create_group('Header')
             header.attrs['key_is_string'] = True
 
-            header['history'] = qm_utils._str_to_bytes(input_dict.pop('history',
-                                                                      'No History Found. '
-                                                                      'Written by '
-                                                                      'hera_qm.metrics_io'))
+            header['history'] = np.string_(input_dict.pop('history',
+                                                          'No History Found. '
+                                                          'Written by '
+                                                          'hera_qm.metrics_io'))
             header['history'].attrs['key_is_string'] = True
 
-            header['version'] = qm_utils._str_to_bytes(input_dict.pop('version', hera_qm_version_str))
+            header['version'] = np.string_(input_dict.pop('version', hera_qm_version_str))
             header['version'].attrs['key_is_string'] = True
 
             # Create group for metrics data in file
@@ -654,7 +654,7 @@ def _recursively_validate_dict(in_dict):
     for key in in_dict:
         if key in ['history', 'version']:
             if isinstance(in_dict[key], bytes):
-                in_dict[key] = qm_utils._bytes_to_str(in_dict[key])
+                in_dict[key] = qm_utils._bytes_to_str(in_dict[key].value.tostring())
 
         if key == 'reds':
             in_dict[key] = _reds_dict_to_list(in_dict[key])
@@ -669,7 +669,7 @@ def _recursively_validate_dict(in_dict):
             in_dict[key] = in_dict[key].decode()
 
         if key in list_of_strings_keys:
-            in_dict[key] = [qm_utils._bytes_to_str(n) if isinstance(n, bytes)
+            in_dict[key] = [qm_utils._bytes_to_str(n.value.tostring()) if isinstance(n, bytes)
                             else n for n in in_dict[key]]
 
         if isinstance(in_dict[key], np.int64):

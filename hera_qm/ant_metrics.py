@@ -14,7 +14,6 @@ import re
 from collections import OrderedDict
 from .version import hera_qm_version_str
 from . import utils, metrics_io
-import h5py
 import warnings
 
 

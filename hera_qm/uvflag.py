@@ -211,16 +211,20 @@ class UVFlag():
             with h5py.File(filename, 'r') as f:
                 header = f['/Header']
 
-                self.type = qm_utils._bytes_to_str(header['type'].value)
-                self.mode = qm_utils._bytes_to_str(header['mode'].value)
+                self.type = qm_utils._bytes_to_str(header['type'].value.tostring())
+                self.mode = qm_utils._bytes_to_str(header['mode'].value.tostring())
                 self.time_array = header['time_array'].value
                 self.lst_array = header['lst_array'].value
                 self.freq_array = header['freq_array'].value
-                self.history = qm_utils._bytes_to_str(header['history'].value) + ' Read by ' + hera_qm_version_str
+                self.history = qm_utils._bytes_to_str(header['history'].value.tostring()) + ' Read by ' + hera_qm_version_str
                 self.history += history
                 if 'label' in header.keys():
-                    self.label = qm_utils._bytes_to_str(header['label'].value)
-                self.polarization_array = header['polarization_array'].value
+                    self.label = qm_utils._bytes_to_str(header['label'].value.tostring())
+                if header['polarization_array'].dtype.type is np.string_:
+                    self.polarization_array = [qm_utils._bytes_to_str(pol.tostring())
+                                               for pol in header['polarization_array'].value]
+                else:
+                    self.polarization_array = header['polarization_array'].value
                 if self.type == 'baseline':
                     self.baseline_array = header['baseline_array'].value
                     self.ant_1_array = header['ant_1_array'].value
@@ -265,14 +269,22 @@ class UVFlag():
             header = f.create_group('Header')
 
             # write out metadata
-            header['type'] = qm_utils._str_to_bytes(self.type)
-            header['mode'] = qm_utils._str_to_bytes(self.mode)
+            header['type'] = np.string_(self.type)
+            header['mode'] = np.string_(self.mode)
             header['time_array'] = self.time_array
             header['lst_array'] = self.lst_array
             header['freq_array'] = self.freq_array
-            header['polarization_array'] = self.polarization_array
-            header['history'] = qm_utils._str_to_bytes(self.history + 'Written by ' + hera_qm_version_str)
-            header['label'] = qm_utils._str_to_bytes(self.label)
+            if isinstance(self.polarization_array[0], str):
+                if six.PY2:
+                    n_pols = len(self.polarization_array)
+                    max_len_pols = np.amax([len(p) for p in self.polarization_array])
+                    dtype = "S{:d}".format(max_len_pols)
+                    header.create_dataset('polarization_array', (n_pols,), dtype=dtype,
+                                          data=self.polarization_array)
+                else:
+                    header['polarization_array'] = np.string_(self.polarization_array)
+            header['history'] = np.string_(self.history + 'Written by ' + hera_qm_version_str)
+            header['label'] = np.string_(self.label)
 
             if self.type == 'baseline':
                 header['baseline_array'] = self.baseline_array
