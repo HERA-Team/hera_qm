@@ -363,7 +363,8 @@ def generate_fullpol_file_list(files, pol_list):
     elif pol_check.size > 1:
         raise ValueError("At least one input file only contains pols: {pol}."
                          "Must provide a list of full polarization files or "
-                         "")
+                         "files with single polarizations in the name of the "
+                         "file (e.g. zen.JD.pol.HH.uv)")
 
     for filename in files:
         abspath = os.path.abspath(filename)
