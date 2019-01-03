@@ -253,7 +253,7 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
     """
     if group_is_ordered:
         out_dict = OrderedDict()
-        key_list = h5file[path + 'key_order'].value
+        key_list = h5file[path + 'key_order'][()]
     else:
         out_dict = {}
         key_list = list(h5file[path].keys())
@@ -266,10 +266,10 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
 
         if isinstance(item, h5py.Dataset):
             if item.attrs['key_is_string']:
-                out_dict[str(key)] = item.value
+                out_dict[str(key)] = item[()]
             else:
                 out_key = _parse_key(key)
-                out_dict[out_key] = item.value
+                out_dict[out_key] = item[()]
 
         elif isinstance(item, h5py.Group):
             if item.attrs['key_is_string']:
