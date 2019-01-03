@@ -3,6 +3,7 @@
 # Licensed under the MIT License
 
 from __future__ import print_function, division, absolute_import
+from functools import reduce
 import re
 import os
 import warnings
@@ -331,6 +332,38 @@ def generate_fullpol_file_list(files, pol_list):
     """
     # initialize
     file_list = []
+
+    # Check if all input files are full-pol files
+    # if so return the input files as the full list
+
+    # First create the check variable
+    pol_check = np.copy(pol_list)
+
+    # use reduce to compare the input pol list with the pols of the file
+    # save into pol_check
+    # this reduce with intersection will compute the mininum matching
+    # polarizations for all input files
+    uvd = UVData()
+
+    for filename in files:
+        if filename.split('.')[-1] == 'uvh5':
+            uvd.read_uvh5(filename, read_data=False)
+        else:
+            uvd.read(filename)
+
+        input_pols = uvutils.polnum2str(uvd.polarization_array)
+        # Using reduce here saves us a for-loop
+        # though it can easily be re-written as one for clarity
+        pol_check = reduce(np.intersect1d, [input_pols, pol_list, pol_check])
+
+    del uvd
+
+    if np.array_equal(np.sort(pol_list), np.sort(pol_check)):
+        return files
+    elif pol_check.size > 1:
+        raise ValueError("At least one input file only contains pols: {pol}."
+                         "Must provide a list of full polarization files or "
+                         "")
 
     for filename in files:
         abspath = os.path.abspath(filename)
