@@ -211,36 +211,36 @@ class UVFlag():
             with h5py.File(filename, 'r') as f:
                 header = f['/Header']
 
-                self.type = qm_utils._bytes_to_str(header['type'].value)
-                self.mode = qm_utils._bytes_to_str(header['mode'].value)
-                self.time_array = header['time_array'].value
-                self.lst_array = header['lst_array'].value
-                self.freq_array = header['freq_array'].value
-                self.history = qm_utils._bytes_to_str(header['history'].value) + ' Read by ' + hera_qm_version_str
+                self.type = qm_utils._bytes_to_str(header['type'][()])
+                self.mode = qm_utils._bytes_to_str(header['mode'][()])
+                self.time_array = header['time_array'][()]
+                self.lst_array = header['lst_array'][()]
+                self.freq_array = header['freq_array'][()]
+                self.history = qm_utils._bytes_to_str(header['history'][()]) + ' Read by ' + hera_qm_version_str
                 self.history += history
                 if 'label' in header.keys():
-                    self.label = qm_utils._bytes_to_str(header['label'].value)
-                self.polarization_array = header['polarization_array'].value
+                    self.label = qm_utils._bytes_to_str(header['label'][()])
+                self.polarization_array = header['polarization_array'][()]
                 if self.type == 'baseline':
-                    self.baseline_array = header['baseline_array'].value
-                    self.ant_1_array = header['ant_1_array'].value
-                    self.ant_2_array = header['ant_2_array'].value
+                    self.baseline_array = header['baseline_array'][()]
+                    self.ant_1_array = header['ant_1_array'][()]
+                    self.ant_2_array = header['ant_2_array'][()]
                     try:
-                        self.Nants_telescope = header['Nants_telescope'].value
+                        self.Nants_telescope = header['Nants_telescope'][()]
                     except KeyError:
                         warnings.warn('Nants_telescope not available in file, '
                                       'assuming < 2048.')
                         self.Nants_telescope = None
                 elif self.type == 'antenna':
-                    self.ant_array = header['ant_array'].value
+                    self.ant_array = header['ant_array'][()]
 
                 dgrp = f['/Data']
                 if self.mode == 'metric':
-                    self.metric_array = dgrp['metric_array'].value
+                    self.metric_array = dgrp['metric_array'][()]
                 elif self.mode == 'flag':
-                    self.flag_array = dgrp['flag_array'].value
+                    self.flag_array = dgrp['flag_array'][()]
 
-                self.weights_array = dgrp['weights_array'].value
+                self.weights_array = dgrp['weights_array'][()]
 
             self.clear_unused_attributes()
 
