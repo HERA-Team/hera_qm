@@ -90,7 +90,7 @@ def test_recursive_adds_numpy_array_to_h5file():
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
 
-        nt.assert_true(np.allclose(test_array, h5_test["0"].value))
+        nt.assert_true(np.allclose(test_array, h5_test["0"][()]))
     os.remove(test_file)
 
 
@@ -102,7 +102,7 @@ def test_recursive_adds_nested_numpy_array_to_h5file():
     good_dict = {'0': {1: test_array}}
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
-        nt.assert_true(np.allclose(test_array, h5_test["0/1"].value))
+        nt.assert_true(np.allclose(test_array, h5_test["0/1"][()]))
     os.remove(test_file)
 
 
@@ -115,7 +115,7 @@ def test_recursive_adds_scalar_to_h5file():
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
 
-        nt.assert_equal(test_scalar, h5_test["0"].value)
+        nt.assert_equal(test_scalar, h5_test["0"][()])
     os.remove(test_file)
 
 
@@ -128,7 +128,7 @@ def test_recursive_adds_nested_scalar_to_h5file():
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
 
-        nt.assert_equal(test_scalar, h5_test["0/1"].value)
+        nt.assert_equal(test_scalar, h5_test["0/1"][()])
     os.remove(test_file)
 
 
@@ -170,9 +170,9 @@ def test_write_metric_file_hdf5():
     metrics_io.write_metric_file(test_file, test_dict)
 
     with h5py.File(test_file, 'r') as test_h5:
-        nt.assert_equal(test_scalar, test_h5["/Metrics/0"].value)
-        nt.assert_equal(test_scalar, test_h5["/Metrics/1/0"].value)
-        nt.assert_true(np.allclose(test_array, test_h5["Metrics/1/1"].value))
+        nt.assert_equal(test_scalar, test_h5["/Metrics/0"][()])
+        nt.assert_equal(test_scalar, test_h5["/Metrics/1/0"][()])
+        nt.assert_true(np.allclose(test_array, test_h5["Metrics/1/1"][()]))
     os.remove(test_file)
 
 
