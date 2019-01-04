@@ -25,28 +25,28 @@ def test_gen_full_returns_input_for_full_pol_files_uvh5():
     pol_list = ['xx', 'xy', 'yx', 'yy']
     full_pol_file = os.path.join(DATA_PATH,
                                  'zen.2457698.40355.full_pol_test.uvh5')
-    full_pol_file = [full_pol_file]
-    output_files = utils.generate_fullpol_file_list(full_pol_file, pol_list)
-
-    nt.assert_equal(sorted(full_pol_file), sorted(output_files))
+    full_pol_file_list = [full_pol_file]
+    expected_output_list = [[full_pol_file]]
+    output_files = utils.generate_fullpol_file_list(full_pol_file_list, pol_list)
+    nt.assert_equal(sorted(expected_output_list), sorted(output_files))
 
 
 def test_gen_full_returns_input_for_full_pol_files_uvfits():
     pol_list = ['xx', 'xy', 'yx', 'yy']
     full_pol_file = os.path.join(DATA_PATH,
                                  'zen.2457698.40355.full_pol_test.uvfits')
-    full_pol_file = [full_pol_file]
-    output_files = utils.generate_fullpol_file_list(full_pol_file, pol_list)
-
-    nt.assert_equal(sorted(full_pol_file), sorted(output_files))
+    full_pol_file_list = [full_pol_file]
+    expected_output_list = [[full_pol_file]]
+    output_files = utils.generate_fullpol_file_list(full_pol_file_list, pol_list)
+    nt.assert_equal(sorted(expected_output_list), sorted(output_files))
 
 
 def test_gen_full_returns_fullpol_for_partial_pol_files():
     pol_list = ['xx', 'xy', 'yx', 'yy']
     partial_pol_file = os.path.join(DATA_PATH, 'zen.2457698.40355.partial_pol_test.uvh5')
-    partial_pol_file = [partial_pol_file]
+    partial_pol_file_list = [partial_pol_file]
     nt.assert_raises(ValueError, utils.generate_fullpol_file_list,
-                     partial_pol_file, pol_list)
+                     partial_pol_file_list, pol_list)
 
 
 def test_generate_fullpol_file_list():
