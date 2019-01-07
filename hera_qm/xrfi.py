@@ -506,7 +506,7 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
 # Higher level functions that loop through data to calculate metrics
 #############################################################################
 
-def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
+def calculate_metric(uv, algorithm, gains=True, chisq=False, tot_chisq=False, **kwargs):
     """
     Iterate over waterfalls in a UVData or UVCal object and generate a UVFlag object
     of mode 'metric'.
@@ -515,8 +515,11 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
         uv: UVData or UVCal object to calculate metrics on.
         algorithm: (str) metric algorithm name. Must be defined in algorithm_dict.
         gains: (bool) If True, and uv is UVCal, calculate metric based on gains.
-               Supersedes chisq.
+               Supersedes chisq and tot_chisq.
         chisq: (bool) If True, and gains==False, calculate metric based on chisq.
+               Supersedes tot_chisq.
+        tot_chisq: (bool) If True, and gains==False, and chisq==False, calculate
+               metric based on total_quality_array.
         **kwargs: Keyword arguments that are passed to algorithm.
     Returns:
         uvf: UVFlag object of mode 'metric' corresponding to the uv object.
@@ -540,18 +543,24 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, **kwargs):
                     continue
                 uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), **kwargs)
     elif issubclass(uv.__class__, UVCal):
-        for ai in range(uv.Nants_data):
+        if tot_chisq and not (gains or chisq):
+            uvf.to_waterfall()
             for pi in range(uv.Njones):
-                # Note transposes are due to freq, time dimensions rather than the
-                # expected time, freq
-                if gains:
-                    d = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
-                elif chisq:
-                    d = np.abs(uv.quality_array[ai, 0, :, :, pi].T)
-                else:
-                    raise ValueError('When calculating metric for UVCal object, '
-                                     'gains or chisq must be set to True.')
-                uvf.metric_array[ai, 0, :, :, pi] = alg_func(d, **kwargs).T
+                d = np.abs(uv.total_quality_array[0, :, :, pi].T)
+                uvf.metric_array[:, :, pi] = alg_func(d, **kwargs)
+        else:
+            for ai in range(uv.Nants_data):
+                for pi in range(uv.Njones):
+                    # Note transposes are due to freq, time dimensions rather than the
+                    # expected time, freq
+                    if gains:
+                        d = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
+                    elif chisq:
+                        d = np.abs(uv.quality_array[ai, 0, :, :, pi].T)
+                    else:
+                        raise ValueError('When calculating metric for UVCal object, '
+                                         'gains or chisq must be set to True.')
+                    uvf.metric_array[ai, 0, :, :, pi] = alg_func(d, **kwargs).T
     return uvf
 
 

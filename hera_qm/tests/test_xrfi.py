@@ -562,7 +562,7 @@ class TestFlaggingFunctions():
 
 class TestHighLevelFunctions():
 
-    def test_calculate_metric(self):
+    def test_calculate_metric_vis(self):
         # setup
         uv = UVData()
         uv.read_miriad(test_d_file)
@@ -575,6 +575,7 @@ class TestHighLevelFunctions():
         filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3)
         nt.assert_true(np.allclose(filtered, uvf.metric_array[inds, 0, :, 0]))
 
+    def test_calculate_metric_gains(self):
         # Cal gains version
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
@@ -585,7 +586,10 @@ class TestHighLevelFunctions():
         filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3, Kf=3)
         nt.assert_true(np.allclose(filtered, uvf.metric_array[0, 0, :, :, 0]))
 
+    def test_calculate_metric_chisq(self):
         # Cal chisq version
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
         uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', gains=False, chisq=True,
                                     Kt=3, Kf=3)
         nt.assert_equal(uvf.mode, 'metric')
@@ -594,13 +598,25 @@ class TestHighLevelFunctions():
         filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3, Kf=3)
         nt.assert_true(np.allclose(filtered, uvf.metric_array[0, 0, :, :, 0]))
 
+    def test_calculate_metric_tot_chisq(self):
+        # Cal total chisq version
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', gains=False, chisq=False,
+                                    tot_chisq=True, Kt=3, Kf=3)
+        nt.assert_equal(uvf.mode, 'metric')
+        nt.assert_equal(uvf.type, 'waterfall')
+        filtered = xrfi.detrend_medfilt(np.abs(uvc.total_quality_array[0, :, :, 0]).T,
+                                        Kt=3, Kf=3)
+        nt.assert_true(np.allclose(filtered, uvf.metric_array[:, :, 0]))
+
     def test_calculate_metric_errors(self):
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
         nt.assert_raises(ValueError, xrfi.calculate_metric, 5, 'detrend_medfilt')
         nt.assert_raises(KeyError, xrfi.calculate_metric, uvc, 'my_awesome_algorithm')
         nt.assert_raises(ValueError, xrfi.calculate_metric, uvc, 'detrend_medfilt',
-                         gains=False, chisq=False)
+                         gains=False, chisq=False, tot_chisq=False)
 
 
 class TestPipelines():
