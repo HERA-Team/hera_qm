@@ -590,7 +590,7 @@ class TestHighLevelFunctions():
         # Cal chisq version
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
-        uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', gains=False, chisq=True,
+        uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', cal_mode='chisq',
                                     Kt=3, Kf=3)
         nt.assert_equal(uvf.mode, 'metric')
         nt.assert_equal(uvf.type, 'antenna')
@@ -602,8 +602,8 @@ class TestHighLevelFunctions():
         # Cal total chisq version
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
-        uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', gains=False, chisq=False,
-                                    tot_chisq=True, Kt=3, Kf=3)
+        uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', cal_mode='tot_chisq',
+                                    Kt=3, Kf=3)
         nt.assert_equal(uvf.mode, 'metric')
         nt.assert_equal(uvf.type, 'waterfall')
         filtered = xrfi.detrend_medfilt(np.abs(uvc.total_quality_array[0, :, :, 0]).T,
@@ -616,7 +616,7 @@ class TestHighLevelFunctions():
         nt.assert_raises(ValueError, xrfi.calculate_metric, 5, 'detrend_medfilt')
         nt.assert_raises(KeyError, xrfi.calculate_metric, uvc, 'my_awesome_algorithm')
         nt.assert_raises(ValueError, xrfi.calculate_metric, uvc, 'detrend_medfilt',
-                         gains=False, chisq=False, tot_chisq=False)
+                         cal_mode='foo')
 
 
 class TestPipelines():

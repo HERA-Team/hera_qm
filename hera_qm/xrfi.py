@@ -506,7 +506,7 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
 # Higher level functions that loop through data to calculate metrics
 #############################################################################
 
-def calculate_metric(uv, algorithm, gains=True, chisq=False, tot_chisq=False, **kwargs):
+def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
     """
     Iterate over waterfalls in a UVData or UVCal object and generate a UVFlag object
     of mode 'metric'.
@@ -514,12 +514,9 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, tot_chisq=False, **
     Args:
         uv: UVData or UVCal object to calculate metrics on.
         algorithm: (str) metric algorithm name. Must be defined in algorithm_dict.
-        gains: (bool) If True, and uv is UVCal, calculate metric based on gains.
-               Supersedes chisq and tot_chisq.
-        chisq: (bool) If True, and gains==False, calculate metric based on chisq.
-               Supersedes tot_chisq.
-        tot_chisq: (bool) If True, and gains==False, and chisq==False, calculate
-               metric based on total_quality_array.
+        cal_mode: (str) Mode to calculate metric if uv is UVCal. Options are
+                  'gain', 'chisq', and 'tot_chisq' to use the gain_array,
+                  'quality_array', and 'total_quality_array', respectively.
         **kwargs: Keyword arguments that are passed to algorithm.
     Returns:
         uvf: UVFlag object of mode 'metric' corresponding to the uv object.
@@ -543,7 +540,7 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, tot_chisq=False, **
                     continue
                 uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), **kwargs)
     elif issubclass(uv.__class__, UVCal):
-        if tot_chisq and not (gains or chisq):
+        if cal_mode == 'tot_chisq':
             uvf.to_waterfall()
             for pi in range(uv.Njones):
                 d = np.abs(uv.total_quality_array[0, :, :, pi].T)
@@ -553,13 +550,13 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, tot_chisq=False, **
                 for pi in range(uv.Njones):
                     # Note transposes are due to freq, time dimensions rather than the
                     # expected time, freq
-                    if gains:
+                    if cal_mode == 'gain':
                         d = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
-                    elif chisq:
+                    elif cal_mode == 'chisq':
                         d = np.abs(uv.quality_array[ai, 0, :, :, pi].T)
                     else:
                         raise ValueError('When calculating metric for UVCal object, '
-                                         'gains or chisq must be set to True.')
+                                         'cal_mode must be "gain", "chisq", or "tot_chisq".')
                     uvf.metric_array[ai, 0, :, :, pi] = alg_func(d, **kwargs).T
     return uvf
 
@@ -570,7 +567,7 @@ def calculate_metric(uv, algorithm, gains=True, chisq=False, tot_chisq=False, **
 
 def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
                   freq_threshold=0.5, time_threshold=0.05, return_summary=False,
-                  gains=True, chisq=False):
+                  cal_mode='gain'):
     """xrfi excision pipeline we used for H1C. Uses detrending and watershed algorithms above.
     Args:
         uv: UVData or UVCal object to flag
@@ -586,15 +583,15 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
                         time (single frequency). Default is 0.05.
         return_summary: Return UVFlag object with fraction of baselines/antennas
                         that were flagged in initial flag/watershed (before broadcasting)
-        gains (bool): If True (Default) and uv is UVCal, calculate flagging based on gains
-        chisq (bool): If True and uv is UVCal, calculate flagging based on chisquared.
-                      Note gains overrides chisq
+        cal_mode: (str) Mode to calculate metric if uv is UVCal. Options are
+                  'gain', 'chisq', and 'tot_chisq' to use the gain_array,
+                  'quality_array', and 'total_quality_array', respectively.
     Returns:
         uvf_f: UVFlag object of initial flags (initial flag + watershed)
         uvf_wf: UVFlag object of waterfall type after thresholding in time/freq
         uvf_w (if return_summary): UVFlag object with fraction of flags in uvf_f
     """
-    uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, gains=gains, chisq=chisq)
+    uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, cal_mode=cal_mode)
     uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None)
     uvf_f = watershed_flag(uvf, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
     uvf_w = copy.deepcopy(uvf_f)
@@ -766,7 +763,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold,
-                                      gains=False, chisq=True)
+                                      cal_mode='chisq')
         outfile = '.'.join([basename, 'x', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
