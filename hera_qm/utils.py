@@ -352,18 +352,21 @@ def generate_fullpol_file_list(files, pol_list):
             # if a file has more than one polarization but not all expected pols
             # raise an error that mixed pols are not allowed.
             if len(input_pols) > 1:
+                base_fname = os.path.basename(filename)
                 raise ValueError("The file: {fname} contains {npol} "
-                                 "polarizations: {pol}."
+                                 "polarizations: {pol}. "
                                  "Currently only full lists of all expected "
                                  "polarization files or lists of "
                                  "files with single polarizations in the "
                                  "name of the file (e.g. zen.JD.pol.HH.uv) "
-                                 "are allowed.")
+                                 "are allowed.".format(fname=base_fname,
+                                                       npol=len(input_pols),
+                                                       pol=input_pols))
 
             else:
                 # if only one polarization then try the old regex method
                 # assumes all files have the same number of polarizations
-                continue
+                break
     del uvd
 
     if full_pol_check:
