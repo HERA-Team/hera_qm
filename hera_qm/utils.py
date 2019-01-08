@@ -3,6 +3,7 @@
 # Licensed under the MIT License
 
 from __future__ import print_function, division, absolute_import
+from functools import reduce
 import re
 import os
 import warnings
@@ -331,6 +332,48 @@ def generate_fullpol_file_list(files, pol_list):
     """
     # initialize
     file_list = []
+
+    # Check if all input files are full-pol files
+    # if so return the input files as the full list
+    uvd = UVData()
+
+    for filename in files:
+        if filename.split('.')[-1] == 'uvh5':
+            uvd.read_uvh5(filename, read_data=False)
+        else:
+            uvd.read(filename)
+        # convert the polarization array to strings and compare with the
+        # expected input.
+        # If anyone file is not a full-pol file then this will be false.
+        input_pols = uvutils.polnum2str(uvd.polarization_array)
+        full_pol_check = np.array_equal(np.sort(input_pols), np.sort(pol_list))
+
+        if not full_pol_check:
+            # if a file has more than one polarization but not all expected pols
+            # raise an error that mixed pols are not allowed.
+            if len(input_pols) > 1:
+                base_fname = os.path.basename(filename)
+                raise ValueError("The file: {fname} contains {npol} "
+                                 "polarizations: {pol}. "
+                                 "Currently only full lists of all expected "
+                                 "polarization files or lists of "
+                                 "files with single polarizations in the "
+                                 "name of the file (e.g. zen.JD.pol.HH.uv) "
+                                 "are allowed.".format(fname=base_fname,
+                                                       npol=len(input_pols),
+                                                       pol=input_pols))
+
+            else:
+                # if only one polarization then try the old regex method
+                # assumes all files have the same number of polarizations
+                break
+    del uvd
+
+    if full_pol_check:
+        # Output of this function is a list of lists of files
+        # We expect all full pol files to be unique JDs so
+        # turn the list of files into a list of lists of each file.
+        return [[f] for f in files]
 
     for filename in files:
         abspath = os.path.abspath(filename)
