@@ -668,6 +668,7 @@ def test_to_waterfall_bl_flags():
     nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
                                               len(uvf.polarization_array)))
     nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
+    nt.assert_true(len(uvf.lst_array) == len(uvf.time_array))
 
 
 def test_to_waterfall_bl_flags_or():
@@ -680,6 +681,7 @@ def test_to_waterfall_bl_flags_or():
     nt.assert_true(uvf.flag_array.shape == (len(uvf.time_array), len(uvf.freq_array),
                                             len(uvf.polarization_array)))
     nt.assert_true(np.array_equal(uvf.weights_array, np.ones_like(uvf.flag_array, np.float)))
+    nt.assert_true(len(uvf.lst_array) == len(uvf.time_array))
     uvf = UVFlag(test_f_file)
     uvf.to_flag()
     uvf.weights_array = np.ones_like(uvf.weights_array)
@@ -691,6 +693,7 @@ def test_to_waterfall_bl_flags_or():
     nt.assert_true(uvf.flag_array.shape == (len(uvf.time_array), len(uvf.freq_array),
                                             len(uvf.polarization_array)))
     nt.assert_true(np.array_equal(uvf.weights_array, np.ones_like(uvf.flag_array, np.float)))
+    nt.assert_true(len(uvf.lst_array) == len(uvf.time_array))
 
 
 def test_to_waterfall_ant():
@@ -703,6 +706,7 @@ def test_to_waterfall_ant():
     nt.assert_true(uvf.metric_array.shape == (len(uvf.time_array), len(uvf.freq_array),
                                               len(uvf.polarization_array)))
     nt.assert_true(uvf.weights_array.shape == uvf.metric_array.shape)
+    nt.assert_true(len(uvf.lst_array) == len(uvf.time_array))
 
 
 def test_to_waterfall_waterfall():

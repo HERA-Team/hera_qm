@@ -471,7 +471,8 @@ class UVFlag():
                                                returned=True)
             darr = d
             self.weights_array = w
-            self.time_array = np.unique(self.time_array)
+            self.time_array, ri = np.unique(self.time_array, return_index=True)
+            self.lst_array = self.lst_array[ri]
         if (method == 'or') and (self.mode == 'flag'):
             self.flag_array = darr
         else:
