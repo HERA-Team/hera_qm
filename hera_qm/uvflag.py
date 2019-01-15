@@ -429,6 +429,44 @@ class UVFlag():
         ''' Simply return a copy of this object '''
         return copy.deepcopy(self)
 
+    def combine_metrics(self, others, method='quadmean', inplace=True):
+        """
+        Combine metric arrays between different UVFlag objects together.
+        Args:
+            others (UVFlag or list of UVFlags): Other UVFlag objects to combine
+                metrics with this one.
+            method (str, optional): Method to combine metrics. Default is "quadmean".
+            inplace (bool, optional): Perform combination in place. Default is True.
+        Returns:
+            uvf (UVFlag): If inplace==False, return new UVFlag object with combined metrics.
+        """
+        # Ensure others is iterable (in case of single UVFlag object)
+        others = uvutils._get_iterable(others)
+        if np.any([not isinstance(other, UVFlag) for other in others]):
+            raise ValueError('"others" must be UVFlag or list of UVFlag objects')
+        if (self.mode != 'metric') or np.any([other.mode != 'metric' for other in others]):
+            raise ValueError('UVFlag object and "others" must be in "flag" mode '
+                             'to use "add_metrics" function.')
+        if inplace:
+            this = self
+        else:
+            this = self.copy()
+        method = method.lower()
+        avg_f = qm_utils.averaging_dict[method]
+        darray = np.expand_dims(this.metric_array, 0)
+        warray = np.expand_dims(this.weights_array, 0)
+        for other in others:
+            if this.metric_array.shape != other.metric_array.shape:
+                raise ValueError('UVFlag metric arrays do not match.')
+            darray = np.vstack(darray, np.expand_dims(other.metric_array, 0))
+            warray = np.vstack(warray, np.expand_dims(other.weights_array, 0))
+        darray, warray = avg_f(darray, weights=warray, axis=0, returned=True)
+        this.metric_array = darray
+        this.weights_array = warray
+        this.history += 'Combined metric arrays using ' + hera_qm_version_str
+        if not inplace:
+            return this
+
     def to_waterfall(self, method='quadmean', keep_pol=True):
         """
         Convert an 'antenna' or 'baseline' type object to waterfall using a given method.
