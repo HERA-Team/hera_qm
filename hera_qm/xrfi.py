@@ -637,7 +637,7 @@ def xrfi_h1c_idr_2_2_pipe(uv, alg, Kt=8, Kf=8, xants=[], cal_mode='gain'):
 
 
 def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, history,
-                            metrics_ext='cal_xri_metrics.h5', flag_ext='cal_flags.h5',
+                            metrics_ext='cal_xri_metrics.h5', flags_ext='cal_flags.h5',
                             xrfi_path='', kt_size=8, kf_size=8,
                             sig_init=6.0, sig_adj=2.0, freq_threshold=0.25,
                             time_threshold=0.5, ex_ants=None, metrics_file=None):
