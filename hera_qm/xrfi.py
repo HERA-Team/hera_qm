@@ -607,9 +607,127 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
     else:
         return uvf_f, uvf_wf
 
+
+def xrfi_h1c_idr_2_2_pipe(uv, alg, Kt=8, Kf=8, xants=[], cal_mode='gain'):
+    """xrfi excision pipeline used for H1C IDR2.2. Uses detrending and watershed algorithms above.
+    Args:
+        uv (UVData or UVCal): Object to calculate metric.
+        alg (str): Algorithm for calculating metric.
+        Kt (int, optional): Size of kernel in time dimension for detrend in
+            xrfi algorithm. Default is 8.
+        Kf (int, optional): Size of kernel in frequency dimension for detrend
+            in xrfi algorithm. Default is 8.
+        xants (list): List of antennas to flag. Default is empty list.
+        cal_mode: (str) Mode to calculate metric if uv is UVCal. Options are
+            'gain', 'chisq', and 'tot_chisq' to use the gain_array,
+            'quality_array', and 'total_quality_array', respectively.
+    Returns:
+        uvf_wf: UVFlag object with metric after collapsing to waterfall and to
+            single pol. Weights array is set to ones.
+    """
+    flag_xants(uv, xants)
+    uvf = calculate_metric(uv, idr_2_2_alg, Kt=kt_size, Kf=kf_size, cal_mode=cal_mode)
+    uvf.to_waterfall(keep_pol=False)
+    uvf.weights_array = np.ones_like(uvf_weights_array)
+    return uvf
+
 #############################################################################
 # Wrappers -- Interact with input and output files
 #############################################################################
+
+
+def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, history,
+                            metrics_ext='cal_xri_metrics.h5', flag_ext='cal_flags.h5',
+                            xrfi_path='', kt_size=8, kf_size=8,
+                            sig_init=6.0, sig_adj=2.0, freq_threshold=0.25,
+                            time_threshold=0.5, ex_ants=None, metrics_file=None):
+    """xrfi excision pipeline used for H1C IDR2.2. Uses detrending and watershed algorithms above.
+    Args:
+        omni_calfits_file (str): Omnical calfits file to use to flag on gains and
+            chisquared values.
+        abs_calfits_file (str): Abscal calfits file to use to flag on gains and
+            chisquared values.
+        model_file (str): Model visibility file to flag on.
+        history (str): History string to include in files
+        metrics_ext (str, optional): Extension to be appended to input file name
+            for metric object. Default is "cal_metrics.h5".
+        flags_ext (str, optional): Extension to be appended to input file name
+            for flag object. Default is "cal_flags.h5".
+        xrfi_path (str, optional): Path to save flag files to. Default is same
+            directory as omni_calfits_file.
+        kt_size (int, optional): Size of kernel in time dimension for detrend in
+            xrfi algorithm. Default is 8.
+        kf_size (int, optional): Size of kernel in frequency dimension for detrend
+            in xrfi algorithm. Default is 8.
+        sig_init (float, optional): Starting number of sigmas to flag on. Default is 6.
+        sig_adj (float, optional): Number of sigmas to flag on for data adjacent
+            to a flag. Default is 2.
+        freq_threshold (float, optional): Fraction of times required to trigger
+            broadcast across times (single freq). Default is 0.25.
+        time_threshold (float, optional): Fraction of channels required to trigger
+            broadcast across frequency (single time). Default is 0.5.
+        ex_ants (str, optional): Comma-separated list of antennas to exclude.
+            Flags of visibilities formed with these antennas will be set to True.
+        metrics_file (str, optional): Metrics file that contains a list of excluded
+            antennas. Flags of visibilities formed with these antennas will be set to True.
+    Returns:
+        None
+    """
+    # append to history
+    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+
+    if xrfi_path != '':
+        # If explicitly given output path, use it. Otherwise use path from data.
+        dirname = xrfi_path
+    else:
+        dirname = os.path.dirname(os.path.abspath(omni_calfits_file))
+
+    xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+
+    idr_2_2_alg = 'detrend_medfilt'
+    # Calculate metric on omnical data
+    uvc_o = UVCal()
+    uvc_o.read_calfits(omni_calfits_file)
+    uvf_og = xrfi_h1c_idr_2_2_pipe(uvc_o, idr_2_2_alg, Kt=kt_size, Kf=kf_size,
+                                   xants=xants, cal_mode='gain')
+    uvf_ox = xrfi_h1c_idr_2_2_pipe(uvc_o, idr_2_2_alg, Kt=kt_size, Kf=kf_size,
+                                   xants=xants, cal_mode='tot_chisq')
+
+    # Calculate metric on abscal data
+    uvc_a = UVCal()
+    uvc_a.read_calfits(abs_calfits_file)
+    uvf_ag = xrfi_h1c_idr_2_2_pipe(uvc_a, idr_2_2_alg, Kt=kt_size, Kf=kf_size,
+                                   xants=xants, cal_mode='gain')
+    uvf_ax = xrfi_h1c_idr_2_2_pipe(uvc_a, idr_2_2_alg, Kt=kt_size, Kf=kf_size,
+                                   xants=xants, cal_mode='tot_chisq')
+
+    # Calculate metric on model vis
+    uv_v = UVData()
+    uv_v.read(model_file)
+    uvf_v = xrfi_h1c_idr_2_2_pipe(uv_v, idr_2_2_alg, xants=[], Kt=kt_size, Kf=kf_size)
+
+    # Combine the metrics together
+    uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax],
+                                        method='quadmean', inplace=False)
+
+    # Flag
+    uvf_f = flag(uvf_metrics, nsig_p=sig_init, nsig_f=None, nsig_t=None)
+    uvf_f = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+    # Threshold across time and frequency
+    uvf_f = flag(uvf_f, nsig_p=None, nsig_f=freq_threshold,
+                 nsig_t=time_threshold)
+
+    # Output results
+    basename = qm_utils.strip_extension(os.path.basename(omni_calfits_file))
+    basename = qm_utils.strip_extension(basename)  # Also get rid of .omni
+    outfile = '.'.join([basename, metrics_ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_metrics.history += history
+    uvf_metrics.write(outpath, clobber=True)
+    outfile = '.'.join([basename, flags_ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_f.history += history
+    uvf_f.write(outpath, clobber=True)
 
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
@@ -655,7 +773,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     Return:
        None
 
-    This function will take in a UVData object or  data file and optionally a cal file and
+    This function will take in a UVData object or data file and optionally a cal file and
     model visibility file, and run an RFI-flagging algorithm to identify contaminated
     observations. Each set of flagging will be stored, as well as compressed versions.
     """

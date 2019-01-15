@@ -269,6 +269,44 @@ def get_metrics_ArgumentParser(method_name):
         d.add_argument('--waterfalls', default=None, type=str, help='comma separated '
                        'list of npz files containing waterfalls of flags to broadcast '
                        'to full flag array and apply before delay filter.')
+    elif method_name == 'xrfi_cal_h1c_idr2_2_run':
+        a.prog = 'xrfi_cal_h1c_idr2_2_run.py'
+        a.add_argument('--omni_calfits_file', default=None, type=str, help='Omnical '
+                       'calfits file to use to flag on gains and chisquared values.')
+        a.add_argument('--abs_calfits_file', default=None, type=str, help='Abscal '
+                       'calfits file to use to flag on gains and chisquared values.')
+        a.add_argument('--model_file', default=None, type=str, help='Model visibility '
+                       'file to flag on.')
+        a.add_argument('--metrics_ext', default='cal_metrics.h5', type=str,
+                       help='Extension to be appended to input file name '
+                       'for metric object. Default is "cal_metrics.h5".')
+        a.add_argument('--flags_ext', default='cal_flags.h5', type=str,
+                       help='Extension to be appended to input file name '
+                       'for flag object. Default is "cal_flags.h5".')
+        a.add_argument('--xrfi_path', default='', type=str,
+                       help='Path to save flag files to. Default is same directory as input file.')
+        a.add_argument('--kt_size', default=8, type=int,
+                       help='Size of kernel in time dimension for detrend in xrfi '
+                       'algorithm. Default is 8.')
+        a.add_argument('--kf_size', default=8, type=int,
+                       help='Size of kernel in frequency dimension for detrend in '
+                       'xrfi algorithm. Default is 8.')
+        a.add_argument('--sig_init', default=6.0, type=float,
+                       help='Starting number of sigmas to flag on. Default is 6.')
+        a.add_argument('--sig_adj', default=2.0, type=float,
+                       help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
+        a.add_argument('--freq_threshold', default=0.25, type=float,
+                       help='Fraction of times required to trigger broadcast across'
+                       ' times (single freq). Default is 0.25.')
+        a.add_argument('--time_threshold', default=0.5, type=float,
+                       help='Fraction of channels required to trigger broadcast across'
+                       ' frequency (single time). Default is 0.5.')
+        a.add_argument('--ex_ants', default=None, type=str,
+                       help='Comma-separated list of antennas to exclude. Flags of visibilities '
+                       'formed with these antennas will be set to True.')
+        a.add_argument('--metrics_file', default=None, type=str,
+                       help='Metrics file that contains a list of excluded antennas. Flags of '
+                       'visibilities formed with these antennas will be set to True.')
     elif method_name == 'xrfi_apply':
         a.prog = 'xrfi_apply.py'
         a.add_argument('--infile_format', default='miriad', type=str,
