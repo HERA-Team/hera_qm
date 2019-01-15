@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018 the HERA Project
+# Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
 import os
