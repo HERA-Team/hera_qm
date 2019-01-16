@@ -635,6 +635,36 @@ def or_collapse(a, weights=None, axis=None, returned=False):
         return o
 
 
+def median(a, weights=None, axis=None, returned=False):
+    ''' Function to median data. This is similar to np.median, except it
+    handles weights, infs (by giving them zero weight), and zero weight axes (by forcing
+    result to be inf with zero output weight).
+    Args:
+        a - array to process
+        weights - weights for median. If none, will default to equal weight for
+                  all non-infinite data.
+        axis - axis keyword to pass to np.median
+        returned - whether to return sum of weights. Default is False.
+    '''
+    a = copy.deepcopy(a)  # avoid changing outside
+    if weights is None:
+        weights = np.ones_like(a)
+    w = weights * np.logical_not(np.isinf(a))
+    a[np.isinf(a)] = 0
+    wo = np.sum(w, axis=axis)
+    order = np.argsort(a, axis=axis)
+    w = np.take_along_axis(w, order, axis=axis)
+    w_sum = np.cumsum(w, axis=axis)
+    # TODO: find midpoint along `axis` for each other axis
+
+    # Give inf amplitude to zero weighted data
+    o = np.where(wo > 1e-10, o, np.inf)
+    if returned:
+        return o, wo
+    else:
+        return o
+
+
 # Dictionary to map different methods for averaging data.
 averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean,
                   'or': or_collapse}
