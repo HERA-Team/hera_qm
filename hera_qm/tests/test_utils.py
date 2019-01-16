@@ -151,6 +151,20 @@ def test_get_metrics_ArgumentParser_delay_xrfi_run():
     nt.assert_equal(args.waterfalls, 'a,g')
 
 
+def test_get_metrics_ArgumentParser_xrfi_cal_h1c_idr2_2_run():
+    a = utils.get_metrics_ArgumentParser('xrfi_cal_h1c_idr2_2_run')
+    # First try defaults - test a few of them
+    args = a.parse_args('')
+    nt.assert_equal(args.metrics_ext, 'cal_metrics.h5')
+    nt.assert_equal(args.kt_size, 8)
+    nt.assert_equal(args.sig_init, 6.0)
+    nt.assert_equal(args.freq_threshold, 0.25)
+    nt.assert_equal(args.ex_ants, None)
+    # try to set something
+    args = a.parse_args(['--time_threshold', '0.4'])
+    nt.assert_equal(args.time_threshold, 0.4)
+
+
 def test_get_metrics_ArgumentParser_xrfi_apply():
     a = utils.get_metrics_ArgumentParser('xrfi_apply')
     # First try defaults - test a few of them

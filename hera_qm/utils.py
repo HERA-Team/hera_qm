@@ -42,7 +42,7 @@ def get_metrics_ArgumentParser(method_name):
         a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
     methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_run",
-               "delay_xrfi_run", "xrfi_apply"]
+               "delay_xrfi_run", "xrfi_cal_h1c_idr2_2_run", "xrfi_apply"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -675,7 +675,7 @@ def or_collapse(a, weights=None, axis=None, returned=False):
 
 # Dictionary to map different methods for averaging data.
 averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean,
-                  'or': or_collapse}
+                  'or': or_collapse, 'median': median}
 
 
 def flags2waterfall(uv, flag_array=None, keep_pol=False):
