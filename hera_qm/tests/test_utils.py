@@ -121,8 +121,8 @@ def test_get_metrics_ArgumentParser_omnical_metrics():
     nt.assert_equal(args.extension, 'foo')
 
 
-def test_get_metrics_ArgumentParser_xrfi_run():
-    a = utils.get_metrics_ArgumentParser('xrfi_run')
+def test_get_metrics_ArgumentParser_xrfi_h1c_run():
+    a = utils.get_metrics_ArgumentParser('xrfi_h1c_run')
     # First try defaults - test a few of them
     args = a.parse_args('')
     nt.assert_equal(args.infile_format, 'miriad')
@@ -135,8 +135,8 @@ def test_get_metrics_ArgumentParser_xrfi_run():
     nt.assert_equal(args.px_threshold, 4.0)
 
 
-def test_get_metrics_ArgumentParser_delay_xrfi_run():
-    a = utils.get_metrics_ArgumentParser('delay_xrfi_run')
+def test_get_metrics_ArgumentParser_delay_xrfi_h1c_idr2_1_run():
+    a = utils.get_metrics_ArgumentParser('delay_xrfi_h1c_idr2_1_run')
     # First try defaults - test a few of them
     args = a.parse_args('')
     nt.assert_equal(args.infile_format, 'miriad')
@@ -151,8 +151,8 @@ def test_get_metrics_ArgumentParser_delay_xrfi_run():
     nt.assert_equal(args.waterfalls, 'a,g')
 
 
-def test_get_metrics_ArgumentParser_xrfi_cal_h1c_idr2_2_run():
-    a = utils.get_metrics_ArgumentParser('xrfi_cal_h1c_idr2_2_run')
+def test_get_metrics_ArgumentParser_cal_xrfi_run():
+    a = utils.get_metrics_ArgumentParser('cal_xrfi_run')
     # First try defaults - test a few of them
     args = a.parse_args('')
     nt.assert_equal(args.metrics_ext, 'xrfi_cal_metrics.h5')

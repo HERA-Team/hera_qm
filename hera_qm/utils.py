@@ -136,8 +136,8 @@ def get_metrics_ArgumentParser(method_name):
                        help='Path to save metrics file to. Default is same directory as file.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.omni.calfits files for which to calculate omnical_metrics.')
-    elif method_name == 'xrfi_run':
-        a.prog = 'xrfi_run.py'
+    elif method_name == 'xrfi_h1c_run':
+        a.prog = 'xrfi_h1c_run.py'
         a.add_argument('--infile_format', default='miriad', type=str,
                        help='File format for input files. Not currently used while '
                        'we use generic read function in pyuvdata, But will '
@@ -196,8 +196,8 @@ def get_metrics_ArgumentParser(method_name):
                        'visibilities formed with these antennas will be set to True.')
         a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
                        help='file for which to flag RFI (only one file allowed).')
-    elif method_name == 'delay_xrfi_run':
-        a.prog = 'delay_xrfi_run.py'
+    elif method_name == 'delay_xrfi_h1c_idr2_1_run':
+        a.prog = 'delay_xrfi_h1c_idr2_1_run.py'
         a.add_argument('filename', metavar='filename', nargs='?', type=str, default=None,
                        help='file for which to flag RFI (only one file allowed).')
         x = a.add_argument_group(title='XRFI options', description='Options related to '
@@ -269,8 +269,8 @@ def get_metrics_ArgumentParser(method_name):
         d.add_argument('--waterfalls', default=None, type=str, help='comma separated '
                        'list of npz files containing waterfalls of flags to broadcast '
                        'to full flag array and apply before delay filter.')
-    elif method_name == 'xrfi_cal_h1c_idr2_2_run':
-        a.prog = 'xrfi_cal_h1c_idr2_2_run.py'
+    elif method_name == 'cal_xrfi_run':
+        a.prog = 'cal_xrfi_run.py'
         a.add_argument('--omni_calfits_file', default=None, type=str, help='Omnical '
                        'calfits file to use to flag on gains and chisquared values.')
         a.add_argument('--abs_calfits_file', default=None, type=str, help='Abscal '

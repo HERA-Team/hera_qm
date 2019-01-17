@@ -579,6 +579,8 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
 
 #############################################################################
 # "Pipelines" -- these routines define the flagging strategy for some data
+#   Note: "current" pipes should have simple names, but when replaced,
+#         they should stick around with more descriptive names.
 #############################################################################
 
 def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
@@ -624,8 +626,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
         return uvf_f, uvf_wf
 
 
-def xrfi_h1c_idr_2_2_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[],
-                          cal_mode='gain'):
+def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain'):
     """xrfi excision pipeline used for H1C IDR2.2. Uses detrending and watershed algorithms above.
     Args:
         uv (UVData or UVCal): Object to calculate metric.
@@ -651,14 +652,16 @@ def xrfi_h1c_idr_2_2_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[],
 
 #############################################################################
 # Wrappers -- Interact with input and output files
+#   Note: "current" wrappers should have simple names, but when replaced,
+#         they should stick around with more descriptive names.
 #############################################################################
 
 
-def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, history,
-                            metrics_ext='xrfi_cal_metrics.h5', flags_ext='cal_flags.h5',
-                            xrfi_path='', kt_size=8, kf_size=8,
-                            sig_init=6.0, sig_adj=2.0, freq_threshold=0.25,
-                            time_threshold=0.5, ex_ants=None, metrics_file=None):
+def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
+                 metrics_ext='xrfi_cal_metrics.h5', flags_ext='cal_flags.h5',
+                 xrfi_path='', kt_size=8, kf_size=8,
+                 sig_init=6.0, sig_adj=2.0, freq_threshold=0.25,
+                 time_threshold=0.5, ex_ants=None, metrics_file=None):
     """xrfi excision pipeline used for H1C IDR2.2. Uses detrending and watershed algorithms above.
     Args:
         omni_calfits_file (str): Omnical calfits file to use to flag on gains and
@@ -698,27 +701,27 @@ def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, his
 
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
-    idr_2_2_alg = 'detrend_medfilt'
+    alg = 'detrend_medfilt'
     # Calculate metric on omnical data
     uvc_o = UVCal()
     uvc_o.read_calfits(omni_calfits_file)
-    uvf_og = xrfi_h1c_idr_2_2_pipe(uvc_o, alg=idr_2_2_alg, Kt=kt_size, Kf=kf_size,
-                                   xants=xants, cal_mode='gain')
-    uvf_ox = xrfi_h1c_idr_2_2_pipe(uvc_o, alg=idr_2_2_alg, Kt=kt_size, Kf=kf_size,
-                                   xants=xants, cal_mode='tot_chisq')
+    uvf_og = xrfi_pipe(uvc_o, alg=alg, Kt=kt_size, Kf=kf_size,
+                       xants=xants, cal_mode='gain')
+    uvf_ox = xrfi_pipe(uvc_o, alg=alg, Kt=kt_size, Kf=kf_size,
+                       xants=xants, cal_mode='tot_chisq')
 
     # Calculate metric on abscal data
     uvc_a = UVCal()
     uvc_a.read_calfits(abs_calfits_file)
-    uvf_ag = xrfi_h1c_idr_2_2_pipe(uvc_a, alg=idr_2_2_alg, Kt=kt_size, Kf=kf_size,
-                                   xants=xants, cal_mode='gain')
-    uvf_ax = xrfi_h1c_idr_2_2_pipe(uvc_a, alg=idr_2_2_alg, Kt=kt_size, Kf=kf_size,
-                                   xants=xants, cal_mode='tot_chisq')
+    uvf_ag = xrfi_pipe(uvc_a, alg=alg, Kt=kt_size, Kf=kf_size,
+                       xants=xants, cal_mode='gain')
+    uvf_ax = xrfi_pipe(uvc_a, alg=alg, Kt=kt_size, Kf=kf_size,
+                       xants=xants, cal_mode='tot_chisq')
 
     # Calculate metric on model vis
     uv_v = UVData()
     uv_v.read(model_file)
-    uvf_v = xrfi_h1c_idr_2_2_pipe(uv_v, alg=idr_2_2_alg, xants=[], Kt=kt_size, Kf=kf_size)
+    uvf_v = xrfi_pipe(uv_v, alg=alg, xants=[], Kt=kt_size, Kf=kf_size)
 
     # Combine the metrics together
     uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax],

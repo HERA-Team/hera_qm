@@ -7,7 +7,7 @@ import sys
 from hera_qm import utils
 from hera_qm import xrfi
 
-a = utils.get_metrics_ArgumentParser('xrfi_run')
+a = utils.get_metrics_ArgumentParser('xrfi_h1c_run')
 args = a.parse_args()
 filename = args.filename
 history = ' '.join(sys.argv)
