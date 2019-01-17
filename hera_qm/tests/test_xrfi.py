@@ -82,6 +82,16 @@ class TestFlagXants():
         nt.assert_true(np.all(uv2.flag_array[uv2.ant_2_array == xant, :, :, :]))
 
 
+class TestResolveXrfiPath():
+    def test_resolve_xrfi_path_given(self):
+        dirname = xrfi.resolve_xrfi_path(xrfi_path, test_d_file)
+        nt.assert_equal(xrfi_path, dirname)
+
+    def test_resolve_xrfi_path_empty(self):
+        dirname = xrfi.resolve_xrfi_path('', test_d_file)
+        nt.assert_equal(os.path.dirname(os.path.abspath(test_d_file)), dirname)
+
+
 class TestPreProcessingFunctions():
     def __init__(self):
         self.size = 100
@@ -625,13 +635,38 @@ class TestPipelines():
         # Do a test, add more tests as needed
         nt.assert_true(True)
 
+    def test_xrfi_h1c_idr2_2_pipe(self):
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvf = xrfi.xrfi_h1c_idr_2_2_pipe(uvc, Kt=3)
+        nt.assert_equal(uvf.mode, 'metric')
+        nt.assert_equal(uvf.type, 'waterfall')
+        nt.assert_equal(len(uvf.polarization_array), 1)
+        nt.assert_equal(uvf.weights_array.max(), 1.)
+
 
 class TestWrappers():
 
+    def test_xrfi_cal_h1c_idr2_2_run(self):
+        # Run in nicest way possible
+        uvtest.checkWarnings(xrfi.xrfi_cal_h1c_idr2_2_run, [test_c_file, test_c_file,
+                                                            test_d_file, 'Just a test'],
+                             {'xrfi_path': xrfi_path, 'kt_size': 3},
+                             nwarnings=2, message='This object is already a waterfall')
+
+        basename = utils.strip_extension(os.path.basename(test_c_file))
+        basename = utils.strip_extension(os.path.basename(basename))
+        out1 = '.'.join([basename, 'xrfi_cal_metrics.h5'])
+        out1 = os.path.join(xrfi_path, out1)
+        print(out1)
+        nt.assert_true(os.path.exists(out1))
+        out2 = '.'.join([basename, 'cal_flags.h5'])
+        out2 = os.path.join(xrfi_path, out2)
+        print(out2)
+        nt.assert_true(os.path.exists(out2))
+
     def test_xrfi_h1c_run(self):
         # run with bad antennas specified
-        uvd = UVData()
-        uvd.read_miriad(test_d_file)
         xrfi.xrfi_h1c_run(test_d_file, filename=test_d_file,
                           history='Just a test.', ex_ants='1,2', xrfi_path=xrfi_path,
                           kt_size=3)

@@ -458,8 +458,8 @@ class UVFlag():
         for other in others:
             if this.metric_array.shape != other.metric_array.shape:
                 raise ValueError('UVFlag metric arrays do not match.')
-            darray = np.vstack(darray, np.expand_dims(other.metric_array, 0))
-            warray = np.vstack(warray, np.expand_dims(other.weights_array, 0))
+            darray = np.vstack([darray, np.expand_dims(other.metric_array, 0)])
+            warray = np.vstack([warray, np.expand_dims(other.weights_array, 0)])
         darray, warray = avg_f(darray, weights=warray, axis=0, returned=True)
         this.metric_array = darray
         this.weights_array = warray
@@ -674,13 +674,13 @@ class UVFlag():
         self.clear_unused_attributes()
 
     def to_metric(self):
-        '''Convert to metric mode. NOT SMART. Simply removes flag_array and initializes
-        metric_array with zeros.
+        '''Convert to metric mode. NOT SMART. Simply recasts flag_array as float
+        and uses this as the metric array.
         '''
         if self.mode == 'metric':
             return
         elif self.mode == 'flag':
-            self.metric_array = np.zeros_like(self.flag_array, dtype=np.float)
+            self.metric_array = self.flag_array.astype(np.float)
             self.mode = 'metric'
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to metric.')

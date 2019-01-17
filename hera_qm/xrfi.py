@@ -70,6 +70,22 @@ def flag_xants(uv, xants, inplace=True):
         return uvo
 
 
+def resolve_xrfi_path(xrfi_path, file):
+    """ Determine xrfi_path based on given directory or default to dirname of given file.
+    Args:
+        xrfi_path (str): Directory to write xrfi outputs.
+        file (str): Filename to determine backup directory if xrfi_path == ''
+    Returns:
+        dirname (str): If xrfi_path != '', returns xrfi_path. Otherwise returns
+            directory of file.
+    """
+    if xrfi_path != '':
+        dirname = xrfi_path
+    else:
+        dirname = os.path.dirname(os.path.abspath(file))
+    return dirname
+
+
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
 #############################################################################
@@ -608,11 +624,13 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
         return uvf_f, uvf_wf
 
 
-def xrfi_h1c_idr_2_2_pipe(uv, alg, Kt=8, Kf=8, xants=[], cal_mode='gain'):
+def xrfi_h1c_idr_2_2_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[],
+                          cal_mode='gain'):
     """xrfi excision pipeline used for H1C IDR2.2. Uses detrending and watershed algorithms above.
     Args:
         uv (UVData or UVCal): Object to calculate metric.
-        alg (str): Algorithm for calculating metric.
+        alg (str, optional): Algorithm for calculating metric. Default is
+            'detrend_medfilt'.
         Kt (int, optional): Size of kernel in time dimension for detrend in
             xrfi algorithm. Default is 8.
         Kf (int, optional): Size of kernel in frequency dimension for detrend
@@ -622,13 +640,13 @@ def xrfi_h1c_idr_2_2_pipe(uv, alg, Kt=8, Kf=8, xants=[], cal_mode='gain'):
             'gain', 'chisq', and 'tot_chisq' to use the gain_array,
             'quality_array', and 'total_quality_array', respectively.
     Returns:
-        uvf_wf: UVFlag object with metric after collapsing to waterfall and to
+        uvf (UVFlag): UVFlag object with metric after collapsing to waterfall and to
             single pol. Weights array is set to ones.
     """
     flag_xants(uv, xants)
-    uvf = calculate_metric(uv, idr_2_2_alg, Kt=kt_size, Kf=kf_size, cal_mode=cal_mode)
+    uvf = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode)
     uvf.to_waterfall(keep_pol=False)
-    uvf.weights_array = np.ones_like(uvf_weights_array)
+    uvf.weights_array = np.ones_like(uvf.weights_array)
     return uvf
 
 #############################################################################
@@ -637,7 +655,7 @@ def xrfi_h1c_idr_2_2_pipe(uv, alg, Kt=8, Kf=8, xants=[], cal_mode='gain'):
 
 
 def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, history,
-                            metrics_ext='cal_xri_metrics.h5', flags_ext='cal_flags.h5',
+                            metrics_ext='xrfi_cal_metrics.h5', flags_ext='cal_flags.h5',
                             xrfi_path='', kt_size=8, kf_size=8,
                             sig_init=6.0, sig_adj=2.0, freq_threshold=0.25,
                             time_threshold=0.5, ex_ants=None, metrics_file=None):
@@ -650,7 +668,7 @@ def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, his
         model_file (str): Model visibility file to flag on.
         history (str): History string to include in files
         metrics_ext (str, optional): Extension to be appended to input file name
-            for metric object. Default is "cal_metrics.h5".
+            for metric object. Default is "xrfi_cal_metrics.h5".
         flags_ext (str, optional): Extension to be appended to input file name
             for flag object. Default is "cal_flags.h5".
         xrfi_path (str, optional): Path to save flag files to. Default is same
@@ -676,11 +694,7 @@ def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, his
     # append to history
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
 
-    if xrfi_path != '':
-        # If explicitly given output path, use it. Otherwise use path from data.
-        dirname = xrfi_path
-    else:
-        dirname = os.path.dirname(os.path.abspath(omni_calfits_file))
+    dirname = resolve_xrfi_path(xrfi_path, omni_calfits_file)
 
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
@@ -688,23 +702,23 @@ def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, his
     # Calculate metric on omnical data
     uvc_o = UVCal()
     uvc_o.read_calfits(omni_calfits_file)
-    uvf_og = xrfi_h1c_idr_2_2_pipe(uvc_o, idr_2_2_alg, Kt=kt_size, Kf=kf_size,
+    uvf_og = xrfi_h1c_idr_2_2_pipe(uvc_o, alg=idr_2_2_alg, Kt=kt_size, Kf=kf_size,
                                    xants=xants, cal_mode='gain')
-    uvf_ox = xrfi_h1c_idr_2_2_pipe(uvc_o, idr_2_2_alg, Kt=kt_size, Kf=kf_size,
+    uvf_ox = xrfi_h1c_idr_2_2_pipe(uvc_o, alg=idr_2_2_alg, Kt=kt_size, Kf=kf_size,
                                    xants=xants, cal_mode='tot_chisq')
 
     # Calculate metric on abscal data
     uvc_a = UVCal()
     uvc_a.read_calfits(abs_calfits_file)
-    uvf_ag = xrfi_h1c_idr_2_2_pipe(uvc_a, idr_2_2_alg, Kt=kt_size, Kf=kf_size,
+    uvf_ag = xrfi_h1c_idr_2_2_pipe(uvc_a, alg=idr_2_2_alg, Kt=kt_size, Kf=kf_size,
                                    xants=xants, cal_mode='gain')
-    uvf_ax = xrfi_h1c_idr_2_2_pipe(uvc_a, idr_2_2_alg, Kt=kt_size, Kf=kf_size,
+    uvf_ax = xrfi_h1c_idr_2_2_pipe(uvc_a, alg=idr_2_2_alg, Kt=kt_size, Kf=kf_size,
                                    xants=xants, cal_mode='tot_chisq')
 
     # Calculate metric on model vis
     uv_v = UVData()
     uv_v.read(model_file)
-    uvf_v = xrfi_h1c_idr_2_2_pipe(uv_v, idr_2_2_alg, xants=[], Kt=kt_size, Kf=kf_size)
+    uvf_v = xrfi_h1c_idr_2_2_pipe(uv_v, alg=idr_2_2_alg, xants=[], Kt=kt_size, Kf=kf_size)
 
     # Combine the metrics together
     uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax],
@@ -714,6 +728,7 @@ def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, his
     uvf_f = flag(uvf_metrics, nsig_p=sig_init, nsig_f=None, nsig_t=None)
     uvf_f = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
     # Threshold across time and frequency
+    uvf_f.to_metric()
     uvf_f = flag(uvf_f, nsig_p=None, nsig_f=freq_threshold,
                  nsig_t=time_threshold)
 
@@ -802,10 +817,6 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     # append to history
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
 
-    if xrfi_path != '':
-        # If explicitly given output path, use it. Otherwise use path from data.
-        dirname = xrfi_path
-
     # Flag on data
     if indata is not None:
         # Flag visibilities corresponding to specified antennas
@@ -815,8 +826,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
                                              sig_adj=sig_adj, px_threshold=px_threshold,
                                              freq_threshold=freq_threshold, time_threshold=time_threshold,
                                              return_summary=True)
-        if xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(filename))
+        dirname = resolve_xrfi_path(xrfi_path, filename)
         basename = qm_utils.strip_extension(os.path.basename(filename))
         # Save watersheded flags
         outfile = '.'.join([basename, extension])
@@ -847,8 +857,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvm, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold)
-        if xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(model_file))
+        dirname = resolve_xrfi_path(xrfi_path, model_file)
         # Only save thresholded waterfall
         basename = qm_utils.strip_extension(os.path.basename(model_file))
         outfile = '.'.join([basename, extension])
@@ -870,8 +879,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold)
-        if xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(calfits_file))
+        dirname = resolve_xrfi_path(xrfi_path, calfits_file)
         basename = qm_utils.strip_extension(os.path.basename(calfits_file))
         outfile = '.'.join([basename, 'g', extension])
         outpath = os.path.join(dirname, outfile)
@@ -943,12 +951,7 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     uvf = flag_apply(full_list, uvd, force_pol=True, return_net_flags=True)
 
     # save output when we're done
-    if xrfi_path == '':
-        # default to the same directory
-        abspath = os.path.abspath(filename)
-        dirname = os.path.dirname(abspath)
-    else:
-        dirname = xrfi_path
+    dirname = resolve_xrfi_path(xrfi_path, filename)
     basename = qm_utils.strip_extension(os.path.basename(filename))
     outfile = '.'.join([basename, extension])
     outpath = os.path.join(dirname, outfile)
