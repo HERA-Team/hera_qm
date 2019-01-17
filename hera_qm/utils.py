@@ -675,7 +675,7 @@ def or_collapse(a, weights=None, axis=None, returned=False):
 
 # Dictionary to map different methods for averaging data.
 averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean,
-                  'or': or_collapse, 'median': median}
+                  'or': or_collapse}
 
 
 def flags2waterfall(uv, flag_array=None, keep_pol=False):
