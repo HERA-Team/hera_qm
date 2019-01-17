@@ -726,6 +726,10 @@ def xrfi_cal_h1c_idr2_2_run(omni_calfits_file, abs_calfits_file, model_file, his
 
     # Flag
     uvf_f = flag(uvf_metrics, nsig_p=sig_init, nsig_f=None, nsig_t=None)
+    # OR with input flag waterfall
+    uvf_apriori = UVFlag(abs_calfits_file, mode='flag', copy_flags=True)
+    uvf_apriori.to_waterfall(method='and', keep_pol=False)
+    uvf_f |= uvf_apriori
     uvf_f = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
     # Threshold across time and frequency
     uvf_f.to_metric()
