@@ -1108,3 +1108,31 @@ def test_missing_Nants_telescope():
     uvf2.Nants_telescope = None
     nt.assert_true(uvf == uvf2)
     os.remove(testfile)
+
+
+def test_combine_metrics_inplace():
+    uvf = UVFlag(test_c_file, mode='metric')
+    np.random.seed(44)
+    uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
+    uvf2 = uvf.copy()
+    uvf2.metric_array *= 2
+    uvf3 = uvf.copy()
+    uvf3.metric_array *= 3
+    uvf.combine_metrics([uvf2, uvf3])
+    factor = np.sqrt((1 + 4 + 9) / 3.) / 2.
+    nt.assert_true(np.array_equal(uvf.metric_array,
+                   np.abs(uvf2.metric_array) * factor))
+
+
+def test_combine_metrics_not_inplace():
+    uvf = UVFlag(test_c_file, mode='metric')
+    np.random.seed(44)
+    uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
+    uvf2 = uvf.copy()
+    uvf2.metric_array *= 2
+    uvf3 = uvf.copy()
+    uvf3.metric_array *= 3
+    uvf4 = uvf.combine_metrics([uvf2, uvf3], inplace=False)
+    factor = np.sqrt((1 + 4 + 9) / 3.)
+    nt.assert_true(np.array_equal(uvf4.metric_array,
+                   np.abs(uvf.metric_array) * factor))
