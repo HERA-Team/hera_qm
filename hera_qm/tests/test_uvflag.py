@@ -1111,7 +1111,9 @@ def test_missing_Nants_telescope():
 
 
 def test_combine_metrics_inplace():
-    uvf = UVFlag(test_c_file, mode='metric')
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
     np.random.seed(44)
     uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
     uvf2 = uvf.copy()
@@ -1120,12 +1122,14 @@ def test_combine_metrics_inplace():
     uvf3.metric_array *= 3
     uvf.combine_metrics([uvf2, uvf3])
     factor = np.sqrt((1 + 4 + 9) / 3.) / 2.
-    nt.assert_true(np.array_equal(uvf.metric_array,
+    nt.assert_true(np.allclose(uvf.metric_array,
                    np.abs(uvf2.metric_array) * factor))
 
 
 def test_combine_metrics_not_inplace():
-    uvf = UVFlag(test_c_file, mode='metric')
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
     np.random.seed(44)
     uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
     uvf2 = uvf.copy()
@@ -1134,5 +1138,34 @@ def test_combine_metrics_not_inplace():
     uvf3.metric_array *= 3
     uvf4 = uvf.combine_metrics([uvf2, uvf3], inplace=False)
     factor = np.sqrt((1 + 4 + 9) / 3.)
-    nt.assert_true(np.array_equal(uvf4.metric_array,
+    nt.assert_true(np.allclose(uvf4.metric_array,
                    np.abs(uvf.metric_array) * factor))
+
+
+def test_combine_metrics_not_uvflag():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    nt.assert_raises(ValueError, uvf.combine_metrics, 'bubblegum')
+
+
+def test_combine_metrics_not_metric():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    np.random.seed(44)
+    uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
+    uvf2 = uvf.copy()
+    uvf2.to_flag()
+    nt.assert_raises(ValueError, uvf.combine_metrics, uvf2)
+
+
+def test_combine_metrics_wrong_shape():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    np.random.seed(44)
+    uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
+    uvf2 = uvf.copy()
+    uvf2.to_waterfall()
+    nt.assert_raises(ValueError, uvf.combine_metrics, uvf2)
