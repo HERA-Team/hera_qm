@@ -673,9 +673,29 @@ def or_collapse(a, weights=None, axis=None, returned=False):
         return o
 
 
+def and_collapse(a, weights=None, axis=None, returned=False):
+    ''' Function to collapse axes using AND operation
+    Args:
+        a - boolean array to process
+        weights - NOT USED, but kept for symmetry with other averaging functions
+        axis - axis or axes over which to OR
+        returned - whether to return dummy weights array. NOTE: the dummy weights
+                   will simply be an array of ones. Default is False.
+    '''
+    if a.dtype != np.bool:
+        raise ValueError('Input to and_collapse function must be boolean array')
+    o = np.all(a, axis=axis)
+    if (weights is not None) and not np.all(weights == weights.reshape(-1)[0]):
+        warnings.warn('Currently weights are not handled when AND-ing boolean arrays.')
+    if returned:
+        return o, np.ones_like(o, dtype=np.float)
+    else:
+        return o
+
+
 # Dictionary to map different methods for averaging data.
 averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean,
-                  'or': or_collapse}
+                  'or': or_collapse, 'and': and_collapse}
 
 
 def flags2waterfall(uv, flag_array=None, keep_pol=False):

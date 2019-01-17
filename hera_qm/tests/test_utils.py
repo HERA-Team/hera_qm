@@ -155,7 +155,7 @@ def test_get_metrics_ArgumentParser_xrfi_cal_h1c_idr2_2_run():
     a = utils.get_metrics_ArgumentParser('xrfi_cal_h1c_idr2_2_run')
     # First try defaults - test a few of them
     args = a.parse_args('')
-    nt.assert_equal(args.metrics_ext, 'cal_metrics.h5')
+    nt.assert_equal(args.metrics_ext, 'xrfi_cal_metrics.h5')
     nt.assert_equal(args.kt_size, 8)
     nt.assert_equal(args.sig_init, 6.0)
     nt.assert_equal(args.freq_threshold, 0.25)
@@ -378,6 +378,41 @@ def test_or_collapse_weights():
 def test_or_collapse_errors():
     data = np.zeros(5)
     nt.assert_raises(ValueError, utils.or_collapse, data)
+
+
+def test_and_collapse():
+    # Fake data
+    data = np.zeros((50, 25), np.bool)
+    data[0, :] = True
+    o = utils.and_collapse(data, axis=0)
+    ans = np.zeros(25, np.bool)
+    nt.assert_true(np.array_equal(o, ans))
+    o = utils.and_collapse(data, axis=1)
+    ans = np.zeros(50, np.bool)
+    ans[0] = True
+    nt.assert_true(np.array_equal(o, ans))
+    o = utils.and_collapse(data)
+    nt.assert_false(o)
+
+
+def test_and_collapse_weights():
+    # Fake data
+    data = np.zeros((50, 25), np.bool)
+    data[0, :] = True
+    w = np.ones_like(data, np.float)
+    o, wo = utils.and_collapse(data, axis=0, weights=w, returned=True)
+    ans = np.zeros(25, np.bool)
+    nt.assert_true(np.array_equal(o, ans))
+    nt.assert_true(np.array_equal(wo, np.ones_like(o, dtype=np.float)))
+    w[0, 8] = 0.3
+    o = uvtest.checkWarnings(utils.and_collapse, [data], {'axis': 0, 'weights': w},
+                             nwarnings=1, message='Currently weights are')
+    nt.assert_true(np.array_equal(o, ans))
+
+
+def test_and_collapse_errors():
+    data = np.zeros(5)
+    nt.assert_raises(ValueError, utils.and_collapse, data)
 
 
 def test_flags2waterfall():
