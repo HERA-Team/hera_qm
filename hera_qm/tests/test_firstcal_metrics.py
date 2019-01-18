@@ -88,6 +88,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertTrue(os.path.isfile(outfile))
         os.remove(outfile)
 
+    @unittest.skip("Currently skipping all plotting tests.")
     def test_plot_delays(self):
         fname = os.path.join(self.out_dir, 'dlys.png')
         if os.path.isfile(fname):
@@ -115,6 +116,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertTrue(fig is not None)
         plt.close('all')
 
+    @unittest.skip("Currently skipping all plotting tests.")
     def test_plot_zscores(self):
         # check exception
         self.assertRaises(NameError, self.FC.plot_zscores)
@@ -137,6 +139,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.assertTrue(fig is not None)
         plt.close('all')
 
+    @unittest.skip("Currently skipping all plotting tests.")
     def test_plot_stds(self):
         # check exception
         self.assertRaises(NameError, self.FC.plot_stds)
