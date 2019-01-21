@@ -155,7 +155,7 @@ def test_get_metrics_ArgumentParser_cal_xrfi_run():
     a = utils.get_metrics_ArgumentParser('cal_xrfi_run')
     # First try defaults - test a few of them
     args = a.parse_args('')
-    nt.assert_equal(args.metrics_ext, 'xrfi_cal_metrics.h5')
+    nt.assert_equal(args.metrics_ext, 'cal_xrfi_metrics.h5')
     nt.assert_equal(args.kt_size, 8)
     nt.assert_equal(args.sig_init, 6.0)
     nt.assert_equal(args.freq_threshold, 0.25)

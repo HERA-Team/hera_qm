@@ -658,7 +658,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain'):
 
 
 def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
-                 metrics_ext='xrfi_cal_metrics.h5', flags_ext='cal_flags.h5',
+                 metrics_ext='cal_xrfi_metrics.h5', flags_ext='cal_flags.h5',
                  xrfi_path='', kt_size=8, kf_size=8,
                  sig_init=6.0, sig_adj=2.0, freq_threshold=0.25,
                  time_threshold=0.5, ex_ants=None, metrics_file=None):
@@ -671,7 +671,7 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
         model_file (str): Model visibility file to flag on.
         history (str): History string to include in files
         metrics_ext (str, optional): Extension to be appended to input file name
-            for metric object. Default is "xrfi_cal_metrics.h5".
+            for metric object. Default is "cal_xrfi_metrics.h5".
         flags_ext (str, optional): Extension to be appended to input file name
             for flag object. Default is "cal_flags.h5".
         xrfi_path (str, optional): Path to save flag files to. Default is same

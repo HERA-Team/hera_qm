@@ -277,9 +277,9 @@ def get_metrics_ArgumentParser(method_name):
                        'calfits file to use to flag on gains and chisquared values.')
         a.add_argument('--model_file', default=None, type=str, help='Model visibility '
                        'file to flag on.')
-        a.add_argument('--metrics_ext', default='xrfi_cal_metrics.h5', type=str,
+        a.add_argument('--metrics_ext', default='cal_xrfi_metrics.h5', type=str,
                        help='Extension to be appended to input file name '
-                       'for metric object. Default is "xrfi_cal_metrics.h5".')
+                       'for metric object. Default is "cal_xrfi_metrics.h5".')
         a.add_argument('--flags_ext', default='cal_flags.h5', type=str,
                        help='Extension to be appended to input file name '
                        'for flag object. Default is "cal_flags.h5".')

@@ -11,7 +11,7 @@ from hera_cal import delay_filter
 from hera_cal import io
 from pyuvdata import UVData
 
-a = qm_utils.get_metrics_ArgumentParser('delay_xrfi_h1c_idr2_2_run')
+a = qm_utils.get_metrics_ArgumentParser('delay_xrfi_h1c_idr2_1_run')
 args = a.parse_args()
 filename = args.filename
 history = ' '.join(sys.argv)
