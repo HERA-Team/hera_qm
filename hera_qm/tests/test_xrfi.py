@@ -638,7 +638,7 @@ class TestPipelines():
     def test_xrfi_h1c_idr2_2_pipe(self):
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
-        uvf = xrfi.xrfi_h1c_idr_2_2_pipe(uvc, Kt=3)
+        uvf = xrfi.xrfi_pipe(uvc, Kt=3)
         nt.assert_equal(uvf.mode, 'metric')
         nt.assert_equal(uvf.type, 'waterfall')
         nt.assert_equal(len(uvf.polarization_array), 1)
@@ -649,8 +649,8 @@ class TestWrappers():
 
     def test_xrfi_cal_h1c_idr2_2_run(self):
         # Run in nicest way possible
-        uvtest.checkWarnings(xrfi.xrfi_cal_h1c_idr2_2_run, [test_c_file, test_c_file,
                                                             test_d_file, 'Just a test'],
+        uvtest.checkWarnings(xrfi.cal_xrfi_run, [test_c_file, test_c_file,
                              {'xrfi_path': xrfi_path, 'kt_size': 3},
                              nwarnings=2, message='This object is already a waterfall')
 
