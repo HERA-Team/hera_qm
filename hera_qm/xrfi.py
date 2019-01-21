@@ -813,17 +813,16 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
     alg = 'detrend_medfilt'
-    uv = cal_io.HERAData(vis_file)
-    uv.read(return_data=False)
-    flag_xants(uv, xants)
+    hd = cal_io.HERAData(vis_file)
+    hd.read(return_data=False)
+    flag_xants(hd, xants)
     uvf_in = UVFlag(cal_flags)
-    flag_apply(uvf_in, uv, keep_existing=True, force_pol=False)
-    dfil = delay_filter.Delay_Filter(uv, input_cal=input_cal)
+    flag_apply(uvf_in, hd, keep_existing=True, force_pol=False)
+    dfil = delay_filter.Delay_Filter(hd, input_cal=input_cal)
     dfil.run_filter(standoff=standoff, horizon=horizon, tol=tol, window=window,
                     skip_wgt=skip_wgt, maxiter=maxiter)
-    cal_io.update_uvdata(dfil.input_data, data=dfil.filtered_residuals, flags=dfil.flags)
-    uv = dfil.input_data  # shortcut for ease of use
-    uvf_dmetrics = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size)
+    hd.update(data=dfil.filtered_residuals, flags=dfil.flags)
+    uvf_dmetrics = xrfi_pipe(hd, alg=alg, Kt=kt_size, Kf=kf_size)
     # Save metrics from data
     basename = qm_utils.strip_extension(os.path.basename(vis_file))
     outfile = '.'.join([basename, metrics_ext])
