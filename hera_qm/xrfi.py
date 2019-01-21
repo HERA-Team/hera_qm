@@ -674,7 +674,7 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
             for metric object. Default is "cal_xrfi_metrics.h5".
         flags_ext (str, optional): Extension to be appended to input file name
             for flag object. Default is "cal_flags.h5".
-        xrfi_path (str, optional): Path to save flag files to. Default is same
+        xrfi_path (str, optional): Path to save xrfi files to. Default is same
             directory as omni_calfits_file.
         kt_size (int, optional): Size of kernel in time dimension for detrend in
             xrfi algorithm. Default is 8.
@@ -694,11 +694,8 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
     Returns:
         None
     """
-    # append to history
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
-
     dirname = resolve_xrfi_path(xrfi_path, omni_calfits_file)
-
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
     alg = 'detrend_medfilt'
@@ -730,7 +727,9 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
     # Flag
     uvf_f = flag(uvf_metrics, nsig_p=sig_init, nsig_f=None, nsig_t=None)
     # OR with input flag waterfall
-    uvf_apriori = UVFlag(abs_calfits_file, mode='flag', copy_flags=True)
+    uvc_apriori = UVCal()
+    uvc_apriori.read_calfits(abs_calfits_file)
+    uvf_apriori = UVFlag(uvc_apriori, mode='flag', copy_flags=True)
     uvf_apriori.to_waterfall(method='and', keep_pol=False)
     uvf_f |= uvf_apriori
     uvf_f = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
@@ -750,6 +749,116 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
     outpath = os.path.join(dirname, outfile)
     uvf_f.history += history
     uvf_f.write(outpath, clobber=True)
+
+
+def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
+                   standoff=15.0, horizon=1.0, tol=1e-7, window='tukey', skip_wgt=0.1,
+                   maxiter=100, alpha=0.5, metrics_ext='delay_xrfi_metrics.h5',
+                   flags_ext='final_flags.h5', cal_ext='flagged_abs', xrfi_path='',
+                   kt_size=8, kf_size=8, sig_init=6.0, sig_adj=2.0,
+                   freq_threshold=0.25, time_threshold=0.5, ex_ants=None,
+                   metrics_file=None):
+    """ Run a delay filter on data, then run xrfi.
+    Args:
+        vis_file (str): Input data file to flag RFI.
+        cal_metrics (str): Path to xrfi metrics file derived from calibration products.
+        cal_flags (str): Flags derived from calibration products.
+        history (str): History to be appended in output files.
+        input_cal (str, optional): Path to input calfits file. Default is None.
+        standoff (float, optional): Fixed additional delay, in ns, beyond the horizon.
+            Default 15.
+        horizon (float, optional): Proportionality constant for bl_len where 1.0 (Default)
+            is the horizon (full light travel time).
+        tol (float, optional): CLEAN algorithm convergence tolerance. Default 1e-7.
+        window (str, optional): Window function for frequency filtering. See
+            aipy.dsp.gen_window for options. Default is "tukey".
+        skip_wgt (float, optional): Skips filtering rows with unflagged fraction
+            ~< skip_wgt. Default is 0.1.
+        maxiter (int, optional): Maximum iterations for aipy.deconv.clean to
+            converge. Default is 100.
+        alpha (float, optional): Alpha parameter to use for Tukey window
+            (ignored if window is not Tukey). Default is 0.5.
+        metrics_ext (str, optional): Extension to be appended to input file name
+            for output metrics file. Default is "delay_xrfi_metrics.h5".
+        flags_ext (str, optional): Extension to be appended to input file name for
+            output flags file. Default is "final_flags.h5".
+        cal_ext (str, optional): Extension to replace penultimate extension in
+            calfits file for output calibration including flags. Defaults is "flagged_abs".
+            For example, a input_cal of "foo.goo.calfits" would result in
+            "foo.flagged_abs.calfits".
+        xrfi_path (str, optional): Path to save xrfi files to. Default is same
+            directory as vis_file.
+        kt_size (int, optional): Size of kernel in time dimension for detrend in
+            xrfi algorithm. Default is 8.
+        kf_size (int, optional): Size of kernel in frequency dimension for detrend
+            in xrfi algorithm. Default is 8.
+        sig_init (float, optional): Starting number of sigmas to flag on. Default is 6.
+        sig_adj (float, optional): Number of sigmas to flag on for data adjacent
+            to a flag. Default is 2.
+        freq_threshold (float, optional): Fraction of times required to trigger
+            broadcast across times (single freq). Default is 0.25.
+        time_threshold (float, optional): Fraction of channels required to trigger
+            broadcast across frequency (single time). Default is 0.5.
+        ex_ants (str, optional): Comma-separated list of antennas to exclude.
+            Flags of visibilities formed with these antennas will be set to True.
+        metrics_file (str, optional): Metrics file that contains a list of excluded
+            antennas. Flags of visibilities formed with these antennas will be set to True.
+    Returns:
+        None
+    """
+    from hera_cal import io as cal_io
+
+    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    dirname = resolve_xrfi_path(xrfi_path, vis_file)
+    xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+
+    alg = 'detrend_medfilt'
+    uv = cal_io.HERAData(vis_file)
+    uv.read(return_data=False)
+    flag_xants(uv, xants)
+    uvf_in = UVFlag(cal_flags)
+    flag_apply(uvf_in, uv, keep_existing=True, force_pol=False)
+    dfil = delay_filter.Delay_Filter(uv, input_cal=input_cal)
+    dfil.run_filter(standoff=standoff, horizon=horizon, tol=tol, window=window,
+                    skip_wgt=skip_wgt, maxiter=maxiter)
+    cal_io.update_uvdata(dfil.input_data, data=dfil.filtered_residuals, flags=dfil.flags)
+    uv = dfil.input_data  # shortcut for ease of use
+    uvf_dmetrics = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size)
+    # Save metrics from data
+    basename = qm_utils.strip_extension(os.path.basename(vis_file))
+    outfile = '.'.join([basename, metrics_ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_dmetrics.history += history
+    uvf_dmetrics.write(outpath, clobber=True)
+
+    # Combine with metrics from calibration files
+    uvf_cmetrics = UVFlag(cal_metrics)
+    uvf_dmetrics.uvfcombine_metrics(uvf_cmetrics, method='quadmean', inplace=True)
+
+    # Flag
+    uvf_f = flag(uvf_dmetrics, nsig_p=sig_init, nsig_f=None, nsig_t=None)
+    # OR with input flag waterfall
+    uvf_f |= uvf_in
+    uvf_f = watershed_flag(uvf_dmetrics, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+    # Threshold across time and frequency
+    uvf_f.to_metric()
+    uvf_f = flag(uvf_f, nsig_p=None, nsig_f=freq_threshold,
+                 nsig_t=time_threshold)
+
+    # Save final flags
+    outfile = '.'.join([basename, flags_ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_f.write(outpath, clobber=True)
+    # Save calfits with new flags
+    uvc = UVCal()
+    uvc.read_calfits(input_cal)
+    uvc.flag_array = uvf_f.flag_array
+    uvc.history += history
+    basename = qm_utils.strip_extension(os.path.basename(input_cal))
+    basename = qm_utils.strip_extension(basename)  # Also get rid of .abs
+    outfile = '.'.join([basename, cal_ext, 'calfits'])
+    outpath = os.path.join(dirname, outfile)
+    uvc.write_calfits(outpath, clobber=True)
 
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',

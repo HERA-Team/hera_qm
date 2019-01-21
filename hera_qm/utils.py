@@ -41,8 +41,9 @@ def get_metrics_ArgumentParser(method_name):
     Returns:
         a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
-    methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_run",
-               "delay_xrfi_run", "xrfi_cal_h1c_idr2_2_run", "xrfi_apply"]
+    methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_h1c_run",
+               "delay_xrfi_h1c_idr2_1_run", "delay_xrfi_run", "cal_xrfi_run",
+               "xrfi_apply"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -305,6 +306,73 @@ def get_metrics_ArgumentParser(method_name):
                        help='Comma-separated list of antennas to exclude. Flags of visibilities '
                        'formed with these antennas will be set to True.')
         a.add_argument('--metrics_file', default=None, type=str,
+                       help='Metrics file that contains a list of excluded antennas. Flags of '
+                       'visibilities formed with these antennas will be set to True.')
+    elif method_name == 'delay_xrfi_run':
+        a.prog = 'delay_xrfi_h1c_idr2_1_run.py'
+        io = a.add_argument_group(title='File i/o', description='Options related to the '
+                                  'input and output files.')
+        io.add_argument('vis_file', metavar='vis_file', nargs=1, type=str, default=None,
+                        help='Input data file to flag RFI.')
+        io.add_argument('cal_metrics', metavar='cal_metrics', nargs=1, type=str,
+                        default=None, help='Path to xrfi metrics file derived from'
+                        'calibration products.')
+        io.add_argument('cal_flags', metavar='cal_flags', nargs=1, type=str,
+                        default=None, help='Flags derived from calibration products.')
+        io.add_argument('--input_cal', default=None, type=str, help='Path to input '
+                        'calfits file. Default is None.')
+        io.add_argument('--metrics_ext', default='delay_xrfi_metrics.h5', type=str,
+                        help='Extension to be appended to input file name for output '
+                        'metrics file. Default is "delay_xrfi_metrics.h5".')
+        io.add_argument('--flags_ext', default='final_flags.h5', type=str,
+                        help='Extension to be appended to input file name for output '
+                        'flags file. Default is "final_flags.h5".')
+        io.add_argument('--cal_ext', default='flagged_abs', type=str,
+                        help='Extension to replace penultimate extension in calfits '
+                        'file for output calibration including flags. Defaults is '
+                        '"flagged_abs". For example, a input_cal of "foo.goo.calfits" '
+                        'would result in "foo.flagged_abs.calfits".')
+        io.add_argument('--xrfi_path')
+        d = a.add_argument_group(title='Delay filter options', description='Options '
+                                 'related to the delay filter which is applied before flagging.')
+        d.add_argument("--standoff", type=float, default=15.0, help='Fixed additional '
+                       'delay, in ns, beyond the horizon. Default 15.')
+        d.add_argument("--horizon", type=float, default=1.0, help='Proportionality '
+                       'constant for bl_len where 1.0 (Default) is the horizon '
+                       '(full light travel time)')
+        d.add_argument("--tol", type=float, default=1e-7, help='CLEAN algorithm '
+                       'convergence tolerance (default 1e-7).')
+        d.add_argument("--window", type=str, default="tukey", help='Window function '
+                       'for frequency filtering. See aipy.dsp.gen_window for '
+                       'options. Default is "tukey".')
+        d.add_argument("--skip_wgt", type=float, default=0.1, help='Skips filtering '
+                       'rows with unflagged fraction ~< skip_wgt (default 0.1)')
+        d.add_argument("--maxiter", type=int, default=100, help='Maximum iterations '
+                       'for aipy.deconv.clean to converge (default 100)')
+        d.add_argument("--alpha", type=float, default=.5, help='alpha parameter '
+                       'to use for Tukey window (ignored if window is not Tukey)')
+        x = a.add_argument_group(title='XRFI options', description='Options related to '
+                                 'the RFI flagging routine.')
+        x.add_argument('--kt_size', default=8, type=int,
+                       help='Size of kernel in time dimension for detrend in xrfi '
+                       'algorithm. Default is 8.')
+        x.add_argument('--kf_size', default=8, type=int,
+                       help='Size of kernel in frequency dimension for detrend in '
+                       'xrfi algorithm. Default is 8.')
+        x.add_argument('--sig_init', default=6.0, type=float,
+                       help='Starting number of sigmas to flag on. Default is 6.')
+        x.add_argument('--sig_adj', default=2.0, type=float,
+                       help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
+        x.add_argument('--freq_threshold', default=0.5, type=float,
+                       help='Fraction of channels required to trigger broadcast across'
+                       ' frequency (single time). Default is 0.5.')
+        x.add_argument('--time_threshold', default=0.05, type=float,
+                       help='Fraction of times required to trigger broadcast across'
+                       ' time (single frequency). Default is 0.05.')
+        x.add_argument('--ex_ants', default='', type=str,
+                       help='Comma-separated list of antennas to exclude. Flags of visibilities '
+                       'formed with these antennas will be set to True.')
+        x.add_argument('--metrics_file', default='', type=str,
                        help='Metrics file that contains a list of excluded antennas. Flags of '
                        'visibilities formed with these antennas will be set to True.')
     elif method_name == 'xrfi_apply':

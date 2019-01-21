@@ -22,6 +22,7 @@ from hera_qm import UVFlag
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
 test_uvfits_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.uvfits')
+test_uvh5_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvh5')
 test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
 test_f_file = test_d_file + '.testuvflag.h5'
 test_f_file_flags = test_d_file + '.testuvflag.flags.h5'  # version in 'flag' mode
@@ -649,8 +650,8 @@ class TestWrappers():
 
     def test_xrfi_cal_h1c_idr2_2_run(self):
         # Run in nicest way possible
-                                                            test_d_file, 'Just a test'],
         uvtest.checkWarnings(xrfi.cal_xrfi_run, [test_c_file, test_c_file,
+                                                 test_uvh5_file, 'Just a test'],
                              {'xrfi_path': xrfi_path, 'kt_size': 3},
                              nwarnings=2, message='This object is already a waterfall')
 
