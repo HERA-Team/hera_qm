@@ -660,8 +660,8 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain'):
 def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
                  metrics_ext='cal_xrfi_metrics.h5', flags_ext='cal_flags.h5',
                  xrfi_path='', kt_size=8, kf_size=8,
-                 sig_init=6.0, sig_adj=2.0, freq_threshold=0.25,
-                 time_threshold=0.5, ex_ants=None, metrics_file=None):
+                 sig_init=2.0, sig_adj=1.5, freq_threshold=0.3,
+                 time_threshold=0.3, ex_ants=None, metrics_file=None):
     """xrfi excision pipeline used for H1C IDR2.2. Uses detrending and watershed algorithms above.
     Args:
         omni_calfits_file (str): Omnical calfits file to use to flag on gains and
@@ -680,13 +680,13 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
             xrfi algorithm. Default is 8.
         kf_size (int, optional): Size of kernel in frequency dimension for detrend
             in xrfi algorithm. Default is 8.
-        sig_init (float, optional): Starting number of sigmas to flag on. Default is 6.
+        sig_init (float, optional): Starting number of sigmas to flag on. Default is 2.
         sig_adj (float, optional): Number of sigmas to flag on for data adjacent
-            to a flag. Default is 2.
+            to a flag. Default is 1.5.
         freq_threshold (float, optional): Fraction of times required to trigger
-            broadcast across times (single freq). Default is 0.25.
+            broadcast across times (single freq). Default is 0.3.
         time_threshold (float, optional): Fraction of channels required to trigger
-            broadcast across frequency (single time). Default is 0.5.
+            broadcast across frequency (single time). Default is 0.3.
         ex_ants (str, optional): Comma-separated list of antennas to exclude.
             Flags of visibilities formed with these antennas will be set to True.
         metrics_file (str, optional): Metrics file that contains a list of excluded
@@ -735,7 +735,7 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
     uvf_f = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
     # Threshold across time and frequency
     uvf_f.to_metric()
-    uvf_f = flag(uvf_f, nsig_p=None, nsig_f=freq_threshold,
+    uvf_f = flag(uvf_f, nsig_p=1.0, nsig_f=freq_threshold,
                  nsig_t=time_threshold)
 
     # Output results
@@ -841,7 +841,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
     uvf_f = watershed_flag(uvf_dmetrics, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
     # Threshold across time and frequency
     uvf_f.to_metric()
-    uvf_f = flag(uvf_f, nsig_p=None, nsig_f=freq_threshold,
+    uvf_f = flag(uvf_f, nsig_p=1.0, nsig_f=freq_threshold,
                  nsig_t=time_threshold)
 
     # Save final flags

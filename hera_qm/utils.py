@@ -292,16 +292,16 @@ def get_metrics_ArgumentParser(method_name):
         a.add_argument('--kf_size', default=8, type=int,
                        help='Size of kernel in frequency dimension for detrend in '
                        'xrfi algorithm. Default is 8.')
-        a.add_argument('--sig_init', default=6.0, type=float,
-                       help='Starting number of sigmas to flag on. Default is 6.')
-        a.add_argument('--sig_adj', default=2.0, type=float,
-                       help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
-        a.add_argument('--freq_threshold', default=0.25, type=float,
+        a.add_argument('--sig_init', default=2.0, type=float,
+                       help='Starting number of sigmas to flag on. Default is 2.0.')
+        a.add_argument('--sig_adj', default=1.5, type=float,
+                       help='Number of sigmas to flag on for data adjacent to a flag. Default is 1.5.')
+        a.add_argument('--freq_threshold', default=0.3, type=float,
                        help='Fraction of times required to trigger broadcast across'
-                       ' times (single freq). Default is 0.25.')
-        a.add_argument('--time_threshold', default=0.5, type=float,
+                       ' times (single freq). Default is 0.3.')
+        a.add_argument('--time_threshold', default=0.3, type=float,
                        help='Fraction of channels required to trigger broadcast across'
-                       ' frequency (single time). Default is 0.5.')
+                       ' frequency (single time). Default is 0.3.')
         a.add_argument('--ex_ants', default=None, type=str,
                        help='Comma-separated list of antennas to exclude. Flags of visibilities '
                        'formed with these antennas will be set to True.')
