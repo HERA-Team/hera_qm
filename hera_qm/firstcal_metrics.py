@@ -506,13 +506,14 @@ class FirstCal_Metrics(object):
 
         self.metrics = full_metrics
 
-    def write_metrics(self, filename=None, filetype='json'):
+    def write_metrics(self, filename=None, filetype='json', overwrite=False):
         """
         Write metrics to file after running run_metrics()
 
         filename : str, default=None
             filename without filetype suffix
             if None, use default filename stem
+
 
         filetype : str, default='json'
             filetype to write out to
