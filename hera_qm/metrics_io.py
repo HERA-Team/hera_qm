@@ -123,6 +123,8 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
                                     "compatible dtype. Received this error: "
                                     "{1}".format(key, err))
             else:
+                if isinstance(in_dict[key], six.text_type):
+                    in_dict[key] = qm_utils._str_to_bytes(in_dict[key])
                 dset = h5file[path].create_dataset(key_str, data=in_dict[key])
                 # Add boolean attribute to determine if key is a string
                 # Used to parse keys saved to dicts when reading
