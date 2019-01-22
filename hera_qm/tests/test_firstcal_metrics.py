@@ -12,6 +12,8 @@ from hera_qm.data import DATA_PATH
 import unittest
 import os
 from hera_qm import utils
+import hera_qm.tests as qmtest
+from hera_qm import metrics_io
 import sys
 
 
@@ -180,6 +182,38 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         np.random.seed(0)
         FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=True)
         self.assertAlmostEqual(FC.delay_fluctuations[0, 0], 0.024669144881121961, delta=0.000001)
+
+
+class Test_FirstCal_Metrics_two_pols(unittest.TestCase):
+
+    def setUp(self):
+        infile = os.path.join(DATA_PATH, 'zen.2458098.49835.HH.first.calfits')
+        self.FC = firstcal_metrics.FirstCal_Metrics(infile)
+        self.out_dir = os.path.join(DATA_PATH, 'test_output')
+
+    def test_init(self):
+        self.assertEqual(self.FC.Nants, 11)
+        self.assertEqual(len(self.FC.delays), 11)
+
+    def test_run_metrics_two_pols(self):
+        # These results were run with a seed of 0, the seed shouldn't matter
+        # but you never know.
+        two_pol_known_results = os.path.join(DATA_PATH, 'example_two_polarization_firstcal_results.hdf5')
+        np.random.seed(0)
+        self.FC.run_metrics(std_cut=1.0)
+        known_output = metrics_io.load_metric_file(two_pol_known_results)
+
+        known_output.pop('history', None)
+        known_output.pop('version', None)
+        # There are some full paths of files saved in the files
+        # Perhaps for record keeping, but that messes up the test comparison
+        for key in known_output:
+            known_output[key].pop('fc_filename', None)
+            known_output[key].pop('fc_filestem', None)
+        for key in self.FC.metrics:
+            self.FC.metrics[key].pop('fc_filename', None)
+            self.FC.metrics[key].pop('fc_filestem', None)
+        qmtest.recursive_compare_dicts(self.FC.metrics, known_output)
 
 
 class TestFirstcalMetricsRun(unittest.TestCase):
