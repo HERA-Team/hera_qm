@@ -818,8 +818,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
     flag_xants(hd, xants)
     uvf_in = UVFlag(cal_flags)
     flag_apply(uvf_in, hd, keep_existing=True, force_pol=False)
-    dfil = delay_filter.Delay_Filter(hd)
-    dfil.apply_calibration(input_cal)
+    dfil = delay_filter.Delay_Filter(hd, input_cal=input_cal)
     dfil.run_filter(standoff=standoff, horizon=horizon, tol=tol, window=window,
                     skip_wgt=skip_wgt, maxiter=maxiter)
     hd.update(data=dfil.filtered_residuals, flags=dfil.flags)
