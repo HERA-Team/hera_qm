@@ -547,7 +547,7 @@ class UVFlag():
         else:
             warnings.warn('Cannot collapse polarization axis when only one pol present.')
             return
-        if (method == 'or') and (self.mode == 'flag'):
+        if ((method == 'or') or (method == 'and')) and (self.mode == 'flag'):
             self.flag_array = darr
         else:
             self.metric_array = darr
