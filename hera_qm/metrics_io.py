@@ -385,7 +385,7 @@ def _recursively_parse_json(in_dict):
                                 out_dict[out_key] = [complex(val)
                                                      for val in in_dict[key]]
                     else:
-                        out_dict[out_key] = str(in_dict[key])
+                        out_dict[out_key] = in_dict[key]
                 except (SyntaxError, NameError) as err:
                     warnings.warn("The key: {0} has a value which "
                                   "could not be parsed, added"
