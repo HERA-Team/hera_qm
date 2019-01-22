@@ -525,44 +525,11 @@ class FirstCal_Metrics(object):
             if filename.split('.')[-1] != 'json':
                     filename += '.json'
         else:
-            if filename.split('.')[-1] != 'uvh5':
-                filename += '.uvh5'
+            if filename.split('.')[-1] not in ['hdf5', 'h5']:
+                filename += '.hdf5'
         metrics_io.write_metric_file(filename=filename,
                                      input_dict=self.metrics,
-                                     overwrite=True)
-        # # get filename prefix
-        #
-        # # write to file
-        # if filetype == 'json':
-        #     if filename.split('.')[-1] != 'json':
-        #         filename += '.json'
-        #     metrics_out = copy.deepcopy(self.metrics)
-        #     # change numpy dtypes to built-in dtypes (for python3 json)
-        #     # change ndarrays to lists
-        #     for k in metrics_out:
-        #         if isinstance(metrics_out[k], np.ndarray):
-        #             metrics_out[k] = metrics_out[k].tolist()
-        #         elif isinstance(metrics_out[k], np.float):
-        #             metrics_out[k] = float(metrics_out[k])
-        #         elif isinstance(metrics_out[k], np.integer):
-        #             metrics_out[k] = int(metrics_out[k])
-        #         elif isinstance(metrics_out[k], np.bool):
-        #             metrics_out[k] = bool(metrics_out[k])
-        #         elif isinstance(metrics_out[k], (dict, odict)):
-        #             metrics_out[k] = odict([(str(_k), metrics_out[k][_k].tolist())
-        #                                     if isinstance(metrics_out[k][_k], np.ndarray)
-        #                                     else (str(_k), metrics_out[k][_k])
-        #                                     for _k in metrics_out[k]])
-        #
-        #     with open(filename, 'w') as f:
-        #         json.dump(metrics_out, f, indent=4)
-        #
-        # elif filetype == 'pkl':
-        #     if filename.split('.')[-1] != 'pkl':
-        #         filename += '.pkl'
-        #     with open(filename, 'wb') as f:
-        #         outp = pkl.Pickler(f)
-        #         outp.dump(self.metrics)
+                                     overwrite=overwrite)
 
     def load_metrics(self, filename):
         """
