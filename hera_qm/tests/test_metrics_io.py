@@ -111,11 +111,11 @@ def test_recursive_adds_scalar_to_h5file():
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_scalar = 'hello world'
     path = '/'
-    good_dict = {'0': test_scalar}
+    good_dict = {'test_string_scalar': test_scalar}
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
-
-        nt.assert_equal(test_scalar, h5_test["0"][()])
+        # we convert to np.string_ types so use that to compare
+        nt.assert_equal(np.string_(test_scalar), h5_test["test_string_scalar"][()])
     os.remove(test_file)
 
 
@@ -123,12 +123,12 @@ def test_recursive_adds_nested_scalar_to_h5file():
     """Test that a scalar nested in a dict is added to h5file."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_scalar = 'hello world'
-    good_dict = {'0': {'1': test_scalar}}
+    good_dict = {'0': {'test_string_scalar': test_scalar}}
     path = '/'
     with h5py.File(test_file, 'w') as h5_test:
         metrics_io._recursively_save_dict_to_group(h5_test, path, good_dict)
 
-        nt.assert_equal(test_scalar, h5_test["0/1"][()])
+        nt.assert_equal(np.string_(test_scalar), h5_test["0/test_string_scalar"][()])
     os.remove(test_file)
 
 
@@ -165,13 +165,13 @@ def test_write_metric_file_hdf5():
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_scalar = 'hello world'
     test_array = np.arange(10)
-    test_dict = {'0': test_scalar, 1: {'0': test_scalar, '1': test_array}}
+    test_dict = {'test_string_scalar': test_scalar, 1: {'test_string_scalar': test_scalar, '1': test_array}}
     path = '/'
     metrics_io.write_metric_file(test_file, test_dict)
 
     with h5py.File(test_file, 'r') as test_h5:
-        nt.assert_equal(test_scalar, test_h5["/Metrics/0"][()])
-        nt.assert_equal(test_scalar, test_h5["/Metrics/1/0"][()])
+        nt.assert_equal(np.string_(test_scalar), test_h5["/Metrics/test_string_scalar"][()])
+        nt.assert_equal(np.string_(test_scalar), test_h5["/Metrics/1/test_string_scalar"][()])
         nt.assert_true(np.allclose(test_array, test_h5["Metrics/1/1"][()]))
     os.remove(test_file)
 
@@ -181,7 +181,7 @@ def test_write_metric_file_hdf5_no_appellation_exists():
     test_file = os.path.join(DATA_PATH, 'test_output', 'test')
     test_scalar = 'hello world'
     test_array = np.arange(10)
-    test_dict = {'0': test_scalar, 1: {'0': test_scalar, '1': test_array}}
+    test_dict = {'test_string_scalar': test_scalar, 1: {'test_string_scalar': test_scalar, '1': test_array}}
     path = '/'
     metrics_io.write_metric_file(test_file, test_dict)
     test_file += '.hdf5'
@@ -194,7 +194,7 @@ def test_write_metric_warning_json():
     json_file = os.path.join(DATA_PATH, 'test_output', 'test_save.json')
     test_scalar = 'hello world'
     test_array = np.arange(10)
-    test_dict = {'0': test_scalar, 1: {'0': test_scalar, '1': test_array}}
+    test_dict = {'test_string_scalar': test_scalar, 1: {'test_string_scalar': test_scalar, '1': test_array}}
     warn_message = ["JSON-type files can still be written but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility."]
@@ -213,7 +213,7 @@ def test_write_then_recursive_load_dict_to_group_no_nested_dicts():
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_scalar = 'hello world'
     path = '/'
-    good_dict = {'0': test_scalar, 'history': "this is a test",
+    good_dict = {'test_string_scalar': test_scalar, 'history': "this is a test",
                  'version': hera_qm_version_str}
     metrics_io.write_metric_file(test_file, good_dict)
     with h5py.File(test_file, 'r') as h5file:
@@ -229,8 +229,8 @@ def test_write_then_recursive_load_dict_to_group_with_nested_dicts():
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_scalar = 'hello world'
     path = '/'
-    good_dict = {'0': test_scalar, 'history': "this is a test",
-                 'version': hera_qm_version_str, '1': {'0': test_scalar}}
+    good_dict = {'test_string_scalar': test_scalar, 'history': "this is a test",
+                 'version': hera_qm_version_str, '1': {'test_string_scalar': test_scalar}}
     metrics_io.write_metric_file(test_file, good_dict)
     with h5py.File(test_file, 'r') as h5file:
         read_dict = metrics_io._recursively_load_dict_to_group(h5file, '/Header/')
@@ -248,7 +248,7 @@ def test_recursive_load_error_if_objet_not_group_or_dataset():
     """Test the recursively loader errors if given HDF5 with non hdf5-object."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_scalar = 'hello world'
-    good_dict = {'0': {'1': {'2': test_scalar}}}
+    good_dict = {'0': {'1': {'test_string_scalar': test_scalar}}}
     nt.assert_raises(TypeError, metrics_io._recursively_load_dict_to_group,
                      good_dict, '0')
 
@@ -258,8 +258,8 @@ def test_write_then_load_metric_file_hdf5():
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     test_scalar = 'hello world'
     path = '/'
-    good_dict = {'0': test_scalar, 'history': "this is a test",
-                 'version': hera_qm_version_str, 'all_metrics': {'0': test_scalar}}
+    good_dict = {'test_string_scalar': test_scalar, 'history': "this is a test",
+                 'version': hera_qm_version_str, 'all_metrics': {'test_string_scalar': test_scalar}}
     metrics_io.write_metric_file(test_file, good_dict)
     read_dict = metrics_io.load_metric_file(test_file)
     for key in good_dict:
