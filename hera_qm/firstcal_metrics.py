@@ -350,17 +350,8 @@ class FirstCal_Metrics(object):
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_files)
 
-        # if len(self.UVC.jones_array) > 1:
-        #     raise ValueError('Sorry, only single pol firstcal solutions are '
-        #                      'currently supported.')
-
         self.pols = np.array([self.jones2pol[x] for x in self.UVC.jones_array])
         self.Npols = self.pols.size
-        # try:
-        #     self.pol = pol_dict[self.UVC.jones_array[0]]
-        # except KeyError:
-        #    raise ValueError('Sorry, only calibration polarizations "x" and '
-        #                     '"y" are currently supported.')
 
         # get file prefix
         if isinstance(calfits_files, list):
