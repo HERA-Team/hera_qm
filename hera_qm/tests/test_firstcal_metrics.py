@@ -210,9 +210,11 @@ class Test_FirstCal_Metrics_two_pols(unittest.TestCase):
         for key in known_output:
             known_output[key].pop('fc_filename', None)
             known_output[key].pop('fc_filestem', None)
+            known_output[key].pop('version', None)
         for key in self.FC.metrics:
             self.FC.metrics[key].pop('fc_filename', None)
             self.FC.metrics[key].pop('fc_filestem', None)
+            self.FC.metrics[key].pop('version', None)
         qmtest.recursive_compare_dicts(self.FC.metrics, known_output)
 
 
