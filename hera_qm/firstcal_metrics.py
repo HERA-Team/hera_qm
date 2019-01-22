@@ -364,6 +364,7 @@ class FirstCal_Metrics(object):
 
         # get other relevant arrays
         self.times = self.UVC.time_array
+        self.Ntimes = len(list(set(self.times)))
         self.start_JD = np.floor(self.times).min()
         self.frac_JD = self.times - self.start_JD
         self.minutes = 24 * 60 * (self.frac_JD - self.frac_JD.min())
@@ -417,16 +418,20 @@ class FirstCal_Metrics(object):
             # iterate over each antenna
             for i in range(self.Nants):
                 # get ydata
-                y = copy.copy(self.delay_fluctuations[i])
+                y = copy.copy(self.delay_fluctuations[i, :, :])
                 # scale by std
                 ystd = np.sqrt(astats.biweight_midvariance(y, axis=0)).reshape(1, self.Npols)
-                y /= ystd
-                # fit GP and remove from delay fluctuations
-                GP = gp.GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
-                GP.fit(x, y)
-                ymodel = (GP.predict(x).ravel() * ystd).T
-                self.delay_fluctuations[i] -= ymodel
-                self.delay_smooths.append(ymodel)
+                # if this is a simulation it is possible all the delays are 1
+                if not(ystd.any()):
+                    self.delay_smooths.append(self.delays[i, :, :])
+                else:
+                    y /= ystd
+                    # fit GP and remove from delay fluctuations
+                    GP = gp.GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
+                    GP.fit(x, y)
+                    ymodel = (GP.predict(x).reshape(self.Ntimes, self.Npols) * ystd)
+                    self.delay_fluctuations[i, :, :] -= ymodel
+                    self.delay_smooths.append(ymodel)
             self.delay_smooths = np.array(self.delay_smooths)
 
     def run_metrics(self, std_cut=0.5):
