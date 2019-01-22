@@ -426,13 +426,13 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
 
     # Pixel flagging
     if nsig_p is not None:
-        uvf_f.flag_array[uvf_m.metric_array > nsig_p] = True
+        uvf_f.flag_array[uvf_m.metric_array >= nsig_p] = True
 
     if uvf_m.type == 'baseline':
         if nsig_f is not None:
             # Channel flagging
             d = avg_f(uvf_m.metric_array, axis=(0, 1, 3), weights=uvf_m.weights_array)
-            indf = np.where(d > nsig_f)[0]
+            indf = np.where(d >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :] = True
         if nsig_t is not None:
             # Time flagging
@@ -441,30 +441,30 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
             for i, t in enumerate(ts):
                 d[i] = avg_f(uvf_m.metric_array[uvf_m.time_array == t, 0, :, :],
                              weights=uvf_m.weights_array[uvf_m.time_array == t, 0, :, :])
-            indf = np.where(d > nsig_t)[0]
+            indf = np.where(d >= nsig_t)[0]
             for t in ts[indf]:
                 uvf_f.flag_array[uvf_f.time_array == t, :, :, :] = True
     elif uvf_m.type == 'antenna':
         if nsig_f is not None:
             # Channel flag
             d = avg_f(uvf_m.metric_array, axis=(0, 1, 3, 4), weights=uvf_m.weights_array)
-            indf = np.where(d > nsig_f)[0]
+            indf = np.where(d >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :, :] = True
         if nsig_t is not None:
             # Time watershed
             d = avg_f(uvf_m.metric_array, axis=(0, 1, 2, 4), weights=uvf_m.weights_array)
-            indt = np.where(d > nsig_t)[0]
+            indt = np.where(d >= nsig_t)[0]
             uvf_f.flag_array[:, :, :, indt, :] = True
     elif uvf_m.type == 'waterfall':
         if nsig_f is not None:
             # Channel flag
             d = avg_f(uvf_m.metric_array, axis=(0, 2), weights=uvf_m.weights_array)
-            indf = np.where(d > nsig_f)[0]
+            indf = np.where(d >= nsig_f)[0]
             uvf_f.flag_array[:, indf, :] = True
         if nsig_t is not None:
             # Time watershed
             d = avg_f(uvf_m.metric_array, axis=(1, 2), weights=uvf_m.weights_array)
-            indt = np.where(d > nsig_t)[0]
+            indt = np.where(d >= nsig_t)[0]
             uvf_f.flag_array[indt, :, :] = True
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
