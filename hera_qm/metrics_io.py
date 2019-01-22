@@ -33,7 +33,7 @@ antpol_keys = ['xants', 'dead_ants', 'crossed_ants']
 known_string_keys = ['history', 'version', 'filedir', 'cut_edges',
                      'fc_filename', 'filename', 'fc_filestem', 'filestem',
                      'pol', 'ant_pol', 'chisq_good_sol', 'good_sol',
-                     'ant_phs_std_good_sol']
+                     'ant_phs_std_good_sol', 'test_string_scalar']
 float_keys = ['dead_ant_z_cut', 'cross_pol_z_cut', 'always_dead_ant_z_cut']
 antpol_dict_keys = ['removal_iteration']
 list_of_strings_keys = ['datafile_list']
