@@ -622,7 +622,7 @@ class FirstCal_Metrics(object):
                 z_scores_d[ant] = z_scores[i]
                 ant_z_scores_d[ant] = ant_z_scores[i]
             for i, t in enumerate(self.times):
-                time_std_d[t] = time_std[i]
+                time_std_d[str(t)] = time_std[i]
 
             ant_avg = ant_avg_d
             time_std = time_std_d
