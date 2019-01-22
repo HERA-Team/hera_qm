@@ -306,6 +306,7 @@ class FirstCal_Metrics(object):
 
     # sklearn import statement
     sklearn_import = sklearn_import
+    jones2pol = {-5: 'XX', -6: 'YY', -7: 'XY', -8: 'YX'}
 
     def __init__(self, calfits_files, use_gp=True):
         """
@@ -349,15 +350,17 @@ class FirstCal_Metrics(object):
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_files)
 
-        if len(self.UVC.jones_array) > 1:
-            raise ValueError('Sorry, only single pol firstcal solutions are '
-                             'currently supported.')
-        pol_dict = {-5: 'x', -6: 'y'}
-        try:
-            self.pol = pol_dict[self.UVC.jones_array[0]]
-        except KeyError:
-            raise ValueError('Sorry, only calibration polarizations "x" and '
-                             '"y" are currently supported.')
+        # if len(self.UVC.jones_array) > 1:
+        #     raise ValueError('Sorry, only single pol firstcal solutions are '
+        #                      'currently supported.')
+
+        self.pols = np.array([self.jones2pol[x] for x in self.UVC.jones_array])
+        self.Npols = self.pols.size
+        # try:
+        #     self.pol = pol_dict[self.UVC.jones_array[0]]
+        # except KeyError:
+        #    raise ValueError('Sorry, only calibration polarizations "x" and '
+        #                     '"y" are currently supported.')
 
         # get file prefix
         if isinstance(calfits_files, list):
@@ -382,17 +385,21 @@ class FirstCal_Metrics(object):
         if self.UVC.cal_type == 'gain':
             # get delays
             freqs = self.UVC.freq_array.squeeze()
-            fc_gains = np.moveaxis(self.UVC.gain_array, 2, 3)[:, 0, :, :, 0]
-            fc_phi = np.unwrap(np.angle(fc_gains))
+            fc_gains = np.moveaxis(self.UVC.gain_array, 2, 3)[:, 0, :, :, :]
+            fc_phi = np.unwrap(np.angle(fc_gains), axis=2)
             d_nu = np.median(np.diff(freqs))
-            d_phi = np.median(fc_phi[:, :, 1:] - fc_phi[:, :, :-1], axis=2)
+            d_phi = np.median(fc_phi[:, :, 1:, :] - fc_phi[:, :, :-1, :], axis=2)
             gain_slope = (d_phi / d_nu)
             self.delays = gain_slope / (-2 * np.pi)
             self.gains = fc_gains
 
             # get delay offsets at nu = 0 Hz, and then get rotated antennas
-            self.offsets = fc_phi[:, :, 0] - gain_slope * freqs[0]
-            self.rot_ants = np.unique(list(map(lambda x: self.ants[x], (np.isclose(np.pi, np.abs(self.offsets) % (2 * np.pi), atol=1.0)).T))).tolist()
+            self.offsets = fc_phi[:, :, 0, :] - gain_slope * freqs[0]
+            # find where the offest have a difference of pi from 0
+            rot_offset_bool = np.isclose(np.pi, np.mod(np.abs(self.offsets), 2 * np.pi), atol=1.0).T
+            rot_offset_bool = np.any(rot_offset_bool, axis=(0, 1))
+            self.rot_ants = np.unique(self.ants[rot_offset_bool])
+            # self.rot_ants = np.unique(list(map(lambda x: self.ants[x], (np.isclose(np.pi, np.abs(self.offsets) % (2 * np.pi), atol=1.0)).T))).tolist()
 
         elif self.UVC.cal_type == 'delay':
             self.delays = self.UVC.delay_array.squeeze()
@@ -402,9 +409,8 @@ class FirstCal_Metrics(object):
 
         # Calculate avg delay solution and subtract to get delay_fluctuations
         self.delays = self.delays * 1e9
-        self.delay_avgs = np.median(self.delays, axis=1)
-        self.delay_fluctuations = (self.delays.T - self.delay_avgs).T
-
+        self.delay_avgs = np.median(self.delays, axis=1, keepdims=True)
+        self.delay_fluctuations = (self.delays - self.delay_avgs)
         # use gaussian process model to subtract underlying mean function
         if use_gp is True and self.sklearn_import is True:
             # initialize GP kernel.
@@ -422,12 +428,12 @@ class FirstCal_Metrics(object):
                 # get ydata
                 y = copy.copy(self.delay_fluctuations[i])
                 # scale by std
-                ystd = np.sqrt(astats.biweight_midvariance(y))
+                ystd = np.sqrt(astats.biweight_midvariance(y, axis=0)).reshape(1, self.Npols)
                 y /= ystd
                 # fit GP and remove from delay fluctuations
                 GP = gp.GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
                 GP.fit(x, y)
-                ymodel = GP.predict(x).ravel() * ystd
+                ymodel = (GP.predict(x).ravel() * ystd).T
                 self.delay_fluctuations[i] -= ymodel
                 self.delay_smooths.append(ymodel)
             self.delay_smooths = np.array(self.delay_smooths)
@@ -462,48 +468,52 @@ class FirstCal_Metrics(object):
             contains z_score for each antenna w.r.t stand dev. of
             all antennas, then averaged over time
         """
-        # Calculate std and zscores
-        (ant_avg, ant_std, time_std, agg_std, max_std,
-         z_scores, ant_z_scores) = self.delay_std(return_dict=True)
+        full_metrics = OrderedDict()
+        for i, pol in enumerate(self.pols):
+            # Calculate std and zscores
+            (ant_avg, ant_std, time_std, agg_std, max_std,
+             z_scores, ant_z_scores) = self.delay_std(pol_ind=i, return_dict=True)
 
-        # Given delay standard dev. cut, find "bad" ants
-        # also determine if full solultion is bad
-        if max_std > std_cut:
-            good_sol = False
-        else:
-            good_sol = True
+            # Given delay standard dev. cut, find "bad" ants
+            # also determine if full solultion is bad
+            if max_std > std_cut:
+                good_sol = False
+            else:
+                good_sol = True
 
-        bad_ants = []
-        for ant in ant_std:
-            if ant_std[ant] > std_cut:
-                bad_ants.append(ant)
+            bad_ants = []
+            for ant in ant_std:
+                if ant_std[ant] > std_cut:
+                    bad_ants.append(ant)
 
-        # put into dictionary
-        metrics = OrderedDict()
-        metrics['good_sol'] = bool(good_sol)
-        metrics['ants'] = self.ants
-        metrics['bad_ants'] = bad_ants
-        metrics['z_scores'] = z_scores
-        metrics['ant_z_scores'] = ant_z_scores
-        metrics['ant_avg'] = ant_avg
-        metrics['ant_std'] = ant_std
-        metrics['time_std'] = time_std
-        metrics['agg_std'] = agg_std
-        metrics['max_std'] = max_std
-        metrics['times'] = self.times
-        metrics['version'] = self.version_str
-        metrics['fc_filename'] = self.fc_filename
-        metrics['fc_filestem'] = self.fc_filestem
-        metrics['start_JD'] = self.start_JD
-        metrics['frac_JD'] = self.frac_JD
-        metrics['std_cut'] = std_cut
-        metrics['pol'] = self.pol
-        metrics['rot_ants'] = self.rot_ants
+            # put into dictionary
+            metrics = OrderedDict()
+            metrics['good_sol'] = bool(good_sol)
+            metrics['ants'] = self.ants
+            metrics['bad_ants'] = bad_ants
+            metrics['z_scores'] = z_scores
+            metrics['ant_z_scores'] = ant_z_scores
+            metrics['ant_avg'] = ant_avg
+            metrics['ant_std'] = ant_std
+            metrics['time_std'] = time_std
+            metrics['agg_std'] = agg_std
+            metrics['max_std'] = max_std
+            metrics['times'] = self.times
+            metrics['version'] = self.version_str
+            metrics['fc_filename'] = self.fc_filename
+            metrics['fc_filestem'] = self.fc_filestem
+            metrics['start_JD'] = self.start_JD
+            metrics['frac_JD'] = self.frac_JD
+            metrics['std_cut'] = std_cut
+            metrics['pol'] = self.pols[i]
+            metrics['rot_ants'] = self.rot_ants
 
-        if self.history != '':
-            metrics['history'] = self.history
+            if self.history != '':
+                metrics['history'] = self.history
 
-        self.metrics = metrics
+            full_metrics[pol] = metrics
+
+        self.metrics = full_metrics
 
     def write_metrics(self, filename=None, filetype='json'):
         """
@@ -579,7 +589,7 @@ class FirstCal_Metrics(object):
         self.metrics = metrics_io.load_metric_file(filename)
         # self.metrics = load_firstcal_metrics(filename)
 
-    def delay_std(self, return_dict=False):
+    def delay_std(self, pol_ind, return_dict=False):
         """
         Calculate standard deviations of per-antenna delay solutions
         and aggregate delay solutions. Assign a z-score for
@@ -630,10 +640,10 @@ class FirstCal_Metrics(object):
 
         """
         # calculate standard deviations
-        ant_avg = self.delay_avgs
-        ant_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations, axis=1))
-        time_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations, axis=0))
-        agg_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations))
+        ant_avg = self.delay_avgs[:, :, pol_ind]
+        ant_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations[:, :, pol_ind], axis=1))
+        time_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations[:, :, pol_ind], axis=0))
+        agg_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations[:, :, pol_ind]))
         max_std = np.max(ant_std)
 
         # calculate z-scores
@@ -886,7 +896,7 @@ def firstcal_metrics_run(files, args, history):
             metrics_path = dirname
         else:
             metrics_path = args.metrics_path
-            print(metrics_path)
+        print(metrics_path)
         metrics_basename = utils.strip_extension(os.path.basename(filename)) + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
         fm.write_metrics(filename=metrics_filename)
