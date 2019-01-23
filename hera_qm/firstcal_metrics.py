@@ -26,7 +26,7 @@ except ImportError:
 
 
 def get_firstcal_metrics_dict():
-    """Simple function that returns dictionary with metric names as keys and
+    """ Simple function that returns dictionary with metric names as keys and
     their descriptions as values. This is used by hera_mc to populate the table
     of metrics and their descriptions.
 
@@ -60,6 +60,21 @@ def get_firstcal_metrics_dict():
                     'firstcal_metrics_rot_ants': 'Antennas flagged as being '
                     'rotated by 180 degrees.'}
     return metrics_dict
+
+
+def load_firstcal_metrics(filename):
+    """
+    Read-in a firstcal_metrics file and return dictionary.
+
+    Loading is handled via hera_qm.metrics_io.load_metric_file
+    Arguments:
+        filename: Filename of the metric to load.
+                  Must be either HDF5 (recommended) or JSON (Depreciated in Future) types.
+
+    Returns:
+        Dictionary of metrics stored in the input file.
+    """
+    return metrics_io.load_metric_file(filename)
 
 
 class FirstCal_Metrics(object):
@@ -315,7 +330,8 @@ class FirstCal_Metrics(object):
         -------
         self.metrics dictionary
         """
-        self.metrics = metrics_io.load_metric_file(filename)
+        self.metrics = load_firstcal_metrics(filename)
+
 
     def delay_std(self, pol_ind, return_dict=False):
         """
