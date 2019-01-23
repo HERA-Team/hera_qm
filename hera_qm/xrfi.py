@@ -811,6 +811,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
         None
     """
     from hera_cal import io as cal_io
+    from hera_cal import delay_filter
 
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
     dirname = resolve_xrfi_path(xrfi_path, vis_file)
@@ -822,7 +823,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
     flag_xants(hd, xants)
     uvf_in = UVFlag(cal_flags)
     flag_apply(uvf_in, hd, keep_existing=True, force_pol=True)
-    dfil = hera_cal.delay_filter.Delay_Filter(hd, input_cal=input_cal)
+    dfil = delay_filter.Delay_Filter(hd, input_cal=input_cal)
     dfil.run_filter(standoff=standoff, horizon=horizon, tol=tol, window=window,
                     skip_wgt=skip_wgt, maxiter=maxiter)
     hd.update(data=dfil.filtered_residuals, flags=dfil.flags)
