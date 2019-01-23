@@ -332,7 +332,6 @@ class FirstCal_Metrics(object):
         """
         self.metrics = load_firstcal_metrics(filename)
 
-
     def delay_std(self, pol_ind, return_dict=False):
         """
         Calculate standard deviations of per-antenna delay solutions
