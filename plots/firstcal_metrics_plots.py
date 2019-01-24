@@ -352,34 +352,3 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
 
     if custom_ax is False:
         return fig
-
-
-def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
-    """
-    Plot standard deviation of delay solutions per-ant or per-time
-
-    Input:
-    ------
-
-    fname : str, default=None
-        filename
-
-    xaxis : str, default='ant', option=['ant', 'time']
-        what to plot on the xaxis, antennas or time stamp
-
-    ax : axis object, default=None
-        matplotlib axis object
-
-    kwargs : dict
-        plotting kwargs
-
-    save : bool, default=False
-        save image to file
-
-    """
-    # make sure metrics has been run
-    if hasattr(self, 'metrics') is False:
-        raise NameError("You need to run FirstCal_Metrics.run_metrics() "
-                        + "in order to plot delay stds")
-    fig = plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
-    return fig
