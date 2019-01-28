@@ -726,7 +726,8 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
     uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax],
                                         method='quadmean', inplace=False)
     alg_func = algorithm_dict[alg]
-    uvf_metrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0], Kt=Kt, Kf=Kf)
+    uvf_metrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0],
+                                                 Kt=kt_size, Kf=kf_size)
 
     # Flag
     uvf_f = flag(uvf_metrics, nsig_p=sig_init, nsig_f=None, nsig_t=None)
