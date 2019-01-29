@@ -827,7 +827,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
     dfil = delay_filter.DelayFilter(hd, input_cal=input_cal)
     dfil.run_filter(standoff=standoff, horizon=horizon, tol=tol, window=window,
                     skip_wgt=skip_wgt, maxiter=maxiter)
-    hd.update(data=dfil.filtered_residuals, flags=dfil.flags)
+    hd.update(data=dfil.clean_resid, flags=dfil.flags)
     uvf_dmetrics = xrfi_pipe(hd, alg=alg, Kt=kt_size, Kf=kf_size)
     # Save metrics from data
     basename = qm_utils.strip_extension(os.path.basename(vis_file))
