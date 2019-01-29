@@ -36,7 +36,7 @@ setup_args = {
     'package_dir': {'hera_qm': 'hera_qm'},
     'packages': ['hera_qm'],
     'include_package_data': True,
-    'scripts': ['scripts/ant_metrics_run.py', 'scripts/cal_h1c_idr2_2_run.py',
+    'scripts': ['scripts/ant_metrics_run.py', 'scripts/cal_xrfi_run.py',
                 'scripts/firstcal_metrics_run.py', 'scripts/auto_view.py',
                 'scripts/omnical_metrics_run.py', 'scripts/xrfi_apply.py',
                 'scripts/delay_xrfi_run.py', 'scripts/delay_xrfi_h1c_idr2_1_run.py',
