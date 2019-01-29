@@ -16,4 +16,4 @@ xrfi.cal_xrfi_run(args.omni_calfits_file, args.abs_calfits_file, args.model_file
                   xrfi_path=args.xrfi_path, kt_size=args.kt_size, kf_size=args.kf_size,
                   sig_init=args.sig_init, sig_adj=args.sig_adj,
                   freq_threshold=args.freq_threshold, time_threshold=args.time_threshold,
-                  ex_ants=args.ex_ants, metrics_file=args.metrics_file.)
+                  ex_ants=args.ex_ants, metrics_file=args.metrics_file)
