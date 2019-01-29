@@ -838,10 +838,10 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
 
     # Combine with metrics from calibration files
     uvf_cmetrics = UVFlag(cal_metrics)
-    uvf_dmetrics.uvfcombine_metrics(uvf_cmetrics, method='quadmean', inplace=True)
+    uvf_dmetrics.combine_metrics(uvf_cmetrics, method='quadmean', inplace=True)
 
     alg_func = algorithm_dict[alg]
-    uvf_dmetrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0],
+    uvf_dmetrics.metric_array[:, :, 0] = alg_func(uvf_dmetrics.metric_array[:, :, 0],
                                                   Kt=kt_size, Kf=kf_size)
 
     # Flag
@@ -861,8 +861,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
     # Save calfits with new flags
     uvc = UVCal()
     uvc.read_calfits(input_cal)
-    uvc.flag_array = uvf_f.flag_array
-    uvc.history += history
+    flag_apply(uvf_f, uvc, force_pol=True, history=history)
     basename = qm_utils.strip_extension(os.path.basename(input_cal))
     basename = qm_utils.strip_extension(basename)  # Also get rid of .abs
     outfile = '.'.join([basename, cal_ext, 'calfits'])
