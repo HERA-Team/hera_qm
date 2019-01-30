@@ -762,7 +762,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
                    maxiter=100, alpha=0.5, metrics_ext='delay_xrfi_metrics.h5',
                    flags_ext='final_flags.h5', cal_ext='flagged_abs', xrfi_path='',
                    kt_size=8, kf_size=8, sig_init=6.0, sig_adj=2.0,
-                   freq_threshold=0.25, time_threshold=0.5, ex_ants=None,
+                   freq_threshold=0.3, time_threshold=0.35, ex_ants=None,
                    metrics_file=None):
     """ Run a delay filter on data, then run xrfi.
     Args:
@@ -802,9 +802,9 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
         sig_adj (float, optional): Number of sigmas to flag on for data adjacent
             to a flag. Default is 2.
         freq_threshold (float, optional): Fraction of times required to trigger
-            broadcast across times (single freq). Default is 0.25.
+            broadcast across times (single freq). Default is 0.3.
         time_threshold (float, optional): Fraction of channels required to trigger
-            broadcast across frequency (single time). Default is 0.5.
+            broadcast across frequency (single time). Default is 0.35.
         ex_ants (str, optional): Comma-separated list of antennas to exclude.
             Flags of visibilities formed with these antennas will be set to True.
         metrics_file (str, optional): Metrics file that contains a list of excluded

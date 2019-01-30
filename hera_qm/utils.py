@@ -363,12 +363,12 @@ def get_metrics_ArgumentParser(method_name):
                        help='Starting number of sigmas to flag on. Default is 6.')
         x.add_argument('--sig_adj', default=2.0, type=float,
                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.')
-        x.add_argument('--freq_threshold', default=0.5, type=float,
+        x.add_argument('--freq_threshold', default=0.3, type=float,
                        help='Fraction of channels required to trigger broadcast across'
-                       ' frequency (single time). Default is 0.5.')
-        x.add_argument('--time_threshold', default=0.05, type=float,
+                       ' frequency (single time). Default is 0.3.')
+        x.add_argument('--time_threshold', default=0.35, type=float,
                        help='Fraction of times required to trigger broadcast across'
-                       ' time (single frequency). Default is 0.05.')
+                       ' time (single frequency). Default is 0.35.')
         x.add_argument('--ex_ants', default='', type=str,
                        help='Comma-separated list of antennas to exclude. Flags of visibilities '
                        'formed with these antennas will be set to True.')
