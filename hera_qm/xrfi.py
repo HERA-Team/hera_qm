@@ -505,6 +505,7 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
         if f.mode != 'flag':
             raise ValueError('UVFlag objects must be in mode "flag" to apply to data.')
         if f.type == 'waterfall':
+            f = f.copy()  # don't change the input object
             if expected_type == 'baseline':
                 f.to_baseline(uv, force_pol=force_pol)
             else:
