@@ -12,11 +12,11 @@ args = a.parse_args()
 history = ' '.join(sys.argv)
 
 # Run xrfi
-xrfi.xrfi_h1c_run(args.vis_file, args.cal_metrics, args.cal_flags, history,
-                  input_cal=args.input_cal, standoff=args.standoff, horizon=args.horizon,
-                  tol=args.tol, window=args.window, skip_wgt=args.skip_wgt,
-                  maxiter=args.maxiter, alpha=args.alpha, metrics_ext=args.metrics_ext,
-                  flags_ext=args.flags_ext, cal_ext=args.cal_ext, kt_size=args.kt_size,
-                  kf_size=args.kf_size, sig_init=args.sig_init, sig_adj=args.sig_adj,
-                  freq_threshold=args.freq_threshold, time_threshold=args.time_threshold,
-                  ex_ants=args.ex_ants, metrics_file=args.metrics_file)
+xrfi.delay_xrfi_run(args.vis_file, args.cal_metrics, args.cal_flags, history,
+                    input_cal=args.input_cal, standoff=args.standoff, horizon=args.horizon,
+                    tol=args.tol, window=args.window, skip_wgt=args.skip_wgt,
+                    maxiter=args.maxiter, alpha=args.alpha, metrics_ext=args.metrics_ext,
+                    flags_ext=args.flags_ext, cal_ext=args.cal_ext, kt_size=args.kt_size,
+                    kf_size=args.kf_size, sig_init=args.sig_init, sig_adj=args.sig_adj,
+                    freq_threshold=args.freq_threshold, time_threshold=args.time_threshold,
+                    ex_ants=args.ex_ants, metrics_file=args.metrics_file)
