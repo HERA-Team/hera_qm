@@ -309,7 +309,7 @@ def get_metrics_ArgumentParser(method_name):
                        help='Metrics file that contains a list of excluded antennas. Flags of '
                        'visibilities formed with these antennas will be set to True.')
     elif method_name == 'delay_xrfi_run':
-        a.prog = 'delay_xrfi_h1c_idr2_1_run.py'
+        a.prog = 'delay_xrfi_run.py'
         io = a.add_argument_group(title='File i/o', description='Options related to the '
                                   'input and output files.')
         io.add_argument('vis_file', metavar='vis_file', nargs=1, type=str, default=None,
