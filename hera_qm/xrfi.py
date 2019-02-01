@@ -90,10 +90,12 @@ def resolve_xrfi_path(xrfi_path, file):
 # Functions for preprocessing data prior to RFI flagging
 #############################################################################
 
-def medmin(d):
+def medmin(d, flags=None):
     '''Calculate the median minus minimum statistic of array.
     Args:
         d (array): 2D data array of the shape (time,frequency).
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
     Returns:
         (float): medmin statistic.
 
@@ -110,10 +112,12 @@ def medmin(d):
     return 2 * np.median(mn) - np.min(mn)
 
 
-def medminfilt(d, Kt=8, Kf=8):
+def medminfilt(d, flags=None, Kt=8, Kf=8):
     '''Filter an array on scales of Kt,Kf indexes with medmin.
     Args:
         d (array): 2D data array of the shape (time,frequency).
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
         Kt (int, optional): integer representing box dimension in time to apply statistic.
         Kf (int, optional): integer representing box dimension in frequency to apply statistic.
     Returns:
@@ -138,12 +142,14 @@ def medminfilt(d, Kt=8, Kf=8):
     return d_sm
 
 
-def detrend_deriv(d, dt=True, df=True):
+def detrend_deriv(d, flags=None, dt=True, df=True):
     ''' Detrend array by taking the derivative in either time, frequency
         or both. When taking the derivative of both, the derivative in
         frequency is performed first, then in time.
     Args:
         d (array): 2D data array of the shape (time,frequency).
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
         dt (bool, optional): derivative across time bins.
         df (bool, optional): derivative across frequency bins.
     Returns:
@@ -177,10 +183,12 @@ def detrend_deriv(d, dt=True, df=True):
     return f
 
 
-def detrend_medminfilt(d, Kt=8, Kf=8):
+def detrend_medminfilt(d, flags=None, Kt=8, Kf=8):
     """Detrend array using medminfilt statistic. See medminfilt.
     Args:
         d (array): 2D data array of the shape (time, frequency) to detrend
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
         Kt (int): size in time to apply medminfilter over
         Kf (int): size in frequency to apply medminfilter over
     Returns:
@@ -199,11 +207,16 @@ def detrend_medminfilt(d, Kt=8, Kf=8):
     return f
 
 
-def detrend_medfilt(d, Kt=8, Kf=8):
+def detrend_medfilt(d, flags=None, Kt=8, Kf=8):
     """Detrend array using a median filter.
     Args:
         d (array): 2D data array to detrend.
-        K (int, optional): box size to apply medminfilt over
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
+        Kt (int, optional): box size in time (first) dimension to apply medfilt
+            over. Default is 8 pixels.
+        Kf (int, optional): box size in frequency (second) dimension to apply medfilt
+            over. Default is 8 pixels.
     Returns:
         f: array of outlier significance metric. Same type and size as d.
     """
@@ -238,9 +251,28 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     return f[Kt:-Kt, Kf:-Kf]
 
 
+def masked_detrend_medfilt(d, flags=None, Kt=8, Kf=8, flags=None):
+    """Replace masked (flags == 1) elements of array with median of the non-masked
+    values before running detrend_medfilt.
+    Args:
+        d (array): 2D data array to detrend.
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+        Kt (int, optional): box size in time (first) dimension to apply medfilt
+            over. Default is 8 pixels.
+        Kf (int, optional): box size in frequency (second) dimension to apply medfilt
+            over. Default is 8 pixels.
+    Returns:
+        f: array of outlier significance metric. Same type and size as d.
+    """
+    if flags is not None:
+        d[flags > 0] = np.nanmedian(d[flags == 0])
+    return detrend_medfilt(d, Kt=Kt, Kf=Kf)
+
+
 # Update algorithm_dict whenever new metric algorithm is created.
 algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': detrend_deriv,
-                  'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt}
+                  'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt,
+                  'masked_detrend'}
 
 #############################################################################
 # RFI flagging algorithms
@@ -555,18 +587,21 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
-                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), **kwargs)
+                flags = uv.flag_array[ind, 0, :, ipol]
+                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), flags=flags, **kwargs)
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
             uvf.to_waterfall()
             for pi in range(uv.Njones):
                 d = np.abs(uv.total_quality_array[0, :, :, pi].T)
-                uvf.metric_array[:, :, pi] = alg_func(d, **kwargs)
+                flags = np.all(uv.flag_array[:, 0, :, :, pi], axis=0).T
+                uvf.metric_array[:, :, pi] = alg_func(d, flags=flags, **kwargs)
         else:
             for ai in range(uv.Nants_data):
                 for pi in range(uv.Njones):
                     # Note transposes are due to freq, time dimensions rather than the
                     # expected time, freq
+                    flags = uv.flag_array[ai, 0, :, :, pi].T
                     if cal_mode == 'gain':
                         d = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
                     elif cal_mode == 'chisq':
@@ -574,7 +609,7 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
                     else:
                         raise ValueError('When calculating metric for UVCal object, '
                                          'cal_mode must be "gain", "chisq", or "tot_chisq".')
-                    uvf.metric_array[ai, 0, :, :, pi] = alg_func(d, **kwargs).T
+                    uvf.metric_array[ai, 0, :, :, pi] = alg_func(d, flags=flags, **kwargs).T
     return uvf
 
 
@@ -701,7 +736,7 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
     dirname = resolve_xrfi_path(xrfi_path, omni_calfits_file)
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
-    alg = 'detrend_medfilt'
+    alg = 'masked_detrend_medfilt'
     # Calculate metric on omnical data
     uvc_o = UVCal()
     uvc_o.read_calfits(omni_calfits_file)
@@ -819,7 +854,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
     dirname = resolve_xrfi_path(xrfi_path, vis_file)
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
-    alg = 'detrend_medfilt'
+    alg = 'masked_detrend_medfilt'
     hd = cal_io.HERAData(vis_file)
     hd.read(return_data=False)
     flag_xants(hd, xants)
