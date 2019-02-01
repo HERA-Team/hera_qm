@@ -12,7 +12,7 @@ args = a.parse_args()
 history = ' '.join(sys.argv)
 
 # Run xrfi
-xrfi.delay_xrfi_run(args.vis_file, args.cal_metrics, args.cal_flags, history,
+xrfi.delay_xrfi_run(args.vis_file[0], args.cal_metrics[0], args.cal_flags[0], history,
                     input_cal=args.input_cal, standoff=args.standoff, horizon=args.horizon,
                     tol=args.tol, window=args.window, skip_wgt=args.skip_wgt,
                     maxiter=args.maxiter, alpha=args.alpha, metrics_ext=args.metrics_ext,
