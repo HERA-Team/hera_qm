@@ -251,7 +251,7 @@ def detrend_medfilt(d, flags=None, Kt=8, Kf=8):
     return f[Kt:-Kt, Kf:-Kf]
 
 
-def masked_detrend_medfilt(d, flags=None, Kt=8, Kf=8, flags=None):
+def masked_detrend_medfilt(d, flags=None, Kt=8, Kf=8):
     """Replace masked (flags == 1) elements of array with median of the non-masked
     values before running detrend_medfilt.
     Args:
