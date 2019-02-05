@@ -369,10 +369,10 @@ def get_metrics_ArgumentParser(method_name):
         x.add_argument('--time_threshold', default=0.35, type=float,
                        help='Fraction of times required to trigger broadcast across'
                        ' time (single frequency). Default is 0.35.')
-        x.add_argument('--ex_ants', default='', type=str,
+        x.add_argument('--ex_ants', default=None, type=str,
                        help='Comma-separated list of antennas to exclude. Flags of visibilities '
                        'formed with these antennas will be set to True.')
-        x.add_argument('--metrics_file', default='', type=str,
+        x.add_argument('--metrics_file', default=None, type=str,
                        help='Metrics file that contains a list of excluded antennas. Flags of '
                        'visibilities formed with these antennas will be set to True.')
     elif method_name == 'xrfi_apply':
