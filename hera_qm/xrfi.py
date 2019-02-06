@@ -269,10 +269,50 @@ def masked_detrend_medfilt(d, flags=None, Kt=8, Kf=8):
     return detrend_medfilt(d, Kt=Kt, Kf=Kf)
 
 
+def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
+    """Detrend array using a mean filter.
+    Args:
+        d (array): 2D data array to detrend.
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+        Kt (int, optional): box size in time (first) dimension to apply medfilt
+            over. Default is 8 pixels.
+        Kf (int, optional): box size in frequency (second) dimension to apply medfilt
+            over. Default is 8 pixels.
+    Returns:
+        f: array of outlier significance metric. Same type and size as d.
+    """
+    # Delay import so astropy is not required for any use of hera_qm
+    from astropy.convolution import convolve
+
+    if d.ndim != 2:
+        raise ValueError('Input to detrend_meanfilt must be 2D array.')
+    if Kt > d.shape[0]:
+        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
+        Kt = d.shape[0]
+    if Kf > d.shape[1]:
+        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
+        Kf = d.shape[1]
+    kernel = np.ones(2 * Kt + 1, 2 * Kf + 1)
+    d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
+    d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
+    d_sm = convolve(d, kernel, mask=flags)
+    d_rs = d - d_sm
+    d_sq = np.abs(d_rs)**2
+    # puts median on same scale as average
+    sig = np.sqrt(convolve(d_sq, kernel))
+    # don't divide by zero, instead turn those entries into +inf
+    f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-8))
+    f = np.where(np.abs(sig) > 1e-8, f, np.inf)
+    return f[Kt:-Kt, Kf:-Kf]
+
+
 # Update algorithm_dict whenever new metric algorithm is created.
 algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': detrend_deriv,
                   'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt,
-                  'masked_detrend_medfilt': masked_detrend_medfilt}
+                  'masked_detrend_medfilt': masked_detrend_medfilt,
+                  'detrend_meanfilt': detrend_meanfilt}
 
 #############################################################################
 # RFI flagging algorithms
