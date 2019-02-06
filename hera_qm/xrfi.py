@@ -723,9 +723,11 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain'):
     flag_xants(uv, xants)
     uvf = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode)
     uvf.to_waterfall(keep_pol=False)
-    uvf.weights_array = np.ones_like(uvf.weights_array)
+    uvf.weights_array = uvf.weights_array.astype(np.bool).astype(np.float)
     alg_func = algorithm_dict[alg]
-    uvf.metric_array[:, :, 0] = alg_func(uvf.metric_array[:, :, 0], Kt=Kt, Kf=Kf)
+    uvf.metric_array[:, :, 0] = alg_func(uvf.metric_array[:, :, 0],
+                                         flags=~uvf.weights_array.astype(np.bool),
+                                         Kt=Kt, Kf=Kf)
     return uvf
 
 #############################################################################
@@ -803,6 +805,7 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
                                         method='quadmean', inplace=False)
     alg_func = algorithm_dict[alg]
     uvf_metrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0],
+                                                 flags=~uvf_metrics.weights_array.astype(np.bool),
                                                  Kt=kt_size, Kf=kf_size)
 
     # Flag
@@ -918,6 +921,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
 
     alg_func = algorithm_dict[alg]
     uvf_dmetrics.metric_array[:, :, 0] = alg_func(uvf_dmetrics.metric_array[:, :, 0],
+                                                  flags=uvf_in.flag_array,
                                                   Kt=kt_size, Kf=kf_size)
 
     # Flag
