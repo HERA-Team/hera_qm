@@ -294,16 +294,16 @@ def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
         warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
                       "using the size of the data for the kernel size".format(Kf, d.shape[1]))
         Kf = d.shape[1]
-    kernel = np.ones(2 * Kt + 1, 2 * Kf + 1)
+    kernel = np.ones((2 * Kt + 1, 2 * Kf + 1))
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     flags = np.concatenate([flags[Kt - 1::-1], flags, flags[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     flags = np.concatenate([flags[:, Kf - 1::-1], flags, flags[:, :-Kf - 1:-1]], axis=1)
-    d_sm = convolve(d, kernel, mask=flags)
+    d_sm = convolve(d, kernel, mask=flags, boundary='extend')
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts median on same scale as average
-    sig = np.sqrt(convolve(d_sq, kernel))
+    sig = np.sqrt(convolve(d_sq, kernel, mask=flags))
     # don't divide by zero, instead turn those entries into +inf
     f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-8))
     f = np.where(np.abs(sig) > 1e-8, f, np.inf)
@@ -899,7 +899,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
     dirname = resolve_xrfi_path(xrfi_path, vis_file)
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
-    alg = 'masked_detrend_medfilt'
+    alg = 'detrend_meanfilt'
     hd = cal_io.HERAData(vis_file)
     hd.read(return_data=False)
     flag_xants(hd, xants)
