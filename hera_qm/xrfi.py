@@ -296,9 +296,10 @@ def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
         Kf = d.shape[1]
     kernel = np.ones((2 * Kt + 1, 2 * Kf + 1))
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
-    flags = np.concatenate([flags[Kt - 1::-1], flags, flags[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
-    flags = np.concatenate([flags[:, Kf - 1::-1], flags, flags[:, :-Kf - 1:-1]], axis=1)
+    if flags is not None:
+        flags = np.concatenate([flags[Kt - 1::-1], flags, flags[:-Kt - 1:-1]], axis=0)
+        flags = np.concatenate([flags[:, Kf - 1::-1], flags, flags[:, :-Kf - 1:-1]], axis=1)
     d_sm = convolve(d, kernel, mask=flags, boundary='extend')
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
