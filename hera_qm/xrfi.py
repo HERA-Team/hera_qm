@@ -823,7 +823,7 @@ def cal_xrfi_run(omni_calfits_file, abs_calfits_file, model_file, history,
     # Threshold across time and frequency
     uvf_f.to_metric()
     uvf_f = flag(uvf_f, nsig_p=1.0, nsig_f=freq_threshold,
-                 nsig_t=time_threshold)
+                 nsig_t=time_threshold, avg_method='mean')
 
     # Output results
     basename = qm_utils.strip_extension(os.path.basename(omni_calfits_file))
@@ -935,7 +935,7 @@ def delay_xrfi_run(vis_file, cal_metrics, cal_flags, history, input_cal=None,
     # Threshold across time and frequency
     uvf_f.to_metric()
     uvf_f = flag(uvf_f, nsig_p=1.0, nsig_f=freq_threshold,
-                 nsig_t=time_threshold)
+                 nsig_t=time_threshold, avg_method='mean')
 
     # Save final flags
     outfile = '.'.join([basename, flags_ext])
