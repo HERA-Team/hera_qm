@@ -183,6 +183,7 @@ class FirstCal_Metrics(object):
         self.delays = self.delays * 1e9
         self.delay_avgs = np.median(self.delays, axis=1, keepdims=True)
         self.delay_fluctuations = (self.delays - self.delay_avgs)
+
         # use gaussian process model to subtract underlying mean function
         if use_gp is True and self.sklearn_import is True:
             # initialize GP kernel.
@@ -200,18 +201,22 @@ class FirstCal_Metrics(object):
                 # get ydata
                 y = copy.copy(self.delay_fluctuations[i, :, :])
                 # scale by std
-                ystd = np.sqrt(astats.biweight_midvariance(y, axis=0)).reshape(1, self.Npols)
+                ystd = np.sqrt(astats.biweight_midvariance(y, axis=0))
                 # if this is a simulation it is possible all the delays are 1
                 if not(ystd.any()):
                     self.delay_smooths.append(self.delays[i, :, :])
                 else:
                     y /= ystd
-                    # fit GP and remove from delay fluctuations
                     GP = gp.GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
-                    GP.fit(x, y)
-                    ymodel = (GP.predict(x).reshape(self.Ntimes, self.Npols) * ystd)
-                    self.delay_fluctuations[i, :, :] -= ymodel
-                    self.delay_smooths.append(ymodel)
+                    ymodel_stack = np.zeros((self.Ntimes, self.Npols))
+                    for pol_cnt in range(self.Npols):
+                        # fit GP and remove from delay fluctuations
+                        # but only one polarization at a time
+                        GP.fit(x, y[..., pol_cnt])
+                        ymodel = (GP.predict(x) * ystd[pol_cnt])
+                        self.delay_fluctuations[i, :, pol_cnt] -= ymodel
+                        ymodel_stack[:, pol_cnt] = ymodel
+                    self.delay_smooths.append(ymodel_stack)
             self.delay_smooths = np.array(self.delay_smooths)
 
     def run_metrics(self, std_cut=0.5):
