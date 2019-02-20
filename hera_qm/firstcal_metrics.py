@@ -314,7 +314,7 @@ class FirstCal_Metrics(object):
             filename = self.fc_filestem + ".first_metrics"
         if filetype == 'json':
             if filename.split('.')[-1] != 'json':
-                    filename += '.json'
+                filename += '.json'
         else:
             if filename.split('.')[-1] not in ['hdf5', 'h5']:
                 filename += '.hdf5'
