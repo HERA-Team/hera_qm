@@ -1027,6 +1027,8 @@ def test_to_flag_unknown_mode():
 def test_to_metric():
     uvf = UVFlag(test_f_file)
     uvf.to_flag()
+    uvf.flag_array[:, :, 10] = True
+    uvf.flag_array[1, :, :] = True
     nt.assert_true(hasattr(uvf, 'flag_array'))
     nt.assert_false(hasattr(uvf, 'metric_array'))
     nt.assert_true(uvf.mode == 'flag')
@@ -1035,6 +1037,17 @@ def test_to_metric():
     nt.assert_false(hasattr(uvf, 'flag_array'))
     nt.assert_true(uvf.mode == 'metric')
     nt.assert_true('Converted to mode "metric"' in uvf.history)
+    nt.assert_true(np.isclose(uvf.weights_array[1], 0.0).all())
+    nt.assert_true(np.isclose(uvf.weights_array[:, :, 10], 0.0).all())
+
+    uvf = UVFlag(test_f_file)
+    uvf.to_waterfall()
+    uvf.to_flag()
+    uvf.flag_array[:, 10] = True
+    uvf.flag_array[1, :, :] = True
+    uvf.to_metric()
+    nt.assert_true(np.isclose(uvf.weights_array[1], 0.0).all())
+    nt.assert_true(np.isclose(uvf.weights_array[:, 10], 0.0).all())
 
 
 def test_metric_to_metric():

@@ -761,6 +761,19 @@ def and_collapse(a, weights=None, axis=None, returned=False):
         return o
 
 
+def and_rows_cols(waterfall):
+    """ For a 2D flag waterfall, flag pixels only if fully flagged along
+    time and/or frequency
+    Args:
+        waterfall - 2D boolean array of shape (Ntimes, Nfreqs)
+    """
+    wf = np.zeros_like(waterfall, dtype=np.bool)
+    Ntimes, Nfreqs = waterfall.shape
+    wf[:, (np.sum(waterfall, axis=0) / Ntimes) == 1] = True
+    wf[(np.sum(waterfall, axis=1) / Nfreqs) == 1] = True
+    return wf
+
+
 # Dictionary to map different methods for averaging data.
 averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean,
                   'or': or_collapse, 'and': and_collapse}

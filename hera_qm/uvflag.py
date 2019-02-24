@@ -668,6 +668,7 @@ class UVFlag():
         elif self.mode == 'metric':
             self.flag_array = np.zeros_like(self.metric_array, dtype=np.bool)
             self.mode = 'flag'
+            self.weights_array = np.ones_like(self.metric_array, dtype=np.float)
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to flag.')
         self.history += 'Converted to mode "flag" with ' + hera_qm_version_str
@@ -682,6 +683,15 @@ class UVFlag():
         elif self.mode == 'flag':
             self.metric_array = self.flag_array.astype(np.float)
             self.mode = 'metric'
+            self.weights_array = np.ones_like(self.weights_array)
+            if self.type == 'waterfall':
+                for i, pol in enumerate(self.polarization_array):
+                    self.weights_array[:, :, i] *= ~qm_utils.and_rows_cols(self.flag_array[:, :, i])
+            elif self.type == 'baseline':
+                for i, pol in enumerate(self.polarization_array):
+                    for j, ap in enumerate(self.get_antpairs()):
+                        inds = self.antpair2ind(*ap)
+                        self.weights_array[inds, 0, :, i] *= ~qm_utils.and_rows_cols(self.flag_array[inds, 0, :, i])
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to metric.')
         self.history += 'Converted to mode "metric" with ' + hera_qm_version_str

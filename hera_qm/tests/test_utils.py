@@ -459,6 +459,20 @@ def test_flags2waterfall_errors():
     nt.assert_raises(ValueError, utils.flags2waterfall, uv, np.array([4, 5]))
 
 
+def test_and_rows_cols():
+    d = np.zeros((10, 20), np.bool)
+    d[1, :] = True
+    d[:, 2] = True
+    d[5, 10:20] = True
+    d[5:8, 5] = True
+
+    o = utils.and_rows_cols(d)
+    nt.assert_true(o[1, :].all())
+    nt.assert_true(o[:, 2].all())
+    nt.assert_false(o[5, :].all())
+    nt.assert_false(o[:, 5].all())
+
+
 def test_lst_from_uv():
     uv = UVData()
     uv.read_uvfits(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvc.vis.uvfits'))
