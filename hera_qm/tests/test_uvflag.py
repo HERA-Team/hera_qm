@@ -1032,7 +1032,7 @@ def test_to_metric():
     nt.assert_true(hasattr(uvf, 'flag_array'))
     nt.assert_false(hasattr(uvf, 'metric_array'))
     nt.assert_true(uvf.mode == 'flag')
-    uvf.to_metric()
+    uvf.to_metric(convert_wgts=True)
     nt.assert_true(hasattr(uvf, 'metric_array'))
     nt.assert_false(hasattr(uvf, 'flag_array'))
     nt.assert_true(uvf.mode == 'metric')
@@ -1045,7 +1045,7 @@ def test_to_metric():
     uvf.to_flag()
     uvf.flag_array[:, 10] = True
     uvf.flag_array[1, :, :] = True
-    uvf.to_metric()
+    uvf.to_metric(convert_wgts=True)
     nt.assert_true(np.isclose(uvf.weights_array[1], 0.0).all())
     nt.assert_true(np.isclose(uvf.weights_array[:, 10], 0.0).all())
 

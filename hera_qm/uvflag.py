@@ -674,24 +674,30 @@ class UVFlag():
         self.history += 'Converted to mode "flag" with ' + hera_qm_version_str
         self.clear_unused_attributes()
 
-    def to_metric(self):
+    def to_metric(self, convert_wgts=False):
         '''Convert to metric mode. NOT SMART. Simply recasts flag_array as float
         and uses this as the metric array.
+
+        Args:
+            convert_wgts : bool, if True convert self.weights_array to ones
+                unless a column or row is completely flagged, in which case
+                convert those pixels to zero.
         '''
         if self.mode == 'metric':
             return
         elif self.mode == 'flag':
             self.metric_array = self.flag_array.astype(np.float)
             self.mode = 'metric'
-            self.weights_array = np.ones_like(self.weights_array)
-            if self.type == 'waterfall':
-                for i, pol in enumerate(self.polarization_array):
-                    self.weights_array[:, :, i] *= ~qm_utils.and_rows_cols(self.flag_array[:, :, i])
-            elif self.type == 'baseline':
-                for i, pol in enumerate(self.polarization_array):
-                    for j, ap in enumerate(self.get_antpairs()):
-                        inds = self.antpair2ind(*ap)
-                        self.weights_array[inds, 0, :, i] *= ~qm_utils.and_rows_cols(self.flag_array[inds, 0, :, i])
+            if convert_wgts:
+                self.weights_array = np.ones_like(self.weights_array)
+                if self.type == 'waterfall':
+                    for i, pol in enumerate(self.polarization_array):
+                        self.weights_array[:, :, i] *= ~qm_utils.and_rows_cols(self.flag_array[:, :, i])
+                elif self.type == 'baseline':
+                    for i, pol in enumerate(self.polarization_array):
+                        for j, ap in enumerate(self.get_antpairs()):
+                            inds = self.antpair2ind(*ap)
+                            self.weights_array[inds, 0, :, i] *= ~qm_utils.and_rows_cols(self.flag_array[inds, 0, :, i])
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to metric.')
         self.history += 'Converted to mode "metric" with ' + hera_qm_version_str
