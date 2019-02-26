@@ -71,12 +71,26 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         outfile = os.path.join(self.out_dir, 'firstcal_metrics.pkl')
         if os.path.isfile(outfile):
             os.remove(outfile)
-        # self.FC.write_metrics(filename=outfile, filetype='pkl')
-        # self.assertTrue(os.path.isfile(outfile))
+
+        self.FC.write_metrics(filename=outfile, filetype='pkl')
+        self.assertTrue(os.path.isfile(outfile))
         # load pickle
-        # self.FC.load_metrics(filename=outfile)
-        # self.assertEqual(len(self.FC.metrics.keys()), num_keys)
-        # os.remove(outfile)
+        self.FC.load_metrics(filename=outfile)
+        self.assertEqual(len(self.FC.metrics.keys()), num_keys)
+        os.remove(outfile)
+
+        outfile = os.path.join(self.out_dir, 'firstcal_metrics.hdf5')
+        if os.path.isfile(outfile):
+            os.remove(outfile)
+        self.FC.write_metrics(filename=outfile, filetype='hdf5')
+        self.assertTrue(os.path.isfile(outfile))
+        # load pickle
+        self.FC.load_metrics(filename=outfile)
+        # These are added by default in hdf5 writes but not necessary here
+        self.FC.metrics.pop('history', None)
+        self.FC.metrics.pop('version', None)
+        self.assertEqual(len(self.FC.metrics.keys()), num_keys)
+        os.remove(outfile)
 
         # Check some exceptions
         outfile = os.path.join(self.out_dir, 'firstcal_metrics.txt')
@@ -85,10 +99,16 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.write_metrics(filetype='json')  # No filename
         self.assertTrue(os.path.isfile(outfile))
         os.remove(outfile)
-        # outfile = self.FC.fc_filestem + '.first_metrics.pkl'
-        # self.FC.write_metrics(filetype='pkl')  # No filename
-        # self.assertTrue(os.path.isfile(outfile))
-        # os.remove(outfile)
+
+        outfile = self.FC.fc_filestem + '.first_metrics.pkl'
+        self.FC.write_metrics(filetype='pkl')  # No filename
+        self.assertTrue(os.path.isfile(outfile))
+        os.remove(outfile)
+
+        outfile = self.FC.fc_filestem + '.first_metrics.hdf5'
+        self.FC.write_metrics(filetype='hdf5')  # No filename
+        self.assertTrue(os.path.isfile(outfile))
+        os.remove(outfile)
 
     @unittest.skip("Currently skipping all plotting tests.")
     def test_plot_delays(self):
