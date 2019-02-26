@@ -18,6 +18,11 @@ from collections import OrderedDict
 from .version import hera_qm_version_str
 from . import utils as qm_utils
 
+if six.PY2:
+    import cPickle as pkl
+else:
+    import pickle as pkl
+
 # HDF5 casts all inputs to numpy arrays.
 # Define a custom numpy dtype for tuples we wish to preserve shape
 # antpol items look like (antenna, antpol) with types (int, string)
@@ -215,6 +220,15 @@ def write_metric_file(filename, input_dict, overwrite=False):
 
         with open(filename, 'w') as outfile:
             json.dump(json_write_dict, outfile, indent=4)
+    elif filename.split('.')[-1] == 'pkl':
+        warnings.warn("Pickle-type files can still be written "
+                      "but are no longer written by default.\n"
+                      "Write to HDF5 format for future compatibility.",
+                      PendingDeprecationWarning)
+
+        with open(filename, 'wb') as outfile:
+            out_pickle = pkl.Pickler(outfile)
+            out_pickle.dump(input_dict)
     else:
         if filename.split('.')[-1] not in ('hdf5', 'h5'):
             filename += '.hdf5'
@@ -642,6 +656,21 @@ def _load_json_metrics(filename):
     return metric_dict
 
 
+def _load_pickle_metrics(filename):
+    """Load cut decisions and metrics from a Pickle file into python dictionary.
+
+    Arguments
+        filename: Pickle file to be read and walked
+    returns
+        metric_dict: dictionary with values cast as types made from hera_qm.
+    """
+    with open(filename, 'rb') as infile:
+        unpickler = pkl.Unpickler(infile)
+        metric_dict = unpickler.load()
+
+    return metric_dict
+
+
 def _recursively_validate_dict(in_dict):
     """Walk dictionary recursively and cast special types to know formats.
 
@@ -701,6 +730,12 @@ def load_metric_file(filename):
                       "Write to HDF5 format for future compatibility.",
                       PendingDeprecationWarning)
         metric_dict = _load_json_metrics(filename)
+    elif filename.split('.')[-1] == 'pkl':
+        warnings.warn("Pickle-type files can still be read "
+                      "but are no longer written by default.\n"
+                      "Write to HDF5 format for future compatibility.",
+                      PendingDeprecationWarning)
+        metric_dict = _load_pickle_metrics(filename)
     else:
         with h5py.File(filename, 'r') as f:
             metric_dict = _recursively_load_dict_to_group(f, "/Header/")
