@@ -69,7 +69,7 @@ def load_firstcal_metrics(filename):
     Loading is handled via hera_qm.metrics_io.load_metric_file
     Arguments:
         filename: Filename of the metric to load.
-                  Must be either HDF5 (recommended) or JSON (Depreciated in Future) types.
+                  Must be either HDF5 (recommended) or  JSON or PKL (Depreciated in Future) types.
 
     Returns:
         Dictionary of metrics stored in the input file.
@@ -307,12 +307,15 @@ class FirstCal_Metrics(object):
 
         filetype : str, default='json'
             filetype to write out to
-            options = ['json', 'pkl']
+            options = ['json', 'pkl', 'h5', 'hdf5']
 
         """
         if filename is None:
             filename = self.fc_filestem + ".first_metrics"
-        if filetype == 'json':
+        if filetype == 'pkl':
+            if filename.split('.')[-1] != 'pkl':
+                filename += '.pkl'
+        elif filetype == 'json':
             if filename.split('.')[-1] != 'json':
                 filename += '.json'
         else:
