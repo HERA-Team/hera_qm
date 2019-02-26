@@ -208,6 +208,25 @@ def test_write_metric_warning_json():
     os.remove(json_file)
 
 
+def test_write_metric_warning_pickle():
+    """Test the known warning is issued when writing to pickles."""
+    pickle_file = os.path.join(DATA_PATH, 'test_output', 'test_save.pkl')
+    test_scalar = 'hello world'
+    test_array = np.arange(10)
+    test_dict = {'test_string_scalar': test_scalar, 1: {'test_string_scalar': test_scalar, '1': test_array}}
+    warn_message = ["Pickle-type files can still be written but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility."]
+    pickle_dict = uvtest.checkWarnings(metrics_io.write_metric_file,
+                                       [pickle_file, test_dict],
+                                       {'overwrite': True},
+                                       category=PendingDeprecationWarning,
+                                       nwarnings=1,
+                                       message=warn_message)
+    nt.assert_true(os.path.exists(pickle_file))
+    os.remove(pickle_file)
+
+
 def test_write_then_recursive_load_dict_to_group_no_nested_dicts():
     """Test recursive load can gather dictionary from a group."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
@@ -270,7 +289,7 @@ def test_write_then_load_metric_file_hdf5():
     os.remove(test_file)
 
 
-def test_write_then_load_metric_warning_json_():
+def test_write_then_load_metric_warning_json():
     """Test the known warning is issued when writing then reading json."""
     json_file = os.path.join(DATA_PATH, 'test_output', 'test_save.json')
     test_scalar = "hello world"
@@ -298,6 +317,36 @@ def test_write_then_load_metric_warning_json_():
     # data types together with nt.assert_type_equal or np.allclose
     qmtest.recursive_compare_dicts(test_dict, json_dict)
     os.remove(json_file)
+
+
+def test_write_then_load_metric_warning_pickle():
+    """Test the known warning is issued when writing then reading pickles."""
+    pickle_file = os.path.join(DATA_PATH, 'test_output', 'test_save.pkl')
+    test_scalar = "hello world"
+    test_array = np.arange(10)
+    test_dict = {'history': 'Test case', 'version': '0.0.0',
+                 'dead_ant_z_cut': 5}
+    warn_message = ["Pickle-type files can still be written but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility.", ]
+    uvtest.checkWarnings(metrics_io.write_metric_file,
+                         [pickle_file, test_dict],
+                         {'overwrite': True},
+                         category=PendingDeprecationWarning, nwarnings=1,
+                         message=warn_message)
+    nt.assert_true(os.path.exists(pickle_file))
+    # output_json = metrics_io.write_metric_file(json_file, test_dict)
+    warn_message = ["Pickle-type files can still be read but are no longer "
+                    "written by default.\n"]
+    pickle_dict = uvtest.checkWarnings(metrics_io.load_metric_file,
+                                       func_args=[pickle_file],
+                                       category=[PendingDeprecationWarning],
+                                       nwarnings=1,
+                                       message=warn_message)
+    # This function recursively walks dictionary and compares
+    # data types together with nt.assert_type_equal or np.allclose
+    qmtest.recursive_compare_dicts(test_dict, pickle_dict)
+    os.remove(pickle_file)
 
 
 def test_read_write_old_firstcal_json_files():
