@@ -5,7 +5,6 @@
 """
 test_firstcal_metrics.py
 """
-import matplotlib.pyplot as plt
 import numpy as np
 from hera_qm import firstcal_metrics
 from hera_qm.data import DATA_PATH
@@ -112,6 +111,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
 
     @qmtest.skipIf_no_matplotlib
     def test_plot_delays(self):
+        import matplotlib.pyplot as plt
         fname = os.path.join(self.out_dir, 'dlys.png')
         if os.path.isfile(fname):
             os.remove(fname)
@@ -140,6 +140,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
 
     @qmtest.skipIf_no_matplotlib
     def test_plot_zscores(self):
+        import matplotlib.pyplot as plt
         # check exception
         self.assertRaises(NameError, self.FC.plot_zscores)
         self.FC.run_metrics()
@@ -163,6 +164,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
 
     @qmtest.skipIf_no_matplotlib
     def test_plot_stds(self):
+        import matplotlib.pyplot as plt
         # check exception
         self.assertRaises(NameError, self.FC.plot_stds)
         self.FC.run_metrics()

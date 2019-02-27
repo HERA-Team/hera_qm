@@ -5,7 +5,6 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from pyuvdata import UVData
-import matplotlib.pyplot as plt
 import copy
 from six.moves import range
 from . import utils
@@ -385,6 +384,7 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
     if ax is None:
         fig : matplotlib.pyplot.Figure object
     """
+    import matplotlib.pyplot as plt
     # selections
     assert times is None or freqs is None, \
         "times and freqs cannot both be fed at the same time"
@@ -531,6 +531,7 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
     if axes is None:
         fig : matplotlib.pyplot.Figure object
     """
+    import matplotlib.pyplot as plt
     # selections
     assert times is None or freqs is None, \
         "times and freqs cannot both be fed at the same time"

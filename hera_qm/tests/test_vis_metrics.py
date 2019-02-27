@@ -13,7 +13,6 @@ import os
 import pyuvdata.tests as uvtest
 import copy
 import nose.tools as nt
-import matplotlib.pyplot as plt
 from scipy import stats
 
 
@@ -84,6 +83,7 @@ def test_vis_bl_cov():
 
 @qmtest.skipIf_no_matplotlib
 def test_plot_bl_cov():
+    import matplotlib.pyplot as plt
     uvd = UVData()
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
 
@@ -101,6 +101,7 @@ def test_plot_bl_cov():
 
 @qmtest.skipIf_no_matplotlib
 def test_plot_bl_bl_scatter():
+    import matplotlib.pyplot as plt
     uvd = UVData()
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
 
