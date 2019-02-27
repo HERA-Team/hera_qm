@@ -591,7 +591,7 @@ class FirstCal_Metrics(object):
         max_std = np.max(ant_std)
 
         # calculate z-scores
-        z_scores = self.delay_fluctuations / agg_std
+        z_scores = self.delay_fluctuations[:, :, pol_ind] / agg_std
         ant_z_scores = np.median(np.abs(z_scores), axis=1)
 
         # convert to ordered dict if desired
