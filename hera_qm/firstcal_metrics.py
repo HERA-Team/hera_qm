@@ -2,9 +2,7 @@
 # Copyright (c) 2018 the HERA Project
 # Licensed under the MIT License
 
-"""
-FirstCal metrics
-"""
+"""FirstCal metrics."""
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from pyuvdata import UVCal
@@ -26,7 +24,9 @@ except ImportError:
 
 
 def get_firstcal_metrics_dict():
-    """ Simple function that returns dictionary with metric names as keys and
+    """Return dictionary with metric names as keys.
+
+    Finds all metrics computed on firstcal solutions and returns all dictionaries and keys and
     their descriptions as values. This is used by hera_mc to populate the table
     of metrics and their descriptions.
 
@@ -278,7 +278,8 @@ class FirstCal_Metrics(object):
     jones2pol = {-5: 'XX', -6: 'YY', -7: 'XY', -8: 'YX'}
 
     def __init__(self, calfits_files, use_gp=True):
-        """
+        """Initilize the object.
+
         Input:
         ------
         calfits_files : str or list
@@ -409,7 +410,8 @@ class FirstCal_Metrics(object):
             self.delay_smooths = np.array(self.delay_smooths)
 
     def run_metrics(self, std_cut=0.5):
-        """
+        """Compute all metrics and save to dictionary.
+
         Run all metrics, put them in "metrics" dictionary
         and attach metrics to class
 
@@ -487,7 +489,7 @@ class FirstCal_Metrics(object):
 
     def write_metrics(self, filename=None, filetype='json', overwrite=False):
         """
-        Write metrics to file after running run_metrics()
+        Write metrics to file after running run_metrics().
 
         filename : str, default=None
             filename without filetype suffix
@@ -516,7 +518,7 @@ class FirstCal_Metrics(object):
 
     def load_metrics(self, filename):
         """
-        Read-in a firstcal_metrics file and append to class
+        Read-in a firstcal_metrics file and append to class.
 
         Input:
         ------
@@ -531,6 +533,8 @@ class FirstCal_Metrics(object):
 
     def delay_std(self, pol_ind, return_dict=False):
         """
+        Calculate standard deviations of per-antenna delay solutions.
+
         Calculate standard deviations of per-antenna delay solutions
         and aggregate delay solutions. Assign a z-score for
         each (antenna, time) delay solution w.r.t. aggregate
