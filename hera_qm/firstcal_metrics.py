@@ -742,7 +742,7 @@ class FirstCal_Metrics(object):
         if custom_ax is False:
             return fig
 
-    def plot_zscores(self, fname=None, plot_type='full', ax=None, figsize=(10, 6),
+    def plot_zscores(self, fname=None, plot_type='full', pol=None, ax=None, figsize=(10, 6),
                      save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
         """Plot z_scores for antenna delay solutions.
 
@@ -756,6 +756,9 @@ class FirstCal_Metrics(object):
             Type of plot to make
             'full' : plot zscore for each (N_ant, N_times)
             'time_avg' : plot zscore for each (N_ant,) avg over time
+
+        pol : str, defaults to first polarization in metrics dict
+            Polarization to plot
 
         ax : axis object, default=None
             matplotlib axis object
@@ -773,11 +776,13 @@ class FirstCal_Metrics(object):
         if hasattr(self, 'metrics') is False:
             raise NameError("You need to run FirstCal_Metrics.run_metrics() "
                             + "in order to plot delay z_scores")
-        fig = plot_zscores(self.metrics, fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
+        if pol is None:
+            pol = list(self.metrics.keys())[0]
+        fig = plot_zscores(self.metrics[pol], fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
                            save=save, kwargs=kwargs, plot_abs=plot_abs)
         return fig
 
-    def plot_stds(self, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
+    def plot_stds(self, fname=None, pol=None, ax=None, xaxis='ant', kwargs={}, save=False):
         """Plot standard deviation of delay solutions per-ant or per-time.
 
         Input:
@@ -785,6 +790,9 @@ class FirstCal_Metrics(object):
 
         fname : str, default=None
             filename
+
+        pol : str, defaults to first polarization in metrics dict
+            Polarization to plot
 
         xaxis : str, default='ant', option=['ant', 'time']
             what to plot on the xaxis, antennas or time stamp
@@ -802,7 +810,9 @@ class FirstCal_Metrics(object):
         if hasattr(self, 'metrics') is False:
             raise NameError("You need to run FirstCal_Metrics.run_metrics() "
                             + "in order to plot delay stds")
-        fig = plot_stds(self.metrics, fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
+        if pol is None:
+            pol = list(self.metrics.keys())[0]
+        fig = plot_stds(self.metrics[pol], fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
         return fig
 
 
