@@ -3,7 +3,6 @@
 # Licensed under the MIT License
 
 from __future__ import print_function, division, absolute_import
-import matplotlib.pyplot as plt
 import numpy as np
 from pyuvdata import UVCal
 import pkg_resources
@@ -209,6 +208,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         path to place file in
         will default to location of *omni.calfits file
     """
+    import matplotlib.pyplot as plt
     custom_ax = True
     if ax is None:
         custom_ax = False
@@ -301,6 +301,7 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
         path to place file in
         will default to location of *omni.calfits file
     """
+    import matplotlib.pyplot as plt
     custom_ax = True
     if ax is None:
         custom_ax = False
@@ -696,6 +697,8 @@ class OmniCal_Metrics(object):
             path to place file in
             will default to location of *omni.calfits file
         """
+        import matplotlib.pyplot as plt
+
         custom_ax = True
         if ax is None:
             custom_ax = False
@@ -781,6 +784,8 @@ class OmniCal_Metrics(object):
             path to place file in
             will default to location of *omni.calfits file
         """
+        import matplotlib.pyplot as plt
+
         custom_ax = True
         if ax is None:
             custom_ax = False
