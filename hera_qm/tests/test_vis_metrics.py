@@ -8,6 +8,7 @@ import numpy as np
 from pyuvdata import UVData
 from pyuvdata import utils as uvutils
 from hera_qm.data import DATA_PATH
+import hera_qm.tests as qmtest
 import os
 import pyuvdata.tests as uvtest
 import copy
@@ -81,6 +82,7 @@ def test_vis_bl_cov():
     nt.assert_almost_equal(corr[1, 0, 0, 0], (0.4204243425812837 - 0.3582194575457562j))
 
 
+@qmtest.skipIf_no_matplotlib
 def test_plot_bl_cov():
     uvd = UVData()
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
@@ -97,6 +99,7 @@ def test_plot_bl_cov():
     plt.close('all')
 
 
+@qmtest.skipIf_no_matplotlib
 def test_plot_bl_bl_scatter():
     uvd = UVData()
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))

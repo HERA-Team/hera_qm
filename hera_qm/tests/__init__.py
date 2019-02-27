@@ -4,6 +4,8 @@
 
 import numpy as np
 import nose.tools as nt
+
+from pyuvdata.tests import skip
 np.random.seed(0)
 
 
@@ -63,3 +65,13 @@ def recursive_compare_dicts(d1, d2):
                 print('d2:', key, 'key value type:', type(d1[key]),
                       'data type:', type(d2[key][0]), d2[key])
                 raise err
+
+
+def skipIf_no_matplotlib(test_func):
+    """Define a decorator to skip tests that require matplotlib."""
+    reason = 'matplotlib is not installed, skipping tests that require it.'
+    try:
+        import healpy
+    except(ImportError):
+        return skip(reason)(test_func)
+    return test_func
