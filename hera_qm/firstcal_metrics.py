@@ -103,6 +103,7 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         save image to file
 
     """
+    import matplotlib.pyplot as plt
     custom_ax = True
     if ax is None:
         custom_ax = False
@@ -182,6 +183,8 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
     kwargs : dict
         plotting kwargs
     """
+    import matplotlib.pyplot as plt
+
     # Get ax if not provided
     custom_ax = True
     if ax is None:
@@ -657,6 +660,7 @@ class FirstCal_Metrics(object):
             other than "c" and "marker" which are
             already defined
         """
+        import matplotlib.pyplot as plt
         # Init figure and ax if needed
         custom_ax = True
         if ax is None:
