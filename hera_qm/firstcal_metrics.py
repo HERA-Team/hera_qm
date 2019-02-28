@@ -346,6 +346,8 @@ class FirstCal_Metrics(object):
         if self.UVC.cal_type == 'gain':
             # get delays
             freqs = self.UVC.freq_array.squeeze()
+            # Readers/writers beware!
+            # The time an frequency axes are being swapped here
             fc_gains = np.moveaxis(self.UVC.gain_array, 2, 3)[:, 0, :, :, :]
             fc_phi = np.unwrap(np.angle(fc_gains), axis=2)
             d_nu = np.median(np.diff(freqs))
@@ -357,7 +359,7 @@ class FirstCal_Metrics(object):
             # get delay offsets at nu = 0 Hz, and then get rotated antennas
             self.offsets = fc_phi[:, :, 0, :] - gain_slope * freqs[0]
             # find where the offest have a difference of pi from 0
-            rot_offset_bool = np.isclose(np.pi, np.mod(np.abs(self.offsets), 2 * np.pi), atol=1.0).T
+            rot_offset_bool = np.isclose(np.pi, np.mod(np.abs(self.offsets), 2 * np.pi), atol=0.1).T
             rot_offset_bool = np.any(rot_offset_bool, axis=(0, 1))
             self.rot_ants = np.unique(self.ants[rot_offset_bool])
             # self.rot_ants = np.unique(list(map(lambda x: self.ants[x], (np.isclose(np.pi, np.abs(self.offsets) % (2 * np.pi), atol=1.0)).T))).tolist()
@@ -392,7 +394,8 @@ class FirstCal_Metrics(object):
                 # scale by std
                 ystd = np.sqrt(astats.biweight_midvariance(y, axis=0))
                 # if this is a simulation it is possible all the delays are 1
-                if not(ystd.any()):
+                # In such a case the array ystd will all be zeros
+                if all(_ystd == 0 for _ystd in ystd.ravel()):
                     self.delay_smooths.append(self.delays[i, :, :])
                 else:
                     y /= ystd
