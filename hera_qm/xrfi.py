@@ -734,7 +734,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
     alg_func = algorithm_dict[alg]
     uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
-                                           flags=~uvf.weights_array[:, :, 0].astype(np.bool),
+                                           flags=~uvf_m.weights_array[:, :, 0].astype(np.bool),
                                            Kt=Kt, Kf=Kf)
     uvf_f = flag(uvf_m, nsig_p=sig_init)
     uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)

@@ -634,37 +634,38 @@ class TestPipelines():
 
     def test_xrfi_h1c_pipe(self):
         # Do a test, add more tests as needed
-        nt.assert_true(True)
+        nt.assert_true(False)
 
     def test_xrfi_h1c_idr2_2_pipe(self):
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
-        uvf = xrfi.xrfi_pipe(uvc, Kt=3)
-        nt.assert_equal(uvf.mode, 'metric')
-        nt.assert_equal(uvf.type, 'waterfall')
-        nt.assert_equal(len(uvf.polarization_array), 1)
-        nt.assert_equal(uvf.weights_array.max(), 1.)
+        uvf_m, uvf_f = xrfi.xrfi_pipe(uvc, Kt=3)
+        nt.assert_equal(uvf_m.mode, 'metric')
+        nt.assert_equal(uvf_f.mode, 'flag')
+        nt.assert_equal(uvf_m.type, 'waterfall')
+        nt.assert_equal(len(uvf_m.polarization_array), 1)
+        nt.assert_equal(uvf_m.weights_array.max(), 1.)
 
 
 class TestWrappers():
 
-    def test_xrfi_cal_h1c_idr2_2_run(self):
-        # Run in nicest way possible
-        uvtest.checkWarnings(xrfi.cal_xrfi_run, [test_c_file, test_c_file,
-                                                 test_uvh5_file, 'Just a test'],
-                             {'xrfi_path': xrfi_path, 'kt_size': 3},
-                             nwarnings=2, message='This object is already a waterfall')
-
-        basename = utils.strip_extension(os.path.basename(test_c_file))
-        basename = utils.strip_extension(os.path.basename(basename))
-        out1 = '.'.join([basename, 'xrfi_cal_metrics.h5'])
-        out1 = os.path.join(xrfi_path, out1)
-        print(out1)
-        nt.assert_true(os.path.exists(out1))
-        out2 = '.'.join([basename, 'cal_flags.h5'])
-        out2 = os.path.join(xrfi_path, out2)
-        print(out2)
-        nt.assert_true(os.path.exists(out2))
+    # def test_xrfi_run(self):
+    #     # Run in nicest way possible
+    #     uvtest.checkWarnings(xrfi.cal_xrfi_run, [test_c_file, test_c_file,
+    #                                              test_uvh5_file, 'Just a test'],
+    #                          {'xrfi_path': xrfi_path, 'kt_size': 3},
+    #                          nwarnings=2, message='This object is already a waterfall')
+    #
+    #     basename = utils.strip_extension(os.path.basename(test_c_file))
+    #     basename = utils.strip_extension(os.path.basename(basename))
+    #     out1 = '.'.join([basename, 'xrfi_cal_metrics.h5'])
+    #     out1 = os.path.join(xrfi_path, out1)
+    #     print(out1)
+    #     nt.assert_true(os.path.exists(out1))
+    #     out2 = '.'.join([basename, 'cal_flags.h5'])
+    #     out2 = os.path.join(xrfi_path, out2)
+    #     print(out2)
+    #     nt.assert_true(os.path.exists(out2))
 
     def test_xrfi_h1c_run(self):
         # run with bad antennas specified
