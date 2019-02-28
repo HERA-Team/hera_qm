@@ -29,27 +29,27 @@ class Test_FirstCal_Metrics(unittest.TestCase):
 
     def test_run_metrics(self):
         self.FC.run_metrics(std_cut=1.0)
-        self.assertEqual(self.FC.metrics['YY']['good_sol'], True)
-        self.assertEqual(self.FC.metrics['YY']['bad_ants'], [])
-        self.assertIn(9, self.FC.metrics['YY']['z_scores'])
-        self.assertIn(9, self.FC.metrics['YY']['ant_std'])
-        self.assertIn(9, self.FC.metrics['YY']['ant_avg'])
-        self.assertIn(9, self.FC.metrics['YY']['ants'])
-        self.assertIn(9, self.FC.metrics['YY']['z_scores'])
-        self.assertIn(9, self.FC.metrics['YY']['ant_z_scores'])
-        self.assertAlmostEqual(1.0, self.FC.metrics['YY']['std_cut'])
-        self.assertAlmostEqual(self.FC.metrics['YY']['agg_std'], 0.044662349588061437)
-        self.assertAlmostEqual(self.FC.metrics['YY']['max_std'], 0.089829821120782846)
-        self.assertEqual('YY', self.FC.metrics['YY']['pol'])
+        self.assertEqual(self.FC.metrics['yy']['good_sol'], True)
+        self.assertEqual(self.FC.metrics['yy']['bad_ants'], [])
+        self.assertIn(9, self.FC.metrics['yy']['z_scores'])
+        self.assertIn(9, self.FC.metrics['yy']['ant_std'])
+        self.assertIn(9, self.FC.metrics['yy']['ant_avg'])
+        self.assertIn(9, self.FC.metrics['yy']['ants'])
+        self.assertIn(9, self.FC.metrics['yy']['z_scores'])
+        self.assertIn(9, self.FC.metrics['yy']['ant_z_scores'])
+        self.assertAlmostEqual(1.0, self.FC.metrics['yy']['std_cut'])
+        self.assertAlmostEqual(self.FC.metrics['yy']['agg_std'], 0.044662349588061437)
+        self.assertAlmostEqual(self.FC.metrics['yy']['max_std'], 0.089829821120782846)
+        self.assertEqual('yy', self.FC.metrics['yy']['pol'])
 
         # Test bad ants detection
         self.FC.delay_fluctuations[0, :] *= 1000
         self.FC.run_metrics()
-        self.assertEqual(self.FC.ants[0], self.FC.metrics['YY']['bad_ants'])
+        self.assertEqual(self.FC.ants[0], self.FC.metrics['yy']['bad_ants'])
         # Test bad full solution
         self.FC.delay_fluctuations[1:, :] *= 1000
         self.FC.run_metrics()
-        self.assertEqual(self.FC.metrics['YY']['good_sol'], False)
+        self.assertEqual(self.FC.metrics['yy']['good_sol'], False)
 
     def test_write_error_bad_type(self):
         """Test an error is raised if bad filetype is given to write."""
@@ -199,9 +199,9 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         FC.run_metrics(std_cut=0.5)
         out_dir = os.path.join(DATA_PATH, 'test_output')
         # test pickup of rotant key
-        self.assertIn('rot_ants', FC.metrics['XX'].keys())
+        self.assertIn('rot_ants', FC.metrics['xx'].keys())
         # test rotants is correct
-        self.assertEqual([43], FC.metrics['XX']['rot_ants'])
+        self.assertEqual([43], FC.metrics['xx']['rot_ants'])
 
     def test_delay_smoothing(self):
         infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')

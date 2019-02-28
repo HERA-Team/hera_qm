@@ -5,7 +5,7 @@
 """FirstCal metrics."""
 from __future__ import print_function, division, absolute_import
 import numpy as np
-from pyuvdata import UVCal
+from pyuvdata import UVCal, utils as uvutils
 import astropy.stats as astats
 from collections import OrderedDict
 from .version import hera_qm_version_str
@@ -275,7 +275,6 @@ class FirstCal_Metrics(object):
 
     # sklearn import statement
     sklearn_import = sklearn_import
-    jones2pol = {-5: 'XX', -6: 'YY', -7: 'XY', -8: 'YX'}
 
     def __init__(self, calfits_files, use_gp=True):
         """Initilize the object.
@@ -320,7 +319,7 @@ class FirstCal_Metrics(object):
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_files)
 
-        self.pols = np.array([self.jones2pol[x] for x in self.UVC.jones_array])
+        self.pols = np.array([uvutils.polnum2str(x) for x in self.UVC.jones_array])
         self.Npols = self.pols.size
 
         # get file prefix
