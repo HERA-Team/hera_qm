@@ -487,7 +487,7 @@ class FirstCal_Metrics(object):
 
         self.metrics = full_metrics
 
-    def write_metrics(self, filename=None, filetype='json', overwrite=False):
+    def write_metrics(self, filename=None, filetype='h5', overwrite=False):
         """
         Write metrics to file after running run_metrics().
 
