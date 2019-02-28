@@ -509,9 +509,13 @@ class FirstCal_Metrics(object):
         elif filetype == 'json':
             if filename.split('.')[-1] != 'json':
                 filename += '.json'
-        else:
+        elif filetype in ['h5', 'hdf5']:
             if filename.split('.')[-1] not in ['hdf5', 'h5']:
                 filename += '.hdf5'
+        else:
+            raise ValueError("Output filetype is not an accepted value. "
+                             "Allowed values are: ['json', 'pkl', 'h5', 'hdf5'] "
+                             "Received value: {0}".format(filetype))
         metrics_io.write_metric_file(filename=filename,
                                      input_dict=self.metrics,
                                      overwrite=overwrite)
@@ -851,4 +855,4 @@ def firstcal_metrics_run(files, args, history):
         print(metrics_path)
         metrics_basename = utils.strip_extension(os.path.basename(filename)) + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
-        fm.write_metrics(filename=metrics_filename)
+        fm.write_metrics(filename=metrics_filename, filetype=args.filetype)

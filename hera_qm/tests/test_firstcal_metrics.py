@@ -51,6 +51,13 @@ class Test_FirstCal_Metrics(unittest.TestCase):
         self.FC.run_metrics()
         self.assertEqual(self.FC.metrics['YY']['good_sol'], False)
 
+    def test_write_error_bad_type(self):
+        """Test an error is raised if bad filetype is given to write."""
+        self.FC.run_metrics()
+        outfile = os.path.join(self.out_dir, 'firstcal_metrics.npz')
+        self.assertRaises(ValueError, self.FC.write_metrics,
+                          filename=outfile, filetype='npz')
+
     def test_write_load_metrics(self):
         # run metrics
         self.FC.run_metrics()
@@ -248,9 +255,10 @@ class TestFirstcalMetricsRun(unittest.TestCase):
             sys.path.append(DATA_PATH)
 
         arg0 = "--std_cut=0.5"
-        arg1 = "--extension=.firstcal_metrics.json"
+        arg1 = "--extension=.firstcal_metrics.hdf5"
         arg2 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
-        arguments = ' '.join([arg0, arg1, arg2])
+        arg3 = "--filetype=h5"
+        arguments = ' '.join([arg0, arg1, arg2, arg3])
 
         # Test runing with no files
         cmd = ' '.join([arguments, ''])
@@ -263,7 +271,7 @@ class TestFirstcalMetricsRun(unittest.TestCase):
         filename = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
         dest_file = os.path.join(DATA_PATH, 'test_output',
                                  'zen.2457555.50099.yy.HH.uvcA.first.'
-                                 + 'firstcal_metrics.json')
+                                 + 'firstcal_metrics.hdf5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
         cmd = ' '.join([arguments, filename])
