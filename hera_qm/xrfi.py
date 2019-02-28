@@ -296,7 +296,6 @@ def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
 # Update algorithm_dict whenever new metric algorithm is created.
 algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': detrend_deriv,
                   'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt,
-                  'masked_detrend_medfilt': masked_detrend_medfilt,
                   'detrend_meanfilt': detrend_meanfilt}
 
 #############################################################################
