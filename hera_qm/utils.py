@@ -108,8 +108,10 @@ def get_metrics_ArgumentParser(method_name):
         a.prog = 'firstcal_metrics.py'
         a.add_argument('--std_cut', default=0.5, type=float,
                        help='Delay standard deviation cut for good / bad determination. Default 0.5')
-        a.add_argument('--extension', default='.firstcal_metrics.json', type=str,
+        a.add_argument('--extension', default='.firstcal_metrics.hdf5', type=str,
                        help='Extension to be appended to the file name. Default is ".firstcal_metrics.json"')
+        a.add_argument('--filetype', default='hdf5', type=str,
+                       help='Filetype used in write_metrics call, filetype should match the type at the end of extension argument')
         a.add_argument('--metrics_path', default='', type=str,
                        help='Path to save metrics file to. Default is same directory as file.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
