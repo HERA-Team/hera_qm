@@ -71,7 +71,7 @@ def skipIf_no_matplotlib(test_func):
     """Define a decorator to skip tests that require matplotlib."""
     reason = 'matplotlib is not installed, skipping tests that require it.'
     try:
-        import healpy
+        import matplotlib
     except(ImportError):
         return skip(reason)(test_func)
     return test_func
