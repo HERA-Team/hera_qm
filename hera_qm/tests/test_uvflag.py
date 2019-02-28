@@ -1108,3 +1108,27 @@ def test_missing_Nants_telescope():
     uvf2.Nants_telescope = None
     nt.assert_true(uvf == uvf2)
     os.remove(testfile)
+
+
+def test_super():
+
+    class test_class(UVFlag):
+
+        def __init__(self, input, mode='metric', copy_flags=False,
+                     waterfall=False, history='', label='', property='prop'):
+
+            super(UVFlag, self).__init__(input, mode=mode, copy_flags=copy_flags,
+                                         waterfall=waterfall, history=history,
+                                         label=label)
+
+            self.property = property
+
+    uv = UVData()
+    uv.read_miriad(test_d_file)
+
+    tc = test_class(uv, property='property')
+
+    # UVFlag.__init__ is tested, so just see if it has a metric array
+    nt.assert_true(hasattr(tc, 'metric_array'))
+    # Check that it has the property
+    nt.assert_true(tc.property == 'property')
