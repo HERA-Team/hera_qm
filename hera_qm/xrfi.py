@@ -251,24 +251,6 @@ def detrend_medfilt(d, flags=None, Kt=8, Kf=8):
     return f[Kt:-Kt, Kf:-Kf]
 
 
-def masked_detrend_medfilt(d, flags=None, Kt=8, Kf=8):
-    """Replace masked (flags == 1) elements of array with median of the non-masked
-    values before running detrend_medfilt.
-    Args:
-        d (array): 2D data array to detrend.
-        flags (array, optional): 2D flag array to be interpretted as mask for d.
-        Kt (int, optional): box size in time (first) dimension to apply medfilt
-            over. Default is 8 pixels.
-        Kf (int, optional): box size in frequency (second) dimension to apply medfilt
-            over. Default is 8 pixels.
-    Returns:
-        f: array of outlier significance metric. Same type and size as d.
-    """
-    if flags is not None:
-        d[flags > 0] = np.nanmedian(d[flags == 0])
-    return detrend_medfilt(d, Kt=Kt, Kf=Kf)
-
-
 def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
     """Detrend array using a mean filter.
     Args:
