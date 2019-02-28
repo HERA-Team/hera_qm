@@ -131,7 +131,7 @@ class TestPreProcessingFunctions():
         # test cases where filters are larger than data dimensions
         Kt = self.size + 1
         Kf = self.size + 1
-        d_filt = uvtest.checkWarnings(xrfi.medminfilt, [data, Kt, Kf], nwarnings=2,
+        d_filt = uvtest.checkWarnings(xrfi.medminfilt, [data], {'Kt': Kt, 'Kf': Kf}, nwarnings=2,
                                       category=[UserWarning, UserWarning],
                                       message=['Kt value {:d} is larger than the data'.format(Kt),
                                                'Kf value {:d} is larger than the data'.format(Kf)])
