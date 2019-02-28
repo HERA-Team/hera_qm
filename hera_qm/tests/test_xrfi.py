@@ -169,7 +169,7 @@ class TestPreProcessingFunctions():
         nt.assert_true(np.allclose(dt, ans))
 
         # catch error of df and dt both being False
-        nt.assert_raises(ValueError, xrfi.detrend_deriv, data, False, False)
+        nt.assert_raises(ValueError, xrfi.detrend_deriv, data, dt=False, df=False)
 
         # Test error when wrong dimensions are passed
         nt.assert_raises(ValueError, xrfi.detrend_deriv, np.ones((5, 4, 3)))
@@ -201,7 +201,7 @@ class TestPreProcessingFunctions():
         # run detrend medfilt
         Kt = 101
         Kf = 101
-        dm = uvtest.checkWarnings(xrfi.detrend_medfilt, [data, Kt, Kf], nwarnings=2,
+        dm = uvtest.checkWarnings(xrfi.detrend_medfilt, [data, None, Kt, Kf], nwarnings=2,
                                   category=[UserWarning, UserWarning],
                                   message=['Kt value {:d} is larger than the data'.format(Kt),
                                            'Kf value {:d} is larger than the data'.format(Kf)])

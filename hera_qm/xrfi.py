@@ -196,11 +196,11 @@ def detrend_medminfilt(d, flags=None, Kt=8, Kf=8):
     """
     if d.ndim != 2:
         raise ValueError('Input to detrend_medminfilt must be 2D array.')
-    d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
+    d_sm = medminfilt(np.abs(d), Kt=2 * Kt + 1, Kf=2 * Kf + 1)
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts minmed on same scale as average
-    sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
+    sig = np.sqrt(medminfilt(d_sq, Kt=2 * Kt + 1, Kf=2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
     # don't divide by zero, instead turn those entries into +inf
     f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-7))
     f = np.where(np.abs(sig) > 1e-7, f, np.inf)
