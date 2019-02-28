@@ -1117,9 +1117,9 @@ def test_super():
         def __init__(self, input, mode='metric', copy_flags=False,
                      waterfall=False, history='', label='', property='prop'):
 
-            super(UVFlag, self).__init__(input, mode=mode, copy_flags=copy_flags,
-                                         waterfall=waterfall, history=history,
-                                         label=label)
+            super(test_class, self).__init__(input, mode=mode, copy_flags=copy_flags,
+                                             waterfall=waterfall, history=history,
+                                             label=label)
 
             self.property = property
 
