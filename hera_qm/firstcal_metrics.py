@@ -348,21 +348,21 @@ class FirstCal_Metrics(object):
             freqs = self.UVC.freq_array.squeeze()
             # Readers/writers beware!
             # The time an frequency axes are being swapped here
-            fc_gains = np.moveaxis(self.UVC.gain_array, 2, 3)[:, 0, :, :, :]
-            fc_phi = np.unwrap(np.angle(fc_gains), axis=2)
+            # the unwrap is dove over the frequency axis
+            fc_gains = self.UVC.gain_array[:, 0, :, :, :]
+            fc_phi = np.unwrap(np.angle(fc_gains), axis=1)
             d_nu = np.median(np.diff(freqs))
-            d_phi = np.median(fc_phi[:, :, 1:, :] - fc_phi[:, :, :-1, :], axis=2)
+            d_phi = np.median(fc_phi[:, 1:, :, :] - fc_phi[:, :-1, :, :], axis=1)
             gain_slope = (d_phi / d_nu)
             self.delays = gain_slope / (-2 * np.pi)
             self.gains = fc_gains
 
             # get delay offsets at nu = 0 Hz, and then get rotated antennas
-            self.offsets = fc_phi[:, :, 0, :] - gain_slope * freqs[0]
+            self.offsets = fc_phi[:, 0, :, :] - gain_slope * freqs[0]
             # find where the offest have a difference of pi from 0
             rot_offset_bool = np.isclose(np.pi, np.mod(np.abs(self.offsets), 2 * np.pi), atol=0.1).T
             rot_offset_bool = np.any(rot_offset_bool, axis=(0, 1))
             self.rot_ants = np.unique(self.ants[rot_offset_bool])
-            # self.rot_ants = np.unique(list(map(lambda x: self.ants[x], (np.isclose(np.pi, np.abs(self.offsets) % (2 * np.pi), atol=1.0)).T))).tolist()
 
         elif self.UVC.cal_type == 'delay':
             self.delays = self.UVC.delay_array.squeeze()
@@ -613,7 +613,13 @@ class FirstCal_Metrics(object):
                 z_scores_d[ant] = z_scores[i]
                 ant_z_scores_d[ant] = ant_z_scores[i]
             for i, t in enumerate(self.times):
-                time_std_d[str(t)] = time_std[i]
+                # casting the time as a string here so that there is
+                # a lower chance to lose JD information from truncation
+                # or rounding.
+                # We choose a 7 decimal precision to give ~10ms precision
+                # in the JDs
+                time_str = "{0:.7f}".format(t)
+                time_std_d[time_str] = time_std[i]
 
             ant_avg = ant_avg_d
             time_std = time_std_d
