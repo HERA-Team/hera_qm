@@ -85,7 +85,7 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
     ------
 
     metrics : dictionary
-        a "metrics" dictionary from FirstCal_Metrics.run_metrics()
+        a "metrics" dictionary from FirstCalMetrics.run_metrics()
 
     fname : str, default=None
         filename
@@ -161,7 +161,7 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
     ------
 
     metrics : dict
-        a FirstCal_Metrics "metrics" dictionary
+        a FirstCalMetrics "metrics" dictionary
 
     fname : str, default=None
         filename
@@ -265,10 +265,10 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
         return fig
 
 
-class FirstCal_Metrics(object):
+class FirstCalMetrics(object):
     """Object to store and compute FirstCal metric data.
 
-    FirstCal_Metrics class for holding firstcal data,
+    FirstCalMetrics class for holding firstcal data,
     running metrics, and plotting delay solutions.
     Currently only supports single polarization solutions.
     """
@@ -786,7 +786,7 @@ class FirstCal_Metrics(object):
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') is False:
-            raise NameError("You need to run FirstCal_Metrics.run_metrics() "
+            raise NameError("You need to run FirstCalMetrics.run_metrics() "
                             + "in order to plot delay z_scores")
         if pol is None:
             pol = list(self.metrics.keys())[0]
@@ -820,7 +820,7 @@ class FirstCal_Metrics(object):
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') is False:
-            raise NameError("You need to run FirstCal_Metrics.run_metrics() "
+            raise NameError("You need to run FirstCalMetrics.run_metrics() "
                             + "in order to plot delay stds")
         if pol is None:
             pol = list(self.metrics.keys())[0]
@@ -846,7 +846,7 @@ def firstcal_metrics_run(files, args, history):
         raise AssertionError('Please provide a list of calfits files')
 
     for i, filename in enumerate(files):
-        fm = FirstCal_Metrics(filename)
+        fm = FirstCalMetrics(filename)
         fm.run_metrics(std_cut=args.std_cut)
 
         # add history

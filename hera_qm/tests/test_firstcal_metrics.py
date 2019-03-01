@@ -16,11 +16,11 @@ from hera_qm import metrics_io
 import sys
 
 
-class Test_FirstCal_Metrics(unittest.TestCase):
+class Test_FirstCalMetrics(unittest.TestCase):
 
     def setUp(self):
         infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
-        self.FC = firstcal_metrics.FirstCal_Metrics(infile)
+        self.FC = firstcal_metrics.FirstCalMetrics(infile)
         self.out_dir = os.path.join(DATA_PATH, 'test_output')
 
     def test_init(self):
@@ -195,7 +195,7 @@ class Test_FirstCal_Metrics(unittest.TestCase):
 
     def test_rotated_metrics(self):
         infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.bad.first.calfits')
-        FC = firstcal_metrics.FirstCal_Metrics(infile)
+        FC = firstcal_metrics.FirstCalMetrics(infile)
         FC.run_metrics(std_cut=0.5)
         out_dir = os.path.join(DATA_PATH, 'test_output')
         # test pickup of rotant key
@@ -206,18 +206,18 @@ class Test_FirstCal_Metrics(unittest.TestCase):
     def test_delay_smoothing(self):
         infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
         np.random.seed(0)
-        FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=False)
+        FC = firstcal_metrics.FirstCalMetrics(infile, use_gp=False)
         self.assertAlmostEqual(FC.delay_fluctuations[0, 0], 0.043740587980040324, delta=0.000001)
         np.random.seed(0)
-        FC = firstcal_metrics.FirstCal_Metrics(infile, use_gp=True)
+        FC = firstcal_metrics.FirstCalMetrics(infile, use_gp=True)
         self.assertAlmostEqual(FC.delay_fluctuations[0, 0], 0.024669144881121961, delta=0.000001)
 
 
-class Test_FirstCal_Metrics_two_pols(unittest.TestCase):
+class Test_FirstCalMetrics_two_pols(unittest.TestCase):
 
     def setUp(self):
         infile = os.path.join(DATA_PATH, 'zen.2458098.49835.HH.first.calfits')
-        self.FC = firstcal_metrics.FirstCal_Metrics(infile)
+        self.FC = firstcal_metrics.FirstCalMetrics(infile)
         self.out_dir = os.path.join(DATA_PATH, 'test_output')
 
     def test_init(self):
