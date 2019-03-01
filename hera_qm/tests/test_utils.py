@@ -101,7 +101,7 @@ def test_get_metrics_ArgumentParser_firstcal_metrics():
     # First try defaults - test a few of them
     args = a.parse_args('')
     nt.assert_equal(args.std_cut, 0.5)
-    nt.assert_equal(args.extension, '.firstcal_metrics.json')
+    nt.assert_equal(args.extension, '.firstcal_metrics.hdf5')
     nt.assert_equal(args.metrics_path, '')
     # try to set something
     args = a.parse_args(['--extension', 'foo'])
