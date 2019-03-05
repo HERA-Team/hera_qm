@@ -13,6 +13,7 @@ def _unicode_to_str(u):
         return u.encode('utf8')
     return u
 
+
 def construct_version_info():
     hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
     version_file = os.path.join(hera_qm_dir, 'VERSION')
@@ -68,6 +69,7 @@ if git_hash is not '':
                             + '.  Git branch: ' + git_branch
                             + '.  Git description: ' + git_description + '.')
 hera_qm_version_str = str(hera_qm_version_str)
+
 
 def main():
     print('Version = {0}'.format(version))
