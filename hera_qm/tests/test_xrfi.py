@@ -687,9 +687,28 @@ class TestHighLevelFunctions():
 
 class TestPipelines():
 
-    def test_xrfi_h1c_pipe(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(False)
+    def test_xrfi_h1c_pipe_no_summary(self):
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvf_f, uvf_wf = xrfi.xrfi_h1c_pipe(uvc, Kt=3, return_summary=False)
+        nt.assert_equal(uvf_f.mode, 'flag')
+        nt.assert_equal(uvf_f.type, 'antenna')
+        nt.assert_equal(uvf_f.flag_array.shape, uvc.flag_array.shape)
+        nt.assert_equal(uvf_wf.mode, 'flag')
+        nt.assert_equal(uvf_wf.type, 'waterfall')
+
+    def test_xrfi_h1c_pipe_summary(self):
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvf_f, uvf_wf, uvf_w = xrfi.xrfi_h1c_pipe(uvc, Kt=3, return_summary=True)
+        nt.assert_equal(uvf_f.mode, 'flag')
+        nt.assert_equal(uvf_f.type, 'antenna')
+        nt.assert_equal(uvf_f.flag_array.shape, uvc.flag_array.shape)
+        nt.assert_equal(uvf_wf.mode, 'flag')
+        nt.assert_equal(uvf_wf.type, 'waterfall')
+        nt.assert_equal(uvf_w.mode, 'metric')
+        nt.assert_equal(uvf_w.type, 'waterfall')
+        nt.assert_true(uvf_w.metric_array.max() <= 1.0)
 
     def test_xrfi_h1c_idr2_2_pipe(self):
         uvc = UVCal()
@@ -704,23 +723,34 @@ class TestPipelines():
 
 class TestWrappers():
 
-    # def test_xrfi_run(self):
-    #     # Run in nicest way possible
-    #     uvtest.checkWarnings(xrfi.cal_xrfi_run, [test_c_file, test_c_file,
-    #                                              test_uvh5_file, 'Just a test'],
-    #                          {'xrfi_path': xrfi_path, 'kt_size': 3},
-    #                          nwarnings=2, message='This object is already a waterfall')
-    #
-    #     basename = utils.strip_extension(os.path.basename(test_c_file))
-    #     basename = utils.strip_extension(os.path.basename(basename))
-    #     out1 = '.'.join([basename, 'xrfi_cal_metrics.h5'])
-    #     out1 = os.path.join(xrfi_path, out1)
-    #     print(out1)
-    #     nt.assert_true(os.path.exists(out1))
-    #     out2 = '.'.join([basename, 'cal_flags.h5'])
-    #     out2 = os.path.join(xrfi_path, out2)
-    #     print(out2)
-    #     nt.assert_true(os.path.exists(out2))
+    def test_xrfi_run(self):
+        # Run in nicest way possible
+        # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+        # This doesn't hurt anything, and lets us streamline the pipe
+        messages = (2 * ['This object is already a waterfall'] + 2 * ['It seems that the latitude']
+                    + 2 * ['This object is already a waterfall'])
+        categories = 2 * [UserWarning] + 2 * [DeprecationWarning] + 2 * [UserWarning]
+        uvtest.checkWarnings(xrfi.xrfi_run, [test_c_file, test_c_file, test_uvh5_file,
+                                             test_uvh5_file, 'Just a test'],
+                             {'xrfi_path': xrfi_path, 'kt_size': 3},
+                             nwarnings=6, message=messages, category=categories)
+
+        basename = utils.strip_extension(os.path.basename(test_uvh5_file))
+        out_files = []
+        exts = ['init_xrfi_metrics', 'init_flags', 'final_xrfi_metrics', 'final_flags']
+        for ext in exts:
+            out = '.'.join([basename, ext, 'h5'])
+            out = os.path.join(xrfi_path, out)
+            nt.assert_true(os.path.exists(out))
+            os.remove(out)  # cleanup
+
+        basename = utils.strip_extension(os.path.basename(test_c_file))
+        # Also get rid of ".abs" (which is actually "omni" in this test)
+        basename = utils.strip_extension(basename)
+        outfile = '.'.join([basename, 'flagged_abs', 'calfits'])
+        outpath = os.path.join(xrfi_path, outfile)
+        nt.assert_true(os.path.exists(outpath))
+        os.remove(outpath)  # cleanup
 
     def test_xrfi_h1c_run(self):
         # run with bad antennas specified

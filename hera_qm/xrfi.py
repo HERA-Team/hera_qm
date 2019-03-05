@@ -891,7 +891,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     basename = qm_utils.strip_extension(basename)  # Also get rid of .abs
     outfile = '.'.join([basename, cal_ext, 'calfits'])
     outpath = os.path.join(dirname, outfile)
-    uvc.write_calfits(outpath, clobber=True)
+    uvc_a.write_calfits(outpath, clobber=True)
 
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
