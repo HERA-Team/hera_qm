@@ -16,7 +16,7 @@ import copy
 from six.moves import map
 
 
-class UVFlag():
+class UVFlag(object):
     ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
     and stores all relevant information to combine flags and apply to data.
     '''
