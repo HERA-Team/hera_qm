@@ -8,6 +8,27 @@ import json
 import six
 
 
+hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
+
+
+def _get_git_output(args, capture_stderr=False):
+    """Get output from Git, ensuring that it is of the ``str`` type,
+    not bytes."""
+
+    argv = ['git', '-C', hera_qm_dir] + args
+
+    if capture_stderr:
+        data = subprocess.check_output(argv, stderr=subprocess.STDOUT)
+    else:
+        data = subprocess.check_output(argv)
+
+    data = data.strip()
+
+    if six.PY2:
+        return data
+    return data.decode('utf8')
+
+
 def _unicode_to_str(u):
     if six.PY2:
         return u.encode('utf8')
@@ -15,23 +36,14 @@ def _unicode_to_str(u):
 
 
 def construct_version_info():
-    hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
     version_file = os.path.join(hera_qm_dir, 'VERSION')
     version = _unicode_to_str(open(version_file).read().strip())
 
     try:
-        git_origin = subprocess.check_output(['git', '-C', hera_qm_dir, 'config',
-                                              '--get', 'remote.origin.url'],
-                                             stderr=subprocess.STDOUT).strip()
-        git_hash = subprocess.check_output(['git', '-C', hera_qm_dir, 'rev-parse', 'HEAD'],
-                                           stderr=subprocess.STDOUT).strip()
-        git_description = subprocess.check_output(['git', '-C', hera_qm_dir,
-                                                   'describe', '--dirty', '--tag', '--always']).strip().decode()
-        git_branch = subprocess.check_output(['git', '-C', hera_qm_dir, 'rev-parse',
-                                              '--abbrev-ref', 'HEAD'],
-                                             stderr=subprocess.STDOUT).strip()
-        git_version = subprocess.check_output(['git', '-C', hera_qm_dir, 'describe',
-                                               '--tags', '--abbrev=0']).strip()
+        git_origin = _get_git_output(['config', '--get', 'remote.origin.url'], capture_stderr=True)
+        git_hash = _get_git_output(['rev-parse', 'HEAD'], capture_stderr=True)
+        git_description = _get_git_output(['describe', '--dirty', '--tag', '--always'])
+        git_branch = _get_git_output(['rev-parse', '--abbrev-ref', 'HEAD'], capture_stderr=True)
     except subprocess.CalledProcessError:  # pragma: no cover  - can't figure out how to test exception.
         try:
             # Check if a GIT_INFO file was created when installing package
