@@ -346,8 +346,6 @@ class FirstCalMetrics(object):
         if self.UVC.cal_type == 'gain':
             # get delays
             freqs = self.UVC.freq_array.squeeze()
-            # Readers/writers beware!
-            # The time an frequency axes are being swapped here
             # the unwrap is dove over the frequency axis
             fc_gains = self.UVC.gain_array[:, 0, :, :, :]
             fc_phi = np.unwrap(np.angle(fc_gains), axis=1)
