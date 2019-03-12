@@ -614,6 +614,33 @@ def lst_from_uv(uv):
     return lst_array
 
 
+def collapse(a, alg, weights=None, axis=None, returned=False):
+    ''' Parent function to collapse an array with a given algorithm.
+    Args:
+        a (array): Input array to process.
+        alg (str): Algorithm to use. Must be defined in this function with
+            corresponding subfunction below.
+        weights (array, optional): weights for collapse operation (e.g. weighted mean).
+            NOTE: Some subfunctions do not use the weights. See corresponding doc strings.
+        axis (int, tuple, optional): Axis or axes to collapse. Default is all.
+        returned (Bool): Whether to return sum of weights. Default is False.
+    '''
+    if alg == 'mean':
+        out = mean(a, weights=weights, axis=axis, returned=returned)
+    elif alg == 'absmean':
+        out = absmean(a, weights=weights, axis=axis, returned=returned)
+    elif alg == 'quadmean':
+        out = quadmean(a, weights=weights, axis=axis, returned=returned)
+    elif alg == 'or':
+        out = or_collapse(a, weights=weights, axis=axis, returned=returned)
+    elif alg == 'and':
+        out = and_collapse(a, weights=weights, axis=axis, returned=returned)
+    else:
+        raise ValueError('Collapse algorithm must be one of: "mean", "absmean",'
+                         ' "quadmean", "or", or "and".')
+    return out
+
+
 def mean(a, weights=None, axis=None, returned=False):
     ''' Function to average data. This is similar to np.average, except it
     handles infs (by giving them zero weight) and zero weight axes (by forcing
@@ -718,11 +745,6 @@ def and_rows_cols(waterfall):
     wf[:, (np.sum(waterfall, axis=0) / Ntimes) == 1] = True
     wf[(np.sum(waterfall, axis=1) / Nfreqs) == 1] = True
     return wf
-
-
-# Dictionary to map different methods for averaging data.
-averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean,
-                  'or': or_collapse, 'and': and_collapse}
 
 
 def flags2waterfall(uv, flag_array=None, keep_pol=False):

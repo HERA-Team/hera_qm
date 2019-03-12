@@ -240,6 +240,86 @@ def test_get_metrics_dict():
         nt.assert_equal(omnical_metrics_dict[key], metrics_dict[key])
 
 
+def test_collapse_mean_no_return_no_weights():
+    # Fake data
+    data = np.zeros((50, 25))
+    for i in range(data.shape[1]):
+        data[:, i] = i * np.ones_like(data[:, i])
+    out = utils.collapse(data, 'mean', axis=0)
+    out1 = utils.mean(data, axis=0)
+    # Actual values are tested in test_mean_no_weights
+    nt.assert_true(np.array_equal(out, out1))
+
+
+def test_collapse_mean_returned_no_weights():
+    # Fake data
+    data = np.zeros((50, 25))
+    for i in range(data.shape[1]):
+        data[:, i] = i * np.ones_like(data[:, i])
+    out, wo = utils.collapse(data, 'mean', axis=0, returned=True)
+    out1, wo1 = utils.mean(data, axis=0, returned=True)
+    # Actual values are tested in test_mean_no_weights
+    nt.assert_true(np.array_equal(out, out1))
+    nt.assert_true(np.array_equal(wo, wo1))
+
+
+def test_collapse_mean_returned_with_weights():
+    # Fake data
+    data = np.zeros((50, 25))
+    for i in range(data.shape[1]):
+        data[:, i] = i * np.ones_like(data[:, i])
+    w = 1. / data
+    out, wo = utils.collapse(data, 'mean', weights=w, axis=0, returned=True)
+    out1, wo1 = utils.mean(data, weights=w, axis=0, returned=True)
+    # Actual values are tested in test_mean_weights
+    nt.assert_true(np.array_equal(out, out1))
+    nt.assert_true(np.array_equal(wo, wo1))
+
+
+def test_collapse_absmean_no_return_no_weights():
+    # Fake data
+    data = np.zeros((50, 25))
+    for i in range(data.shape[1]):
+        data[:, i] = (-1)**i * np.ones_like(data[:, i])
+    out = utils.collapse(data, 'absmean', axis=0)
+    out1 = utils.absmean(data, axis=0)
+    # Actual values are tested in test_absmean_no_weights
+    nt.assert_true(np.array_equal(out, out1))
+
+
+def test_collapse_quadmean_no_return_no_weights():
+    # Fake data
+    data = np.zeros((50, 25))
+    for i in range(data.shape[1]):
+        data[:, i] = i * np.ones_like(data[:, i])
+    out = utils.collapse(data, 'quadmean', axis=0)
+    out1 = utils.quadmean(data, axis=0)
+    # Actual values are tested in test_absmean_no_weights
+    nt.assert_true(np.array_equal(out, out1))
+
+
+def test_collapse_or_no_return_no_weights():
+    # Fake data
+    data = np.zeros((50, 25), np.bool)
+    data[0, 8] = True
+    o = utils.collapse(data, 'or', axis=0)
+    o1 = utils.or_collapse(data, axis=0)
+    nt.assert_true(np.array_equal(o, o1))
+
+
+def test_collapse_and_no_return_no_weights():
+    # Fake data
+    data = np.zeros((50, 25), np.bool)
+    data[0, :] = True
+    o = utils.collapse(data, 'and', axis=0)
+    o1 = utils.and_collapse(data, axis=0)
+    nt.assert_true(np.array_equal(o, o1))
+
+
+def test_collapse_error():
+    nt.assert_raises(ValueError, utils.collapse, np.ones((2, 3)), 'fooboo')
+
+
 def test_mean_no_weights():
     # Fake data
     data = np.zeros((50, 25))

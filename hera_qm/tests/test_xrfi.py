@@ -452,9 +452,6 @@ class TestFlaggingFunctions():
         nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, 2)
         nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, uvf2)
 
-        # use a bogus average_method
-        nt.assert_raises(KeyError, xrfi.watershed_flag, uvm, uvf, avg_method='blah')
-
         # set the UVFlag object to have a bogus type
         uvm.type = 'blah'
         nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, uvf)
@@ -571,7 +568,6 @@ class TestFlaggingFunctions():
 
         # catch errors
         nt.assert_raises(ValueError, xrfi.flag, 2)
-        nt.assert_raises(KeyError, xrfi.flag, uvm, avg_method='blah')
         uvm.type = 'blah'
         nt.assert_raises(ValueError, xrfi.flag, uvm)
 

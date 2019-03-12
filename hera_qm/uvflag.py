@@ -452,7 +452,6 @@ class UVFlag(object):
         else:
             this = self.copy()
         method = method.lower()
-        avg_f = qm_utils.averaging_dict[method]
         darray = np.expand_dims(this.metric_array, 0)
         warray = np.expand_dims(this.weights_array, 0)
         for other in others:
@@ -460,7 +459,7 @@ class UVFlag(object):
                 raise ValueError('UVFlag metric arrays do not match.')
             darray = np.vstack([darray, np.expand_dims(other.metric_array, 0)])
             warray = np.vstack([warray, np.expand_dims(other.weights_array, 0)])
-        darray, warray = avg_f(darray, weights=warray, axis=0, returned=True)
+        darray, warray = qm_utils.collapse(darray, method, weights=warray, axis=0, returned=True)
         this.metric_array = darray
         this.weights_array = warray
         this.history += 'Combined metric arrays using ' + hera_qm_version_str
@@ -479,7 +478,6 @@ class UVFlag(object):
                       encoding the original polarizations.
         """
         method = method.lower()
-        avg_f = qm_utils.averaging_dict[method]
         if self.type == 'waterfall' and (keep_pol or (len(self.polarization_array) == 1)):
             warnings.warn('This object is already a waterfall. Nothing to change.')
             return
@@ -492,8 +490,8 @@ class UVFlag(object):
             darr = self.metric_array
 
         if self.type == 'antenna':
-            d, w = avg_f(darr, axis=(0, 1), weights=self.weights_array,
-                         returned=True)
+            d, w = qm_utils.collapse(darr, method, axis=(0, 1), weights=self.weights_array,
+                                     returned=True)
             darr = np.swapaxes(d, 0, 1)
             self.weights_array = np.swapaxes(w, 0, 1)
         elif self.type == 'baseline':
@@ -504,9 +502,10 @@ class UVFlag(object):
             w = np.zeros((Nt, Nf, Np))
             for i, t in enumerate(np.unique(self.time_array)):
                 ind = self.time_array == t
-                d[i, :, :], w[i, :, :] = avg_f(darr[ind, :, :], axis=0,
-                                               weights=self.weights_array[ind, :, :],
-                                               returned=True)
+                d[i, :, :], w[i, :, :] = qm_utils.collapse(darr[ind, :, :], method,
+                                                           axis=0,
+                                                           weights=self.weights_array[ind, :, :],
+                                                           returned=True)
             darr = d
             self.weights_array = w
             self.time_array, ri = np.unique(self.time_array, return_index=True)
@@ -533,14 +532,13 @@ class UVFlag(object):
             method: How to collapse the dimension(s)
         """
         method = method.lower()
-        avg_f = qm_utils.averaging_dict[method]
         if self.mode == 'flag':
             darr = self.flag_array
         else:
             darr = self.metric_array
         if len(self.polarization_array) > 1:
             # Collapse pol dimension. But note we retain a polarization axis.
-            d, w = avg_f(darr, axis=-1, weights=self.weights_array, returned=True)
+            d, w = qm_utils.collapse(darr, method, axis=-1, weights=self.weights_array, returned=True)
             darr = np.expand_dims(d, axis=d.ndim)
             self.weights_array = np.expand_dims(w, axis=w.ndim)
             self.polarization_array = np.array([','.join(map(str, self.polarization_array))])
