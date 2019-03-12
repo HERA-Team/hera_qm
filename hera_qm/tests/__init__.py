@@ -4,6 +4,8 @@
 
 import numpy as np
 import nose.tools as nt
+
+from pyuvdata.tests import skip
 np.random.seed(0)
 
 
@@ -35,7 +37,7 @@ def recursive_compare_dicts(d1, d2):
             except (AssertionError, TypeError) as err:
                 print('d1:', key, 'key value type:', type(d1[key]),
                       'data type:', type(d1[key][0]), d1[key])
-                print('d2:', key, 'key value type', type(d1[key]),
+                print('d2:', key, 'key value type:', type(d1[key]),
                       'data type:', type(d2[key][0]), d2[key])
                 raise err
         elif isinstance(d1[key], (np.ndarray)):
@@ -47,7 +49,7 @@ def recursive_compare_dicts(d1, d2):
                 except (AssertionError, TypeError) as err:
                     print('d1:', key, 'key value type:', type(d1[key]),
                           'data type:', type(d1[key][0]), d1[key])
-                    print('d2:', key, 'key value type', type(d1[key]),
+                    print('d2:', key, 'key value type:', type(d1[key]),
                           'data type:', type(d2[key][0]), d2[key])
                     raise err
         elif isinstance(d1[key], dict):
@@ -55,4 +57,21 @@ def recursive_compare_dicts(d1, d2):
         elif isinstance(d1[key], (float, np.float, np.float32)):
             nt.assert_true(np.allclose(d1[key], d2[key]))
         else:
-            nt.assert_equal(d1[key], d2[key])
+            try:
+                nt.assert_equal(d1[key], d2[key])
+            except (AssertionError, TypeError) as err:
+                print('d1:', key, 'key value type:', type(d1[key]),
+                      'data type:', type(d1[key][0]), d1[key])
+                print('d2:', key, 'key value type:', type(d1[key]),
+                      'data type:', type(d2[key][0]), d2[key])
+                raise err
+
+
+def skipIf_no_matplotlib(test_func):
+    """Define a decorator to skip tests that require matplotlib."""
+    reason = 'matplotlib is not installed, skipping tests that require it.'
+    try:
+        import matplotlib
+    except(ImportError):
+        return skip(reason)(test_func)
+    return test_func

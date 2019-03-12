@@ -2,10 +2,10 @@
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
-import matplotlib.pyplot as plt
 import numpy as np
 from hera_qm import omnical_metrics
 from hera_qm.data import DATA_PATH
+import hera_qm.tests as qmtest
 import unittest
 import os
 from hera_qm import utils
@@ -127,7 +127,10 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         omnical_metrics.write_metrics(full_metrics, filetype='pkl')
         os.remove(outfile)
 
+    @qmtest.skipIf_no_matplotlib
     def test_plot_phs_metrics(self):
+        import matplotlib.pyplot as plt
+
         # run metrics w/ fc file
         full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
         metrics = full_metrics['XX']
@@ -195,7 +198,9 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.assertTrue(fig is not None)
         plt.close('all')
 
+    @qmtest.skipIf_no_matplotlib
     def test_plot_chisq_metrics(self):
+        import matplotlib.pyplot as plt
         full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
         metrics = full_metrics['XX']
         fname = os.path.join(self.OM.filedir, 'chisq.png')
@@ -227,7 +232,9 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.assertTrue(fig is not None)
         plt.close('all')
 
+    @qmtest.skipIf_no_matplotlib
     def test_plot_chisq_tavg(self):
+        import matplotlib.pyplot as plt
         self.OM.run_metrics(fcfiles=self.fc_file)
         fname = os.path.join(self.OM.filedir, 'chisq_tavg.png')
         # test execution
@@ -245,7 +252,9 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.assertTrue(fig is not None)
         plt.close('all')
 
+    @qmtest.skipIf_no_matplotlib
     def test_plot_gains(self):
+        import matplotlib.pyplot as plt
         self.OM.run_metrics(fcfiles=self.fc_file)
         fname = os.path.join(self.OM.filedir, 'gains.png')
         if os.path.isfile(fname):
@@ -299,7 +308,9 @@ class Test_OmniCal_Metrics(unittest.TestCase):
         self.assertTrue(fig is not None)
         plt.close('all')
 
+    @qmtest.skipIf_no_matplotlib
     def test_plot_metrics(self):
+        import matplotlib.pyplot as plt
         # test execution
         full_metrics = self.OM.run_metrics(fcfiles=self.fc_file)
         metrics = full_metrics['XX']
