@@ -719,7 +719,7 @@ def and_collapse(a, weights=None, axis=None, returned=False):
     Args:
         a - boolean array to process
         weights - NOT USED, but kept for symmetry with other averaging functions
-        axis - axis or axes over which to OR
+        axis - axis or axes over which to AND
         returned - whether to return dummy weights array. NOTE: the dummy weights
                    will simply be an array of ones. Default is False.
     '''
@@ -739,6 +739,9 @@ def and_rows_cols(waterfall):
     time and/or frequency
     Args:
         waterfall - 2D boolean array of shape (Ntimes, Nfreqs)
+    Returns:
+        wf (2D array): A 2D array (size same as input) where only times/integrations
+            that were fully flagged are flagged.
     """
     wf = np.zeros_like(waterfall, dtype=np.bool)
     Ntimes, Nfreqs = waterfall.shape

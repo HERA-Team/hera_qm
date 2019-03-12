@@ -511,8 +511,10 @@ class UVFlag(object):
             self.time_array, ri = np.unique(self.time_array, return_index=True)
             self.lst_array = self.lst_array[ri]
         if ((method == 'or') or (method == 'and')) and (self.mode == 'flag'):
+            # If using a boolean operation (AND/OR) and in flag mode, stay in flag
             self.flag_array = darr
         else:
+            # Otherwise change to (or stay in) metric
             self.metric_array = darr
             self.mode = 'metric'
         self.freq_array = self.freq_array.flatten()
@@ -679,7 +681,10 @@ class UVFlag(object):
         Args:
             convert_wgts : bool, if True convert self.weights_array to ones
                 unless a column or row is completely flagged, in which case
-                convert those pixels to zero.
+                convert those pixels to zero. This is used when reinterpretting
+                flags as metrics to calculate flag fraction. Zero weighting
+                completely flagged rows/columns prevents those from counting
+                against a threshold along the other dimension.
         '''
         if self.mode == 'metric':
             return
