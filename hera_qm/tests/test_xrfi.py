@@ -257,7 +257,7 @@ class TestPreProcessingFunctions():
         # make fake data
         data = np.zeros((self.size, self.size))
         for i in range(data.shape[1]):
-            data[:, i] = i * np.ones_like(data[:, i])
+            data[:, i] = i**2 * np.ones_like(data[:, i])
         # run detrend medfilt
         Kt = 8
         Kf = 8
