@@ -97,6 +97,14 @@ class TestResolveXrfiPath():
         nt.assert_equal(os.path.dirname(os.path.abspath(test_d_file)), dirname)
 
 
+class TestRobustDivide():
+    def test_robus_divide(self):
+        a = np.array([1., 1., 1.], dtype=np.float32)
+        b = np.array([2., 0., 1e-9], dtype=np.float32)
+        c = xrfi.robust_divide(a, b)
+        nt.assert_true(np.array_equal(c, np.array([1. / 2., np.inf, np.inf])))
+
+
 class TestPreProcessingFunctions():
     def __init__(self):
         self.size = 100

@@ -86,6 +86,21 @@ def resolve_xrfi_path(xrfi_path, fname):
     return dirname
 
 
+def robust_divide(a, b):
+    '''Prevent division by zero by setting values to infinity when the denominator
+    is small for the given data type.
+    Args:
+        a (array): Numerator
+        b (array): Denominator
+    Returns:
+        f (array): Division a / b. Elements where b is small (or zero) are set to infinity.
+    '''
+    thresh = np.finfo(b.dtype).eps
+    f = np.true_divide(a, b, where=(np.abs(b) > thresh))
+    f = np.where(np.abs(b) > thresh, f, np.inf)
+    return f
+
+
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
 #############################################################################
@@ -178,8 +193,7 @@ def detrend_deriv(d, flags=None, dt=True, df=True):
     sig_t.shape = (-1, 1)
     sig = np.sqrt(sig_f * sig_t / np.median(sig_t))
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_dtdf, sig, where=(np.abs(sig) > 1e-7))
-    f = np.where(np.abs(sig) > 1e-7, f, np.inf)
+    f = robust_divide(d_dtdf, sig)
     return f
 
 
@@ -202,8 +216,7 @@ def detrend_medminfilt(d, flags=None, Kt=8, Kf=8):
     # puts minmed on same scale as average
     sig = np.sqrt(medminfilt(d_sq, Kt=2 * Kt + 1, Kf=2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-7))
-    f = np.where(np.abs(sig) > 1e-7, f, np.inf)
+    f = robust_divide(d_rs, sig)
     return f
 
 
@@ -246,8 +259,7 @@ def detrend_medfilt(d, flags=None, Kt=8, Kf=8):
     # puts median on same scale as average
     sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-8))
-    f = np.where(np.abs(sig) > 1e-8, f, np.inf)
+    f = robust_divide(d_rs, sig)
     return f[Kt:-Kt, Kf:-Kf]
 
 
@@ -288,8 +300,7 @@ def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
     # puts median on same scale as average
     sig = np.sqrt(convolve(d_sq, kernel, mask=flags))
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-8))
-    f = np.where(np.abs(sig) > 1e-8, f, np.inf)
+    f = robust_divide(d_rs, sig)
     return f[Kt:-Kt, Kf:-Kf]
 
 
