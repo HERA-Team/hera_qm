@@ -267,7 +267,7 @@ def test_collapse_mean_returned_with_weights():
     # Fake data
     data = np.zeros((50, 25))
     for i in range(data.shape[1]):
-        data[:, i] = i * np.ones_like(data[:, i])
+        data[:, i] = i * np.ones_like(data[:, i]) + 1
     w = 1. / data
     out, wo = utils.collapse(data, 'mean', weights=w, axis=0, returned=True)
     out1, wo1 = utils.mean(data, weights=w, axis=0, returned=True)
