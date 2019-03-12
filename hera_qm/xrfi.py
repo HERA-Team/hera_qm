@@ -226,7 +226,7 @@ def detrend_medminfilt(d, flags=None, Kt=8, Kf=8):
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts minmed on same scale as average
-    sig = np.sqrt(medminfilt(d_sq, Kt=2 * Kt + 1, Kf=2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
+    sig = np.sqrt(medminfilt(d_sq, Kt=(2 * Kt + 1), Kf=(2 * Kf + 1))) * (np.sqrt(Kt**2 + Kf**2) / .64)
     # don't divide by zero, instead turn those entries into +inf
     f = robust_divide(d_rs, sig)
     return f
@@ -279,10 +279,12 @@ def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
         f: array of outlier significance metric. Same type and size as d.
     """
     # Delay import so astropy is not required for any use of hera_qm
+    # Using astropy instead of scipy for treatement of Nan: http://docs.astropy.org/en/stable/convolution/
     from astropy.convolution import convolve
 
     Kt, Kf = _check_convolve_dims(d, Kt, Kf)
     kernel = np.ones((2 * Kt + 1, 2 * Kf + 1))
+    # do a mirror extend, like in scipy's convolve, which astropy doesn't support
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     if flags is not None:
@@ -291,7 +293,6 @@ def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
     d_sm = convolve(d, kernel, mask=flags, boundary='extend')
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
-    # puts median on same scale as average
     sig = np.sqrt(convolve(d_sq, kernel, mask=flags))
     # don't divide by zero, instead turn those entries into +inf
     f = robust_divide(d_rs, sig)
@@ -713,11 +714,17 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     flag_xants(uv, xants)
     uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode)
     uvf_m.to_waterfall(keep_pol=False)
+    # This next line resets the weights to 1 (with data) or 0 (no data) to equally
+    # combine with the other metrics.
     uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
     alg_func = algorithm_dict[alg]
+    # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
     uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
-                                           flags=~uvf_m.weights_array[:, :, 0].astype(np.bool),
+                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
                                            Kt=Kt, Kf=Kf)
+    # Flag and watershed on each data product individually.
+    # That is, on each complete file (e.g. calibration gains), not on individual
+    # antennas/baselines. We don't broadcast until the very end.
     uvf_f = flag(uvf_m, nsig_p=sig_init)
     uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
     return uvf_m, uvf_fws
@@ -781,35 +788,34 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
     # Initial run on cal data products
-    alg = 'detrend_medfilt'
     # Calculate metric on abscal data
     uvc_a = UVCal()
     uvc_a.read_calfits(acalfits_file)
     uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True)
-    uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+    uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
-    uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+    uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
 
     # Calculate metric on omnical data
     uvc_o = UVCal()
     uvc_o.read_calfits(ocalfits_file)
     flag_apply(uvf_apriori, uvc_o, keep_existing=True)
-    uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+    uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
-    uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+    uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
 
     # Calculate metric on model vis
     uv_v = UVData()
     uv_v.read(model_file)
-    uvf_v, uvf_vf = xrfi_pipe(uv_v, alg=alg, xants=[], Kt=kt_size, Kf=kf_size,
+    uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
                               sig_init=sig_init, sig_adj=sig_adj)
 
     # Combine the metrics together
     uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax],
                                         method='quadmean', inplace=False)
-    alg_func = algorithm_dict[alg]
+    alg_func = algorithm_dict['detrend_medfilt']
     uvf_metrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0],
                                                  flags=~uvf_metrics.weights_array[:, :, 0].astype(np.bool),
                                                  Kt=kt_size, Kf=kf_size)
@@ -838,31 +844,31 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         flag_apply(uvf_init, uv, keep_existing=True, force_pol=True)
 
     # Do next round of metrics
-    alg = 'detrend_meanfilt'  # Change to meanfilt because it can mask flagged pixels
+    # Change to meanfilt because it can mask flagged pixels
     # Calculate metric on abscal data
-    uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+    uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
-    uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+    uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
 
     # Calculate metric on omnical data
-    uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+    uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
-    uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+    uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
 
     # Calculate metric on model vis
-    uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg=alg, xants=[], Kt=kt_size, Kf=kf_size,
+    uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
                                 sig_init=sig_init, sig_adj=sig_adj)
 
     # Calculate metric on data file
-    uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg=alg, xants=[], Kt=kt_size, Kf=kf_size,
+    uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
                                 sig_init=sig_init, sig_adj=sig_adj)
 
     # Combine the metrics together
     uvf_metrics2 = uvf_d2.combine_metrics([uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2, uvf_v2, uvf_d2],
                                           method='quadmean', inplace=False)
-    alg_func = algorithm_dict[alg]
+    alg_func = algorithm_dict['detrend_meanfilt']
     uvf_metrics2.metric_array[:, :, 0] = alg_func(uvf_metrics2.metric_array[:, :, 0],
                                                   flags=uvf_init.flag_array[:, :, 0],
                                                   Kt=kt_size, Kf=kf_size)
