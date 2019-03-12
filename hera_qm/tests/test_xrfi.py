@@ -92,6 +92,10 @@ class TestResolveXrfiPath():
         dirname = xrfi.resolve_xrfi_path('', test_d_file)
         nt.assert_equal(os.path.dirname(os.path.abspath(test_d_file)), dirname)
 
+    def test_resolve_xrfi_path_does_not_exist(self):
+        dirname = xrfi.resolve_xrfi_path(os.path.join(xrfi_path, 'foogoo'), test_d_file)
+        nt.assert_equal(os.path.dirname(os.path.abspath(test_d_file)), dirname)
+
 
 class TestPreProcessingFunctions():
     def __init__(self):

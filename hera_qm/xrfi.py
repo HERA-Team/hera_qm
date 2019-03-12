@@ -70,19 +70,19 @@ def flag_xants(uv, xants, inplace=True):
         return uvo
 
 
-def resolve_xrfi_path(xrfi_path, file):
+def resolve_xrfi_path(xrfi_path, fname):
     """ Determine xrfi_path based on given directory or default to dirname of given file.
     Args:
         xrfi_path (str): Directory to write xrfi outputs.
-        file (str): Filename to determine backup directory if xrfi_path == ''
+        fname (str): Filename to determine backup directory if xrfi_path == ''
     Returns:
         dirname (str): If xrfi_path != '', returns xrfi_path. Otherwise returns
             directory of file.
     """
-    if xrfi_path != '':
+    if (xrfi_path != '') and (os.path.exists(xrfi_path)):
         dirname = xrfi_path
     else:
-        dirname = os.path.dirname(os.path.abspath(file))
+        dirname = os.path.dirname(os.path.abspath(fname))
     return dirname
 
 
