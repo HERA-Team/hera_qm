@@ -165,19 +165,6 @@ class TestPreProcessingFunctions():
                 ans[:, i] = self.size - 1
         nt.assert_true(np.allclose(d_filt, ans))
 
-        # test cases where filters are larger than data dimensions
-        Kt = self.size + 1
-        Kf = self.size + 1
-        d_filt = uvtest.checkWarnings(xrfi.medminfilt, [data], {'Kt': Kt, 'Kf': Kf}, nwarnings=2,
-                                      category=[UserWarning, UserWarning],
-                                      message=['Kt value {:d} is larger than the data'.format(Kt),
-                                               'Kf value {:d} is larger than the data'.format(Kf)])
-        ans = (self.size - 1) * np.ones_like(d_filt)
-        nt.assert_true(np.allclose(d_filt, ans))
-
-        # Test error when wrong dimensions are passed
-        nt.assert_raises(ValueError, xrfi.medminfilt, np.ones((5, 4, 3)))
-
     def test_detrend_deriv(self):
         # make fake data
         data = np.zeros((self.size, self.size))
@@ -226,9 +213,6 @@ class TestPreProcessingFunctions():
         ans_fn = os.path.join(DATA_PATH, 'test_detrend_medminfilt_ans.txt')
         ans = np.loadtxt(ans_fn)
         nt.assert_true(np.allclose(ans, dm))
-
-        # Test error when wrong dimensions are passed
-        nt.assert_raises(ValueError, xrfi.detrend_medminfilt, np.ones((5, 4, 3)))
 
     def test_detrend_medfilt(self):
         # make fake data
@@ -304,24 +288,6 @@ class TestPreProcessingFunctions():
         dm2 = xrfi.detrend_meanfilt(data, flags=flags, Kt=Kt, Kf=Kf)
         dm2[ind, :] = dm1[ind, :]  # These don't have valid values, so don't compare them.
         nt.assert_true(np.allclose(dm1, dm2))
-
-    def test_detrend_meanfilt_warnings(self):
-        # make fake data
-        data = np.zeros((self.size, self.size))
-        for i in range(data.shape[1]):
-            data[:, i] = i * np.ones_like(data[:, i])
-        # run detrend medfilt
-        Kt = 101
-        Kf = 101
-        dm = uvtest.checkWarnings(xrfi.detrend_meanfilt, [data, None, Kt, Kf], nwarnings=2,
-                                  category=[UserWarning, UserWarning],
-                                  message=['Kt value {:d} is larger than the data'.format(Kt),
-                                           'Kf value {:d} is larger than the data'.format(Kf)])
-        nt.assert_equal(dm.shape, data.shape)
-
-    def test_detrend_meanfilt_3d_error(self):
-        # Test error when wrong dimensions are passed
-        nt.assert_raises(ValueError, xrfi.detrend_meanfilt, np.ones((5, 4, 3)))
 
 
 class TestFlaggingFunctions():
