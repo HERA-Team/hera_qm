@@ -1024,7 +1024,7 @@ def test_to_flag_unknown_mode():
     nt.assert_raises(ValueError, uvf.to_flag)
 
 
-def test_to_metric():
+def test_to_metric_baseline():
     uvf = UVFlag(test_f_file)
     uvf.to_flag()
     uvf.flag_array[:, :, 10] = True
@@ -1040,6 +1040,8 @@ def test_to_metric():
     nt.assert_true(np.isclose(uvf.weights_array[1], 0.0).all())
     nt.assert_true(np.isclose(uvf.weights_array[:, :, 10], 0.0).all())
 
+
+def test_to_metric_waterfall():
     uvf = UVFlag(test_f_file)
     uvf.to_waterfall()
     uvf.to_flag()
@@ -1048,6 +1050,17 @@ def test_to_metric():
     uvf.to_metric(convert_wgts=True)
     nt.assert_true(np.isclose(uvf.weights_array[1], 0.0).all())
     nt.assert_true(np.isclose(uvf.weights_array[:, 10], 0.0).all())
+
+
+def test_to_metric_antenna():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc, mode='flag')
+    uvf.flag_array[10, :, :, 1, :] = True
+    uvf.flag_array[15, :, 3, :, :] = True
+    uvf.to_metric(convert_wgts=True)
+    nt.assert_true(np.isclose(uvf.weights_array[10, :, :, 1, :], 0.0).all())
+    nt.assert_true(np.isclose(uvf.weights_array[15, :, 3, :, :], 0.0).all())
 
 
 def test_metric_to_metric():
