@@ -97,6 +97,31 @@ class TestResolveXrfiPath():
         nt.assert_equal(os.path.dirname(os.path.abspath(test_d_file)), dirname)
 
 
+class TestCheckConvolveDims():
+    def test_check_convolve_dims_3D(self):
+        # Error if d.ndims != 2
+        nt.assert_raises(ValueError, xrfi._check_convolve_dims, np.ones((3, 2, 3)),
+                         1, 2)
+
+    def test_check_convolve_dims_Kt_too_big(self):
+        size = 10
+        d = np.ones((size, size))
+        Kt, Kf = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size + 1, size],
+                                      nwarnings=1, category=UserWarning,
+                                      message='Kt value {:d} is larger than the data'.format(size))
+        nt.assert_equal(Kt, size)
+        nt.assert_equal(Kf, size)
+
+    def test_check_convolve_dims_Kf_too_big(self):
+        size = 10
+        d = np.ones((size, size))
+        Kt, Kf = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size, size + 1],
+                                      nwarnings=1, category=UserWarning,
+                                      message='Kt value {:d} is larger than the data'.format(size))
+        nt.assert_equal(Kt, size)
+        nt.assert_equal(Kf, size)
+
+
 class TestRobustDivide():
     def test_robus_divide(self):
         a = np.array([1., 1., 1.], dtype=np.float32)

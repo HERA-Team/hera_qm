@@ -86,6 +86,30 @@ def resolve_xrfi_path(xrfi_path, fname):
     return dirname
 
 
+def _check_convolve_dims(d, Kt, Kf, fcn='filter'):
+    '''Check the kernel sizes to be used in various convolution-like operations,
+    and replace (with warning) if the dims are too big.
+    Args:
+        d (array): 2D array that will undergo convolution-like operations
+        Kt (int): integer representing box dimension in time to apply statistic.
+        Kf (int): integer representing box dimension in frequency to apply statistic.
+    Returns:
+        Kt (int): Input Kt or d.shape[0] if Kt is larger than first dim of d.
+        Kf (int): Input Kf or d.shape[1] if Kf is larger than first dim of d.
+    '''
+    if d.ndim != 2:
+        raise ValueError('Input to filter must be 2D array.')
+    if Kt > d.shape[0]:
+        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
+        Kt = d.shape[0]
+    if Kf > d.shape[1]:
+        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
+        Kf = d.shape[1]
+    return Kt, Kf
+
+
 def robust_divide(a, b):
     '''Prevent division by zero by setting values to infinity when the denominator
     is small for the given data type.
@@ -121,8 +145,7 @@ def medmin(d, flags=None):
         computed, multiplied by 2, and then the minimum value is subtracted off.
         The goal is to get a proxy for the "noise" in the 2d array.
     '''
-    if d.ndim != 2:
-        raise ValueError('Input to medmin must be 2D array.')
+    _ = _check_convolve_dims(d, 1, 1)  # Just check data dims
     mn = np.min(d, axis=0)
     return 2 * np.median(mn) - np.min(mn)
 
@@ -138,16 +161,7 @@ def medminfilt(d, flags=None, Kt=8, Kf=8):
     Returns:
         array: filtered array with same shape as input array.
     '''
-    if d.ndim != 2:
-        raise ValueError('Input to medminfilt must be 2D array.')
-    if Kt > d.shape[0]:
-        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
-        Kt = d.shape[0]
-    if Kf > d.shape[1]:
-        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
-        Kf = d.shape[1]
+    Kt, Kf = _check_convolve_dims(d, Kt, Kf)
     d_sm = np.empty_like(d)
     for i in range(d.shape[0]):
         for j in range(d.shape[1]):
@@ -170,8 +184,7 @@ def detrend_deriv(d, flags=None, dt=True, df=True):
     Returns:
         array: detrended array with same shape as input array.
     '''
-    if d.ndim != 2:
-        raise ValueError('Input to detrend_deriv must be 2D array.')
+    _ = _check_convolve_dims(d, 1, 1)  # Just check data dims
     if not (dt or df):
         raise ValueError("dt and df cannot both be False when calling detrend_deriv")
     if df:
@@ -208,9 +221,8 @@ def detrend_medminfilt(d, flags=None, Kt=8, Kf=8):
     Returns:
         float array: float array of outlier significance metric
     """
-    if d.ndim != 2:
-        raise ValueError('Input to detrend_medminfilt must be 2D array.')
-    d_sm = medminfilt(np.abs(d), Kt=2 * Kt + 1, Kf=2 * Kf + 1)
+    _ = _check_convolve_dims(d, 1, 1)  # Just check data dimensions
+    d_sm = medminfilt(np.abs(d), Kt=(2 * Kt + 1), Kf=(2 * Kf + 1))
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts minmed on same scale as average
@@ -236,16 +248,7 @@ def detrend_medfilt(d, flags=None, Kt=8, Kf=8):
     # Delay import so scipy is not required for any use of hera_qm
     from scipy.signal import medfilt2d
 
-    if d.ndim != 2:
-        raise ValueError('Input to detrend_medfilt must be 2D array.')
-    if Kt > d.shape[0]:
-        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
-        Kt = d.shape[0]
-    if Kf > d.shape[1]:
-        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
-        Kf = d.shape[1]
+    Kt, Kf = _check_convolve_dims(d, Kt, Kf)
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(d):
@@ -278,16 +281,7 @@ def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
     # Delay import so astropy is not required for any use of hera_qm
     from astropy.convolution import convolve
 
-    if d.ndim != 2:
-        raise ValueError('Input to detrend_meanfilt must be 2D array.')
-    if Kt > d.shape[0]:
-        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
-        Kt = d.shape[0]
-    if Kf > d.shape[1]:
-        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
-        Kf = d.shape[1]
+    Kt, Kf = _check_convolve_dims(d, Kt, Kf)
     kernel = np.ones((2 * Kt + 1, 2 * Kf + 1))
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
