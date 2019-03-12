@@ -264,7 +264,7 @@ class TestPreProcessingFunctions():
         dm = xrfi.detrend_meanfilt(data, Kt=Kt, Kf=Kf)
 
         # read in "answer" array
-        # this is output that corresponds to self.size==100, Kt==101, Kf==101
+        # this is output that corresponds to self.size==100, Kt==8, Kf==8
         ans_fn = os.path.join(DATA_PATH, 'test_detrend_meanfilt_ans.txt')
         ans = np.loadtxt(ans_fn)
         nt.assert_true(np.allclose(ans, dm))
