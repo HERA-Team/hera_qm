@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018 the HERA Project
+# Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 from __future__ import print_function, division, absolute_import
 
@@ -22,6 +22,7 @@ from hera_qm import UVFlag
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
 test_uvfits_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.uvfits')
+test_uvh5_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvh5')
 test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
 test_f_file = test_d_file + '.testuvflag.h5'
 test_f_file_flags = test_d_file + '.testuvflag.flags.h5'  # version in 'flag' mode
@@ -82,6 +83,53 @@ class TestFlagXants():
         nt.assert_true(np.all(uv2.flag_array[uv2.ant_2_array == xant, :, :, :]))
 
 
+class TestResolveXrfiPath():
+    def test_resolve_xrfi_path_given(self):
+        dirname = xrfi.resolve_xrfi_path(xrfi_path, test_d_file)
+        nt.assert_equal(xrfi_path, dirname)
+
+    def test_resolve_xrfi_path_empty(self):
+        dirname = xrfi.resolve_xrfi_path('', test_d_file)
+        nt.assert_equal(os.path.dirname(os.path.abspath(test_d_file)), dirname)
+
+    def test_resolve_xrfi_path_does_not_exist(self):
+        dirname = xrfi.resolve_xrfi_path(os.path.join(xrfi_path, 'foogoo'), test_d_file)
+        nt.assert_equal(os.path.dirname(os.path.abspath(test_d_file)), dirname)
+
+
+class TestCheckConvolveDims():
+    def test_check_convolve_dims_3D(self):
+        # Error if d.ndims != 2
+        nt.assert_raises(ValueError, xrfi._check_convolve_dims, np.ones((3, 2, 3)),
+                         1, 2)
+
+    def test_check_convolve_dims_Kt_too_big(self):
+        size = 10
+        d = np.ones((size, size))
+        Kt, Kf = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size + 1, size],
+                                      nwarnings=1, category=UserWarning,
+                                      message='Kt value {:d} is larger than the data'.format(size))
+        nt.assert_equal(Kt, size)
+        nt.assert_equal(Kf, size)
+
+    def test_check_convolve_dims_Kf_too_big(self):
+        size = 10
+        d = np.ones((size, size))
+        Kt, Kf = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size, size + 1],
+                                      nwarnings=1, category=UserWarning,
+                                      message='Kt value {:d} is larger than the data'.format(size))
+        nt.assert_equal(Kt, size)
+        nt.assert_equal(Kf, size)
+
+
+class TestRobustDivide():
+    def test_robus_divide(self):
+        a = np.array([1., 1., 1.], dtype=np.float32)
+        b = np.array([2., 0., 1e-9], dtype=np.float32)
+        c = xrfi.robust_divide(a, b)
+        nt.assert_true(np.array_equal(c, np.array([1. / 2., np.inf, np.inf])))
+
+
 class TestPreProcessingFunctions():
     def __init__(self):
         self.size = 100
@@ -117,19 +165,6 @@ class TestPreProcessingFunctions():
                 ans[:, i] = self.size - 1
         nt.assert_true(np.allclose(d_filt, ans))
 
-        # test cases where filters are larger than data dimensions
-        Kt = self.size + 1
-        Kf = self.size + 1
-        d_filt = uvtest.checkWarnings(xrfi.medminfilt, [data, Kt, Kf], nwarnings=2,
-                                      category=[UserWarning, UserWarning],
-                                      message=['Kt value {:d} is larger than the data'.format(Kt),
-                                               'Kf value {:d} is larger than the data'.format(Kf)])
-        ans = (self.size - 1) * np.ones_like(d_filt)
-        nt.assert_true(np.allclose(d_filt, ans))
-
-        # Test error when wrong dimensions are passed
-        nt.assert_raises(ValueError, xrfi.medminfilt, np.ones((5, 4, 3)))
-
     def test_detrend_deriv(self):
         # make fake data
         data = np.zeros((self.size, self.size))
@@ -158,7 +193,7 @@ class TestPreProcessingFunctions():
         nt.assert_true(np.allclose(dt, ans))
 
         # catch error of df and dt both being False
-        nt.assert_raises(ValueError, xrfi.detrend_deriv, data, False, False)
+        nt.assert_raises(ValueError, xrfi.detrend_deriv, data, dt=False, df=False)
 
         # Test error when wrong dimensions are passed
         nt.assert_raises(ValueError, xrfi.detrend_deriv, np.ones((5, 4, 3)))
@@ -179,9 +214,6 @@ class TestPreProcessingFunctions():
         ans = np.loadtxt(ans_fn)
         nt.assert_true(np.allclose(ans, dm))
 
-        # Test error when wrong dimensions are passed
-        nt.assert_raises(ValueError, xrfi.detrend_medminfilt, np.ones((5, 4, 3)))
-
     def test_detrend_medfilt(self):
         # make fake data
         data = np.zeros((self.size, self.size))
@@ -190,7 +222,7 @@ class TestPreProcessingFunctions():
         # run detrend medfilt
         Kt = 101
         Kf = 101
-        dm = uvtest.checkWarnings(xrfi.detrend_medfilt, [data, Kt, Kf], nwarnings=2,
+        dm = uvtest.checkWarnings(xrfi.detrend_medfilt, [data, None, Kt, Kf], nwarnings=2,
                                   category=[UserWarning, UserWarning],
                                   message=['Kt value {:d} is larger than the data'.format(Kt),
                                            'Kf value {:d} is larger than the data'.format(Kf)])
@@ -217,8 +249,45 @@ class TestPreProcessingFunctions():
         ans = np.genfromtxt(ans_fn, dtype=np.complex)
         nt.assert_true(np.allclose(ans, dm))
 
+    def test_detrend_medfilt_3d_error(self):
         # Test error when wrong dimensions are passed
         nt.assert_raises(ValueError, xrfi.detrend_medfilt, np.ones((5, 4, 3)))
+
+    def test_detrend_meanfilt(self):
+        # make fake data
+        data = np.zeros((self.size, self.size))
+        for i in range(data.shape[1]):
+            data[:, i] = i**2 * np.ones_like(data[:, i])
+        # run detrend medfilt
+        Kt = 8
+        Kf = 8
+        dm = xrfi.detrend_meanfilt(data, Kt=Kt, Kf=Kf)
+
+        # read in "answer" array
+        # this is output that corresponds to self.size==100, Kt==8, Kf==8
+        ans_fn = os.path.join(DATA_PATH, 'test_detrend_meanfilt_ans.txt')
+        ans = np.loadtxt(ans_fn)
+        nt.assert_true(np.allclose(ans, dm))
+
+    def test_detrend_meanfilt_flags(self):
+        # make fake data
+        data = np.zeros((self.size, self.size))
+        for i in range(data.shape[1]):
+            data[:, i] = i * np.ones_like(data[:, i])
+        ind = int(self.size / 2)
+        data[ind, :] = 10000.
+        flags = np.zeros((self.size, self.size), dtype=np.bool)
+        flags[ind, :] = True
+        # run detrend medfilt
+        Kt = 8
+        Kf = 8
+        dm1 = xrfi.detrend_meanfilt(data, flags=flags, Kt=Kt, Kf=Kf)
+
+        # Compare with drastically different flagged values
+        data[ind, :] = 0
+        dm2 = xrfi.detrend_meanfilt(data, flags=flags, Kt=Kt, Kf=Kf)
+        dm2[ind, :] = dm1[ind, :]  # These don't have valid values, so don't compare them.
+        nt.assert_true(np.allclose(dm1, dm2))
 
 
 class TestFlaggingFunctions():
@@ -386,9 +455,6 @@ class TestFlaggingFunctions():
         nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, 2)
         nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, uvf2)
 
-        # use a bogus average_method
-        nt.assert_raises(KeyError, xrfi.watershed_flag, uvm, uvf, avg_method='blah')
-
         # set the UVFlag object to have a bogus type
         uvm.type = 'blah'
         nt.assert_raises(ValueError, xrfi.watershed_flag, uvm, uvf)
@@ -505,7 +571,6 @@ class TestFlaggingFunctions():
 
         # catch errors
         nt.assert_raises(ValueError, xrfi.flag, 2)
-        nt.assert_raises(KeyError, xrfi.flag, uvm, avg_method='blah')
         uvm.type = 'blah'
         nt.assert_raises(ValueError, xrfi.flag, uvm)
 
@@ -621,17 +686,73 @@ class TestHighLevelFunctions():
 
 class TestPipelines():
 
-    def test_xrfi_h1c_pipe(self):
-        # Do a test, add more tests as needed
-        nt.assert_true(True)
+    def test_xrfi_h1c_pipe_no_summary(self):
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvf_f, uvf_wf = xrfi.xrfi_h1c_pipe(uvc, Kt=3, return_summary=False)
+        nt.assert_equal(uvf_f.mode, 'flag')
+        nt.assert_equal(uvf_f.type, 'antenna')
+        nt.assert_equal(uvf_f.flag_array.shape, uvc.flag_array.shape)
+        nt.assert_equal(uvf_wf.mode, 'flag')
+        nt.assert_equal(uvf_wf.type, 'waterfall')
+
+    def test_xrfi_h1c_pipe_summary(self):
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvf_f, uvf_wf, uvf_w = xrfi.xrfi_h1c_pipe(uvc, Kt=3, return_summary=True)
+        nt.assert_equal(uvf_f.mode, 'flag')
+        nt.assert_equal(uvf_f.type, 'antenna')
+        nt.assert_equal(uvf_f.flag_array.shape, uvc.flag_array.shape)
+        nt.assert_equal(uvf_wf.mode, 'flag')
+        nt.assert_equal(uvf_wf.type, 'waterfall')
+        nt.assert_equal(uvf_w.mode, 'metric')
+        nt.assert_equal(uvf_w.type, 'waterfall')
+        nt.assert_true(uvf_w.metric_array.max() <= 1.0)
+
+    def test_xrfi_h1c_idr2_2_pipe(self):
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvf_m, uvf_f = xrfi.xrfi_pipe(uvc, Kt=3)
+        nt.assert_equal(uvf_m.mode, 'metric')
+        nt.assert_equal(uvf_f.mode, 'flag')
+        nt.assert_equal(uvf_m.type, 'waterfall')
+        nt.assert_equal(len(uvf_m.polarization_array), 1)
+        nt.assert_equal(uvf_m.weights_array.max(), 1.)
 
 
 class TestWrappers():
 
+    def test_xrfi_run(self):
+        # Run in nicest way possible
+        # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+        # This doesn't hurt anything, and lets us streamline the pipe
+        messages = (2 * ['This object is already a waterfall'] + 2 * ['It seems that the latitude']
+                    + 2 * ['This object is already a waterfall'])
+        categories = 2 * [UserWarning] + 2 * [DeprecationWarning] + 2 * [UserWarning]
+        uvtest.checkWarnings(xrfi.xrfi_run, [test_c_file, test_c_file, test_uvh5_file,
+                                             test_uvh5_file, 'Just a test'],
+                             {'xrfi_path': xrfi_path, 'kt_size': 3},
+                             nwarnings=6, message=messages, category=categories)
+
+        basename = utils.strip_extension(os.path.basename(test_uvh5_file))
+        out_files = []
+        exts = ['init_xrfi_metrics', 'init_flags', 'final_xrfi_metrics', 'final_flags']
+        for ext in exts:
+            out = '.'.join([basename, ext, 'h5'])
+            out = os.path.join(xrfi_path, out)
+            nt.assert_true(os.path.exists(out))
+            os.remove(out)  # cleanup
+
+        basename = utils.strip_extension(os.path.basename(test_c_file))
+        # Also get rid of ".abs" (which is actually "omni" in this test)
+        basename = utils.strip_extension(basename)
+        outfile = '.'.join([basename, 'flagged_abs', 'calfits'])
+        outpath = os.path.join(xrfi_path, outfile)
+        nt.assert_true(os.path.exists(outpath))
+        os.remove(outpath)  # cleanup
+
     def test_xrfi_h1c_run(self):
         # run with bad antennas specified
-        uvd = UVData()
-        uvd.read_miriad(test_d_file)
         xrfi.xrfi_h1c_run(test_d_file, filename=test_d_file,
                           history='Just a test.', ex_ants='1,2', xrfi_path=xrfi_path,
                           kt_size=3)

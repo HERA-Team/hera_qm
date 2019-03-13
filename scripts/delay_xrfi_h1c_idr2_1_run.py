@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018 the HERA Project
+# Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
 import sys
@@ -11,7 +11,7 @@ from hera_cal import delay_filter
 from hera_cal import io
 from pyuvdata import UVData
 
-a = qm_utils.get_metrics_ArgumentParser('delay_xrfi_run')
+a = qm_utils.get_metrics_ArgumentParser('delay_xrfi_h1c_idr2_1_run')
 args = a.parse_args()
 filename = args.filename
 history = ' '.join(sys.argv)

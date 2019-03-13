@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018 the HERA Project
+# Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
 from __future__ import print_function, division, absolute_import
@@ -70,14 +70,71 @@ def flag_xants(uv, xants, inplace=True):
         return uvo
 
 
+def resolve_xrfi_path(xrfi_path, fname):
+    """ Determine xrfi_path based on given directory or default to dirname of given file.
+    Args:
+        xrfi_path (str): Directory to write xrfi outputs.
+        fname (str): Filename to determine backup directory if xrfi_path == ''
+    Returns:
+        dirname (str): If xrfi_path != '', returns xrfi_path. Otherwise returns
+            directory of file.
+    """
+    if (xrfi_path != '') and (os.path.exists(xrfi_path)):
+        dirname = xrfi_path
+    else:
+        dirname = os.path.dirname(os.path.abspath(fname))
+    return dirname
+
+
+def _check_convolve_dims(d, Kt, Kf, fcn='filter'):
+    '''Check the kernel sizes to be used in various convolution-like operations,
+    and replace (with warning) if the dims are too big.
+    Args:
+        d (array): 2D array that will undergo convolution-like operations
+        Kt (int): integer representing box dimension in time to apply statistic.
+        Kf (int): integer representing box dimension in frequency to apply statistic.
+    Returns:
+        Kt (int): Input Kt or d.shape[0] if Kt is larger than first dim of d.
+        Kf (int): Input Kf or d.shape[1] if Kf is larger than first dim of d.
+    '''
+    if d.ndim != 2:
+        raise ValueError('Input to filter must be 2D array.')
+    if Kt > d.shape[0]:
+        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
+        Kt = d.shape[0]
+    if Kf > d.shape[1]:
+        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
+        Kf = d.shape[1]
+    return Kt, Kf
+
+
+def robust_divide(a, b):
+    '''Prevent division by zero by setting values to infinity when the denominator
+    is small for the given data type.
+    Args:
+        a (array): Numerator
+        b (array): Denominator
+    Returns:
+        f (array): Division a / b. Elements where b is small (or zero) are set to infinity.
+    '''
+    thresh = np.finfo(b.dtype).eps
+    f = np.true_divide(a, b, where=(np.abs(b) > thresh))
+    f = np.where(np.abs(b) > thresh, f, np.inf)
+    return f
+
+
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
 #############################################################################
 
-def medmin(d):
+def medmin(d, flags=None):
     '''Calculate the median minus minimum statistic of array.
     Args:
         d (array): 2D data array of the shape (time,frequency).
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
     Returns:
         (float): medmin statistic.
 
@@ -88,31 +145,23 @@ def medmin(d):
         computed, multiplied by 2, and then the minimum value is subtracted off.
         The goal is to get a proxy for the "noise" in the 2d array.
     '''
-    if d.ndim != 2:
-        raise ValueError('Input to medmin must be 2D array.')
+    _ = _check_convolve_dims(d, 1, 1)  # Just check data dims
     mn = np.min(d, axis=0)
     return 2 * np.median(mn) - np.min(mn)
 
 
-def medminfilt(d, Kt=8, Kf=8):
+def medminfilt(d, flags=None, Kt=8, Kf=8):
     '''Filter an array on scales of Kt,Kf indexes with medmin.
     Args:
         d (array): 2D data array of the shape (time,frequency).
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
         Kt (int, optional): integer representing box dimension in time to apply statistic.
         Kf (int, optional): integer representing box dimension in frequency to apply statistic.
     Returns:
         array: filtered array with same shape as input array.
     '''
-    if d.ndim != 2:
-        raise ValueError('Input to medminfilt must be 2D array.')
-    if Kt > d.shape[0]:
-        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
-        Kt = d.shape[0]
-    if Kf > d.shape[1]:
-        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
-        Kf = d.shape[1]
+    Kt, Kf = _check_convolve_dims(d, Kt, Kf)
     d_sm = np.empty_like(d)
     for i in range(d.shape[0]):
         for j in range(d.shape[1]):
@@ -122,19 +171,20 @@ def medminfilt(d, Kt=8, Kf=8):
     return d_sm
 
 
-def detrend_deriv(d, dt=True, df=True):
+def detrend_deriv(d, flags=None, dt=True, df=True):
     ''' Detrend array by taking the derivative in either time, frequency
         or both. When taking the derivative of both, the derivative in
         frequency is performed first, then in time.
     Args:
         d (array): 2D data array of the shape (time,frequency).
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
         dt (bool, optional): derivative across time bins.
         df (bool, optional): derivative across frequency bins.
     Returns:
         array: detrended array with same shape as input array.
     '''
-    if d.ndim != 2:
-        raise ValueError('Input to detrend_deriv must be 2D array.')
+    _ = _check_convolve_dims(d, 1, 1)  # Just check data dims
     if not (dt or df):
         raise ValueError("dt and df cannot both be False when calling detrend_deriv")
     if df:
@@ -156,54 +206,49 @@ def detrend_deriv(d, dt=True, df=True):
     sig_t.shape = (-1, 1)
     sig = np.sqrt(sig_f * sig_t / np.median(sig_t))
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_dtdf, sig, where=(np.abs(sig) > 1e-7))
-    f = np.where(np.abs(sig) > 1e-7, f, np.inf)
+    f = robust_divide(d_dtdf, sig)
     return f
 
 
-def detrend_medminfilt(d, Kt=8, Kf=8):
+def detrend_medminfilt(d, flags=None, Kt=8, Kf=8):
     """Detrend array using medminfilt statistic. See medminfilt.
     Args:
         d (array): 2D data array of the shape (time, frequency) to detrend
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
         Kt (int): size in time to apply medminfilter over
         Kf (int): size in frequency to apply medminfilter over
     Returns:
         float array: float array of outlier significance metric
     """
-    if d.ndim != 2:
-        raise ValueError('Input to detrend_medminfilt must be 2D array.')
-    d_sm = medminfilt(np.abs(d), 2 * Kt + 1, 2 * Kf + 1)
+    _ = _check_convolve_dims(d, 1, 1)  # Just check data dimensions
+    d_sm = medminfilt(np.abs(d), Kt=(2 * Kt + 1), Kf=(2 * Kf + 1))
     d_rs = d - d_sm
     d_sq = np.abs(d_rs)**2
     # puts minmed on same scale as average
-    sig = np.sqrt(medminfilt(d_sq, 2 * Kt + 1, 2 * Kf + 1)) * (np.sqrt(Kt**2 + Kf**2) / .64)
+    sig = np.sqrt(medminfilt(d_sq, Kt=(2 * Kt + 1), Kf=(2 * Kf + 1))) * (np.sqrt(Kt**2 + Kf**2) / .64)
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-7))
-    f = np.where(np.abs(sig) > 1e-7, f, np.inf)
+    f = robust_divide(d_rs, sig)
     return f
 
 
-def detrend_medfilt(d, Kt=8, Kf=8):
+def detrend_medfilt(d, flags=None, Kt=8, Kf=8):
     """Detrend array using a median filter.
     Args:
         d (array): 2D data array to detrend.
-        K (int, optional): box size to apply medminfilt over
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+            NOT USED in this function.
+        Kt (int, optional): box size in time (first) dimension to apply medfilt
+            over. Default is 8 pixels.
+        Kf (int, optional): box size in frequency (second) dimension to apply medfilt
+            over. Default is 8 pixels.
     Returns:
         f: array of outlier significance metric. Same type and size as d.
     """
     # Delay import so scipy is not required for any use of hera_qm
     from scipy.signal import medfilt2d
 
-    if d.ndim != 2:
-        raise ValueError('Input to detrend_medfilt must be 2D array.')
-    if Kt > d.shape[0]:
-        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
-        Kt = d.shape[0]
-    if Kf > d.shape[1]:
-        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
-        Kf = d.shape[1]
+    Kt, Kf = _check_convolve_dims(d, Kt, Kf)
     d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
     d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(d):
@@ -217,14 +262,47 @@ def detrend_medfilt(d, Kt=8, Kf=8):
     # puts median on same scale as average
     sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
-    f = np.true_divide(d_rs, sig, where=(np.abs(sig) > 1e-8))
-    f = np.where(np.abs(sig) > 1e-8, f, np.inf)
+    f = robust_divide(d_rs, sig)
+    return f[Kt:-Kt, Kf:-Kf]
+
+
+def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
+    """Detrend array using a mean filter.
+    Args:
+        d (array): 2D data array to detrend.
+        flags (array, optional): 2D flag array to be interpretted as mask for d.
+        Kt (int, optional): box size in time (first) dimension to apply medfilt
+            over. Default is 8 pixels.
+        Kf (int, optional): box size in frequency (second) dimension to apply medfilt
+            over. Default is 8 pixels.
+    Returns:
+        f: array of outlier significance metric. Same type and size as d.
+    """
+    # Delay import so astropy is not required for any use of hera_qm
+    # Using astropy instead of scipy for treatement of Nan: http://docs.astropy.org/en/stable/convolution/
+    from astropy.convolution import convolve
+
+    Kt, Kf = _check_convolve_dims(d, Kt, Kf)
+    kernel = np.ones((2 * Kt + 1, 2 * Kf + 1))
+    # do a mirror extend, like in scipy's convolve, which astropy doesn't support
+    d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
+    d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
+    if flags is not None:
+        flags = np.concatenate([flags[Kt - 1::-1], flags, flags[:-Kt - 1:-1]], axis=0)
+        flags = np.concatenate([flags[:, Kf - 1::-1], flags, flags[:, :-Kf - 1:-1]], axis=1)
+    d_sm = convolve(d, kernel, mask=flags, boundary='extend')
+    d_rs = d - d_sm
+    d_sq = np.abs(d_rs)**2
+    sig = np.sqrt(convolve(d_sq, kernel, mask=flags))
+    # don't divide by zero, instead turn those entries into +inf
+    f = robust_divide(d_rs, sig)
     return f[Kt:-Kt, Kf:-Kf]
 
 
 # Update algorithm_dict whenever new metric algorithm is created.
 algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': detrend_deriv,
-                  'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt}
+                  'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt,
+                  'detrend_meanfilt': detrend_meanfilt}
 
 #############################################################################
 # RFI flagging algorithms
@@ -268,11 +346,6 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
     else:
         uvf = copy.deepcopy(uvf_f)
 
-    try:
-        avg_f = qm_utils.averaging_dict[avg_method]
-    except KeyError:
-        raise KeyError('avg_method must be one of: "mean", "absmean", or "quadmean".')
-
     # Convenience
     farr = uvf.flag_array
     marr = uvf_m.metric_array
@@ -288,7 +361,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
                                                         farr[i, 0, :, pi], nsig_p)
         if nsig_f is not None:
             # Channel watershed
-            d = avg_f(marr, axis=(0, 1, 3), weights=warr)
+            d = qm_utils.collapse(marr, avg_method, axis=(0, 1, 3), weights=warr)
             f = np.all(farr, axis=(0, 1, 3))
             farr[:, :, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, 1, -1, 1)
         if nsig_t is not None:
@@ -297,8 +370,8 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
             d = np.zeros(ts.size)
             f = np.zeros(ts.size, dtype=np.bool)
             for i, t in enumerate(ts):
-                d[i] = avg_f(marr[uvf.time_array == t, 0, :, :],
-                             weights=warr[uvf.time_array == t, 0, :, :])
+                d[i] = qm_utils.collapse(marr[uvf.time_array == t, 0, :, :], avg_method,
+                                         weights=warr[uvf.time_array == t, 0, :, :])
                 f[i] = np.all(farr[uvf.time_array == t, 0, :, :])
             f = _ws_flag_waterfall(d, f, nsig_t)
             for i, t in enumerate(ts):
@@ -311,12 +384,12 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
                                                             farr[ai, 0, :, :, pi].T, nsig_p).T
         if nsig_f is not None:
             # Channel watershed
-            d = avg_f(marr, axis=(0, 1, 3, 4), weights=warr)
+            d = qm_utils.collapse(marr, avg_method, axis=(0, 1, 3, 4), weights=warr)
             f = np.all(farr, axis=(0, 1, 3, 4))
             farr[:, :, :, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, 1, -1, 1, 1)
         if nsig_t is not None:
             # Time watershed
-            d = avg_f(marr, axis=(0, 1, 2, 4), weights=warr)
+            d = qm_utils.collapse(marr, avg_method, axis=(0, 1, 2, 4), weights=warr)
             f = np.all(farr, axis=(0, 1, 2, 4))
             farr[:, :, :, :, :] += _ws_flag_waterfall(d, f, nsig_t).reshape(1, 1, 1, -1, 1)
     elif uvf_m.type == 'waterfall':
@@ -325,12 +398,12 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
             farr[:, :, pi] += _ws_flag_waterfall(marr[:, :, pi], farr[:, :, pi], nsig_p)
         if nsig_f is not None:
             # Channel watershed
-            d = avg_f(marr, axis=(0, 2), weights=warr)
+            d = qm_utils.collapse(marr, avg_method, axis=(0, 2), weights=warr)
             f = np.all(farr, axis=(0, 2))
             farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, -1, 1)
         if nsig_t is not None:
             # Time watershed
-            d = avg_f(marr, axis=(1, 2), weights=warr)
+            d = qm_utils.collapse(marr, avg_method, axis=(1, 2), weights=warr)
             f = np.all(farr, axis=(1, 2))
             farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_t).reshape(-1, 1, 1)
     else:
@@ -399,56 +472,57 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     if (not isinstance(uvf_m, UVFlag)) or (uvf_m.mode != 'metric'):
         raise ValueError('uvf_m must be UVFlag instance with mode == "metric."')
 
-    try:
-        avg_f = qm_utils.averaging_dict[avg_method]
-    except KeyError:
-        raise KeyError('avg_method must be one of: "mean", "absmean", or "quadmean".')
-
     # initialize
     uvf_f = copy.deepcopy(uvf_m)
     uvf_f.to_flag()
 
     # Pixel flagging
     if nsig_p is not None:
-        uvf_f.flag_array[uvf_m.metric_array > nsig_p] = True
+        uvf_f.flag_array[uvf_m.metric_array >= nsig_p] = True
 
     if uvf_m.type == 'baseline':
         if nsig_f is not None:
             # Channel flagging
-            d = avg_f(uvf_m.metric_array, axis=(0, 1, 3), weights=uvf_m.weights_array)
-            indf = np.where(d > nsig_f)[0]
+            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3),
+                                  weights=uvf_m.weights_array)
+            indf = np.where(d >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :] = True
         if nsig_t is not None:
             # Time flagging
             ts = np.unique(uvf_m.time_array)
             d = np.zeros(ts.size)
             for i, t in enumerate(ts):
-                d[i] = avg_f(uvf_m.metric_array[uvf_m.time_array == t, 0, :, :],
-                             weights=uvf_m.weights_array[uvf_m.time_array == t, 0, :, :])
-            indf = np.where(d > nsig_t)[0]
+                d[i] = qm_utils.collapse(uvf_m.metric_array[uvf_m.time_array == t, 0, :, :],
+                                         avg_method,
+                                         weights=uvf_m.weights_array[uvf_m.time_array == t, 0, :, :])
+            indf = np.where(d >= nsig_t)[0]
             for t in ts[indf]:
                 uvf_f.flag_array[uvf_f.time_array == t, :, :, :] = True
     elif uvf_m.type == 'antenna':
         if nsig_f is not None:
             # Channel flag
-            d = avg_f(uvf_m.metric_array, axis=(0, 1, 3, 4), weights=uvf_m.weights_array)
-            indf = np.where(d > nsig_f)[0]
+            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3, 4),
+                                  weights=uvf_m.weights_array)
+            indf = np.where(d >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :, :] = True
         if nsig_t is not None:
             # Time watershed
-            d = avg_f(uvf_m.metric_array, axis=(0, 1, 2, 4), weights=uvf_m.weights_array)
-            indt = np.where(d > nsig_t)[0]
+            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 2, 4),
+                                  weights=uvf_m.weights_array)
+            indt = np.where(d >= nsig_t)[0]
             uvf_f.flag_array[:, :, :, indt, :] = True
     elif uvf_m.type == 'waterfall':
         if nsig_f is not None:
             # Channel flag
-            d = avg_f(uvf_m.metric_array, axis=(0, 2), weights=uvf_m.weights_array)
-            indf = np.where(d > nsig_f)[0]
+            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(0, 2),
+                                  weights=uvf_m.weights_array)
+            indf = np.where(d >= nsig_f)[0]
             uvf_f.flag_array[:, indf, :] = True
         if nsig_t is not None:
             # Time watershed
-            d = avg_f(uvf_m.metric_array, axis=(1, 2), weights=uvf_m.weights_array)
-            indt = np.where(d > nsig_t)[0]
+            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(1, 2),
+                                  weights=uvf_m.weights_array)
+            indt = np.where(d >= nsig_t)[0]
             uvf_f.flag_array[indt, :, :] = True
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
@@ -489,6 +563,7 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
         if f.mode != 'flag':
             raise ValueError('UVFlag objects must be in mode "flag" to apply to data.')
         if f.type == 'waterfall':
+            f = f.copy()  # don't change the input object
             if expected_type == 'baseline':
                 f.to_baseline(uv, force_pol=force_pol)
             else:
@@ -538,18 +613,21 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
-                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), **kwargs)
+                flags = uv.flag_array[ind, 0, :, ipol]
+                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), flags=flags, **kwargs)
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
             uvf.to_waterfall()
             for pi in range(uv.Njones):
                 d = np.abs(uv.total_quality_array[0, :, :, pi].T)
-                uvf.metric_array[:, :, pi] = alg_func(d, **kwargs)
+                flags = np.all(uv.flag_array[:, 0, :, :, pi], axis=0).T
+                uvf.metric_array[:, :, pi] = alg_func(d, flags=flags, **kwargs)
         else:
             for ai in range(uv.Nants_data):
                 for pi in range(uv.Njones):
                     # Note transposes are due to freq, time dimensions rather than the
                     # expected time, freq
+                    flags = uv.flag_array[ai, 0, :, :, pi].T
                     if cal_mode == 'gain':
                         d = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
                     elif cal_mode == 'chisq':
@@ -557,12 +635,14 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
                     else:
                         raise ValueError('When calculating metric for UVCal object, '
                                          'cal_mode must be "gain", "chisq", or "tot_chisq".')
-                    uvf.metric_array[ai, 0, :, :, pi] = alg_func(d, **kwargs).T
+                    uvf.metric_array[ai, 0, :, :, pi] = alg_func(d, flags=flags, **kwargs).T
     return uvf
 
 
 #############################################################################
 # "Pipelines" -- these routines define the flagging strategy for some data
+#   Note: "current" pipes should have simple names, but when replaced,
+#         they should stick around with more descriptive names.
 #############################################################################
 
 def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
@@ -607,9 +687,218 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
     else:
         return uvf_f, uvf_wf
 
+
+def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
+              sig_init=6.0, sig_adj=2.0):
+    """xrfi excision pipeline used for H1C IDR2.2. Uses detrending and watershed algorithms above.
+    Args:
+        uv (UVData or UVCal): Object to calculate metric.
+        alg (str, optional): Algorithm for calculating metric. Default is
+            'detrend_medfilt'.
+        Kt (int, optional): Size of kernel in time dimension for detrend in
+            xrfi algorithm. Default is 8.
+        Kf (int, optional): Size of kernel in frequency dimension for detrend
+            in xrfi algorithm. Default is 8.
+        xants (list): List of antennas to flag. Default is empty list.
+        cal_mode: (str) Mode to calculate metric if uv is UVCal. Options are
+            'gain', 'chisq', and 'tot_chisq' to use the gain_array,
+            'quality_array', and 'total_quality_array', respectively.
+        sig_init (float, optional): Starting number of sigmas to flag on. Default is 6.
+        sig_adj (float, optional): Number of sigmas to flag on for data adjacent
+            to a flag. Default is 2.0.
+    Returns:
+        uvf_m (UVFlag): UVFlag object with metric after collapsing to waterfall and to
+            single pol. Weights array is set to ones.
+        uvf_fws (UVFlag): UVFlag object with flags after watershed.
+    """
+    flag_xants(uv, xants)
+    uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode)
+    uvf_m.to_waterfall(keep_pol=False)
+    # This next line resets the weights to 1 (with data) or 0 (no data) to equally
+    # combine with the other metrics.
+    uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
+    alg_func = algorithm_dict[alg]
+    # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
+    uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
+                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
+                                           Kt=Kt, Kf=Kf)
+    # Flag and watershed on each data product individually.
+    # That is, on each complete file (e.g. calibration gains), not on individual
+    # antennas/baselines. We don't broadcast until the very end.
+    uvf_f = flag(uvf_m, nsig_p=sig_init)
+    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
+    return uvf_m, uvf_fws
+
 #############################################################################
 # Wrappers -- Interact with input and output files
+#   Note: "current" wrappers should have simple names, but when replaced,
+#         they should stick around with more descriptive names.
 #############################################################################
+
+
+def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
+             init_metrics_ext='init_xrfi_metrics.h5', init_flags_ext='init_flags.h5',
+             final_metrics_ext='final_xrfi_metrics.h5', final_flags_ext='final_flags.h5',
+             xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
+             freq_threshold=0.35, time_threshold=0.5, ex_ants=None, metrics_file=None,
+             cal_ext='flagged_abs'):
+    """xrfi excision pipeline used for H1C IDR2.2. Uses detrending and watershed algorithms above.
+    Args:
+        ocalfits_file (str): Omnical calfits file to use to flag on gains and
+            chisquared values.
+        acalfits_file (str): Abscal calfits file to use to flag on gains and
+            chisquared values.
+        model_file (str): Model visibility file to flag on.
+        data_file (str): Raw visibility data file to flag.
+        history (str): History string to include in files
+        init_metrics_ext (str, optional): Extension to be appended to input file name
+            for initial metric object. Default is "init_xrfi_metrics.h5".
+        init_flags_ext (str, optional): Extension to be appended to input file name
+            for initial flag object. Default is "init_flags.h5".
+        final_metrics_ext (str, optional): Extension to be appended to input file name
+            for final metric object. Default is "final_xrfi_metrics.h5".
+        final_flags_ext (str, optional): Extension to be appended to input file name
+            for final flag object. Default is "final_flags.h5".
+        xrfi_path (str, optional): Path to save xrfi files to. Default is same
+            directory as data_file.
+        kt_size (int, optional): Size of kernel in time dimension for detrend in
+            xrfi algorithm. Default is 8.
+        kf_size (int, optional): Size of kernel in frequency dimension for detrend
+            in xrfi algorithm. Default is 8.
+        sig_init (float, optional): Starting number of sigmas to flag on. Default is 5.
+        sig_adj (float, optional): Number of sigmas to flag on for data adjacent
+            to a flag. Default is 2.0.
+        freq_threshold (float, optional): Fraction of times required to trigger
+            broadcast across times (single freq). Default is 0.35.
+        time_threshold (float, optional): Fraction of channels required to trigger
+            broadcast across frequency (single time). Default is 0.5.
+        ex_ants (str, optional): Comma-separated list of antennas to exclude.
+            Flags of visibilities formed with these antennas will be set to True.
+        metrics_file (str, optional): Metrics file that contains a list of excluded
+            antennas. Flags of visibilities formed with these antennas will be set to True.
+        cal_ext (str, optional): Extension to replace penultimate extension in
+            calfits file for output calibration including flags. Defaults is "flagged_abs".
+            For example, an input_cal of "foo.goo.calfits" would result in
+            "foo.flagged_abs.calfits".
+    Returns:
+        None
+    """
+    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    dirname = resolve_xrfi_path(xrfi_path, data_file)
+    xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+
+    # Initial run on cal data products
+    # Calculate metric on abscal data
+    uvc_a = UVCal()
+    uvc_a.read_calfits(acalfits_file)
+    uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True)
+    uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+    uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+
+    # Calculate metric on omnical data
+    uvc_o = UVCal()
+    uvc_o.read_calfits(ocalfits_file)
+    flag_apply(uvf_apriori, uvc_o, keep_existing=True)
+    uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+    uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+
+    # Calculate metric on model vis
+    uv_v = UVData()
+    uv_v.read(model_file)
+    uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
+                              sig_init=sig_init, sig_adj=sig_adj)
+
+    # Combine the metrics together
+    uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax],
+                                        method='quadmean', inplace=False)
+    alg_func = algorithm_dict['detrend_medfilt']
+    uvf_metrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0],
+                                                 flags=~uvf_metrics.weights_array[:, :, 0].astype(np.bool),
+                                                 Kt=kt_size, Kf=kf_size)
+
+    # Flag on combined metrics
+    uvf_f = flag(uvf_metrics, nsig_p=sig_init)
+    uvf_fws = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False)
+    # OR everything together for initial flags
+    uvf_apriori.to_waterfall(method='and', keep_pol=False)
+    uvf_init = uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf | uvf_apriori
+
+    # Write out initial (combined) metrics and flags
+    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    outfile = '.'.join([basename, init_metrics_ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_metrics.write(outpath, clobber=True)
+    outfile = '.'.join([basename, init_flags_ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_init.write(outpath, clobber=True)
+
+    # Second round -- use init flags to mask and recalculate everything
+    # Read in data file
+    uv_d = UVData()
+    uv_d.read(data_file)
+    for uv in [uvc_o, uvc_a, uv_v, uv_d]:
+        flag_apply(uvf_init, uv, keep_existing=True, force_pol=True)
+
+    # Do next round of metrics
+    # Change to meanfilt because it can mask flagged pixels
+    # Calculate metric on abscal data
+    uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+    uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+
+    # Calculate metric on omnical data
+    uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+    uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+
+    # Calculate metric on model vis
+    uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
+                                sig_init=sig_init, sig_adj=sig_adj)
+
+    # Calculate metric on data file
+    uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
+                                sig_init=sig_init, sig_adj=sig_adj)
+
+    # Combine the metrics together
+    uvf_metrics2 = uvf_d2.combine_metrics([uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2, uvf_v2, uvf_d2],
+                                          method='quadmean', inplace=False)
+    alg_func = algorithm_dict['detrend_meanfilt']
+    uvf_metrics2.metric_array[:, :, 0] = alg_func(uvf_metrics2.metric_array[:, :, 0],
+                                                  flags=uvf_init.flag_array[:, :, 0],
+                                                  Kt=kt_size, Kf=kf_size)
+
+    # Flag on combined metrics
+    uvf_f2 = flag(uvf_metrics2, nsig_p=sig_init)
+    uvf_fws2 = watershed_flag(uvf_metrics2, uvf_f2, nsig_p=sig_adj, inplace=False)
+    uvf_combined2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
+                     | uvf_vf2 | uvf_df2 | uvf_init)
+
+    # Threshold
+    uvf_temp = uvf_combined2.copy()
+    uvf_temp.to_metric(convert_wgts=True)
+    uvf_final = flag(uvf_temp, nsig_p=1.0, nsig_f=freq_threshold, nsig_t=time_threshold)
+
+    # Write out final metrics and flags
+    outfile = '.'.join([basename, final_metrics_ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_metrics2.write(outpath, clobber=True)
+    outfile = '.'.join([basename, final_flags_ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_final.write(outpath, clobber=True)
+
+    # Save calfits with new flags
+    flag_apply(uvf_final, uvc_a, force_pol=True, history=history)
+    basename = qm_utils.strip_extension(os.path.basename(acalfits_file))
+    basename = qm_utils.strip_extension(basename)  # Also get rid of .abs
+    outfile = '.'.join([basename, cal_ext, 'calfits'])
+    outpath = os.path.join(dirname, outfile)
+    uvc_a.write_calfits(outpath, clobber=True)
 
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
@@ -655,7 +944,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     Return:
        None
 
-    This function will take in a UVData object or  data file and optionally a cal file and
+    This function will take in a UVData object or data file and optionally a cal file and
     model visibility file, and run an RFI-flagging algorithm to identify contaminated
     observations. Each set of flagging will be stored, as well as compressed versions.
     """
@@ -684,10 +973,6 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     # append to history
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
 
-    if xrfi_path != '':
-        # If explicitly given output path, use it. Otherwise use path from data.
-        dirname = xrfi_path
-
     # Flag on data
     if indata is not None:
         # Flag visibilities corresponding to specified antennas
@@ -697,8 +982,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
                                              sig_adj=sig_adj, px_threshold=px_threshold,
                                              freq_threshold=freq_threshold, time_threshold=time_threshold,
                                              return_summary=True)
-        if xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(filename))
+        dirname = resolve_xrfi_path(xrfi_path, filename)
         basename = qm_utils.strip_extension(os.path.basename(filename))
         # Save watersheded flags
         outfile = '.'.join([basename, extension])
@@ -729,8 +1013,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvm, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold)
-        if xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(model_file))
+        dirname = resolve_xrfi_path(xrfi_path, model_file)
         # Only save thresholded waterfall
         basename = qm_utils.strip_extension(os.path.basename(model_file))
         outfile = '.'.join([basename, extension])
@@ -752,8 +1035,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold)
-        if xrfi_path == '':
-            dirname = os.path.dirname(os.path.abspath(calfits_file))
+        dirname = resolve_xrfi_path(xrfi_path, calfits_file)
         basename = qm_utils.strip_extension(os.path.basename(calfits_file))
         outfile = '.'.join([basename, 'g', extension])
         outpath = os.path.join(dirname, outfile)
@@ -825,12 +1107,7 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
     uvf = flag_apply(full_list, uvd, force_pol=True, return_net_flags=True)
 
     # save output when we're done
-    if xrfi_path == '':
-        # default to the same directory
-        abspath = os.path.abspath(filename)
-        dirname = os.path.dirname(abspath)
-    else:
-        dirname = xrfi_path
+    dirname = resolve_xrfi_path(xrfi_path, filename)
     basename = qm_utils.strip_extension(os.path.basename(filename))
     outfile = '.'.join([basename, extension])
     outpath = os.path.join(dirname, outfile)

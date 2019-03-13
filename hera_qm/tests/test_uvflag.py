@@ -1024,17 +1024,43 @@ def test_to_flag_unknown_mode():
     nt.assert_raises(ValueError, uvf.to_flag)
 
 
-def test_to_metric():
+def test_to_metric_baseline():
     uvf = UVFlag(test_f_file)
     uvf.to_flag()
+    uvf.flag_array[:, :, 10] = True
+    uvf.flag_array[1, :, :] = True
     nt.assert_true(hasattr(uvf, 'flag_array'))
     nt.assert_false(hasattr(uvf, 'metric_array'))
     nt.assert_true(uvf.mode == 'flag')
-    uvf.to_metric()
+    uvf.to_metric(convert_wgts=True)
     nt.assert_true(hasattr(uvf, 'metric_array'))
     nt.assert_false(hasattr(uvf, 'flag_array'))
     nt.assert_true(uvf.mode == 'metric')
     nt.assert_true('Converted to mode "metric"' in uvf.history)
+    nt.assert_true(np.isclose(uvf.weights_array[1], 0.0).all())
+    nt.assert_true(np.isclose(uvf.weights_array[:, :, 10], 0.0).all())
+
+
+def test_to_metric_waterfall():
+    uvf = UVFlag(test_f_file)
+    uvf.to_waterfall()
+    uvf.to_flag()
+    uvf.flag_array[:, 10] = True
+    uvf.flag_array[1, :, :] = True
+    uvf.to_metric(convert_wgts=True)
+    nt.assert_true(np.isclose(uvf.weights_array[1], 0.0).all())
+    nt.assert_true(np.isclose(uvf.weights_array[:, 10], 0.0).all())
+
+
+def test_to_metric_antenna():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc, mode='flag')
+    uvf.flag_array[10, :, :, 1, :] = True
+    uvf.flag_array[15, :, 3, :, :] = True
+    uvf.to_metric(convert_wgts=True)
+    nt.assert_true(np.isclose(uvf.weights_array[10, :, :, 1, :], 0.0).all())
+    nt.assert_true(np.isclose(uvf.weights_array[15, :, 3, :, :], 0.0).all())
 
 
 def test_metric_to_metric():
@@ -1108,6 +1134,67 @@ def test_missing_Nants_telescope():
     uvf2.Nants_telescope = None
     nt.assert_true(uvf == uvf2)
     os.remove(testfile)
+
+
+def test_combine_metrics_inplace():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    np.random.seed(44)
+    uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
+    uvf2 = uvf.copy()
+    uvf2.metric_array *= 2
+    uvf3 = uvf.copy()
+    uvf3.metric_array *= 3
+    uvf.combine_metrics([uvf2, uvf3])
+    factor = np.sqrt((1 + 4 + 9) / 3.) / 2.
+    nt.assert_true(np.allclose(uvf.metric_array,
+                   np.abs(uvf2.metric_array) * factor))
+
+
+def test_combine_metrics_not_inplace():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    np.random.seed(44)
+    uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
+    uvf2 = uvf.copy()
+    uvf2.metric_array *= 2
+    uvf3 = uvf.copy()
+    uvf3.metric_array *= 3
+    uvf4 = uvf.combine_metrics([uvf2, uvf3], inplace=False)
+    factor = np.sqrt((1 + 4 + 9) / 3.)
+    nt.assert_true(np.allclose(uvf4.metric_array,
+                   np.abs(uvf.metric_array) * factor))
+
+
+def test_combine_metrics_not_uvflag():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    nt.assert_raises(ValueError, uvf.combine_metrics, 'bubblegum')
+
+
+def test_combine_metrics_not_metric():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    np.random.seed(44)
+    uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
+    uvf2 = uvf.copy()
+    uvf2.to_flag()
+    nt.assert_raises(ValueError, uvf.combine_metrics, uvf2)
+
+
+def test_combine_metrics_wrong_shape():
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvf = UVFlag(uvc)
+    np.random.seed(44)
+    uvf.metric_array = np.random.normal(size=uvf.metric_array.shape)
+    uvf2 = uvf.copy()
+    uvf2.to_waterfall()
+    nt.assert_raises(ValueError, uvf.combine_metrics, uvf2)
 
 
 def test_super():

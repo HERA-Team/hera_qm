@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018 the HERA Project
+# Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
 from __future__ import print_function, division, absolute_import
@@ -429,6 +429,43 @@ class UVFlag(object):
         ''' Simply return a copy of this object '''
         return copy.deepcopy(self)
 
+    def combine_metrics(self, others, method='quadmean', inplace=True):
+        """
+        Combine metric arrays between different UVFlag objects together.
+        Args:
+            others (UVFlag or list of UVFlags): Other UVFlag objects to combine
+                metrics with this one.
+            method (str, optional): Method to combine metrics. Default is "quadmean".
+            inplace (bool, optional): Perform combination in place. Default is True.
+        Returns:
+            uvf (UVFlag): If inplace==False, return new UVFlag object with combined metrics.
+        """
+        # Ensure others is iterable (in case of single UVFlag object)
+        others = uvutils._get_iterable(others)
+        if np.any([not isinstance(other, UVFlag) for other in others]):
+            raise ValueError('"others" must be UVFlag or list of UVFlag objects')
+        if (self.mode != 'metric') or np.any([other.mode != 'metric' for other in others]):
+            raise ValueError('UVFlag object and "others" must be in "flag" mode '
+                             'to use "add_metrics" function.')
+        if inplace:
+            this = self
+        else:
+            this = self.copy()
+        method = method.lower()
+        darray = np.expand_dims(this.metric_array, 0)
+        warray = np.expand_dims(this.weights_array, 0)
+        for other in others:
+            if this.metric_array.shape != other.metric_array.shape:
+                raise ValueError('UVFlag metric arrays do not match.')
+            darray = np.vstack([darray, np.expand_dims(other.metric_array, 0)])
+            warray = np.vstack([warray, np.expand_dims(other.weights_array, 0)])
+        darray, warray = qm_utils.collapse(darray, method, weights=warray, axis=0, returned=True)
+        this.metric_array = darray
+        this.weights_array = warray
+        this.history += 'Combined metric arrays using ' + hera_qm_version_str
+        if not inplace:
+            return this
+
     def to_waterfall(self, method='quadmean', keep_pol=True):
         """
         Convert an 'antenna' or 'baseline' type object to waterfall using a given method.
@@ -441,7 +478,6 @@ class UVFlag(object):
                       encoding the original polarizations.
         """
         method = method.lower()
-        avg_f = qm_utils.averaging_dict[method]
         if self.type == 'waterfall' and (keep_pol or (len(self.polarization_array) == 1)):
             warnings.warn('This object is already a waterfall. Nothing to change.')
             return
@@ -454,8 +490,8 @@ class UVFlag(object):
             darr = self.metric_array
 
         if self.type == 'antenna':
-            d, w = avg_f(darr, axis=(0, 1), weights=self.weights_array,
-                         returned=True)
+            d, w = qm_utils.collapse(darr, method, axis=(0, 1), weights=self.weights_array,
+                                     returned=True)
             darr = np.swapaxes(d, 0, 1)
             self.weights_array = np.swapaxes(w, 0, 1)
         elif self.type == 'baseline':
@@ -466,16 +502,19 @@ class UVFlag(object):
             w = np.zeros((Nt, Nf, Np))
             for i, t in enumerate(np.unique(self.time_array)):
                 ind = self.time_array == t
-                d[i, :, :], w[i, :, :] = avg_f(darr[ind, :, :], axis=0,
-                                               weights=self.weights_array[ind, :, :],
-                                               returned=True)
+                d[i, :, :], w[i, :, :] = qm_utils.collapse(darr[ind, :, :], method,
+                                                           axis=0,
+                                                           weights=self.weights_array[ind, :, :],
+                                                           returned=True)
             darr = d
             self.weights_array = w
             self.time_array, ri = np.unique(self.time_array, return_index=True)
             self.lst_array = self.lst_array[ri]
-        if (method == 'or') and (self.mode == 'flag'):
+        if ((method == 'or') or (method == 'and')) and (self.mode == 'flag'):
+            # If using a boolean operation (AND/OR) and in flag mode, stay in flag
             self.flag_array = darr
         else:
+            # Otherwise change to (or stay in) metric
             self.metric_array = darr
             self.mode = 'metric'
         self.freq_array = self.freq_array.flatten()
@@ -495,21 +534,20 @@ class UVFlag(object):
             method: How to collapse the dimension(s)
         """
         method = method.lower()
-        avg_f = qm_utils.averaging_dict[method]
         if self.mode == 'flag':
             darr = self.flag_array
         else:
             darr = self.metric_array
         if len(self.polarization_array) > 1:
             # Collapse pol dimension. But note we retain a polarization axis.
-            d, w = avg_f(darr, axis=-1, weights=self.weights_array, returned=True)
+            d, w = qm_utils.collapse(darr, method, axis=-1, weights=self.weights_array, returned=True)
             darr = np.expand_dims(d, axis=d.ndim)
             self.weights_array = np.expand_dims(w, axis=w.ndim)
             self.polarization_array = np.array([','.join(map(str, self.polarization_array))])
         else:
             warnings.warn('Cannot collapse polarization axis when only one pol present.')
             return
-        if (method == 'or') and (self.mode == 'flag'):
+        if ((method == 'or') or (method == 'and')) and (self.mode == 'flag'):
             self.flag_array = darr
         else:
             self.metric_array = darr
@@ -630,20 +668,43 @@ class UVFlag(object):
         elif self.mode == 'metric':
             self.flag_array = np.zeros_like(self.metric_array, dtype=np.bool)
             self.mode = 'flag'
+            self.weights_array = np.ones_like(self.metric_array, dtype=np.float)
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to flag.')
         self.history += 'Converted to mode "flag" with ' + hera_qm_version_str
         self.clear_unused_attributes()
 
-    def to_metric(self):
-        '''Convert to metric mode. NOT SMART. Simply removes flag_array and initializes
-        metric_array with zeros.
+    def to_metric(self, convert_wgts=False):
+        '''Convert to metric mode. NOT SMART. Simply recasts flag_array as float
+        and uses this as the metric array.
+
+        Args:
+            convert_wgts : bool, if True convert self.weights_array to ones
+                unless a column or row is completely flagged, in which case
+                convert those pixels to zero. This is used when reinterpretting
+                flags as metrics to calculate flag fraction. Zero weighting
+                completely flagged rows/columns prevents those from counting
+                against a threshold along the other dimension.
         '''
         if self.mode == 'metric':
             return
         elif self.mode == 'flag':
-            self.metric_array = np.zeros_like(self.flag_array, dtype=np.float)
+            self.metric_array = self.flag_array.astype(np.float)
             self.mode = 'metric'
+            if convert_wgts:
+                self.weights_array = np.ones_like(self.weights_array)
+                if self.type == 'waterfall':
+                    for i, pol in enumerate(self.polarization_array):
+                        self.weights_array[:, :, i] *= ~qm_utils.and_rows_cols(self.flag_array[:, :, i])
+                elif self.type == 'baseline':
+                    for i, pol in enumerate(self.polarization_array):
+                        for j, ap in enumerate(self.get_antpairs()):
+                            inds = self.antpair2ind(*ap)
+                            self.weights_array[inds, 0, :, i] *= ~qm_utils.and_rows_cols(self.flag_array[inds, 0, :, i])
+                elif self.type == 'antenna':
+                    for i, pol in enumerate(self.polarization_array):
+                        for j in range(self.weights_array.shape[0]):
+                            self.weights_array[j, 0, :, :, i] *= ~qm_utils.and_rows_cols(self.flag_array[j, 0, :, :, i])
         else:
             raise ValueError('Unknown UVFlag mode: ' + self.mode + '. Cannot convert to metric.')
         self.history += 'Converted to mode "metric" with ' + hera_qm_version_str

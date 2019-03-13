@@ -1,36 +1,55 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018 the HERA Project
+# Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
 import os
 import subprocess
 import json
+import six
+
+
+hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
+
+
+def _get_git_output(args, capture_stderr=False):
+    """Get output from Git, ensuring that it is of the ``str`` type,
+    not bytes."""
+
+    argv = ['git', '-C', hera_qm_dir] + args
+
+    if capture_stderr:
+        data = subprocess.check_output(argv, stderr=subprocess.STDOUT)
+    else:
+        data = subprocess.check_output(argv)
+
+    data = data.strip()
+
+    if six.PY2:
+        return data
+    return data.decode('utf8')
+
+
+def _unicode_to_str(u):
+    if six.PY2:
+        return u.encode('utf8')
+    return u
 
 
 def construct_version_info():
-    hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
     version_file = os.path.join(hera_qm_dir, 'VERSION')
-    version = open(version_file).read().strip()
+    version = _unicode_to_str(open(version_file).read().strip())
 
     try:
-        git_origin = subprocess.check_output(['git', '-C', hera_qm_dir, 'config',
-                                              '--get', 'remote.origin.url'],
-                                             stderr=subprocess.STDOUT).strip().decode()
-        git_hash = subprocess.check_output(['git', '-C', hera_qm_dir, 'rev-parse', 'HEAD'],
-                                           stderr=subprocess.STDOUT).strip().decode()
-        git_description = subprocess.check_output(['git', '-C', hera_qm_dir,
-                                                   'describe', '--dirty', '--tag', '--always']).strip().decode()
-        git_branch = subprocess.check_output(['git', '-C', hera_qm_dir, 'rev-parse',
-                                              '--abbrev-ref', 'HEAD'],
-                                             stderr=subprocess.STDOUT).strip().decode()
-        git_version = subprocess.check_output(['git', '-C', hera_qm_dir, 'describe',
-                                               '--tags', '--abbrev=0']).strip().decode()
+        git_origin = _get_git_output(['config', '--get', 'remote.origin.url'], capture_stderr=True)
+        git_hash = _get_git_output(['rev-parse', 'HEAD'], capture_stderr=True)
+        git_description = _get_git_output(['describe', '--dirty', '--tag', '--always'])
+        git_branch = _get_git_output(['rev-parse', '--abbrev-ref', 'HEAD'], capture_stderr=True)
     except subprocess.CalledProcessError:  # pragma: no cover  - can't figure out how to test exception.
         try:
             # Check if a GIT_INFO file was created when installing package
             git_file = os.path.join(hera_qm_dir, 'GIT_INFO')
             with open(git_file) as data_file:
-                data = [x for x in json.loads(data_file.read().strip())]
+                data = [_unicode_to_str(x) for x in json.loads(data_file.read().strip())]
                 git_origin = data[0]
                 git_hash = data[1]
                 git_description = data[2]
@@ -61,6 +80,7 @@ if git_hash is not '':
                             + '.  Git hash: ' + git_hash
                             + '.  Git branch: ' + git_branch
                             + '.  Git description: ' + git_description + '.')
+hera_qm_version_str = str(hera_qm_version_str)
 
 
 def main():

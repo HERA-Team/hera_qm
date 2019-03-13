@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018 the HERA Project
+# Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
 from __future__ import print_function, division, absolute_import
@@ -37,12 +37,13 @@ def get_metrics_ArgumentParser(method_name):
 
     Args:
         method_name -- target wrapper, must be "ant_metrics", "firstcal_metrics",
-                       "omnical_metrics", "xrfi_run", "delay_xrfi_run", or "xrfi_apply"
+                       "omnical_metrics", "xrfi_run", "xrfi_apply",
+                       "xrfi_h1c_run", or "delay_xrfi_h1c_idr2_1_run"
     Returns:
         a -- an argparse.ArgumentParser instance with the relevant options for the selected method
     """
-    methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_run",
-               "delay_xrfi_run", "xrfi_apply"]
+    methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_h1c_run",
+               "delay_xrfi_h1c_idr2_1_run", "xrfi_run", "xrfi_apply"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -138,8 +139,8 @@ def get_metrics_ArgumentParser(method_name):
                        help='Path to save metrics file to. Default is same directory as file.')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.omni.calfits files for which to calculate omnical_metrics.')
-    elif method_name == 'xrfi_run':
-        a.prog = 'xrfi_run.py'
+    elif method_name == 'xrfi_h1c_run':
+        a.prog = 'xrfi_h1c_run.py'
         a.add_argument('--infile_format', default='miriad', type=str,
                        help='File format for input files. Not currently used while '
                        'we use generic read function in pyuvdata, But will '
@@ -198,8 +199,8 @@ def get_metrics_ArgumentParser(method_name):
                        'visibilities formed with these antennas will be set to True.')
         a.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
                        help='file for which to flag RFI (only one file allowed).')
-    elif method_name == 'delay_xrfi_run':
-        a.prog = 'delay_xrfi_run.py'
+    elif method_name == 'delay_xrfi_h1c_idr2_1_run':
+        a.prog = 'delay_xrfi_h1c_idr2_1_run.py'
         a.add_argument('filename', metavar='filename', nargs='?', type=str, default=None,
                        help='file for which to flag RFI (only one file allowed).')
         x = a.add_argument_group(title='XRFI options', description='Options related to '
@@ -271,6 +272,57 @@ def get_metrics_ArgumentParser(method_name):
         d.add_argument('--waterfalls', default=None, type=str, help='comma separated '
                        'list of npz files containing waterfalls of flags to broadcast '
                        'to full flag array and apply before delay filter.')
+    elif method_name == 'xrfi_run':
+        a.prog = 'xrfi_run.py'
+        a.add_argument('--ocalfits_file', default=None, type=str, help='Omnical '
+                       'calfits file to use to flag on gains and chisquared values.')
+        a.add_argument('--acalfits_file', default=None, type=str, help='Abscal '
+                       'calfits file to use to flag on gains and chisquared values.')
+        a.add_argument('--model_file', default=None, type=str, help='Model visibility '
+                       'file to flag on.')
+        a.add_argument('--data_file', default=None, type=str, help='Raw visibility '
+                       'data file to flag on.')
+        a.add_argument('--init_metrics_ext', default='init_xrfi_metrics.h5', type=str,
+                       help='Extension to be appended to input file name '
+                       'for initial metric object. Default is "init_xrfi_metrics.h5".')
+        a.add_argument('--init_flags_ext', default='init_flags.h5', type=str,
+                       help='Extension to be appended to input file name '
+                       'for initial flag object. Default is "init_flags.h5".')
+        a.add_argument('--final_metrics_ext', default='final_xrfi_metrics.h5', type=str,
+                       help='Extension to be appended to input file name '
+                       'for final metric object. Default is "final_xrfi_metrics.h5".')
+        a.add_argument('--final_flags_ext', default='final_flags.h5', type=str,
+                       help='Extension to be appended to input file name '
+                       'for final flag object. Default is "final_flags.h5".')
+        a.add_argument('--xrfi_path', default='', type=str,
+                       help='Path to save flag files to. Default is same directory as input file.')
+        a.add_argument('--kt_size', default=8, type=int,
+                       help='Size of kernel in time dimension for detrend in xrfi '
+                       'algorithm. Default is 8.')
+        a.add_argument('--kf_size', default=8, type=int,
+                       help='Size of kernel in frequency dimension for detrend in '
+                       'xrfi algorithm. Default is 8.')
+        a.add_argument('--sig_init', default=6.0, type=float,
+                       help='Starting number of sigmas to flag on. Default is 6.0.')
+        a.add_argument('--sig_adj', default=2.0, type=float,
+                       help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.0.')
+        a.add_argument('--freq_threshold', default=0.35, type=float,
+                       help='Fraction of times required to trigger broadcast across'
+                       ' times (single freq). Default is 0.35.')
+        a.add_argument('--time_threshold', default=0.5, type=float,
+                       help='Fraction of channels required to trigger broadcast across'
+                       ' frequency (single time). Default is 0.5.')
+        a.add_argument('--ex_ants', default=None, type=str,
+                       help='Comma-separated list of antennas to exclude. Flags of visibilities '
+                       'formed with these antennas will be set to True.')
+        a.add_argument('--metrics_file', default=None, type=str,
+                       help='Metrics file that contains a list of excluded antennas. Flags of '
+                       'visibilities formed with these antennas will be set to True.')
+        a.add_argument('--cal_ext', default='flagged_abs', type=str,
+                       help='Extension to replace penultimate extension in calfits '
+                       'file for output calibration including flags. Defaults is '
+                       '"flagged_abs". For example, a input_cal of "foo.goo.calfits" '
+                       'would result in "foo.flagged_abs.calfits".')
     elif method_name == 'xrfi_apply':
         a.prog = 'xrfi_apply.py'
         a.add_argument('--infile_format', default='miriad', type=str,
@@ -564,6 +616,33 @@ def lst_from_uv(uv):
     return lst_array
 
 
+def collapse(a, alg, weights=None, axis=None, returned=False):
+    ''' Parent function to collapse an array with a given algorithm.
+    Args:
+        a (array): Input array to process.
+        alg (str): Algorithm to use. Must be defined in this function with
+            corresponding subfunction below.
+        weights (array, optional): weights for collapse operation (e.g. weighted mean).
+            NOTE: Some subfunctions do not use the weights. See corresponding doc strings.
+        axis (int, tuple, optional): Axis or axes to collapse. Default is all.
+        returned (Bool): Whether to return sum of weights. Default is False.
+    '''
+    if alg == 'mean':
+        out = mean(a, weights=weights, axis=axis, returned=returned)
+    elif alg == 'absmean':
+        out = absmean(a, weights=weights, axis=axis, returned=returned)
+    elif alg == 'quadmean':
+        out = quadmean(a, weights=weights, axis=axis, returned=returned)
+    elif alg == 'or':
+        out = or_collapse(a, weights=weights, axis=axis, returned=returned)
+    elif alg == 'and':
+        out = and_collapse(a, weights=weights, axis=axis, returned=returned)
+    else:
+        raise ValueError('Collapse algorithm must be one of: "mean", "absmean",'
+                         ' "quadmean", "or", or "and".')
+    return out
+
+
 def mean(a, weights=None, axis=None, returned=False):
     ''' Function to average data. This is similar to np.average, except it
     handles infs (by giving them zero weight) and zero weight axes (by forcing
@@ -637,9 +716,40 @@ def or_collapse(a, weights=None, axis=None, returned=False):
         return o
 
 
-# Dictionary to map different methods for averaging data.
-averaging_dict = {'mean': mean, 'absmean': absmean, 'quadmean': quadmean,
-                  'or': or_collapse}
+def and_collapse(a, weights=None, axis=None, returned=False):
+    ''' Function to collapse axes using AND operation
+    Args:
+        a - boolean array to process
+        weights - NOT USED, but kept for symmetry with other averaging functions
+        axis - axis or axes over which to AND
+        returned - whether to return dummy weights array. NOTE: the dummy weights
+                   will simply be an array of ones. Default is False.
+    '''
+    if a.dtype != np.bool:
+        raise ValueError('Input to and_collapse function must be boolean array')
+    o = np.all(a, axis=axis)
+    if (weights is not None) and not np.all(weights == weights.reshape(-1)[0]):
+        warnings.warn('Currently weights are not handled when AND-ing boolean arrays.')
+    if returned:
+        return o, np.ones_like(o, dtype=np.float)
+    else:
+        return o
+
+
+def and_rows_cols(waterfall):
+    """ For a 2D flag waterfall, flag pixels only if fully flagged along
+    time and/or frequency
+    Args:
+        waterfall - 2D boolean array of shape (Ntimes, Nfreqs)
+    Returns:
+        wf (2D array): A 2D array (size same as input) where only times/integrations
+            that were fully flagged are flagged.
+    """
+    wf = np.zeros_like(waterfall, dtype=np.bool)
+    Ntimes, Nfreqs = waterfall.shape
+    wf[:, (np.sum(waterfall, axis=0) / Ntimes) == 1] = True
+    wf[(np.sum(waterfall, axis=1) / Nfreqs) == 1] = True
+    return wf
 
 
 def flags2waterfall(uv, flag_array=None, keep_pol=False):
