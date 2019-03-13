@@ -2,7 +2,7 @@
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
-from __future__ import division
+from __future__ import print_statement, division, absolute_import
 import unittest
 import nose.tools as nt
 import glob
@@ -31,7 +31,7 @@ def get_accuracy(f, rfi, verbose=VERBOSE):
     m[rfi] = 0
     false_positive = float(np.sum(m)) / (m.size - len(rfi[0]))
     if verbose:
-        print '\t Found RFI: %1.3f\n\t False Positive: %1.3f' % (correctly_flagged, false_positive)
+        print('\t Found RFI: %1.3f\n\t False Positive: %1.3f' % (correctly_flagged, false_positive))
     return correctly_flagged, false_positive
 
 
@@ -78,7 +78,7 @@ class Template():
                 self.assertRaises(AssertionError, func, data, *arg)
                 f = fake_flags(SIZE)
             if VERBOSE:
-                print self.__class__, func.__name__
+                print(self.__class__, func.__name__)
             f = np.where(f > nsig, 1, 0)
             cf, fp = get_accuracy(f, rfi)
             if PLOT:
@@ -86,7 +86,7 @@ class Template():
                 plot_result(f, rfi)
             if fmode:
                 if VERBOSE:
-                    print 'In failure mode now.'
+                    print('In failure mode now.')
                 try:
                     self.assertLessEqual(cf, correct_flag)
                 except AssertionError:
