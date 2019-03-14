@@ -115,6 +115,8 @@ def get_metrics_ArgumentParser(method_name):
                        help='Filetype used in write_metrics call, filetype should match the type at the end of extension argument')
         a.add_argument('--metrics_path', default='', type=str,
                        help='Path to save metrics file to. Default is same directory as file.')
+        a.add_argument("--clobber", default=False, action="store_true",
+                       help='overwrites existing firstcal_metrics file (default False)')
         a.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                        help='*.calfits files for which to calculate firstcal_metrics.')
     elif method_name == 'omnical_metrics':
@@ -323,6 +325,8 @@ def get_metrics_ArgumentParser(method_name):
                        'file for output calibration including flags. Defaults is '
                        '"flagged_abs". For example, a input_cal of "foo.goo.calfits" '
                        'would result in "foo.flagged_abs.calfits".')
+        a.add_argument("--clobber", default=False, action="store_true",
+                       help='overwrites existing files (default False)')
     elif method_name == 'xrfi_apply':
         a.prog = 'xrfi_apply.py'
         a.add_argument('--infile_format', default='miriad', type=str,

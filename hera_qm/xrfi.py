@@ -741,7 +741,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
              final_metrics_ext='final_xrfi_metrics.h5', final_flags_ext='final_flags.h5',
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
              freq_threshold=0.35, time_threshold=0.5, ex_ants=None, metrics_file=None,
-             cal_ext='flagged_abs'):
+             cal_ext='flagged_abs', clobber=False):
     """xrfi excision pipeline used for H1C IDR2.2. Uses detrending and watershed algorithms above.
     Args:
         ocalfits_file (str): Omnical calfits file to use to flag on gains and
@@ -780,6 +780,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
             calfits file for output calibration including flags. Defaults is "flagged_abs".
             For example, an input_cal of "foo.goo.calfits" would result in
             "foo.flagged_abs.calfits".
+        clobber (bool): overwrites existing files (default False)'
     Returns:
         None
     """
@@ -831,10 +832,10 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     basename = qm_utils.strip_extension(os.path.basename(data_file))
     outfile = '.'.join([basename, init_metrics_ext])
     outpath = os.path.join(dirname, outfile)
-    uvf_metrics.write(outpath, clobber=True)
+    uvf_metrics.write(outpath, clobber=clobber)
     outfile = '.'.join([basename, init_flags_ext])
     outpath = os.path.join(dirname, outfile)
-    uvf_init.write(outpath, clobber=True)
+    uvf_init.write(outpath, clobber=clobber)
 
     # Second round -- use init flags to mask and recalculate everything
     # Read in data file
@@ -887,10 +888,10 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Write out final metrics and flags
     outfile = '.'.join([basename, final_metrics_ext])
     outpath = os.path.join(dirname, outfile)
-    uvf_metrics2.write(outpath, clobber=True)
+    uvf_metrics2.write(outpath, clobber=clobber)
     outfile = '.'.join([basename, final_flags_ext])
     outpath = os.path.join(dirname, outfile)
-    uvf_final.write(outpath, clobber=True)
+    uvf_final.write(outpath, clobber=clobber)
 
     # Save calfits with new flags
     flag_apply(uvf_final, uvc_a, force_pol=True, history=history)
@@ -898,7 +899,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     basename = qm_utils.strip_extension(basename)  # Also get rid of .abs
     outfile = '.'.join([basename, cal_ext, 'calfits'])
     outpath = os.path.join(dirname, outfile)
-    uvc_a.write_calfits(outpath, clobber=True)
+    uvc_a.write_calfits(outpath, clobber=clobber)
 
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
