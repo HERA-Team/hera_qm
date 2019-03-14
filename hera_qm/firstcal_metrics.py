@@ -861,4 +861,5 @@ def firstcal_metrics_run(files, args, history):
         print(metrics_path)
         metrics_basename = utils.strip_extension(os.path.basename(filename)) + args.extension
         metrics_filename = os.path.join(metrics_path, metrics_basename)
-        fm.write_metrics(filename=metrics_filename, filetype=args.filetype)
+        fm.write_metrics(filename=metrics_filename, filetype=args.filetype,
+                         overwrite=args.clobber)
