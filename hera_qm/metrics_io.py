@@ -35,10 +35,10 @@ antpair_dtype = np.dtype([('ant1', np.int32),
 
 antpair_keys = ['reds']
 antpol_keys = ['xants', 'dead_ants', 'crossed_ants']
+bool_keys = ['good_sol', 'chisq_good_sol', 'ant_phs_std_good_sol']
 known_string_keys = ['history', 'version', 'filedir', 'cut_edges',
                      'fc_filename', 'filename', 'fc_filestem', 'filestem',
-                     'pol', 'ant_pol', 'chisq_good_sol', 'good_sol',
-                     'ant_phs_std_good_sol']
+                     'pol', 'ant_pol']
 float_keys = ['dead_ant_z_cut', 'cross_pol_z_cut', 'always_dead_ant_z_cut']
 antpol_dict_keys = ['removal_iteration']
 list_of_strings_keys = ['datafile_list']
@@ -96,7 +96,8 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
     Returns
         None
     """
-    allowed_types = (np.ndarray, np.float, np.int, bytes, six.text_type, list)
+    allowed_types = (np.ndarray, np.float, np.int,
+                     bytes, six.text_type, list, bool, np.bool_)
     compressable_types = (np.ndarray, list)
     for key in in_dict:
         key_str = str(key)
@@ -358,6 +359,8 @@ def _recursively_parse_json(in_dict):
         # special handling mostly for ant_metrics json files
         if key in known_string_keys:
             out_dict[out_key] = str(in_dict[key])
+        elif key in bool_keys:
+            out_dict[out_key] = np.bool(in_dict[key])
         elif key in float_keys:
             out_dict[out_key] = float(in_dict[key])
         elif key in antpol_dict_keys:

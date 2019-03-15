@@ -486,3 +486,66 @@ def test_process_ex_ants_string_and_file():
     met_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
     xants = metrics_io.process_ex_ants(ex_ants=ex_ants, metrics_file=met_file)
     nt.assert_equal(xants, [0, 1, 81])
+
+
+def test_boolean_read_write_json():
+    """Test a Boolean type is preserved in read write loop: json."""
+    test_file = os.path.join(DATA_PATH, 'test_output', 'test_bool.json')
+    test_bool = True
+    test_dict = {'good_sol': test_bool}
+    warn_message = ["JSON-type files can still be written but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility.", ]
+    uvtest.checkWarnings(metrics_io.write_metric_file,
+                         [test_file, test_dict],
+                         {"overwrite": True},
+                         category=PendingDeprecationWarning, nwarnings=1,
+                         message=warn_message)
+    warn_message = ["JSON-type files can still be read but are no longer "
+                    "written by default.\n"]
+    json_dict = uvtest.checkWarnings(metrics_io.load_metric_file,
+                                     func_args=[test_file],
+                                     category=[PendingDeprecationWarning],
+                                     nwarnings=1,
+                                     message=warn_message)
+    nt.assert_equal(test_dict['good_sol'], json_dict['good_sol'])
+    nt.assert_true(isinstance(json_dict['good_sol'], (np.bool_, bool)))
+    os.remove(test_file)
+
+
+def test_boolean_read_write_pickle():
+    """Test a Boolean type is preserved in read write loop: pickle."""
+    test_file = os.path.join(DATA_PATH, 'test_output', 'test_bool.pkl')
+    test_bool = True
+    test_dict = {'good_sol': test_bool}
+    warn_message = ["Pickle-type files can still be written but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility.", ]
+    uvtest.checkWarnings(metrics_io.write_metric_file,
+                         [test_file, test_dict],
+                         category=PendingDeprecationWarning, nwarnings=1,
+                         message=warn_message)
+    warn_message = ["Pickle-type files can still be read but are no longer "
+                    "written by default.\n"]
+    input_dict = uvtest.checkWarnings(metrics_io.load_metric_file,
+                                      func_args=[test_file],
+                                      category=[PendingDeprecationWarning],
+                                      nwarnings=1,
+                                      message=warn_message)
+    nt.assert_equal(test_dict['good_sol'], input_dict['good_sol'])
+    nt.assert_true(isinstance(input_dict['good_sol'], (np.bool_, bool)))
+    os.remove(test_file)
+
+
+def test_boolean_read_write_hdf5():
+    """Test a Boolean type is preserved in read write loop: hdf5."""
+    test_file = os.path.join(DATA_PATH, 'test_output', 'test_bool.h5')
+    test_bool = True
+    test_dict = {'good_sol': test_bool}
+
+    metrics_io.write_metric_file(test_file, test_dict, overwrite=True)
+    input_dict = metrics_io.load_metric_file(test_file)
+
+    nt.assert_equal(test_dict['good_sol'], input_dict['good_sol'])
+    nt.assert_true(isinstance(input_dict['good_sol'], (np.bool_, bool)))
+    os.remove(test_file)
