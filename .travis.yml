@@ -21,7 +21,7 @@ install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
-  - conda config --remove channels defaults && conda config --add channels conda-forge
+  - conda config --add channels conda-forge
   - conda install -q conda
   - conda update -q conda
   # Useful for debugging any issues with conda
@@ -32,11 +32,9 @@ install:
   - source activate test-environment
   - conda install numpy scipy nose matplotlib astropy scikit-learn h5py coveralls aipy six pycodestyle
   - pip install git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git
-  - pip install git+https://github.com/HERA-Team/omnical.git
   - pip install git+https://github.com/HERA-Team/linsolve.git
   - pip install git+https://github.com/HERA-Team/uvtools.git
   - pip install git+https://github.com/HERA-Team/hera_cal.git
-  - python setup.py install
   - conda list
 before_script:
   - "export DISPLAY=:99.0"
