@@ -30,7 +30,7 @@ install:
   # create environment and install dependencies
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip coverage
   - source activate test-environment
-  - conda install numpy scipy nose matplotlib astropy scikit-learn h5py coveralls aipy six pycodestyle
+  - conda install numpy scipy nose matplotlib astropy scikit-learn h5py coveralls aipy six pycodestyle pydocstyle
   - pip install git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git
   - pip install git+https://github.com/HERA-Team/linsolve.git
   - pip install git+https://github.com/HERA-Team/uvtools.git
@@ -44,6 +44,7 @@ before_script:
 script:
   - nosetests hera_qm --nologcapture --with-coverage --cover-package=hera_qm
   - pycodestyle */*.py hera_qm/tests/*.py --ignore=E501,W503
+  - pydocstyle hera_qm/*.py --convention=numpy
 after_success:
   - coveralls
 notifications:
