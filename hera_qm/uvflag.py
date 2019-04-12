@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
+"""Module for the UVFlag object."""
 
 from __future__ import print_function, division, absolute_import
 import numpy as np
@@ -17,26 +18,79 @@ from six.moves import map
 
 
 class UVFlag(object):
-    ''' Object to handle flag arrays and waterfalls. Supports reading/writing,
-    and stores all relevant information to combine flags and apply to data.
-    '''
+    """Object to handle flag arrays and waterfalls.
+
+    Methods on this class support reading and writing, as well as
+    storing all relevant information to combine flags and apply to data.
+    """
 
     def __init__(self, input, mode='metric', copy_flags=False, waterfall=False, history='',
                  label=''):
-        '''Initialize UVFlag object.
-        Args:
-            input: UVData object, UVCal object, or path to previously saved UVFlag object.
-                   Can also be a list of any combination of the above options.
-            mode: "metric" (default) or "flag" to initialize UVFlag in given mode.
-                  The mode determines whether the object has a floating point metric_array
-                  or a boolean flag_array.
-            copy_flags: Whether to copy flags from input to new UVFlag object. Default is False.
-            waterfall: Whether to immediately initialize as a waterfall object,
-                       with flag/metric axes: time, frequency, polarization. Default is False.
-            history: History string to attach to object.
-            label: string used for labeling the object (e.g. 'FM')
-        '''
+        """Initialize a UVFlag object.
 
+        Parameters
+        ----------
+        input
+            A UVData object, UVCal object, or path to previously saved UVFlag object.
+            Can also be a list of any combination of the above options.
+        mode : {"metric", "flag"}
+            The mode in which to initialize the UVFlag object. The mode determines
+            whether the object has a floating point metric_array or a boolean flag_array.
+            Default is "metric".
+        copy_flags : bool
+            If True, copy flags from input to new UVFlag object. Default is False.
+        waterfall : bool
+            If true, immediately initialize as a waterfall object, with flag/metric
+            axes: time, frequency, polarization. Default is False.
+        history : str
+            History string to attach to object.
+        label : str
+            The string used for labeling the object (e.g. 'FM').
+
+
+        Attributes
+        ----------
+        mode : {"metric", "flag"}
+            The mode of the UVFlag object.
+        history : str
+            The history string to write to file.
+        label : str
+            The label of the UVFlag object.
+        type : {"baseline", "antenna", "waterfall"}
+            The type of the UVFlag object.
+        time_array : array, shape=(Ntimes,)
+            Time of the UVFlag object, in JD.
+        freq_array : array, shape=(Nspws, Nfreqs)
+            Frequencies of the UVFlag object, in Hz.
+        polarization_array: array, shape=(Npols,)
+            Polarizations of the UVFlag object.
+        lst_array : array, shape=(Ntimes,)
+            LST corresponding to the time_array and telescope location, in radians.
+        flag_array : array
+            The flags of the object. The size of the array depends on the type
+            of the object. Only present if mode is "flag".
+        metric_array : array
+            The metrics of the object. The size of the array depends on the type
+            of the object. Only present if mode is "metric".
+        weights_array : array
+            The weights corresponding to the data. The same size as flag_array
+            or metric_array.
+        baseline_array : array
+            The baselines present in the object. Only present if type is "baseline".
+        ant_1_array : array
+            The antenna numbers corresponding to the first antenna in a given baseline.
+            Only present if type is "baseline".
+        ant_2_array : array
+            The antenna numbers corresponding to the second antenna in a given baseline.
+            Only present if type is "baseline".
+        Nants_telescope : int
+            The number of antennas in the telescope. May be greater than the number of
+            antennas that have data. Only present if type is "baseline".
+        ant_array : array
+            The antennas corresponding to the data in the object. Only present if type
+            is "antenna".
+
+        """
         self.mode = mode.lower()  # Gets overwritten if reading file
         self.history = ''  # Added to at the end
         self.label = ''  # Added to at the end
@@ -156,9 +210,20 @@ class UVFlag(object):
         self.clear_unused_attributes()
 
     def __eq__(self, other, check_history=False):
-        """ Function to check equality of two UVFlag objects
-        Args:
-            other: UVFlag object to check against
+        """Check equality of two UVFlag objects.
+
+        Parameters
+        ----------
+        other : UVFlag object
+            The UVFlag object to check this one against.
+        check_history : bool
+            If True, compare the histories of the objects.
+
+        Returns
+        -------
+        ret : bool
+            If True, the objects are equal to the defined tolerances. False otherwise.
+
         """
         if not isinstance(other, self.__class__):
             return False
@@ -188,13 +253,25 @@ class UVFlag(object):
         return True
 
     def read(self, filename, history=''):
-        """
-        Read in flag/metric data from a UVH5 file.
+        """Read in flag/metric data from a UVH5 file.
 
-        Args:
-            filename: The file name to read.
-        """
+        Parameters
+        ----------
+        filename : str
+            The file name to read.
+        history : str, optional
+            The history to append when reading the file.
 
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        IOError:
+            If the file does not exist, an IOError is raised.
+
+        """
         if isinstance(filename, (tuple, list)):
             self.read(filename[0])
             if len(filename) > 1:
@@ -245,16 +322,29 @@ class UVFlag(object):
             self.clear_unused_attributes()
 
     def write(self, filename, clobber=False, data_compression='lzf'):
-        """
-        Write a UVFlag object to a hdf5 file.
+        """Write a UVFlag object to an hdf5 file.
 
-        Args:
-            filename: The file to write to.
-            clobber: Option to overwrite the file if it already exists. Default is False.
-            data_compression: HDF5 filter to apply when writing the data_array. Default is
-                 LZF. If no compression is wanted, set to None.
-        """
+        Parameters
+        ----------
+        filename : str
+            The file to write to.
+        clobber : bool
+            If True, overwrite the file if it already exists. Default is False.
+        data_compression
+            HDF5 filter to apply when writing the data_array. Default is "lzf".
+            If no compression is wanted, set to None.
 
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError:
+            If the specified file already exists and clobber is False, a
+            ValueError is raised.
+
+        """
         if os.path.exists(filename):
             if clobber:
                 print('File ' + filename + ' exists; clobbering')
@@ -296,13 +386,35 @@ class UVFlag(object):
                                            compression=data_compression)
 
     def __add__(self, other, inplace=False, axis='time'):
-        '''Add two UVFlag objects together along a given axis.
-        Args:
-            other: second UVFlag object to concatenate with self.
-            inplace: Whether to concatenate to self, or create a new UVFlag object. Default is False.
-            axis: Axis along which to combine UVFlag objects. Default is time.
-        '''
+        """Add two UVFlag objects together along a given axis.
 
+        Parameters
+        ----------
+        other : UVFlag object
+            A UVFlag object to concatenate with self.
+        inplace : bool
+            If True, concatenate the object to self. If False,  create a new UVFlag
+            object. Default is False.
+        axis : {"time", "baseline", "antenna", "frequency", "polarization", "pol",
+                "jones"}
+            Axis along which to combine UVFlag objects. Default is "time".
+
+        Returns
+        -------
+        this : UVFlag object
+            If inplace is False, a UVFlag object containing the combined objects.
+
+        Raises
+        ------
+        ValueError:
+            A value error is raised if:
+            - "other" is not a UVFlag object.
+            - the UVFlag objects have different types.
+            - the UVFlag objects have different modes.
+            - the UVFlag objects cannot be concatenated along the specified axis
+              given their types.
+
+        """
         # Handle in place
         if inplace:
             this = self
@@ -317,7 +429,7 @@ class UVFlag(object):
                              'added to object of type ' + this.type + '.')
         if this.mode != other.mode:
             raise ValueError('UVFlag object of mode ' + other.mode + ' cannot be '
-                             'added to object of mode ' + this.type + '.')
+                             'added to object of mode ' + this.mode + '.')
 
         # Simplify axis referencing
         axis = axis.lower()
@@ -368,21 +480,42 @@ class UVFlag(object):
             return this
 
     def __iadd__(self, other):
-        """
-        In place add.
+        """Add object in place.
 
-        Args:
-            other: Another UVFlag object which will be added to self.
+        Parameters
+        ----------
+        other : UVFlag object
+            Another UVFlag object which will be added to self.
+
         """
         self.__add__(other, inplace=True)
         return self
 
     def __or__(self, other, inplace=False):
-        '''Combine two UVFlag objects in "flag" mode by "OR"-ing their flags.
-        Args:
-            other: second UVFlag object to combine with self.
-            inplace: Whether to combine to self, or create a new UVFlag object. Default is False.
-        '''
+        """Combine two UVFlag objects in "flag" mode by "OR"-ing their flags.
+
+        Parameters
+        ----------
+        other : UVFlag object
+            The second UVFlag object to combine with self.
+        inplace : bool
+            If True, combine the second object with self. If False, create a new
+            UVFlag object. Default is False.
+        inplace : bool
+            If True, perform the operation in place. If False, return a new UVFlag
+            object. Default is False.
+
+        Returns
+        -------
+        this : UVFlag object
+            If inplace is False, the UVFlag object created by combinging self and other.
+
+        Raises
+        ------
+        ValueError:
+            If the UVFlag objects are not both in "flag" mode, a ValueError is raised.
+
+        """
         if (self.mode != 'flag') or (other.mode != 'flag'):
             raise ValueError('UVFlag object must be in "flag" mode to use "or" function.')
 
@@ -399,16 +532,23 @@ class UVFlag(object):
             return this
 
     def __ior__(self, other):
-        '''In place or
-        Args:
-            other: second UVFlag object to combine with self.
-        '''
+        """Perform an OR operation in place.
+
+        Parameters
+        ----------
+        other: UVFlag object
+            Another UVFlag object which will be combined with self.
+
+        """
         self.__or__(other, inplace=True)
         return self
 
     def clear_unused_attributes(self):
-        """
-        Remove unused attributes. Useful when changing type or mode.
+        """Remove unused attributes.
+
+        This method is useful when changing type or mode. It removes attributes
+        not needed depending on the mode.
+
         """
         if hasattr(self, 'baseline_array') and self.type != 'baseline':
             del(self.baseline_array)
@@ -426,26 +566,41 @@ class UVFlag(object):
             del(self.flag_array)
 
     def copy(self):
-        ''' Simply return a copy of this object '''
+        """Return a copy of this object."""
         return copy.deepcopy(self)
 
     def combine_metrics(self, others, method='quadmean', inplace=True):
-        """
-        Combine metric arrays between different UVFlag objects together.
-        Args:
-            others (UVFlag or list of UVFlags): Other UVFlag objects to combine
-                metrics with this one.
-            method (str, optional): Method to combine metrics. Default is "quadmean".
-            inplace (bool, optional): Perform combination in place. Default is True.
-        Returns:
-            uvf (UVFlag): If inplace==False, return new UVFlag object with combined metrics.
+        """Combine metric arrays between different UVFlag objects together.
+
+        Parameters
+        ----------
+        others
+            A UVFlag object or list of UVFlag objects. The metrics on these object(s)
+            will be combined with this one.
+        method : {"mean", "absmean", "quadmean"}
+            Method to combine metrics. Default is "quadmean".
+        inplace : bool, optional
+            If True, perform combination in place. Default is True.
+
+        Returns
+        -------
+        uvf : UVFlag object
+            If inplace is False, return new UVFlag object with combined metrics.
+
+        Raises
+        ------
+        ValueError:
+            A ValueError is raised if "others" contains an object which is not a UVFlag,
+            if any of the objects to be combined is not "metric" mode, or if the shapes
+            of the metric arrays to be combined do not match.
+
         """
         # Ensure others is iterable (in case of single UVFlag object)
         others = uvutils._get_iterable(others)
         if np.any([not isinstance(other, UVFlag) for other in others]):
             raise ValueError('"others" must be UVFlag or list of UVFlag objects')
         if (self.mode != 'metric') or np.any([other.mode != 'metric' for other in others]):
-            raise ValueError('UVFlag object and "others" must be in "flag" mode '
+            raise ValueError('UVFlag object and "others" must be in "metric" mode '
                              'to use "add_metrics" function.')
         if inplace:
             this = self
@@ -467,15 +622,18 @@ class UVFlag(object):
             return this
 
     def to_waterfall(self, method='quadmean', keep_pol=True):
-        """
-        Convert an 'antenna' or 'baseline' type object to waterfall using a given method.
-        Args:
-            method: How to collapse the dimension(s)
-            keep_pol: Whether to also collapse the polarization dimension
-                      If keep_pol is False, and the original UVFlag object has more
-                      than one polarization, the resulting polarization_array
-                      will be a single element array with a comma separated string
-                      encoding the original polarizations.
+        """Convert an 'antenna' or 'baseline' type object to waterfall using a given method.
+
+        Parameters
+        ----------
+        method : {"mean", "absmean", "quadmean", "and", "or"}
+            Method to combine metrics/flags. Default is "quadmean".
+        keep_pol : bool
+            If True, also collapse the polarization dimension. If False, and the original
+            UVFlag object has more than one polarization, the resulting polarization_array
+            will be a single element array with a comma separated string encoding the
+            original polarizations.
+
         """
         method = method.lower()
         if self.type == 'waterfall' and (keep_pol or (len(self.polarization_array) == 1)):
@@ -523,15 +681,17 @@ class UVFlag(object):
         self.clear_unused_attributes()
 
     def collapse_pol(self, method='quadmean'):
-        """
-        Collapse the polarization axis using a given method.
+        """Collapse the polarization axis using a given method.
 
         If the original UVFlag object has more than one polarization,
         the resulting polarization_array will be a single element array with a
         comma separated string encoding the original polarizations.
 
-        Args:
-            method: How to collapse the dimension(s)
+        Parameters
+        ----------
+        method : {"mean", "absmean", "quadmean", "and", "or"}
+            Method to combine metrics/flags. Default is "quadmean".
+
         """
         method = method.lower()
         if self.mode == 'flag':
@@ -555,14 +715,31 @@ class UVFlag(object):
         self.clear_unused_attributes()
 
     def to_baseline(self, uv, force_pol=False):
-        '''Convert a UVFlag object of type "waterfall" to type "baseline".
-        Broadcasts the flag array to all baselines.
-        This function does NOT apply flags to uv.
-        Args:
-            uv: UVData or UVFlag object of type baseline to match.
-            force_pol: If True, will use 1 pol to broadcast to any other pol.
-                       Otherwise, will require polarizations match.
-        '''
+        """Convert a UVFlag object of type "waterfall" to type "baseline".
+
+        This operation broadcasts the flag array to all baselines. This function
+        does NOT apply flags to uv.
+
+        Parameters
+        ----------
+        uv
+            A UVData or UVFlag object of type "baseline" to match.
+        force_pol : bool
+            If True, will use 1 pol to broadcast to any other pol. Otherwise, will
+            require polarizations match. Default is False.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError:
+            A ValueError is raised if uv is not a UVData object or a UVFlag object
+            of "baseline" type, if self is not "baseline" or "waterfall" type, or
+            if the polarization arrays do not match.
+
+        """
         if self.type == 'baseline':
             return
         if not (issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline')):
@@ -611,14 +788,31 @@ class UVFlag(object):
         self.history += 'Broadcast to type "baseline" with ' + hera_qm_version_str
 
     def to_antenna(self, uv, force_pol=False):
-        '''Convert a UVFlag object of type "waterfall" to type "antenna".
-        Broadcasts the flag array to all antennas.
-        This function does NOT apply flags to uv.
-        Args:
-            uv: UVCal or UVFlag object of type antenna to match.
-            force_pol: If True, will use 1 pol to broadcast to any other pol.
-                       Otherwise, will require polarizations match.
-        '''
+        """Convert a UVFlag object of type "waterfall" to type "antenna".
+
+        This operation broadcasts the flag array to all antennas. This function
+        does NOT apply flags to uv.
+
+        Parameters
+        ----------
+        uv
+            A UVCal or UVFlag object of type antenna to match.
+        force_pol : bool
+            If True, will use 1 pol to broadcast to any other pol. Otherwise, will
+            require polarizations match. Default is False.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError:
+            A ValueError is raised if uv is not a UVCal object or a UVFlag object
+            of "antenna" type, if self is not "antenna" or "waterfall" type, or
+            if the polarization arrays do not match.
+
+        """
         if self.type == 'antenna':
             return
         if not (issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna')):
@@ -660,9 +854,11 @@ class UVFlag(object):
         self.history += 'Broadcast to type "antenna" with ' + hera_qm_version_str
 
     def to_flag(self):
-        '''Convert to flag mode. NOT SMART. Simply removes metric_array and initializes
+        """Convert to flag mode.
+
+        This function is NOT SMART. It simply removes metric_array and initializes
         flag_array with Falses.
-        '''
+        """
         if self.mode == 'flag':
             return
         elif self.mode == 'metric':
@@ -675,17 +871,20 @@ class UVFlag(object):
         self.clear_unused_attributes()
 
     def to_metric(self, convert_wgts=False):
-        '''Convert to metric mode. NOT SMART. Simply recasts flag_array as float
+        """Convert to metric mode.
+
+        This function is NOT SMART. It simply recasts flag_array as float
         and uses this as the metric array.
 
-        Args:
-            convert_wgts : bool, if True convert self.weights_array to ones
-                unless a column or row is completely flagged, in which case
-                convert those pixels to zero. This is used when reinterpretting
-                flags as metrics to calculate flag fraction. Zero weighting
-                completely flagged rows/columns prevents those from counting
-                against a threshold along the other dimension.
-        '''
+        Parameters
+        ----------
+        convert_wgts : bool
+            If True, convert self.weights_array to ones unless a column or row
+            is completely flagged, in which case convert those pixels to zero.
+            This is used when reinterpreting flags as metrics to calculate flag
+            fraction. Zero weighting completely flagged rows/columns prevents those
+            from counting against a threshold along the other dimension.
+        """
         if self.mode == 'metric':
             return
         elif self.mode == 'flag':
@@ -711,8 +910,25 @@ class UVFlag(object):
         self.clear_unused_attributes()
 
     def antpair2ind(self, ant1, ant2):
-        """
-        Get blt indices for given (ordered) antenna pair.
+        """Get blt indices for given (ordered) antenna pair.
+
+        Parameters
+        ----------
+        ant1 : int
+            Number of first antenna.
+        ant2 : int
+            Number of second antenna.
+
+        Returns
+        -------
+        ind
+            Indices corresponding to baselines composed of (ant1, ant2).
+
+        Raises
+        ------
+        ValueError:
+            If self is not "baseline" type, a ValueError is raised.
+
         """
         if self.type != 'baseline':
             raise ValueError('UVFlag object of type ' + self.type + ' does not '
@@ -720,28 +936,55 @@ class UVFlag(object):
         return np.where((self.ant_1_array == ant1) & (self.ant_2_array == ant2))[0]
 
     def baseline_to_antnums(self, baseline):
-        """
-        Get the antenna numbers corresponding to a given baseline number.
+        """Get the antenna numbers corresponding to a given baseline number.
 
-        Args:
-            baseline(int): baseline number
+        Parameters
+        ----------
+        baseline : int
+            The baseline number to convert.
 
-        Returns:
-            (tuple): Antenna numbers corresponding to baseline.
+        Returns
+        -------
+        antnums : tuple
+            Antenna numbers corresponding to the given baseline.
+
+        Raises
+        ------
+        AssertionError:
+            If self is not "baseline" type, an AssertionError is raised.
+
         """
         assert self.type == 'baseline', 'Must be "baseline" type UVFlag object.'
         return uvutils.baseline_to_antnums(baseline, self.Nants_telescope)
 
     def get_baseline_nums(self):
-        """
-        Returns numpy array of unique baseline numbers in data.
+        """Return a numpy array of unique baseline numbers in data.
+
+        Returns
+        -------
+        baselines
+            An array of the unique baseline numbers in the data.
+
+        Raises
+        ------
+        AssertionError:
+            If self is not "baseline" type, an AssertionError is raised.
         """
         assert self.type == 'baseline', 'Must be "baseline" type UVFlag object.'
         return np.unique(self.baseline_array)
 
     def get_antpairs(self):
-        """
-        Returns list of unique antpair tuples (ant1, ant2) in data.
+        """Return a list of unique antpair tuples (ant1, ant2) in data.
+
+        Returns
+        -------
+        antnums
+            A list of the unique antpair tuples in the data.
+
+        Raises
+        ------
+        AssertionError:
+            If self is not "baseline" type, an AssertionError is raised.
         """
         assert self.type == 'baseline', 'Must be "baseline" type UVFlag object.'
         return [self.baseline_to_antnums(bl) for bl in self.get_baseline_nums()]
