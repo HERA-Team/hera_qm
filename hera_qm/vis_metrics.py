@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
+"""Module for computing visibility metrics."""
 
 from __future__ import print_function, division, absolute_import
 import numpy as np
@@ -14,18 +15,28 @@ from . import version
 def check_noise_variance(data):
     """Calculate the noise levels of each baseline/pol relative to the autos.
 
-    Calculates the noise for each baseline/pol by differencing along frequency
-    dimension and compares to the noise on the auto-spectra for each
-    antenna in the baseline.
+    This function calculates the noise for each baseline/pol by differencing
+    along the frequency dimension and compares to the noise on the auto-spectra
+    for each antenna in the baseline.
 
-    Args:
-        data (UVData): UVData object with data.
+    Parameters
+    ----------
+    data : UVData object
+        A UVData object with data to be analyzed.
 
-    Returns:
-        Cij (dict): dictionary of variance measurements
-                    has keywords of (ant1, ant2, pol)
+    Returns
+    -------
+    Cij : dict
+        A dictionary of variance measurements with keys (ant1, ant2, pol).
+
+    Raises
+    ------
+    NotImplementedError:
+        If the UVData object contains data where integration_time is not
+        the same for all integrations, a NotImplementedError is raised. In
+        other words, this is *not* applicable to BDA data.
+
     """
-
     Cij = {}
     for key, d in data.antpairpol_iter():
         inds = data.antpair2ind(key[0], key[1])
@@ -54,8 +65,7 @@ def check_noise_variance(data):
 
 
 def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, history=''):
-    """
-    Take a sequential (forward) difference to estimate visibility noise.
+    """Take a sequential (forward) difference to estimate visibility noise.
 
     Parameters
     ----------
@@ -63,23 +73,20 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
         A 2D or 3D ndarray containing visibility data, with
         shape (Ntimes, Nfreqs, :). Or UVData object
         holding visibility data.
-
     t_int : ndarray
         A 2D or 3D ndarray containing the integration time
         of the visibilities matching shape of data.
         If None and data is UVData, will use UVData ~flags *
         nsample * integration_time as input.
-
     axis : int or tuple
-        Axes along which to take sequential difference
-
-    pad : boolean
+        Axes along which to take sequential difference.
+    pad : bool
         If True, insert an extra (flagged) column at the end
         of axis such that diff_data has same shape as input.
-
-    run_check : boolean
+        Default is True.
+    run_check : bool
         If True, run the UVData.check() function when complete.
-
+        Default is True.
     history : str
         A string to prepend to history of UVData if provided,
         in addition to a standard history comment.
@@ -95,6 +102,15 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
         If input data is ndarray, this is the average
         integration time of differenced pixels, unless
         one of them is 0.0 in which case output is 0.0.
+
+    Raises
+    ------
+    ValueError:
+        A ValueError is raised if:
+        - "axis" is not 0 or 1.
+        - t_int is not an array.
+        - data is not an array or a UVData object.
+
     """
     # type check
     if isinstance(axis, (int, np.integer)):
@@ -207,27 +223,29 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
 
 
 def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
-    """
-    Calculate visibility data covariance or correlation matrix
-    from uvd between specified baselines, optionally
-    as a fuction of frequency _or_ time.
+    """Calculate visibility data covariance.
+
+    Calculate the visibility data covariance or correlation matrix
+    from uvd between specified baselines, optionally as a fuction of
+    frequency _or_ time.
 
     If return_corr == True, the correlation matrix holds the
     covariance between baseline1 and baseline2 divided
-    by the stand. dev. of baseline1 * stand. dev. of baseline2.
+    by the standard deviation of baseline1 times the standard
+    deviation of baseline2.
 
     Parameters
     ----------
-    uvd : UVData object
-        A single-pol UVData object holding visibility data
-
+    uvd1 : UVData object
+        A single-pol UVData object holding visibility data.
+    uvd2 : UVData object
+        A single-pol UVData object holding visibility data.
     bls : list
         A list of antenna-pair tuples or UVData baseline integers to
         correlate.
-
-    iterax : str, optional
-        A data axis to iterate calculation over. Options=['freq', 'time'].
-
+    iterax : {"freq", "time", None}
+        A data axis to iterate calculation over. If not specified,
+        no iteration is done. Default is None.
     return_corr : bool, optional
         If True, calculate and return correlation matrix.
 
@@ -237,8 +255,19 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
         A covariance (or correlation) matrix across baselines.
         This ndarray is 4 dimensional, with shape (Nbls, Nbls, Ntimes, Nfreqs)
         where
-            Ntimes == 1 if iterax != 'time'
-            Nfreqs == 1 if iterax != 'freq'
+            Ntimes == 1 if iterax != 'time'.
+            Nfreqs == 1 if iterax != 'freq'.
+
+    Raises
+    ------
+    AssertionError:
+        An AssertionError is raised if:
+        - uvd1 or uvd2 is not a UVData object.
+        - uvd1 or uvd2 has more than 1 polarization.
+        - bls is not a list of baselines.
+        - iterax is not one of the above options.
+        - the times or frequencies of uvd1 and uvd2 disagree.
+
     """
     # type checks
     assert isinstance(uvd1, UVData) and isinstance(uvd2, UVData), \
@@ -332,57 +361,60 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
 def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
                    vmin=None, vmax=None, component='abs', colorbar=True,
                    tlsize=10, tlrot=35, figsize=None, times=None, freqs=None):
-    """
-    Plot the visibility data covariance or correlation matrix from uvd across
+    """Plot the visibility data covariance or correlation matrix.
+
+    This function plots the covariance or correlation matrix of uvd across
     a set of specified baselines.
 
     Parameters
     ----------
-    uvd : UVData object
-
+    uvd1 : UVData object
+        A single-pol UVData object holding visibility data.
+    uvd2 : UVData object
+        A single-pol UVData object holding visibility data.
     bls : list
-        List of baseline antenna-pairs
-
+        A list of antenna-pair tuples or UVData baseline integers to
+        correlate.
     plot_corr : bool, optional
         If True, calculate and plot correlation matrix instead.
-        Default: False.
-
+        Default is False.
     ax : matplotlib.axes.Axis object
-
+        If provided, the axis object to add plot to. If not specified,
+        a new axis will be created. Default is None.
     cmap : str
-        Colormap to use
-
+        Colormap to use. Default is "viridis".
     vmin, vmax : float
-        Colorscale min and max
-
-    component : str
-        Component of matrix to plot. Options=['real', 'imag', 'abs'].
-        Default: 'abs'.
-
+        Colorscale min and max.
+    component : {"real", "imag", "abs"}
+        Component of matrix to plot. Default is "abs".
     colorbar : bool
-        If True, plot a colorbar
-
+        If True, plot a colorbar.
     tlsize : int
         Tick-label size.
-
     tlrot : int
         Tick-label rotation in degrees.
-
     figsize : tuple
         Len-2 integer tuple for figure-size if ax is None.
-
     times : list
         List of times to select on UVData before calculating matrices.
         Cannot be fed if freqs if also fed.
-
     freqs : list
         List of frequencies to select on UVData before calculating
         matrices. Cannot be fed if times is also fed.
 
     Returns
     -------
-    if ax is None:
-        fig : matplotlib.pyplot.Figure object
+    fig : matplotlib.pyplot.Figure object
+        If ax is None, the figure object that the plot is added to.
+
+    Raises
+    ------
+    ValueError:
+        A ValueError is raised if "component" not in the above list.
+    AssertionError:
+        An AssertionError is raised if times and freqs are both specified,
+        or if all the data to be plotted is flagged.
+
     """
     import matplotlib.pyplot as plt
     # selections
@@ -450,86 +482,82 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
                        one2one=True, loglog=False, freqs=None, times=None, figsize=None,
                        xylim=None, cbfontsize=10, axfontsize=14, force_plot=False,
                        tlsize=10, facecolor='lightgrey', cmap='viridis'):
-    """
-    Make a scatter - matrix plot, showing covariance of visibility data
-    between baselines in uvd1 with baselines in uvd2.
+    """Make a scatter - matrix plot.
+
+    This plot shows the covariance of visibility data between baselines in uvd1
+    with baselines in uvd2.
 
     Parameters
     ----------
     uvd1 : UVData object
-
+        A single-pol UVData object holding visibility data.
     uvd2 : UVData object
-
+        A single-pol UVData object holding visibility data.
     bls : list
-        List of antenna-pairs to plot in matrix
-
-    component : str, options=['real', 'imag', 'abs', 'angle']
-        Component of visibility data to plot
-
+        A list of antenna-pair tuples or UVData baseline integers to
+        correlate.
+    component : {"real", "imag", "abs", "angle"}
+        Component of visibility data to plot. Default is "real".
     whiten : bool, optional
         If True, divide data component by abs of data before plotting.
-
+        Default is False.
     colorbar : bool
-        If True, add a colorbar
-
-    cmap : str
-        Colormap to use for scatter plot
-
+        If True, add a colorbar. Default is True.
     axes : ndarray
-        ndarray of axes objects to use in plotting
-
-    colorax : str, options=['freq', 'time]
-        data axis to colorize
-
+        ndarray of axes objects to use in plotting. If not specified, axes will
+        be generated as needed to create plots. Default is None.
+    colorax : {"freq", "time"}
+        Data axis to colorize. Default is "freq".
     alpha : float
-        Transparency of points
-
+        Transparency of points. Default is 1.
     msize : int
-        Marker size
-
+        Marker size. Default is 1.
     marker : str
-        Type of marker to use
-
+        Type of marker to use. Default is ".".
     grid : bool
-        If True, add a grid to the scatter plots
-
+        If True, add a grid to the scatter plots. Default is True.
     one2one : bool
-        If True, add a 1-to-1 line
-
+        If True, add a 1-to-1 line. Default is True.
     loglog : bool
-        If True, logscale the x and y axes
-
+        If True, logscale the x and y axes. Default is False.
     freqs : ndarray
-        Array of frequencies to select on before plotting
-
+        Array of frequencies to select on before plotting. If not specified,
+        all frequencies are used.
     times : ndarray
-        Array of times to select on before plotting
-
+        Array of times to select on before plotting. If not specified, all
+        times are used.
     figsize : tuple
-        Figure size if axes is None
-
+        Figure size if axes is None.
     xylim : tuple
-        xy limits of the subplots
-
+        xy limits of the subplots.
     cbfontsize : int
-        Fontsize of colorbar label and ticks
-
+        Fontsize of colorbar label and ticks. Default is 10.
     axfontsize : int
-        Fontsize of axes labels
-
+        Fontsize of axes labels. Default is 14.
     force_plot : bool
-        If Nbls > 10 and force_plot is False, this function exits.
-
+        If Nbls > 10 and force_plot is False, this function errors. Default is False.
     tlsize : int
-        Ticklabel size of subplots
-
+        Ticklabel size of subplots. Default is 10.
     facecolor : str
-        Facecolor of subplots
+        Facecolor of subplots. Default is "lightgrey".
+    cmap : str
+        Colormap to use for scatter plot. Default is "viridis".
 
     Returns
     -------
-    if axes is None:
-        fig : matplotlib.pyplot.Figure object
+    fig : matplotlib.pyplot.Figure object
+        If axes is None, the figure object that the plot is added to.
+
+    Raises
+    ------
+    ValueError:
+        A ValueError is raised if "component" not in the above list, if Nbls > 10
+        and force_plot is False, if "colorax" is not in the above list, or if
+        appropriate plot limits cannot be determine when xylim is not specified.
+    AssertionError:
+        An AssertionError is raised if times and freqs are both specified, if
+        the times or frequencies arrays disagree for the input UVData objects,
+        or if axes are specified incorrectly.
     """
     import matplotlib.pyplot as plt
     # selections
