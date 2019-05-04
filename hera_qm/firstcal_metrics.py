@@ -584,11 +584,19 @@ class FirstCalMetrics(object):
             then averaged over time
 
         """
-        # calculate standard deviations
+        # calculate standard deviations, ignoring antenna-times flagged for all freqs
+        delay_flags = np.all(self.UVC.flag_array, axis=(1, 2))[:, :, pol_ind]
         ant_avg = self.delay_avgs[:, :, pol_ind]
-        ant_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations[:, :, pol_ind], axis=1))
-        time_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations[:, :, pol_ind], axis=0))
-        agg_std = np.sqrt(astats.biweight_midvariance(self.delay_fluctuations[:, :, pol_ind]))
+        ant_avg = self.delay_avgs[:, :, pol_ind]
+        ant_std = np.sqrt([astats.biweight_midvariance((self.delay_fluctuations[i, :, pol_ind])[~delay_flags[i, :]])
+                           for i in range(self.Nants)])
+        ant_std[~np.isfinite(ant_std)] = 0.0
+        time_std = np.sqrt([astats.biweight_midvariance((self.delay_fluctuations[:, i, pol_ind])[~delay_flags[:, i]])
+                           for i in range(self.Ntimes)])
+        time_std[~np.isfinite(time_std)] = 0.0
+        agg_std = np.sqrt(astats.biweight_midvariance((self.delay_fluctuations[:, :, pol_ind])[~delay_flags]))
+        if not np.isfinite(agg_std):
+            agg_std = 0.0
         max_std = np.max(ant_std)
 
         # calculate z-scores
