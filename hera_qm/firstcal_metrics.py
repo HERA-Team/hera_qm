@@ -369,8 +369,12 @@ class FirstCalMetrics(object):
             self.rot_ants = []
 
         # Calculate avg delay solution and subtract to get delay_fluctuations
+        delay_flags = np.all(self.UVC.flag_array, axis=(1, 2))
         self.delays = self.delays * 1e9
-        self.delay_avgs = np.median(self.delays, axis=1, keepdims=True)
+        self.delays[delay_flags] = np.nan
+        self.delay_avgs = np.nanmedian(self.delays, axis=1, keepdims=True)
+        self.delay_avgs[~np.isfinite(self.delay_avgs)] = 0
+        self.delays[delay_flags] = 0
         self.delay_fluctuations = (self.delays - self.delay_avgs)
 
         # use gaussian process model to subtract underlying mean function
@@ -384,30 +388,23 @@ class FirstCalMetrics(object):
             # noise_level=0.01 are just initial conditions and are not the final hyperparameter solution
             kernel = gp.kernels.RBF(length_scale=0.2, length_scale_bounds=(0.01, 1.0)) + gp.kernels.WhiteKernel(noise_level=0.01)
             x = self.frac_JD.reshape(-1, 1)
-            self.delay_smooths = []
+            self.delay_smooths = copy.copy(self.delay_fluctuations)
             # iterate over each antenna
             for i in range(self.Nants):
                 # get ydata
                 y = copy.copy(self.delay_fluctuations[i, :, :])
                 # scale by std
-                ystd = np.sqrt(astats.biweight_midvariance(y, axis=0))
-                # if this is a simulation it is possible all the delays are 1
-                # In such a case the array ystd will all be zeros
-                if all(_ystd == 0 for _ystd in ystd.ravel()):
-                    self.delay_smooths.append(self.delays[i, :, :])
-                else:
-                    y /= ystd
-                    GP = gp.GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
-                    ymodel_stack = np.zeros((self.Ntimes, self.Npols))
-                    for pol_cnt in range(self.Npols):
-                        # fit GP and remove from delay fluctuations
-                        # but only one polarization at a time
+                ystd = np.sqrt([astats.biweight_midvariance(y[~delay_flags[i, :, ip], ip]) for ip in range(self.Npols)])
+                y /= ystd
+                GP = gp.GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
+                ymodel_stack = np.zeros((self.Ntimes, self.Npols))
+                for pol_cnt in range(self.Npols):
+                    if np.all(np.isfinite(y[..., pol_cnt])):
+                        # fit GP and remove from delay fluctuations but only one polarization at a time
                         GP.fit(x, y[..., pol_cnt])
                         ymodel = (GP.predict(x) * ystd[pol_cnt])
                         self.delay_fluctuations[i, :, pol_cnt] -= ymodel
-                        ymodel_stack[:, pol_cnt] = ymodel
-                    self.delay_smooths.append(ymodel_stack)
-            self.delay_smooths = np.array(self.delay_smooths)
+                        self.delay_smooths[i, :, pol_cnt] = ymodel
 
     def run_metrics(self, std_cut=0.5):
         """Compute all metrics and save to dictionary.
