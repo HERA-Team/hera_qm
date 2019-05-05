@@ -397,7 +397,6 @@ class FirstCalMetrics(object):
                 ystd = np.sqrt([astats.biweight_midvariance(y[~delay_flags[i, :, ip], ip]) for ip in range(self.Npols)])
                 y /= ystd
                 GP = gp.GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
-                ymodel_stack = np.zeros((self.Ntimes, self.Npols))
                 for pol_cnt in range(self.Npols):
                     if np.all(np.isfinite(y[..., pol_cnt])):
                         # fit GP and remove from delay fluctuations but only one polarization at a time
