@@ -229,7 +229,7 @@ class Test_FirstCalMetrics_two_pols(unittest.TestCase):
         # but you never know.
         two_pol_known_results = os.path.join(DATA_PATH, 'example_two_polarization_firstcal_results.hdf5')
         np.random.seed(0)
-        self.FC.run_metrics(std_cut=1.0)
+        self.FC.run_metrics(std_cut=.5)
         known_output = metrics_io.load_metric_file(two_pol_known_results)
 
         known_output.pop('history', None)
