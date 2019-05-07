@@ -607,7 +607,7 @@ def lst_from_uv(uv):
     Args:
         uv: a UVData or UVCal object.
     Returns:
-        lst_array: lst_array corresponding to time_array and at telecope location.
+        lst_array: lst_array corresponding to time_array and at telescope location.
                    Units are radian.
     '''
     if not isinstance(uv, (UVCal, UVData)):
