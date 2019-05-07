@@ -17,7 +17,7 @@ from pyuvdata import UVCal
 from pyuvdata import utils as uvutils
 import hera_qm.utils as utils
 from hera_qm.data import DATA_PATH
-from hera_qm import UVFlag
+from pyuvdata import UVFlag
 
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')

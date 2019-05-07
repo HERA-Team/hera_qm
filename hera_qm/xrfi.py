@@ -7,7 +7,7 @@ import numpy as np
 import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
-from .uvflag import UVFlag
+from pyuvdata import UVFlag
 from . import utils as qm_utils
 from .version import hera_qm_version_str
 from .metrics_io import process_ex_ants
