@@ -176,11 +176,11 @@ def load_firstcal_gains(fc_file):
 
     Returns
     -------
-    fc_delays
+    fc_delays : array
         The firstcal delays as saved in the file.
-    fc_gains
+    fc_gains : array
         The firstcal delays in gains format.
-    fc_pol
+    fc_pol : int
         The polarization of the .calfits file.
     """
     uvf = UVCal()
