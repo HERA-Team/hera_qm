@@ -53,10 +53,15 @@ def _reds_list_to_dict(reds):
     Converts lists of redundant basleine groups to ordered dict to allow
     redundant groups to be saved separately and still preserve order.
 
-    Argument
-        reds: List of list of tuples. e.g. list of list of antenna pairs for each baseline group
+    Parameters
+    ----------
+    reds : list of (lists or tuples)
+        List of list of tuples. e.g. list of list of antenna pairs for each baseline group.
+
     Returns
-        reds: OrderedDict of baseline groups able to save to HDF5
+    -------
+    reds : OrderedDict
+        OrderedDict of baseline groups able to save to HDF5.
     """
     return OrderedDict([(i, np.array(reds[i], dtype=antpair_dtype))
                         for i in range(len(reds))])
@@ -65,10 +70,15 @@ def _reds_list_to_dict(reds):
 def _reds_dict_to_list(reds):
     """Convert dict of redundant baseline groups to list.
 
-    Arguments
-        reds: OrderedDict of redundant baseline groups.
+    Parameters
+    ----------
+    reds : OrderedDict
+        OrderedDict of redundant baseline groups.
+
     Returns
-        reds: List of lists of baseline groups.
+    -------
+    reds : list of lists
+        List of lists of baseline groups.
     """
     if isinstance(reds, dict):
         reds = list(reds.values())
@@ -79,22 +89,36 @@ def _reds_dict_to_list(reds):
 def _recursively_save_dict_to_group(h5file, path, in_dict):
     """Recursively walks a dictionary to save to hdf5.
 
-    Adds allowed types to the current group as datasets
-    creates new subgroups if a given item in a dictionary is a dictionary.
+    This function adds allowed types to the current group as datasets. It creates
+    new subgroups if a given item in a dictionary is a dictionary.
 
-    Will add attributes for HDF5 objects as follows
+    The function will add attributes for HDF5 objects as follows:
         Datasets:
             key_is_string: Boolean flag to determine if dictionary key is a string
 
         Groups:
             group_is_ordered: Boolean flag to determine if dict was an OrderedDict
 
-    Arguments
-        h5file: H5py file object into which data is written, this is edited in place.
-        path: absolute path in HDF5 to store the current dictionary
-        in_dict: Dictionary to be recursively walked and stored in h5file
+    Parameters
+    ----------
+    h5file : file object
+        An h5py file object into which data is written. This file is edited in place.
+    path : str
+        An absolute path in HDF5 to store the current dictionary.
+    in_dict : dict
+        A dictionary to be recursively walked and stored in h5file.
+
     Returns
-        None
+    -------
+    None
+
+
+    Raises
+    ------
+    TypeError:
+        If a dataset is to be written to file and the datatype is not compatible
+        with h5py, a TypeError is raised.
+
     """
     allowed_types = (np.ndarray, np.float, np.int,
                      bytes, six.text_type, list, bool, np.bool_)
@@ -164,12 +188,19 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 def _recursively_make_dict_arrays_strings(in_dict):
     """Recursively search dict for numpy array and cast as string.
 
-    Numpy arrays by default are space delimited in strings, this makes them comma delimitedself.
+    Numpy arrays by default are space delimited in strings, this makes them comma
+    delimited.
 
-    Arguments
-        in_dict: Dictionary to recursively search for numpy array
+    Parameters
+    ----------
+    in_dict : dict
+        Dictionary to recursively search for numpy arrays.
+
     Returns
-        out_dict: Copy of in_dict with numpy arrays cast as comma delimited strings
+    -------
+    out_dict : dict
+        A copy of in_dict with numpy arrays cast as comma delimited strings.
+
     """
     out_dict = {}
     for key in in_dict:
@@ -198,15 +229,26 @@ def write_metric_file(filename, input_dict, overwrite=False):
             group_is_ordered: Boolean flag to determine if dict was an OrderedDict
 
 
-    Arguments
-        filename: String of filename to which metrics will be written.
-                  Can include either HDF5 (recommended) or JSON (Depreciated in Future) extension.
-        input_dict: Dictionary to be recursively written to the given file
-        overwrite: If file exists, overwrite instead of raising error.
-                   Default False
+    Parameters
+    ----------
+    filename : str
+        The full path to the filename to which metrics will be written. Based on the
+        extention, the file will be written as HDF5 (recommended), JSON (Depreciated
+        in Future), or a python pickle (Deprecated in Future).
+    input_dict : dict
+        Dictionary to be recursively written to the given file.
+    overwrite : bool, optional
+        If True, overwrite an existing file instead of raising error. Default is False.
 
-    Returns:
-        None
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    IOError:
+        If the file at filename exists and overwrite is False, an IOError is raised.
+
     """
     if os.path.exists(filename) and not overwrite:
         raise IOError('File exists and overwrite set to False.')
@@ -260,13 +302,29 @@ def write_metric_file(filename, input_dict, overwrite=False):
 def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
     """Recursively read the hdf5 file and create sub-dictionaries.
 
-    Performs opposite function of _recursively_save_dict_to_group
+    This function performs the inverse operation of _recursively_save_dict_to_group.
 
-    Arguments
-        h5file: H5py file object into which data is written, this is edited in place.
-        path: absolute path in HDF5 to read the current dictionary
-        group_is_ordered: Boolean value to set up collections.OrderedDict objects if flag is set in h5file group
+    Parameters
+    ----------
+    h5file : file object
+        An h5py file object into which data is written. This file is edited in place.
+    path : str
+        An absolute path in HDF5 to store the current dictionary.
+    group_is_ordered : bool, optional
+        If True, the dictionary is unpacked as an OrderedDictionary. Default is False.
+
     Returns
+    -------
+    out_dict : dict
+        The dictionary as saved in the output file.
+
+    Raises
+    ------
+    TypeError:
+        If a key in the HDF5 file tree is not associated with a dataset or a
+        group, a TypeError is raised. This indicates a file without a correct
+        structure.
+
     """
     if group_is_ordered:
         out_dict = OrderedDict()
@@ -305,10 +363,16 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
 def _parse_key(key):
     """Parse the input key into an int, antpol tuple, or string.
 
-    Arguments
-        key: input string to parse
+    Parameters
+    ----------
+    key : str
+        Input string to parse.
+
     Returns
-        out_key: Parsed key as an int, antpol tuple, or string
+    -------
+    out_key : int or tuple or str
+        Parsed key as an int, antpol tuple, or string.
+
     """
     try:
         # is key an int?
@@ -331,10 +395,16 @@ def _parse_key(key):
 def _recursively_parse_json(in_dict):
     """Recursively walk dictionary from json and convert to proper types.
 
-    Arguments
-        in_dict: Dictionary of strings read from json file to convert
+    Parameters
+    ----------
+    in_dict : dict
+        Dictionary of strings read from json file to convert.
+
     Returns
-        out_dict: dictionary with arrays/list/int/float cast to proper type.
+    -------
+    out_dict : dict
+        Dictionary with arrays/list/int/float cast to proper type.
+
     """
     def _pretty_print_dict(di):
         output = '{'
@@ -424,10 +494,15 @@ def _parse_value(in_val):
     Uses builtin types to make a last attempt to cast the value as an int, float, or complex.
     If all the types fail, returns a string.
 
-    Arguments
-        in_val: the unicode or string value to be parsed.
+    Parameters
+    ----------
+    in_val : unicode or str
+        The unicode or string value to be parsed.
+
     Returns
-        input value cast as an int, float or complex, otherwise a string.
+    -------
+    parsed_val : int or float or complex or str
+        The input value cast as an int, float or complex, otherwise a string.
     """
     try:
         return int(str(in_val))
@@ -445,16 +520,24 @@ def _parse_dict(input_str, value_type=int):
     """
     Parse a text string as a dictionary.
 
-    Arguments
-        input_str: string to be processed
-        value_type: data type to cast value as. Default is int
-    Returns
-        output: dictionary containing key-value pairs
+    Note
+    ----
+    This function explicitly assumes that dictionary keys are antpol tuples, where
+    the only allowed polarization values are x or y. `value_type` is typically
+    either `int` or `float`, depending on the parent key.
 
-    Notes
-        This function explicitly assumes that dictionary keys are antpol tuples, where
-        the only allowed polarization values are x or y. `value_type` is typically
-        either `int` or `float`, depending on the parent key.
+    Parameters
+    ----------
+    input_str : str
+        The string to be processed.
+    value_type : data-type, optional
+        The data type to cast value as. Default is int.
+
+    Returns
+    -------
+    output : dict
+        Dictionary containing key-value pairs.
+
     """
     # use regex to extract keys and values
     # assumes keys are antpols and values are numbers
@@ -479,10 +562,16 @@ def _parse_list_of_strings(input_str):
     """
     Parse a text string as a list of strings.
 
-    Arguments
-        input_str: string to be processed
+    Parameters
+    ----------
+    input_str : str
+        The input string to be processed.
+
     Returns
-        files: list of strings representing input files
+    -------
+    files : list of str
+        The list of strings representing input files.
+
     """
     # use basic string processing to extract file paths
     # remove brackets
@@ -501,12 +590,19 @@ def _parse_list_of_antpols(input_str):
     """
     Parse a text string as a list of antpols.
 
-    Arguments
-        input_str: string to be processed
+    Note
+    ----
+    This function assumes polarizations are only x or y.
+
+    Parameters
+    ----------
+    input_str : str
+        The input string to be processed.
+
     Returns
-        li: list of antpols
-    Notes
-        Assumes polarizations are only x or y
+    -------
+    li : list
+        The parsed list of antpols.
     """
     # use regex to extract entries
     # assumes list entries are antpols
@@ -527,12 +623,20 @@ def _parse_list_of_list_of_antpairs(input_str):
     """
     Parse a text string as a list of list of antpairs.
 
-    Arguments
-        input_str: string to be processed
+    Note
+    ----
+    This function is used for the `reds` key to return groups
+    of redundant baselines.
+
+    Parameters
+    ----------
+    input_str : str
+        The input string to be processed.
+
     Returns
-        output: list of list of antpairs
-    Notes
-        Used for the `reds` key to return groups of redundant baselines.
+    -------
+    output : list
+        A list containing the parsed set of antpairs.
     """
     # use regex to extract lists
     list_regex = r"\[(.*?)\]"
@@ -555,13 +659,19 @@ def _parse_dict_of_dicts(input_str, value_type=float):
     """
     Parse a text string as a dictionary of dictionaries.
 
-    Arguments
-        input_str: string to be processed
-        value_type: type to cast values in nested dictionaries to. Default
-        is float.
+    Parameters
+    ----------
+    input_str : str
+        The input string to be processed.
+    value_type : data-type, optional
+        The type to cast values in nested dictionaries to. Default is float.
+
     Returns
-        output: dictionary of dictionaries. The keys of the outer dictionary
-        should be the names of the associated metrics.
+    -------
+    output : dict
+        A dictionary of dictionaries. The keys of the outer dictionary should
+        be the names of the associated metrics.
+
     """
     # use regex to extract dictionaries
     dict_regex = r"\'([a-zA-Z]*?)\': (\{.*?\})"
@@ -582,16 +692,22 @@ def _parse_dict_of_dicts(input_str, value_type=float):
 def _parse_list_of_dict_of_dicts(input_str, value_type=float):
     """Parse a test string as a list of dictionaries of dictionaries.
 
-    Assumes input list of dicts of dicts is from an old ant_metrics json file
-    and will convert the list of dict of dicts to a dict of dict of dicts to be
-    consistent with the new format of ant_metrics.
+    This function assumes the input list of dicts of dicts is from an old
+    ant_metrics json file and will convert the list of dict of dicts to a
+    dict of dict of dicts to be consistent with the new format of ant_metrics.
 
-    Arguments
-        input_str: string to be processed
-        value_type: type to cast values in nested dictionaries to. Default
-        is float.
+    Parameters
+    ----------
+    input_str : str
+        The input string to be processed.
+    value_type : data-type, optional
+        The type to cast values in nested dictionaries to. Default is float.
+
     Returns
-        output: dictionary of dictionary of dictionaries
+    -------
+    output : dict
+        A dictionary of dictionary of dictionaries.
+
     """
     # use regex to extract dictionaries
 
@@ -614,12 +730,18 @@ def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
     Also tests if input is list of dictionaries of dictionairies for backwards
     compatibility with older ant_metrics json files.
 
-    Arguments
-        input_str: string to be processed
-        value_type: type to cast values in nested dictionaries to. Default
-        is float.
+    Parameters
+    ----------
+    input_str : str
+        The input string to be processed.
+    value_type : data-type, optional
+        The type to cast values in nested dictionaries to. Default is float.
+
     Returns
-        output: dictionary of dictionary of dictionaries
+    -------
+    output : dict
+        A dictionary of dictionary of dictionaries.
+
     """
     # use regex to extract dictionaries
     list_regex = r"\[.*\]"
@@ -646,11 +768,19 @@ def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
 def _load_json_metrics(filename):
     """Load cut decisions and metrics from a JSON into python dictionary.
 
-    reads json and recursively walks dictionaries to cast values to proper types.
-    Arguments
-        filename: JSON file to be read and walked
-    returns
-        metric_dict: dictionary with values cast as types made from hera_qm.
+    This function reads json and recursively walks dictionaries to cast values
+    to proper types.
+
+    Parameters
+    ----------
+    filename : str
+        Full path to a JSON file to be read and walked.
+
+    Returns
+    -------
+    metric_dict : dict
+        A dictionary with values cast as types made from hera_qm.
+
     """
     with open(filename, 'r') as infile:
         jsonMetrics = json.load(infile)
@@ -662,10 +792,16 @@ def _load_json_metrics(filename):
 def _load_pickle_metrics(filename):
     """Load cut decisions and metrics from a Pickle file into python dictionary.
 
-    Arguments
-        filename: Pickle file to be read and walked
-    returns
-        metric_dict: dictionary with values cast as types made from hera_qm.
+    Parameters
+    ----------
+    filename : str
+        Full path to a pickle file to be read and walked.
+
+    Returns
+    -------
+    metric_dict : dict
+        A dictionary with values cast as types made from hera_qm.
+
     """
     with open(filename, 'rb') as infile:
         unpickler = pkl.Unpickler(infile)
@@ -677,14 +813,20 @@ def _load_pickle_metrics(filename):
 def _recursively_validate_dict(in_dict):
     """Walk dictionary recursively and cast special types to know formats.
 
-    Walks a dictionary recursively and searches for special types of items.
-    Cast 'reds' from OrderedDict to list of list
-    Cast antpair_key and antpol_key items to tuples
+    This function walks a dictionary recursively and searches for special types
+    of items. It casts 'reds' from OrderedDict to a list of list. It also casts
+    antpair_key and antpol_key items to tuples.
 
-    Arguments
-        in_dict: Dictionary to search and cast special items.
+    Parameters
+    ----------
+    in_dict : dict
+        Dictionary to search and cast special items.
+
     Returns
-        out_dict: Copy of input dictionary with antpairs and antpols cast as tuples
+    -------
+    out_dict : dict
+        A copy of input dictionary with antpairs and antpols cast as tuples.
+
     """
     for key in in_dict:
         if key in ['history', 'version']:
@@ -721,11 +863,17 @@ def load_metric_file(filename):
 
     Loads either HDF5 (recommended) or JSON (Depreciated in Future) save files.
     Guesses which type to load based off the file extension.
-    Arguments:
-        filename: Filename of the metric to load.
 
-    Returns:
+    Parameters
+    ----------
+    filename : str
+        Full path to the filename of the metric to load.
+
+    Returns
+    -------
+    metric_dict : dict
         Dictionary of metrics stored in the input file.
+
     """
     if filename.split('.')[-1] == 'json':
         warnings.warn("JSON-type files can still be read "
@@ -749,14 +897,19 @@ def load_metric_file(filename):
 
 
 def process_ex_ants(ex_ants=None, metrics_file=None):
-    """
-    Return list of excluded antennas from command line argument.
+    """Make a list of excluded antennas from command line argument.
 
-    Input:
-       ex_ants -- comma-separated value list of excluded antennas
-       metrics_file -- file containing array info from hera_qm
-    Output:
-       list of excluded antennas
+    Parameters
+    ----------
+    ex_ants : str
+        A comma-separated value list of excluded antennas as a single string.
+    metrics_file : str
+        A full path to a file containing array info from hera_qm.
+
+    Returns
+    -------
+    xants : list
+        A list of antennas to be excluded from analysis.
     """
     # test that there are ex_ants to process
     if ex_ants is None and metrics_file is None:

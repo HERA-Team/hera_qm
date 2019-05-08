@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
+"""Generate version information for hera_qm."""
 
 import os
 import subprocess
@@ -12,9 +13,25 @@ hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
 
 
 def _get_git_output(args, capture_stderr=False):
-    """Get output from Git, ensuring that it is of the ``str`` type,
-    not bytes."""
+    """Get output from Git.
 
+    Get output from Git, ensuring that it is of the ``str`` type,
+    not bytes. This prevents headaches when dealing with python2/3
+    compatibilitiy.
+
+    Parameters
+    ----------
+    args : list
+        A list of command line arguments to pass to git.
+    capture_stderr : bool, optional
+        If True, capture stderr as well as stdout. Default is False.
+
+    Returns
+    -------
+    data : str
+        A string containing the output of the command passed to git.
+
+    """
     argv = ['git', '-C', hera_qm_dir] + args
 
     if capture_stderr:
@@ -36,6 +53,21 @@ def _unicode_to_str(u):
 
 
 def construct_version_info():
+    """Construct hera_qm version information.
+
+    Returns
+    -------
+    version_info : dict
+        A dictionary containing the version information of hera_qm. The keys
+        are as follows:
+
+        version: the version defined in the VERSION file of the hera_qm repo.
+        git_origin: the origin of the git repo.
+        git_hash: the git hash of the installed module.
+        git_description: the description of the module as provided by git.
+        git_branch: the currently checkout out branch.
+
+    """
     version_file = os.path.join(hera_qm_dir, 'VERSION')
     version = _unicode_to_str(open(version_file).read().strip())
 
@@ -84,6 +116,7 @@ hera_qm_version_str = str(hera_qm_version_str)
 
 
 def main():
+    """Print module version information and exit."""
     print('Version = {0}'.format(version))
     print('git origin = {0}'.format(git_origin))
     print('git branch = {0}'.format(git_branch))

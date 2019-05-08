@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
+"""Module for computing metrics on omnical calibration solutions."""
 
 from __future__ import print_function, division, absolute_import
 import numpy as np
@@ -25,13 +26,17 @@ else:
 
 
 def get_omnical_metrics_dict():
-    """ Simple function that returns dictionary with metric names as keys and
+    """Get a dictionary of metric names and their descriptions.
+
+    A simple function that returns dictionary with metric names as keys and
     their descriptions as values. This is used by hera_mc to populate the table
     of metrics and their descriptions.
 
-    Returns:
-    metrics_dict : dictionary
-        metric names as keys and descriptions as values.
+    Returns
+    -------
+    metrics_dict : dict
+        A dicationary with metric names as keys and descriptions as values.
+
     """
     metrics_dict = {'chisq_tot_avg_XX': 'median of chi-square across entire file for XX pol',
                     'chisq_tot_avg_YY': 'median of chi-square across entire file for YY pol',
@@ -52,17 +57,24 @@ def get_omnical_metrics_dict():
 
 
 def load_omnical_metrics(filename):
-    """
-    load omnical metrics file
+    """Load an omnical metrics file.
 
-    Input:
-    ------
+    Parameters
+    ----------
     filename : str
-        path to omnical metrics file
+        Path to an omnical metrics file.
 
-    Output:
-    metrics : dictionary
-        dictionary containing omnical metrics
+    Returns
+    -------
+    metrics : dict
+        A dictionary containing omnical metrics.
+
+    Raises
+    ------
+    IOError:
+        If the filetype inferred from the filename is not "json" or "pkl",
+        an IOError is raised.
+
     """
     # get filetype
     filetype = filename.split('.')[-1]
@@ -98,19 +110,17 @@ def load_omnical_metrics(filename):
 
 
 def write_metrics(metrics, filename=None, filetype='json'):
-    """
-    Write metrics to file after running self.run_metrics()
+    """Write metrics to file after running self.run_metrics().
 
-    Input:
-    ------
-    metrics : dictionary
-        Omnical_Metrics.run_metrics() output
-
-    filename : str, default=None
-        filename to write out, will use filename by default
-
-    filetype : str, default='json', option=['json', 'pkl']
-        specify file format of output metrics file
+    Parameters
+    ----------
+    metrics : dict
+        A dictionary containing the output of Omnical_Metrics.run_metrics().
+    filename : str
+        The base filename to write out. If not specified, the default is
+        the filename saved in the metrics dictionary.
+    filetype : {"json", "pkl"}, optional
+        The file format of output metrics file. Default is "json".
     """
     # get pols
     pols = list(metrics.keys())
@@ -155,16 +165,23 @@ def write_metrics(metrics, filename=None, filetype='json'):
 
 
 def load_firstcal_gains(fc_file):
-    """
-    load firstcal delays and turn into phase gains
+    """Load firstcal delays and turn into phase gains.
 
+    Parameters
+    ----------
     fc_file : str
-        path to firstcal .calfits file (single polarization)
+        Path to firstcal .calfits file. If a file with
+        multiple polarizations is passed in, only the
+        first polarization is used.
 
-    jones2pol : dict
-        dictionary containing jones integers as keys and
-        X-Y pols as values
-
+    Returns
+    -------
+    fc_delays : array
+        The firstcal delays as saved in the file.
+    fc_gains : array
+        The firstcal delays in gains format.
+    fc_pol : int
+        The polarization of the .calfits file.
     """
     uvf = UVCal()
     uvf.read_calfits(fc_file)
@@ -180,33 +197,38 @@ def load_firstcal_gains(fc_file):
 def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
                     fname=None, outpath=None,
                     plot_kwargs={'marker': 'o', 'color': 'k', 'linestyle': '', 'markersize': 6}):
-    """
-    Plot omnical phase metric
+    """Plot omnical phase metric.
 
-    Input:
-    ------
-    metrics : dictionary
-        a metrics dictionary from OmniCal_Metrics.run_metrics()
+    Parameters
+    ----------
+    metrics : dict
+        A dictionary of metrics from OmniCal_Metrics.run_metrics().
+    plot_type : {"std", "ft", "hist"}, optional
+        The plot type to make. "std" plots the standard deviations of
+        omni-firstcal phase differences. Large standard deviations
+        are not ideal. "hist" plots the histogram of gain phase
+        solutions. "ft" plots the FFT of the antenna gain differences.
+        Default is "std".
+    ax : matplotlib axis object, optional
+        The axis on which to generate plots. If None, axes will be generated
+        as necessary. Default is None.
+    save : bool, optional
+        If True, save image as a png. Default is False.
+    fname : str, optional
+        Filename to save image as. If not specified, a filename is generated
+        based on the input filename saved in the metrics dictionary.
+    outpath : str, optional
+        Path to place file in. If not specified, will default to location
+        of the input *omni.calfits file.
+    plot_kwargs : dict, optional
+        A dictionary of keyword arguments to be passed to the plot command.
+        Default is {'marker': 'o', 'color': 'k', 'linestyle': '', 'markersize': 6}
 
-    plot_type : str, default='std', options=['std', 'ft', 'hist']
-        specify plot type
+    Returns
+    -------
+    fig : matplotlib figure object
+        If ax is None, the figure created to generate the plot is returned.
 
-        'std' plots stand deviations of omni-firstcal phase difference.
-        large stand deviations are not ideal
-
-        'hist' plots the histogram of gain phase solutions
-
-    ax : matplotlib axis object
-
-    save : bool, default=False
-        if True, save image as a png
-
-    fname : str, default=None
-        filename to save image as
-
-    outpath : str, default=None
-        path to place file in
-        will default to location of *omni.calfits file
     """
     import matplotlib.pyplot as plt
     custom_ax = True
@@ -281,25 +303,32 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
 
 def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
                       plot_kwargs={'marker': 'o', 'color': 'k', 'linestyle': '', 'markersize': 6}):
-    """
-    Plot Chi-Square output from omnical for each antenna
+    """Plot Chi-Square output from omnical for each antenna.
 
-    Input:
-    ------
-    metrics : dictionary
-        metrics dictionary from OmniCal_Metrics.run_metrics()
+    Parameters
+    ----------
+    metrics : dict
+        A metrics dictionary from OmniCal_Metrics.run_metrics().
+    ax : matplotlib axis object, optional
+        The axis on which to generate plots. If None, axes will be generated
+        as necessary. Default is None.
+    save : bool, optional
+        If True, save image as a png. Default is False.
+    fname : str, optional
+        Filename to save image as. If not specified, a filename is generated
+        based on the input filename saved in the metrics dictionary.
+    outpath : str, optional
+        Path to place file in. If not specified, will default to location
+        of the input *omni.calfits file.
+    plot_kwargs : dict, optional
+        A dictionary of keyword arguments to be passed to the plot command.
+        Default is {'marker': 'o', 'color': 'k', 'linestyle': '', 'markersize': 6}.
 
-    ax : matplotlib axis object, default=False
+    Returns
+    -------
+    fig : matplotlib figure object
+        If ax is None, the figure created to generate the plot is returned.
 
-    save : bool, default=False
-        if True, save image as a png
-
-    fname : str, default=None
-        filename to save image as
-
-    outpath : str, default=None
-        path to place file in
-        will default to location of *omni.calfits file
     """
     import matplotlib.pyplot as plt
     custom_ax = True
@@ -354,25 +383,71 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
 
 
 class OmniCal_Metrics(object):
-    """
-    OmniCal_Metrics class for holding omnical data
+    """Class for computing and storing omnical metrics.
+
+    This class provides methods for storing omnical gain solutions
     and running metrics on them.
     """
 
     jones2pol = {-5: 'XX', -6: 'YY', -7: 'XY', -8: 'YX'}
 
     def __init__(self, omni_calfits, history=''):
-        """
-        Omnical Metrics initialization
+        """Initialize an Omnical Metrics object.
 
-        Input:
-        ------
+        Parameters
+        ----------
         omni_calfits : str
-            calfits file output from omnical, typically
-            ending in *.omni.calfits
+            Path to a calfits file output from omnical, typically
+            ending in *.omni.calfits.
+        history : str, optional
+            History string to be added to output files. Default is empty string.
 
+        Attributes
+        ----------
+        filedir : str
+            The path to the directory of the input omni_calfits file.
+        filestem : str:
+            The basename of the omni_calfits file.
+        filename : str
+            The filename of the input omni_calfits file.
+        version_str : str
+            The current version of the hera_qm repo.
         history : str
-            history string
+            A history string to be added to output files.
+        firstcal_file : str
+            Path to the firstcal file associated with the same observation.
+            Only used to remove firstcal delays from omnical gain solutions.
+        uv : UVCal object
+            A UVCal object corresponding to the data saved in the calfits file.
+        Nants : int
+            The number of antennas in the data file.
+        freqs : array
+            The frequencies in the calibration file, in Hz.
+        Nfreqs : int
+            The number of frequency channels in the file.
+        jones : array
+            The array of Jones parameters in the file, as integers.
+        pols : array
+            An array of polarization strings corresponding to the Jones numbers.
+        Npols : int
+            The number of polarizations in the file.
+        times : array
+            The time values in the file, in JD.
+        Ntimes : int
+            The number of times in the file.
+        ant_array : array
+            An array containing the antenna numbers in the data files.
+        omni_gains : array
+            An array of omnical gain solutions saved in the file. The time
+            and frequency axes are transposed relative to the file.
+        chisq : array
+            An array of the per-antenna chi-squared of the gain solutions saved
+            in the file. The time and frequency axes are transposed relative
+            to the file.
+        chisq_tavg : array
+            An array of the chi-squared values with the median taken along
+            the time axis.
+
         """
         # Get file info and other relevant metadata
         self.filedir = os.path.dirname(omni_calfits)
@@ -406,17 +481,36 @@ class OmniCal_Metrics(object):
 
     def run_metrics(self, fcfiles=None, cut_edges=True, Ncut=100,
                     phs_std_cut=0.3, chisq_std_zscore_cut=4.0):
-        """
-        run metrics function on each polarization (e.g. XX, YY) individually
-        and then pack into a single metrics dictionary
+        """Compute the metric values for the data in the object.
 
-        Input:
-        ------
-        fcfiles : list, default=None
-            list of single-pol firstcal delay solution files matching ordering of
-            pol in .omni.calfits file
+        This function runs the metrics functions on each polarization
+        (e.g. XX, YY) individually and then packs them into a single metrics
+        dictionary.
 
-        see self.compile_metrics() for details on remaining keyword arguments
+        Parameters
+        ----------
+        fcfiles : list
+            A list of single-pol firstcal delay solution files matching ordering
+            of polarization in .omni.calfits file.
+        cut_edges : bool
+            If True, removes Ncut channels from top and bottom of band. Default is True.
+        Ncut : int
+            Number of channels to remove from top and bottom of band (if cut_edges is True).
+            Default is 100.
+        phs_std_cut : float
+            The cut for standard deviation of phase solutions in radians. Default is 0.3.
+        chisq_std_zscore : float
+            The sigma tolerance (or z-score tolerance) for standard deviation of
+            the chi-squared fluctuations. Default is 4.0.
+
+        Returns
+        -------
+        full_metrics : OrderedDictionary
+            An OrderedDictionary containing polarizations as primary keys,
+            which have additional OrderedDictionaries as values. These
+            secondary dictionaries actually contain the metrics for the
+            given polarization.
+
         """
         # build firstcal_gains if fed fc files
         run_fc_metrics = False
@@ -506,12 +600,27 @@ class OmniCal_Metrics(object):
         return full_metrics
 
     def load_firstcal_gains(self, fc_files):
-        """
-        wrapper for omnical_metrics.load_firstcal_gains.
-        attach firstcal_delays and firstcal_gains to class
-        and calculate gain_diff
-        fc_files : list, dtype=str
-            list of paths to firstcal files
+        """Load firstcal delay solutions as gains.
+
+        This is a wrapper for omnical_metrics.load_firstcal_gains.
+        It attaches firstcal_delays and firstcal_gains to the object
+        and calculates gain_diff.
+
+        Parameters
+        ----------
+        fc_files : list
+            A list of strings representing paths to firstcal files.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError:
+            A ValueError is raised if the firstcal file contains a polarization
+            not present in the omnical solutions.
+
         """
         # check if fcfiles is a str, if so change to list
         if isinstance(fc_files, str):
@@ -534,18 +643,24 @@ class OmniCal_Metrics(object):
         self.gain_diff = self.omni_gains / self.firstcal_gains
 
     def chisq_metric(self, chisq, chisq_std_zscore_cut=4.0, return_dict=True):
-        """
-        chi square metrics
+        """Compute chi-squared metrics.
 
+        Parameters
+        ----------
         chisq : ndarray, shape=(Nants, Ntimes, Nfreqs)
-            ndarray containing chisq for each antenna (single pol)
+            An ndarray containing chi-squared value for each antenna (single pol).
+        chisq_std_zscore_cut : float, optional
+            The sigma tolerance (or z-score tolerance) for standard deviation of
+            the chi-squared fluctuations. Default is 4.0.
+        return_dict : bool, optional
+            If True, return per-antenna metrics as a dictionary with antenna number as key
+            rather than an ndarray. Default is True.
 
-        chisq_std_cut : float, default=5.0
-            sigma tolerance (or z-score tolerance) for std of chisq fluctuations
+        Returns
+        -------
+        ret : tuple
+            A length-9 tuple containing the various chi-squared metrics.
 
-        return_dict : bool, default=True
-            return per-antenna metrics as a dictionary, with antenna number as key
-            rather than an ndarray
         """
         # Get chisq statistics
         chisq_avg = np.median(np.median(chisq[:, :, self.band], axis=0), axis=1).astype(np.float64)
@@ -567,23 +682,27 @@ class OmniCal_Metrics(object):
                 chisq_ant_std_scale, chisq_ant_std_zscore, chisq_ant_std_zscore_max, chisq_good_sol)
 
     def phs_FT_metric(self, gain_diff, return_dict=True):
-        """
+        """Compute the Fourier-transform-of-phase metric.
+
         Takes the square of the real-valued FT of the phase
         difference between omnical and firstcal solutions and uses it
-        to assess noise level across freq
+        to assess noise level across freq.
 
-        Input:
-        ------
+        Parameters
+        ----------
         gain_diff : ndarray, dtype=complex, shape=(Nants, Ntimes, Nfreqs)
-            complex ndarray containing omnical gain phases divided by firstcal gain phases (single pol)
+            A complex ndarray containing omnical gain phases divided by
+            firstcal gain phases for a single pol.
+        return_dict : bool, optional
+            If True, return antenna output as dictionary with antenna name as key.
+            Default is True
 
-        return_dict : bool
-            return antenna output as dictionary with antenna name as key
-
-        Output:
+        Returns
         -------
         ant_gain_fft : ndarray
-            fft of complex gain array averaged over time
+            The FFT of complex gain array with the median computed over time.
+        ant_gain_delay : ndarray
+            The delay values corresponding to the FFT frequencies.
 
         """
         # take fft of complex gains over frequency per-antenna
@@ -601,34 +720,32 @@ class OmniCal_Metrics(object):
         return ant_gain_fft, ant_gain_dly
 
     def phs_std_metric(self, gain_diff, phs_std_cut=0.3, return_dict=True):
-        """
-        Takes the variance of the phase difference between omnical
-        and firstcal solutions (in radians) to assess its frequency variability
+        """Compute the standard deviation of gain phase.
 
-        Input:
-        ------
+        This metric takes the variance of the phase difference between omnical
+        and firstcal solutions (in radians) to assess its frequency variability.
+
+        Parameters
+        ----------
         gain_diff : ndarray, dtype=complex float, shape=(Nants, Ntimes, Nfreqs)
-            complex ndarray containing omnical gains divided by firstcal gains
+            A complex ndarray containing omnical gains divided by firstcal gains.
+        phs_std_cut : float, optional
+            The cut for standard deviation of phase solutions in radians. Default
+            is 0.3.
+        return_dict : bool, optional
+            If True, return per-antenna output as dictionary with antenna name as key.
+            Default is True.
 
-        phs_std_cut : float, default=0.5
-            cut for standard deviation of phase solutions in radians
-
-        return_dict : bool
-            return per-antenna output as dictionary with antenna name as key
-
-        Output:
+        Returns
         -------
         ant_phs_std : ndarray, shape=(Nants,)
-            phase stand dev for each antenna
-
+            The phase stand dev for each antenna.
         ant_phs_std_max : float
-            maximum of ant_phs_std
-
+            The maximum of ant_phs_std.
         phs_std_band_ants : ndarray
-            array containing antennas whose phs_std didn't meet phs_std_cut
-
+            An array containing antennas whose phs_std didn't meet phs_std_cut.
         phs_std_good_sol : bool
-            boolean with metric's good / bad determination of entire solution
+            A boolean with metric's good / bad determination of entire solution.
         """
         # get real-valued phase
         phs_diff = np.angle(gain_diff)
@@ -665,37 +782,44 @@ class OmniCal_Metrics(object):
     def plot_gains(self, ants=None, time_index=0, pol_index=0, divide_fc=False,
                    plot_type='phs', ax=None, save=False, fname=None, outpath=None,
                    plot_kwargs={'marker': 'o', 'markersize': 2, 'alpha': 0.75, 'linestyle': ''}):
-        """
-        Plot omnical gain solutions for each antenna
+        """Plot omnical gain solutions for each antenna.
 
-        Input:
-        ------
-        ants : list
-            list of ant numbers to plot
+        Parameters
+        ----------
+        ants : list, optional
+            A list of ant numbers to plot. If not specified all antennas
+            are plotted.
+        time_index : int, optional
+            The index of time axis to plot. Default is 0.
+        pol_index : int, optional
+            The index of cross polarization axis to plot. Default is 0.
+        divide_fc : bool, optional
+            If True, divide out firstcal gains from omnical gains.
+            Note that this only works if self.firstcal_file is not None.
+            Default is False.
+        plot_type : {"phs", "amp"}, optional
+            The type of plot to make. "phs" is phase, "amp" is amplitude of the
+            complex gain solutions. Default is "phs"
+        ax : matplotlib axis object, optional
+            The axis on which to generate plots. If None, axes will be generated
+            as necessary. Default is None.
+        save : bool, optional
+            If True, save image as a png. Default is False.
+        fname : str, optional
+            Filename to save image as. If not specified, a filename is generated
+            based on the input filename saved in the metrics dictionary.
+        outpath : str, optional
+            Path to place file in. If not specified, will default to location
+            of the input *omni.calfits file.
+        plot_kwargs : dict, optional
+            A dictionary of keyword arguments to be passed to the plotting function.
+            Default is {'marker': 'o', 'markersize': 2, 'alpha': 0.75, 'linestyle': ''}.
 
-        time_index : int, default=0
-            index of time axis
+        Returns
+        -------
+        fig : matplotlib figure object
+            If ax is None, the figure created to generate the plot is returned.
 
-        pol_index : int, default=0
-            index of cross polarization axis
-
-        plot_type : str, default='phs', options=['phs', 'amp']
-
-        divide_fc : bool, defaul=False
-            divide out firstcal gains from omnical gains.
-            only works if self.firstcal_file is not None
-
-        ax : matplotlib axis object
-
-        save : bool, default=False
-            if True, save image as a png
-
-        fname : str, default=None
-            filename to save image as
-
-        outpath : str, default=None
-            path to place file in
-            will default to location of *omni.calfits file
         """
         import matplotlib.pyplot as plt
 
@@ -758,31 +882,34 @@ class OmniCal_Metrics(object):
             return fig
 
     def plot_chisq_tavg(self, pol_index=0, ants=None, ax=None, save=False, fname=None, outpath=None):
-        """
-        Plot Omnical chi-square averaged over time
+        """Plot Omnical chi-squared averaged over time.
 
-        Input:
-        ------
-        pol_index : int, default=0
-            polarization index across polarization axis
+        Parameters
+        ----------
+        pol_index : int, optional
+            The polarization index to plot. Default is 0.
+        ants : list, optional
+            A list of ant numbers to plot. If not specified all antennas
+            are plotted.
+        ax : matplotlib axis object, optional
+            The axis on which to generate plots. If None, axes will be generated
+            as necessary. Default is None.
+        save : bool, optional
+            If True, save image as a png. Default is False.
+        fname : str, optional
+            Filename to save image as. If not specified, a filename is generated
+            based on the input filename saved in the metrics dictionary.
+        outpath : str, optional
+            Path to place file in. If not specified, will default to location
+            of the input *omni.calfits file.
+        plot_kwargs : dict, optional
+            A dictionary of keyword arguments to be passed to the plotting function.
 
-        ants : list
-            list of ant numbers to plot
+        Returns
+        -------
+        fig : matplotlib figure object
+            If ax is None, the figure created to generate the plot is returned.
 
-        pol_index : int, default=0
-            index of cross polarization axis
-
-        ax : matplotlib axis object
-
-        save : bool, default=False
-            if True, save image as a png
-
-        fname : str, default=None
-            filename to save image as
-
-        outpath : str, default=None
-            path to place file in
-            will default to location of *omni.calfits file
         """
         import matplotlib.pyplot as plt
 
@@ -828,15 +955,14 @@ class OmniCal_Metrics(object):
             return fig
 
     def plot_metrics(self, metrics):
-        """
-        plot all metrics
+        """Plot all metrics.
 
-        metrics : dictionary
-            a nested polarization dictionary from within a
-            Omnical_Metrics.run_metrics() dictionary output
-            ex:
-            full_metrics = Omnical_Metrics.run_metrics()
-            plot_metrics(full_metrics['XX'])
+        metrics : dict
+            A nested polarization dictionary from within a
+            Omnical_Metrics.run_metrics() dictionary output.
+            For example:
+                full_metrics = Omnical_Metrics.run_metrics()
+                plot_metrics(full_metrics['XX'])
 
         """
         # plot chisq metric
@@ -848,19 +974,28 @@ class OmniCal_Metrics(object):
 
 
 def omnical_metrics_run(files, args, history):
-    """
-    Run OmniCal Metrics on a set of input files. It will produce
-    a JSON file containing result of metrics
+    """Run OmniCal Metrics on a set of input files.
 
-    Input:
-    ------
-    files : a list of *omni.calfits file to run metrics on
+    This function will produce a JSON file containing the series of metrics.
 
-    args : parsed arguments via argparse.ArgumentParser.parse_args
+    Parameters
+    ----------
+    files : list of str
+        A list of *omni.calfits file to run metrics on.
+    args : argparse.Namespace
+        Parsed command-line arguments generated via argparse.ArgumentParser.parse_args.
+    history : str
+        History string to append to omnical metrics object.
 
-    Output:
+    Returns
     -------
     None
+
+    Raises
+    ------
+    AssertionError:
+        If the length of files to process is 0, an AssertionError is raised.
+
     """
     if len(files) == 0:
         raise AssertionError('Please provide a list of calfits files')

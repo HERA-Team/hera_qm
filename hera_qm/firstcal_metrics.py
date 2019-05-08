@@ -30,8 +30,11 @@ def get_firstcal_metrics_dict():
     their descriptions as values. This is used by hera_mc to populate the table
     of metrics and their descriptions.
 
-    Returns:
-    metrics_dict -- Dictionary with metric names as keys and descriptions as values.
+    Returns
+    -------
+    metrics_dict : dict
+        Dictionary with metric names as keys and descriptions as values.
+
     """
     metrics_dict = {'firstcal_metrics_good_sol': 'Whether full firstcal solution'
                     'is good (1) or bad(0).',
@@ -67,12 +70,18 @@ def load_firstcal_metrics(filename):
     Read-in a firstcal_metrics file and return dictionary.
 
     Loading is handled via hera_qm.metrics_io.load_metric_file
-    Arguments:
-        filename: Filename of the metric to load.
-                  Must be either HDF5 (recommended) or  JSON or PKL (Depreciated in Future) types.
 
-    Returns:
+    Parameters
+    ----------
+    filename : str
+        Full path to filename of the metric to load. Must be either HDF5 (recommended)
+        or JSON or PKL (Depreciated in Future) types.
+
+    Returns
+    -------
+    metrics : dict
         Dictionary of metrics stored in the input file.
+
     """
     return metrics_io.load_metric_file(filename)
 
@@ -81,26 +90,26 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
     """
     Plot standard deviation of delay solutions per-ant or per-time.
 
-    Input:
-    ------
+    Parameters
+    ----------
+    metrics : dict
+        A "metrics" dictionary from FirstCalMetrics.run_metrics().
+    fname : str, optional
+        Full path to filename. Default is None.
+    xaxis : {"ant", "time"}, optional
+        What to plot on the x-axis. Must be one of: "ant", "time". These are
+        antenna number or time-stamp respectively. Default is "ant".
+    ax : matplotlib axis object, optional
+        Where to plot the data. Default is None (meaning a new axis will be created).
+    kwargs : dict, optional
+        Plotting kwargs. Potential keys (descriptions) are: "cmap" (colormap).
+    save : bool, optional
+        If True, save the image to the specified filename. Default is False.
 
-    metrics : dictionary
-        a "metrics" dictionary from FirstCalMetrics.run_metrics()
-
-    fname : str, default=None
-        filename
-
-    xaxis : str, default='ant', option=['ant', 'time']
-        what to plot on the xaxis, antennas or time stamp
-
-    ax : axis object, default=None
-        matplotlib axis object
-
-    kwargs : dict
-        plotting kwargs
-
-    save : bool, default=False
-        save image to file
+    Returns
+    -------
+    fig : matplotlib figure object
+        If ax is not specified, the matplotlib figure object is returned.
 
     """
     import matplotlib.pyplot as plt
@@ -157,31 +166,36 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
     """
     Plot z_scores for antenna delay solution.
 
-    Input:
-    ------
-
+    Parameters
+    ----------
     metrics : dict
-        a FirstCalMetrics "metrics" dictionary
+        A FirstCalMetrics "metrics" dictionary.
+    fname : str, optional
+        Full path to the output filename. Default is None.
+    plot_type : {"full", "time_avg"}, optional
+        Type of plot to make. "full" plots the z-score for each entry for
+        antennas and times. "time_avg" plots the z-score for each antenna
+        averaged over time. Default is "full".
+    ax : matplotlib axis object, optional
+        Where to plot the data. Default is None (meaning a new axis will be created).
+    figsize : tuple, optional
+        Figure size if creating a figure. Default is (10, 6).
+    save : bool, optional
+        If True, save the image to the specified filename. Default is False.
+    kwargs : dict, optional
+        Plotting kwargs. Potential keys (descriptions) are: "vmin" (colormap minimum
+        value), "vmax" (colormap maximum value), "cmap" (colormap). If plot type is
+        "full", the kwargs dictionary is unpacked and passed to `matshow`.
+        Default is {'cmap': 'Spectral'}
+    plot_abs : bool, optional
+        If True, plot the absolute value of z-scores instead of actual values.
+        Default is False
 
-    fname : str, default=None
-        filename
+    Returns
+    -------
+    fig : matplotlib figure object
+        If ax is not specified, the matplotlib figure object is returned.
 
-    plot_type : str, default='full'
-        Type of plot to make
-        'full' : plot zscore for each (N_ant, N_times)
-        'time_avg' : plot zscore for each (N_ant,) avg over time
-
-    ax : axis object, default=None
-        matplotlib axis object
-
-    figsize : tuple, default=(10,6)
-        figsize if creating figure
-
-    save : bool, default=False
-        save figure to file
-
-    kwargs : dict
-        plotting kwargs
     """
     import matplotlib.pyplot as plt
 
@@ -268,9 +282,9 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
 class FirstCalMetrics(object):
     """Object to store and compute FirstCal metric data.
 
-    FirstCalMetrics class for holding firstcal data,
-    running metrics, and plotting delay solutions.
-    Currently only supports single polarization solutions.
+    The FirstCalMetrics class is used for holding firstcal data, running metrics,
+    and plotting delay solutions. Currently it only supports single polarization
+    solutions.
     """
 
     # sklearn import statement
@@ -279,41 +293,55 @@ class FirstCalMetrics(object):
     def __init__(self, calfits_files, use_gp=True):
         """Initilize the object.
 
-        Input:
-        ------
+        Parameters
+        ----------
         calfits_files : str or list
-            filename for a *.first.calfits file
-            or a list of .first.calfits files (time-ordered)
-            of the same polarization
+            Filename for a *.first.calfits file or a list of (time-ordered)
+            .first.calfits files of the same polarization.
+        use_gp : bool, optional
+            If True, use a Gaussian process model to subtract underlying smooth
+            delay solution behavior over time from fluctuations. Default is True.
 
-        use_gp : bool, default=True
-            use gaussian process model to
-            subtract underlying smooth delay solution
-            behavior over time from fluctuations
-
-        Result:
-        -------
-        self.UVC : pyuvdata.UVCal() instance
-
-        self.delays : ndarray, shape=(N_ant, N_times)
-            firstcal delay solutions in nanoseconds
-
-        self.delay_avgs : ndarray, shape=(N_ant,)
-            median delay solutions across time [nanosec]
-
-        self.delay_fluctuations : ndarray, shape=(N_ant, N_times)
-            firstcal delay solution fluctuations from time average [nanosec]
-
-        self.frac_JD : ndarray, shape=(N_times,)
-            ndarray containing time-stamps of each integration
-            in units of the fraction of current JD
-            i.e. 2457966.53433 -> 0.53433
-
-        self.ants : ndarray, shape=(N_ants,)
-            ndarray containing antenna numbers
-
-        self.pol : str
-            Polarization, 'y' or 'x' currently supported
+        Attributes
+        ----------
+        UVC : pyuvdata.UVCal() object
+            The resulting UVCal object from reading in the calfits files.
+        Nants : int
+            The number of antennas in the UVCal object.
+        Ntimes : int
+            The number of times in the UVCal object
+        delays : ndarray, shape=(Nants, Ntimes)
+            The firstcal delay solutions in nanoseconds.
+        delay_avgs : ndarray, shape=(Nants,)
+            The median delay solutions across time in nanoseconds.
+        delay_fluctuations : ndarray, shape=(Nants, Ntimes)
+            The firstcal delay solution fluctuations from the time average in
+            nanoseconds.
+        start_JD : float
+            The integer JD of the start of the UVCal object.
+        frac_JD : ndarray, shape=(Ntimes,)
+            The time-stamps of each integration in units of the fraction of start_JD.
+            E.g., 2457966.53433 becomes 0.53433.
+        ants : ndarray, shape=(Nants,)
+            The antenna numbers contained in the calfits files.
+        pol : {"x", "y"}
+            Polarization of the files examined.
+        fc_basename : str
+            Basename of the calfits file, or first calfits file in the list.
+        fc_filename : str
+            Filename of the calfits file, or first calfits file in the list.
+        fc_filestem : str
+            Filename minus extension of the calfits file, or first calfits file in the list.
+        times : ndarray, shape=(Ntimes,)
+            The times contained in the UVCal object.
+        minutes : ndarray, shape=(Ntimes,)
+            The number of minutes of the fractional JD.
+        ants
+            The list of antennas in the UVCal object.
+        version_str : str
+            The version of the hera_qm module used to generate these metrics.
+        history : str
+            History to append to the metrics files when writing out files.
         """
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
@@ -408,33 +436,35 @@ class FirstCalMetrics(object):
     def run_metrics(self, std_cut=0.5):
         """Compute all metrics and save to dictionary.
 
-        Run all metrics, put them in "metrics" dictionary
-        and attach metrics to class
+        Run all metrics, put them in "metrics" dictionary, and attach metrics to
+        the object instance.
 
-        Input:
-        ------
-        std_cut : float, default=0.5
-            delay stand. dev cut for good / bad determination
+        Parameters
+        ----------
+        std_cut : float, optional
+            Delay standard deviation for determining good or bad. Default is 0.5.
 
-        Result:
+        Results
         -------
-        Create a self.metrics dictionary containing:
+        metrics : dict
+            A dictionary with keys: "good_sol", "bad_ants", "z_scores",
+            "ant_z_scores".
 
-        good_sol : bool
-            Statement on goodness of full FirstCal solution,
-            determined True if aggregate stand. dev is < std_cut
-            otherwise False
+            "good_sol" is a boolean, and is a statement of the goodness
+            of a full FirstCal solution. It is True if the aggregate
+            standard deviation is less than std_cut. Otherwise it is False.
 
-        bad_ants : list
-            list of bad antennas that don't meet std_cut tolerance
+            "bad_ants" is a list of bad antennas that don't meet the tolerance
+            set by std_cut.
 
-        z_scores : dictionary
-            contains z_score for each antenna and each time-stamp
-            w.r.t. standard deviation of all antennas and all times
+            "z_scores" is a dictionary that contains the z-score for each
+            antenna and time-stamp with respect to the standard deviation of
+            all antennas and all times.
 
-        ant_z_scores : dictionary
-            contains z_score for each antenna w.r.t stand dev. of
-            all antennas, then averaged over time
+            "ant_z_scores" is a dictionary that contains the z-score for each
+            antenna with respect to the standard deviation of all antennas,
+            which is then averaged over time.
+
         """
         full_metrics = OrderedDict()
         for i, pol in enumerate(self.pols):
@@ -487,14 +517,17 @@ class FirstCalMetrics(object):
         """
         Write metrics to file after running run_metrics().
 
-        filename : str, default=None
-            filename without filetype suffix
-            if None, use default filename stem
-
-
-        filetype : str, default='json'
-            filetype to write out to
-            options = ['json', 'pkl', 'h5', 'hdf5']
+        Parameters
+        ----------
+        filename : str, optional
+            The full filename to write without filetype suffix. If not provided,
+            self.fc_filestem is used.
+        filetype : {"h5", "hdf5", "json", "pkl"}, optional
+            The filetype to save the metrics as. "h5" and "hdf5" save an HDF5
+            filetype, "json" saves JSON, and "pkl" saves a python pickle. "json"
+            and "pkl" are deprecated, and should not be used. Default is "h5".
+        overwrite : bool, optional
+            If True, overwrite the file if it exists.
 
         """
         if filename is None:
@@ -520,14 +553,16 @@ class FirstCalMetrics(object):
         """
         Read-in a firstcal_metrics file and append to class.
 
-        Input:
-        ------
+        Parameters
+        ----------
         filename : str
-            filename to read in
+            Full path to the filename to read in.
 
-        Result:
+        Results
         -------
-        self.metrics dictionary
+        metrics : dict
+            Dictionary containing the metrics saved in the file.
+
         """
         self.metrics = load_firstcal_metrics(filename)
 
@@ -535,52 +570,43 @@ class FirstCalMetrics(object):
         """
         Calculate standard deviations of per-antenna delay solutions.
 
-        Calculate standard deviations of per-antenna delay solutions
-        and aggregate delay solutions. Assign a z-score for
-        each (antenna, time) delay solution w.r.t. aggregate
-        mean and standard deviation.
+        Calculate standard deviations of per-antenna delay solutions and aggregate
+        delay solutions. Assign a z-score for each (antenna, time) delay solution
+        with respect to the aggregate mean and standard deviation.
 
-        Uses sqrt( astropy.stats.biweight_midvariance ) for a robust measure
-        of the std
 
-        Input:
-        ------
+        Note
+        ----
+        This method Uses the square root of the result of astropy.stats.biweight_midvariance
+        for a robust measure of the standard deviation (i.e., it is not greatly influenced
+        by outliers).
 
-        return_dict : bool, [default=False]
-            if True, return time_std, ant_std and z_scores
-            as a dictionary with "ant" as keys
-            and "times" as keys
-            else, return as ndarrays
+        Parameters
+        ----------
+        return_dict : bool, optional
+            If True, return time_std, ant_std and z_scores as a dictionary with
+            "ant" as keys and "times" as keys. If False, return these values
+            as ndarrays. Default is False
 
-        Output:
-        --------
-        return ant_avg, ant_std, time_std, agg_std, max_std, z_scores
-
-        ant_avg : ndarray, shape=(N_ants,)
-            average delay solution across time for each antenna
-
-        ant_std : ndarray, shape=(N_ants,)
-            standard deviation of delay solutions across time
-            for each antenna
-
-        time_std : ndarray, shape=(N_times,)
-            standard deviation of delay solutions across ants
-            for each time-stamp
-
+        Returns
+        -------
+        ant_avg : ndarray, shape=(Nants,)
+            The average delay solution across time for each antenna.
+        ant_std : ndarray, shape=(Nants,)
+            The standard deviation of delay solutions across time for each antenna.
+        time_std : ndarray, shape=(Ntimes,)
+            The standard deviation of delay solutions across ants for each time-stamp.
         agg_std : float
-            aggregate standard deviation of delay solutions
-            across all antennas and all times
-
+            The aggregate standard deviation of delay solutions across all antennas and
+            all times.
         max_std : float
-                maximum antenna standard deviation of delay solutions
-
-        z_scores : ndarray, shape=(N_ant, N_times)
-            z_scores (standard scores) for each (antenna, time)
-            delay solution w.r.t. agg_std
-
-        ant_z_scores : ndarray, shape=(N_ant,)
-            absolute_value(z_scores) for each antenna & time
-            then averaged over time
+            The maximum antenna standard deviation of delay solutions.
+        z_scores : ndarray, shape=(Nants, Ntimes)
+            The z-score (standard score) for each (antenna, time) delay solution with
+            respect to the aggregate standard deviation.
+        ant_z_scores : ndarray, shape=(Nants,)
+            The absolute value of z-scores for each antenna & time, which is then
+            averaged over time.
 
         """
         # calculate standard deviations, ignoring antenna-times flagged for all freqs
@@ -635,48 +661,40 @@ class FirstCalMetrics(object):
                     plt_kwargs={'markersize': 5, 'alpha': 0.75}):
         """Plot delay solutions from a calfits file.
 
-        plot either
+        This method plots either:
             1. per-antenna delay solution in nanosec
             2. per-antenna delay solution subtracting per-ant median
             3. both
 
-        Input:
-        ------
 
-        ants : list, [default=None]
-            specify which antennas to plot.
-            will plot all by default
+        Parameters
+        ----------
+        ants : list, optional
+            List specifying which antennas to plot. If None, all antennas are plotted.
+        plot_type : {"solution", "fluctuation", "both"}, optional
+            Specify which type of plot to make. "solution" means plotting the full delay
+            solution. "fluctuation" plots just the deviations from the average. "both"
+            will make a plot of both types. Default is "both"
+        ax : list, optional
+            A list containing matplotlib axis objects on which to make plots.
+            If None, the method will create new figures and axes as needed. If this
+            is not None, the list must contain enough subplots given the type specified
+            in plot_type, plus one additional axis for the legend at the end.
+        cmap : str, optional
+            The colormap for different antennas. Default is "nipy_spectral".
+        save : bool, optional
+            If True, save the plot as a png file. Note that this only works if the figure
+            is generated inside of the function (i.e., if ax==None). Default is False.
+        fname : str, optional
+            Full path to the filename to save the plot as. Default is self.fc_filestem.
+        plt_kwargs : dict, optional
+            Keyword arguments for ax.plot() calls. Default is {"markersize": 5, "alpha": 0.75}.
 
-        plot_type : str, [default='both']
-            specify which type of plot to make
-            'solution' for full delay solution
-            'fluctuation' for just flucutations from avg
-            'both' for both
+        Returns
+        -------
+        fig : matplotlib figure object
+            If ax is not specified, the figure generated inside the method is returned.
 
-        ax : list, [default=None]
-            list containing matplotlib axis objects
-            to make plots in.
-            if None, will create a figure and axes by default.
-            if not None, ax must contain enough subplots
-            given specification of plot_type plus one
-            more axis for a legend at the end
-
-        cmap : str, [default='spectral']
-            colormap for different antennas
-
-        save : bool, [default=False]
-            if True save plot as png
-            only works if fig is defined in function
-            i.e. if ax == None
-
-        fname : str, [default=self.fc_filestem+'.png']
-            filename to save plot as
-            default is self.fc_filestem
-
-        plt_kwargs : dict, [default={'markersize':8,'alpha':0.75}]
-            keyword arguments for ax.plot() calls
-            other than "c" and "marker" which are
-            already defined
         """
         import matplotlib.pyplot as plt
         # Init figure and ax if needed
@@ -760,31 +778,29 @@ class FirstCalMetrics(object):
                      save=False, kwargs={'cmap': 'Spectral'}, plot_abs=False):
         """Plot z_scores for antenna delay solutions.
 
-        Input:
-        ------
+        Parameters
+        ----------
+        fname : str, optional
+            Full path to the output filename.
+        plot_type : {"full", "time_avg"}, optional
+            Type of plot to make. "full" plots the z-score for each entry for
+            antennas and times. "time_avg" plots the z-score for each antenna
+            averaged over time. Default is "full".
+        pol : str, optional
+            Polarization to plot. Default is the first one saved in the metrics object.
+        ax : matplotlib axis object, optional
+            Matplotlib axis object to add plot to. If not specified, a new axis object
+            is created.
+        figsize : tuple, optional
+            The figsize to use when creating a new figure (i.e., if ax is None). Default
+            is (10, 6).
+        save : bool, optional
+            If True, save figure to fname. Default is False.
+        kwargs : dict, optional
+            Keyword arguments to the plot_zscores function. Default is {"cmap": "Spectral"}.
+        plot_abs : bool, optional
+            If True, plot the absolue value of the z-scored. Default is False.
 
-        fname : str, default=None
-            filename
-
-        plot_type : str, default='full'
-            Type of plot to make
-            'full' : plot zscore for each (N_ant, N_times)
-            'time_avg' : plot zscore for each (N_ant,) avg over time
-
-        pol : str, defaults to first polarization in metrics dict
-            Polarization to plot
-
-        ax : axis object, default=None
-            matplotlib axis object
-
-        figsize : tuple, default=(10,6)
-            figsize if creating figure
-
-        save : bool, default=False
-            save figure to file
-
-        kwargs : dict
-            plotting kwargs
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') is False:
@@ -799,26 +815,22 @@ class FirstCalMetrics(object):
     def plot_stds(self, fname=None, pol=None, ax=None, xaxis='ant', kwargs={}, save=False):
         """Plot standard deviation of delay solutions per-ant or per-time.
 
-        Input:
-        ------
-
-        fname : str, default=None
-            filename
-
-        pol : str, defaults to first polarization in metrics dict
-            Polarization to plot
-
-        xaxis : str, default='ant', option=['ant', 'time']
-            what to plot on the xaxis, antennas or time stamp
-
-        ax : axis object, default=None
-            matplotlib axis object
-
-        kwargs : dict
-            plotting kwargs
-
-        save : bool, default=False
-            save image to file
+        Parameters
+        ----------
+        fname : str, optional
+            Full path to the output filename.
+        pol : str, optional
+            Polarization to plot. Default is the first one saved in the metrics object.
+        xaxis : {"ant", "time"}, optional
+            What to plot on the x-axis. Must be one of: "ant", "time". These are
+            antenna number or time-stamp respectively. Default is "ant".
+        ax : matplotlib axis object, optional
+            Matplotlib axis object to add plot to. If not specified, a new axis object
+            is created.
+        kwargs : dict, optional
+            Plotting keyword arguments. Default is empty dict.
+        save : bool, optional
+            If True, save the image to fname. Default is False.
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') is False:
@@ -835,14 +847,16 @@ def firstcal_metrics_run(files, args, history):
     """
     Run firstcal_metrics tests on a given set of input files.
 
-    Args:
-        files -- a list of files to run firstcal metrics on.
-        args -- parsed arguments via argparse.ArgumentParser.parse_args
-    Return:
-        None
-
-    The function will take in a list of files and options. It will run the firstcal
+    This function will take in a list of files and options. It will run the firstcal
     metrics and produce a JSON file containing the relevant information.
+
+    Parameters
+    ----------
+    files : list of str
+        A list of files to run firstcal metrics on.
+    args : argparse.Namespace
+        The parsed command-line arguments generated via argparse.ArgumentParser.parse_args.
+
     """
     if len(files) == 0:
         raise AssertionError('Please provide a list of calfits files')
