@@ -7,8 +7,9 @@ import numpy as np
 import os
 from pyuvdata import UVData
 from pyuvdata import UVCal
-from .uvflag import UVFlag
+from pyuvdata import UVFlag
 from . import utils as qm_utils
+from pyuvdata import utils as uvutils
 from .version import hera_qm_version_str
 from .metrics_io import process_ex_ants
 import warnings
@@ -361,7 +362,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
                                                         farr[i, 0, :, pi], nsig_p)
         if nsig_f is not None:
             # Channel watershed
-            d = qm_utils.collapse(marr, avg_method, axis=(0, 1, 3), weights=warr)
+            d = uvutils.collapse(marr, avg_method, axis=(0, 1, 3), weights=warr)
             f = np.all(farr, axis=(0, 1, 3))
             farr[:, :, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, 1, -1, 1)
         if nsig_t is not None:
@@ -370,8 +371,8 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
             d = np.zeros(ts.size)
             f = np.zeros(ts.size, dtype=np.bool)
             for i, t in enumerate(ts):
-                d[i] = qm_utils.collapse(marr[uvf.time_array == t, 0, :, :], avg_method,
-                                         weights=warr[uvf.time_array == t, 0, :, :])
+                d[i] = uvutils.collapse(marr[uvf.time_array == t, 0, :, :], avg_method,
+                                        weights=warr[uvf.time_array == t, 0, :, :])
                 f[i] = np.all(farr[uvf.time_array == t, 0, :, :])
             f = _ws_flag_waterfall(d, f, nsig_t)
             for i, t in enumerate(ts):
@@ -384,12 +385,12 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
                                                             farr[ai, 0, :, :, pi].T, nsig_p).T
         if nsig_f is not None:
             # Channel watershed
-            d = qm_utils.collapse(marr, avg_method, axis=(0, 1, 3, 4), weights=warr)
+            d = uvutils.collapse(marr, avg_method, axis=(0, 1, 3, 4), weights=warr)
             f = np.all(farr, axis=(0, 1, 3, 4))
             farr[:, :, :, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, 1, -1, 1, 1)
         if nsig_t is not None:
             # Time watershed
-            d = qm_utils.collapse(marr, avg_method, axis=(0, 1, 2, 4), weights=warr)
+            d = uvutils.collapse(marr, avg_method, axis=(0, 1, 2, 4), weights=warr)
             f = np.all(farr, axis=(0, 1, 2, 4))
             farr[:, :, :, :, :] += _ws_flag_waterfall(d, f, nsig_t).reshape(1, 1, 1, -1, 1)
     elif uvf_m.type == 'waterfall':
@@ -398,12 +399,12 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
             farr[:, :, pi] += _ws_flag_waterfall(marr[:, :, pi], farr[:, :, pi], nsig_p)
         if nsig_f is not None:
             # Channel watershed
-            d = qm_utils.collapse(marr, avg_method, axis=(0, 2), weights=warr)
+            d = uvutils.collapse(marr, avg_method, axis=(0, 2), weights=warr)
             f = np.all(farr, axis=(0, 2))
             farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, -1, 1)
         if nsig_t is not None:
             # Time watershed
-            d = qm_utils.collapse(marr, avg_method, axis=(1, 2), weights=warr)
+            d = uvutils.collapse(marr, avg_method, axis=(1, 2), weights=warr)
             f = np.all(farr, axis=(1, 2))
             farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_t).reshape(-1, 1, 1)
     else:
@@ -483,8 +484,8 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     if uvf_m.type == 'baseline':
         if nsig_f is not None:
             # Channel flagging
-            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3),
-                                  weights=uvf_m.weights_array)
+            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3),
+                                 weights=uvf_m.weights_array)
             indf = np.where(d >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :] = True
         if nsig_t is not None:
@@ -492,36 +493,36 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
             ts = np.unique(uvf_m.time_array)
             d = np.zeros(ts.size)
             for i, t in enumerate(ts):
-                d[i] = qm_utils.collapse(uvf_m.metric_array[uvf_m.time_array == t, 0, :, :],
-                                         avg_method,
-                                         weights=uvf_m.weights_array[uvf_m.time_array == t, 0, :, :])
+                d[i] = uvutils.collapse(uvf_m.metric_array[uvf_m.time_array == t, 0, :, :],
+                                        avg_method,
+                                        weights=uvf_m.weights_array[uvf_m.time_array == t, 0, :, :])
             indf = np.where(d >= nsig_t)[0]
             for t in ts[indf]:
                 uvf_f.flag_array[uvf_f.time_array == t, :, :, :] = True
     elif uvf_m.type == 'antenna':
         if nsig_f is not None:
             # Channel flag
-            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3, 4),
-                                  weights=uvf_m.weights_array)
+            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3, 4),
+                                 weights=uvf_m.weights_array)
             indf = np.where(d >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :, :] = True
         if nsig_t is not None:
             # Time watershed
-            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 2, 4),
-                                  weights=uvf_m.weights_array)
+            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 2, 4),
+                                 weights=uvf_m.weights_array)
             indt = np.where(d >= nsig_t)[0]
             uvf_f.flag_array[:, :, :, indt, :] = True
     elif uvf_m.type == 'waterfall':
         if nsig_f is not None:
             # Channel flag
-            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(0, 2),
-                                  weights=uvf_m.weights_array)
+            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 2),
+                                 weights=uvf_m.weights_array)
             indf = np.where(d >= nsig_f)[0]
             uvf_f.flag_array[:, indf, :] = True
         if nsig_t is not None:
             # Time watershed
-            d = qm_utils.collapse(uvf_m.metric_array, avg_method, axis=(1, 2),
-                                  weights=uvf_m.weights_array)
+            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(1, 2),
+                                 weights=uvf_m.weights_array)
             indt = np.where(d >= nsig_t)[0]
             uvf_f.flag_array[indt, :, :] = True
     else:
