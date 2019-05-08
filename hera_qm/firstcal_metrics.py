@@ -135,7 +135,7 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         ax.set_xlim(-1, Nants)
         ax.set_xticks(range(Nants))
         ax.set_xticklabels(metrics['ants'])
-        [t.set_rotation(20) for t in ax.get_xticklabels()]
+        [label.set_rotation(20) for label in ax.get_xticklabels()]
         ax.set_xlabel('antenna number', fontsize=14)
         ax.set_ylabel('delay solution standard deviation [ns]', fontsize=14)
 
@@ -145,7 +145,7 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         ax.grid(True, zorder=0)
         ax.tick_params(size=8)
         ax.plot(xax, yax, c='k', marker='.', linestyle='-', alpha=0.85, zorder=1)
-        [t.set_rotation(20) for t in ax.get_xticklabels()]
+        [label.set_rotation(20) for label in ax.get_xticklabels()]
         ax.set_xlabel('fractional JD of {}'.format(metrics['start_JD']), fontsize=14)
         ax.set_ylabel('delay solution standard deviation [ns]', fontsize=14)
 
@@ -347,7 +347,7 @@ class FirstCalMetrics(object):
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_files)
 
-        self.pols = np.array([uvutils.polnum2str(x) for x in self.UVC.jones_array])
+        self.pols = np.array([uvutils.polnum2str(jones) for jones in self.UVC.jones_array])
         self.Npols = self.pols.size
 
         # get file prefix
@@ -414,24 +414,26 @@ class FirstCalMetrics(object):
             # noise level of 0.01 nanoseconds. Both of these are hyperparameters that are fit for via
             # a gradient descent algorithm in the GP.fit() routine, so length_scale=0.2 and
             # noise_level=0.01 are just initial conditions and are not the final hyperparameter solution
-            kernel = gp.kernels.RBF(length_scale=0.2, length_scale_bounds=(0.01, 1.0)) + gp.kernels.WhiteKernel(noise_level=0.01)
-            x = self.frac_JD.reshape(-1, 1)
+            kernel = (gp.kernels.RBF(length_scale=0.2, length_scale_bounds=(0.01, 1.0))
+                      + gp.kernels.WhiteKernel(noise_level=0.01))
+            xdata = self.frac_JD.reshape(-1, 1)
             self.delay_smooths = copy.copy(self.delay_fluctuations)
             # iterate over each antenna
-            for i in range(self.Nants):
+            for anti in range(self.Nants):
                 # get ydata
-                y = copy.copy(self.delay_fluctuations[i, :, :])
+                ydata = copy.copy(self.delay_fluctuations[anti, :, :])
                 # scale by std
-                ystd = np.sqrt([astats.biweight_midvariance(y[~delay_flags[i, :, ip], ip]) for ip in range(self.Npols)])
-                y /= ystd
+                ystd = np.sqrt([astats.biweight_midvariance(ydata[~delay_flags[anti, :, ip], ip])
+                                for ip in range(self.Npols)])
+                ydata /= ystd
                 GP = gp.GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
                 for pol_cnt in range(self.Npols):
-                    if np.all(np.isfinite(y[..., pol_cnt])):
+                    if np.all(np.isfinite(ydata[..., pol_cnt])):
                         # fit GP and remove from delay fluctuations but only one polarization at a time
-                        GP.fit(x, y[..., pol_cnt])
-                        ymodel = (GP.predict(x) * ystd[pol_cnt])
-                        self.delay_fluctuations[i, :, pol_cnt] -= ymodel
-                        self.delay_smooths[i, :, pol_cnt] = ymodel
+                        GP.fit(xdata, y[..., pol_cnt])
+                        ymodel = (GP.predict(xdata) * ystd[pol_cnt])
+                        self.delay_fluctuations[anti, :, pol_cnt] -= ymodel
+                        self.delay_smooths[anti, :, pol_cnt] = ymodel
 
     def run_metrics(self, std_cut=0.5):
         """Compute all metrics and save to dictionary.
@@ -467,10 +469,10 @@ class FirstCalMetrics(object):
 
         """
         full_metrics = OrderedDict()
-        for i, pol in enumerate(self.pols):
+        for pol_ind, pol in enumerate(self.pols):
             # Calculate std and zscores
             (ant_avg, ant_std, time_std, agg_std, max_std,
-             z_scores, ant_z_scores) = self.delay_std(pol_ind=i, return_dict=True)
+             z_scores, ant_z_scores) = self.delay_std(pol_ind=pol_ind, return_dict=True)
 
             # Given delay standard dev. cut, find "bad" ants
             # also determine if full solultion is bad
@@ -733,10 +735,10 @@ class FirstCalMetrics(object):
                 ax = axes[0]
             plabel = []
             ax.grid(True, zorder=0)
-            for i, index in enumerate(plot_ants):
-                p, = ax.plot(self.frac_JD, self.delays[index], marker='.',
-                             c=cm[i], **plt_kwargs)
-                plabel.append(p)
+            for color, delay in zip(cm, self.delays[plot_ants]):
+                pl, = ax.plot(self.frac_JD, delay, marker='.',
+                              c=color, **plt_kwargs)
+                plabel.append(pl)
             ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
             ax.set_ylabel('delay solution [ns]', fontsize=14)
             if plot_type == 'both':
@@ -749,10 +751,10 @@ class FirstCalMetrics(object):
                 ax = axes[1]
             plabel = []
             ax.grid(True, zorder=0)
-            for i, index in enumerate(plot_ants):
-                p, = ax.plot(self.frac_JD, self.delay_fluctuations[index],
-                             marker='.', c=cm[i], **plt_kwargs)
-                plabel.append(p)
+            for color, delay_f in zip(cm, self.delay_fluctuations[plot_ants]):
+                pl, = ax.plot(self.frac_JD, delay_f,
+                              marker='.', c=color, **plt_kwargs)
+                plabel.append(pl)
             ax.set_xlabel('fraction of JD %d' % self.start_JD, fontsize=14)
             ax.set_ylabel('delay fluctuation [ns]', fontsize=14)
             if plot_type == 'both':
@@ -762,9 +764,9 @@ class FirstCalMetrics(object):
         if custom_ax is False:
             ax = fig.add_axes([1.0, 0.1, 0.05, 0.8])
             ax.axis('off')
-            ax.legend(plabel, [self.ants[i] for i in plot_ants])
+            ax.legend(plabel, self.ants[plot_ants])
         else:
-            ax[-1].legend(plabel, [self.ants[i] for i in plot_ants])
+            ax[-1].legend(plabel, self.ants[plot_ants])
 
         if save is True and custom_ax is False:
             if fname is None:
@@ -861,7 +863,7 @@ def firstcal_metrics_run(files, args, history):
     if len(files) == 0:
         raise AssertionError('Please provide a list of calfits files')
 
-    for i, filename in enumerate(files):
+    for filename in files:
         fm = FirstCalMetrics(filename)
         fm.run_metrics(std_cut=args.std_cut)
 

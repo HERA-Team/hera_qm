@@ -137,7 +137,7 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
     ----------
     data : array
         Data for all polarizations, stored in a format that supports
-        indexing via data[i,j,pol].
+        indexing via data[ant1, ant2, pol].
     pols : list of str
         List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols : list of str
@@ -164,20 +164,20 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
     absVijMean = {(ant, antpol): 0.0 for ant in ants for antpol in antpols if
                   (ant, antpol) not in xants}
     visCounts = deepcopy(absVijMean)
-    for (i, j) in bls:
-        if i == j:
+    for (ant1, ant2) in bls:
+        if ant1 == ant2:
             continue
         for pol in pols:
-            ants = list(zip((i, j), pol))
+            ants = list(zip((ant1, ant2), pol))
             if all([ant in xants for ant in ants]):
                 continue
-            d = data[i, j, pol]
-            s = np.nansum(np.abs(d))
+            bl_data = data[ant1, ant2, pol]
+            dsum = np.nansum(np.abs(bl_data))
             for ant, antpol in ants:
                 if (ant, antpol) in xants:
                     continue
-                absVijMean[(ant, antpol)] += s
-                visCounts[(ant, antpol)] += np.isfinite(d).sum()
+                absVijMean[(ant, antpol)] += dsum
+                visCounts[(ant, antpol)] += np.isfinite(bl_data).sum()
     timeFreqMeans = {key: absVijMean[key] / visCounts[key]
                      for key in absVijMean}
 
@@ -210,9 +210,9 @@ def compute_median_auto_power_dict(data, pols, reds):
     autoPower = {}
     for pol in pols:
         for bls in reds:
-            for (i, j) in bls:
-                tmp_power = np.abs(data[i, j, pol])**2
-                autoPower[i, j, pol] = np.median(np.mean(tmp_power, axis=0))
+            for (ant1, ant2) in bls:
+                tmp_power = np.abs(data[ant1, ant2, pol])**2
+                autoPower[ant1, ant2, pol] = np.median(np.mean(tmp_power, axis=0))
     return autoPower
 
 
@@ -227,7 +227,7 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
     ----------
     data : array or HERAData object
         Data for all polarizations, stored in a format that supports indexing
-        as data[i,j,pol].
+        as data[ant1, ant2, pol].
     pols : list of str
         List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols : list of str
@@ -270,7 +270,7 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
             if ((not crossPol and (pol0 is pol1))
                     or (crossPol and onlyOnePolCrossed)):
                 for bls in reds:
-                    for n, (ant0_i, ant0_j) in enumerate(bls):
+                    for ant0_i, ant0_j in bls:
                         data0 = data[ant0_i, ant0_j, pol0]
                         for (ant1_i, ant1_j) in bls[n + 1:]:
                             data1 = data[ant1_i, ant1_j, pol1]
@@ -387,7 +387,7 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
     ----------
     data : array or HERAData object
         Data for all polarizations, stored in a format that supports indexing
-        as data[i,j,pol].
+        as data[ant1, ant2, pol].
     pols : list of str
         List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols : list of str
@@ -445,7 +445,7 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[],
     ----------
     data : array or HERAData object
         Data for all polarizations, stored in a format that supports indexing
-        as data[i,j,pol].
+        as data[ant1, ant2, pol].
     pols : list of str
         List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
     antpols : list of str
@@ -881,8 +881,8 @@ class AntennaMetrics():
         self.alwaysDeadCut = alwaysDeadCut
 
         # Loop over
-        for n in range(len(self.antpols) * len(self.ants)):
-            self.iter = n
+        for iter in range(len(self.antpols) * len(self.ants)):
+            self.iter = iter
             self._run_all_metrics(run_mean_vij=run_mean_vij,
                                   run_red_corr=run_red_corr,
                                   run_cross_pols=run_cross_pols)
@@ -922,7 +922,7 @@ class AntennaMetrics():
                 for antpol in self.antpols:
                     self.xants.append((worstCrossAnt[0], antpol))
                     self.crossedAntsRemoved.append((worstCrossAnt[0], antpol))
-                    self.removalIter[(worstCrossAnt[0], antpol)] = n
+                    self.removalIter[(worstCrossAnt[0], antpol)] = iter
                     if verbose:
                         print('On iteration', n, 'we flag\t', end='')
                         print((worstCrossAnt[0], antpol))
@@ -935,9 +935,9 @@ class AntennaMetrics():
                 for dead_ant in dead_ants:
                     self.xants.append(dead_ant)
                     self.deadAntsRemoved.append(dead_ant)
-                    self.removalIter[dead_ant] = n
+                    self.removalIter[dead_ant] = iter
                     if verbose:
-                        print('On iteration', n, 'we flag', dead_ant)
+                        print('On iteration', iter, 'we flag', dead_ant)
             else:
                 break
 
