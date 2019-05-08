@@ -270,9 +270,9 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
             if ((not crossPol and (pol0 is pol1))
                     or (crossPol and onlyOnePolCrossed)):
                 for bls in reds:
-                    for ant0_i, ant0_j in bls:
+                    for bli, (ant0_i, ant0_j) in enumerate(bls):
                         data0 = data[ant0_i, ant0_j, pol0]
-                        for (ant1_i, ant1_j) in bls[n + 1:]:
+                        for (ant1_i, ant1_j) in bls[bli + 1:]:
                             data1 = data[ant1_i, ant1_j, pol1]
                             corr = np.nanmedian(np.abs(np.nanmean(data0 * data1.conj(), axis=0)))
                             corr /= np.sqrt(autoPower[ant0_i, ant0_j, pol0]

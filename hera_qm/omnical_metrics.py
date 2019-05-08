@@ -564,7 +564,7 @@ class OmniCal_Metrics(object):
             metrics['band'] = self.band
             metrics['ant_array'] = self.ant_array
             metrics['jones'] = self.jones[poli]
-            metrics['pol'] = self.pols[i]
+            metrics['pol'] = self.pols[poli]
             metrics['ant_pol'] = self.pols[poli][0]
             metrics['times'] = self.times
             metrics['Ntimes'] = self.Ntimes

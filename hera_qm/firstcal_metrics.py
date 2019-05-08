@@ -430,7 +430,7 @@ class FirstCalMetrics(object):
                 for pol_cnt in range(self.Npols):
                     if np.all(np.isfinite(ydata[..., pol_cnt])):
                         # fit GP and remove from delay fluctuations but only one polarization at a time
-                        GP.fit(xdata, y[..., pol_cnt])
+                        GP.fit(xdata, ydata[..., pol_cnt])
                         ymodel = (GP.predict(xdata) * ystd[pol_cnt])
                         self.delay_fluctuations[anti, :, pol_cnt] -= ymodel
                         self.delay_smooths[anti, :, pol_cnt] = ymodel
