@@ -94,16 +94,16 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
     ----------
     metrics : dict
         A "metrics" dictionary from FirstCalMetrics.run_metrics().
-    fname : str
+    fname : str, optional
         Full path to filename. Default is None.
-    xaxis : {"ant", "time"}
+    xaxis : {"ant", "time"}, optional
         What to plot on the x-axis. Must be one of: "ant", "time". These are
         antenna number or time-stamp respectively. Default is "ant".
-    ax : matplotlib axis object
+    ax : matplotlib axis object, optional
         Where to plot the data. Default is None (meaning a new axis will be created).
-    kwargs : dict
+    kwargs : dict, optional
         Plotting kwargs. Potential keys (descriptions) are: "cmap" (colormap).
-    save : bool
+    save : bool, optional
         If True, save the image to the specified filename. Default is False.
 
     Returns
@@ -170,24 +170,26 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
     ----------
     metrics : dict
         A FirstCalMetrics "metrics" dictionary.
-    fname : str
+    fname : str, optional
         Full path to the output filename. Default is None.
-    plot_type : {"full", "time_avg"}
+    plot_type : {"full", "time_avg"}, optional
         Type of plot to make. "full" plots the z-score for each entry for
         antennas and times. "time_avg" plots the z-score for each antenna
         averaged over time. Default is "full".
-    ax : matplotlib axis object
+    ax : matplotlib axis object, optional
         Where to plot the data. Default is None (meaning a new axis will be created).
-    figsize : tuple
+    figsize : tuple, optional
         Figure size if creating a figure. Default is (10, 6).
-    save : bool
+    save : bool, optional
         If True, save the image to the specified filename. Default is False.
-    kwargs : dict
+    kwargs : dict, optional
         Plotting kwargs. Potential keys (descriptions) are: "vmin" (colormap minimum
         value), "vmax" (colormap maximum value), "cmap" (colormap). If plot type is
         "full", the kwargs dictionary is unpacked and passed to `matshow`.
-    plot_abs : bool
+        Default is {'cmap': 'Spectral'}
+    plot_abs : bool, optional
         If True, plot the absolute value of z-scores instead of actual values.
+        Default is False
 
     Returns
     -------
@@ -296,7 +298,7 @@ class FirstCalMetrics(object):
         calfits_files : str or list
             Filename for a *.first.calfits file or a list of (time-ordered)
             .first.calfits files of the same polarization.
-        use_gp : bool
+        use_gp : bool, optional
             If True, use a Gaussian process model to subtract underlying smooth
             delay solution behavior over time from fluctuations. Default is True.
 
@@ -439,7 +441,7 @@ class FirstCalMetrics(object):
 
         Parameters
         ----------
-        std_cut : float
+        std_cut : float, optional
             Delay standard deviation for determining good or bad. Default is 0.5.
 
         Results
@@ -517,14 +519,14 @@ class FirstCalMetrics(object):
 
         Parameters
         ----------
-        filename : str
+        filename : str, optional
             The full filename to write without filetype suffix. If not provided,
             self.fc_filestem is used.
-        filetype : {"h5", "hdf5", "json", "pkl"}
+        filetype : {"h5", "hdf5", "json", "pkl"}, optional
             The filetype to save the metrics as. "h5" and "hdf5" save an HDF5
             filetype, "json" saves JSON, and "pkl" saves a python pickle. "json"
             and "pkl" are deprecated, and should not be used. Default is "h5".
-        overwrite : bool
+        overwrite : bool, optional
             If True, overwrite the file if it exists.
 
         """
@@ -581,10 +583,10 @@ class FirstCalMetrics(object):
 
         Parameters
         ----------
-        return_dict : bool
+        return_dict : bool, optional
             If True, return time_std, ant_std and z_scores as a dictionary with
             "ant" as keys and "times" as keys. If False, return these values
-            as ndarrays.
+            as ndarrays. Default is False
 
         Returns
         -------
@@ -667,25 +669,25 @@ class FirstCalMetrics(object):
 
         Parameters
         ----------
-        ants : list
+        ants : list, optional
             List specifying which antennas to plot. If None, all antennas are plotted.
-        plot_type : {"solution", "fluctuation", "both"}
+        plot_type : {"solution", "fluctuation", "both"}, optional
             Specify which type of plot to make. "solution" means plotting the full delay
             solution. "fluctuation" plots just the deviations from the average. "both"
-            will make a plot of both types.
-        ax : list
+            will make a plot of both types. Default is "both"
+        ax : list, optional
             A list containing matplotlib axis objects on which to make plots.
             If None, the method will create new figures and axes as needed. If this
             is not None, the list must contain enough subplots given the type specified
             in plot_type, plus one additional axis for the legend at the end.
-        cmap : str
+        cmap : str, optional
             The colormap for different antennas. Default is "nipy_spectral".
-        save : bool
+        save : bool, optional
             If True, save the plot as a png file. Note that this only works if the figure
-            is generated inside of the function (i.e., if ax==None).
-        fname : str
+            is generated inside of the function (i.e., if ax==None). Default is False.
+        fname : str, optional
             Full path to the filename to save the plot as. Default is self.fc_filestem.
-        plt_kwargs : dict
+        plt_kwargs : dict, optional
             Keyword arguments for ax.plot() calls. Default is {"markersize": 5, "alpha": 0.75}.
 
         Returns
@@ -778,25 +780,25 @@ class FirstCalMetrics(object):
 
         Parameters
         ----------
-        fname : str
+        fname : str, optional
             Full path to the output filename.
-        plot_type : {"full", "time_avg"}
+        plot_type : {"full", "time_avg"}, optional
             Type of plot to make. "full" plots the z-score for each entry for
             antennas and times. "time_avg" plots the z-score for each antenna
             averaged over time. Default is "full".
-        pol : str
+        pol : str, optional
             Polarization to plot. Default is the first one saved in the metrics object.
-        ax : matplotlib axis object
+        ax : matplotlib axis object, optional
             Matplotlib axis object to add plot to. If not specified, a new axis object
             is created.
-        figsize : tuple
+        figsize : tuple, optional
             The figsize to use when creating a new figure (i.e., if ax is None). Default
             is (10, 6).
-        save : bool
+        save : bool, optional
             If True, save figure to fname. Default is False.
-        kwargs : dict
+        kwargs : dict, optional
             Keyword arguments to the plot_zscores function. Default is {"cmap": "Spectral"}.
-        plot_abs : bool
+        plot_abs : bool, optional
             If True, plot the absolue value of the z-scored. Default is False.
 
         """
@@ -815,19 +817,19 @@ class FirstCalMetrics(object):
 
         Parameters
         ----------
-        fname : str
+        fname : str, optional
             Full path to the output filename.
-        pol : str
+        pol : str, optional
             Polarization to plot. Default is the first one saved in the metrics object.
-        xaxis : {"ant", "time"}
+        xaxis : {"ant", "time"}, optional
             What to plot on the x-axis. Must be one of: "ant", "time". These are
             antenna number or time-stamp respectively. Default is "ant".
-        ax : matplotlib axis object
+        ax : matplotlib axis object, optional
             Matplotlib axis object to add plot to. If not specified, a new axis object
             is created.
-        kwargs : dict
-            Plotting keyword arguments.
-        save : bool
+        kwargs : dict, optional
+            Plotting keyword arguments. Default is empty dict.
+        save : bool, optional
             If True, save the image to fname. Default is False.
         """
         # make sure metrics has been run
@@ -850,9 +852,9 @@ def firstcal_metrics_run(files, args, history):
 
     Parameters
     ----------
-    files
+    files : list of str
         A list of files to run firstcal metrics on.
-    args
+    args : argparse.Namespace
         The parsed command-line arguments generated via argparse.ArgumentParser.parse_args.
 
     """

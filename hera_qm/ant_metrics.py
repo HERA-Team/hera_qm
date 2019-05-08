@@ -135,21 +135,21 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
 
     Parameters
     ----------
-    data
+    data : array
         Data for all polarizations, stored in a format that supports
         indexing via data[i,j,pol].
-    pols
+    pols : list of str
         List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols
+    antpols : list of str
         List of antenna polarizations (e.g. ['x', 'y']).
-    ants
+    ants : list of ints
         List of all antenna indices.
-    bls
+    bls : list of tuples of ints
         List of tuples of antenna pairs.
-    xants
+    xants : list of tuples, optional
         List of antenna-polarization tuples that should be ignored. The
-        expected format is (ant, antpol).
-    rawMetric : bool
+        expected format is (ant, antpol). Default is empty list.
+    rawMetric : bool, optional
         If True, return the raw mean Vij metric instead of the modified z-score.
         Default is False.
 
@@ -192,12 +192,12 @@ def compute_median_auto_power_dict(data, pols, reds):
 
     Parameters
     ----------
-    data
+    data : dict
         Dictionary of visibility data. Keys are in the form (ant1, ant2, pol).
-    pols
+    pols : list of str
         List of polarizations to compute the median auto power. Allowed values
         are ['xx', 'yy', 'xy', 'yx'].
-    reds
+    reds : list of tuples of ints
         List of lists of tuples of antenna numbers that make up redundant baseline groups.
 
     Returns
@@ -225,27 +225,27 @@ def red_corr_metrics(data, pols, antpols, ants, reds, xants=[],
 
     Parameters
     ----------
-    data
+    data : array or HERAData object
         Data for all polarizations, stored in a format that supports indexing
         as data[i,j,pol].
-    pols
+    pols : list of str
         List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols
+    antpols : list of str
         List of antenna polarizations (e.g. ['x', 'y']).
-    ants
+    ants : list of ints
         List of all antenna indices.
-    reds
+    reds : list of tuples of ints
         List of lists of tuples of antenna numbers that make up redundant
         baseline groups.
-    xants
+    xants : list of tuples, optional
         List of antenna-polarization tuples that should be ignored. The
-        expected format is (ant, antpol).
-    rawMetric : bool
+        expected format is (ant, antpol). Default is empty list.
+    rawMetric : bool, optional
         If True, return the raw power correlations instead of the modified z-score.
         Default is False.
-    crossPol : bool
+    crossPol : bool, optional
         If True, return results only when the two visibility polarizations
-        differ by a single flip.
+        differ by a single flip. Default is False
 
     Returns
     -------
@@ -313,16 +313,16 @@ def exclude_partially_excluded_ants(antpols, xants):
 
     Parameters
     ----------
-    antpols
+    antpols : list of str
         List of Single antenna polarizations to add to excluded Antennas.
         Should be one of ['x','y'], ['x'], or ['y'].
-    xants
+    xants : list of tuples
         List of antenna-polarization tuples that should be ignored. The
         expected format is (ant, antpol).
 
     Retruns
     -------
-    xantSet
+    xantSet : list of tuples
         List of all antenna-polarization combinations to exclude.
 
     """
@@ -342,18 +342,19 @@ def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics,
 
     Parameters
     ----------
-    ants
+    ants : list of ints
         List of all antenna indices.
-    antpols
+    antpols : list of str
         List of antenna polarizations (e.g. ['x', 'y']).
-    crossMetrics
+    crossMetrics : dict
         Dict of a metrics computed with cross-polarizaed antennas. Keys are of
         the form (ant, antpol).
-    sameMetrics
+    sameMetrics : dict
         Dict of a metrics computed with non-cross-polarized antennas. Keys are of
         the form (ant, antpol).
-    xants
-        List of antennas ithat should be ignored. Keys are of the form (ant, antpol).
+    xants : list of tuples, optional
+        List of antennas that should be ignored. Entries are of the form (ant, antpol).
+        Default is empty list.
 
     Returns
     -------
@@ -384,23 +385,23 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
 
     Parameters
     ----------
-    data
+    data : array or HERAData object
         Data for all polarizations, stored in a format that supports indexing
         as data[i,j,pol].
-    pols
+    pols : list of str
         List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols
+    antpols : list of str
         List of antenna polarizations (e.g. ['x', 'y']).
-    ants
+    ants : list of ints
         List of all antenna indices.
-    bls
+    bls : list of tuples
         List of tuples of antenna pairs.
-    xants
+    xants : list of tuples, optional
         List of antenna-polarization tuples that should be ignored. The
         expected format is (ant, antpol). Note that if, e.g., (81, "y") is
         excluded, then (81, "x") cannot be identified as cross-polarized and
-        will be exluded as well.
-    rawMetric : bool
+        will be exluded as well. Default is empty list.
+    rawMetric : bool, optional
         If True, return the raw power ratio instead of the modified z-score.
         Default is False.
 
@@ -442,23 +443,23 @@ def red_corr_cross_pol_metrics(data, pols, antpols, ants, reds, xants=[],
 
     Parameters
     ----------
-    data
+    data : array or HERAData object
         Data for all polarizations, stored in a format that supports indexing
         as data[i,j,pol].
-    pols
+    pols : list of str
         List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols
+    antpols : list of str
         List of antenna polarizations (e.g. ['x', 'y']).
-    ants
+    ants : list of ints
         List of all antenna indices.
-    bls
+    bls : list of tuples of ints
         List of tuples of antenna pairs.
-    xants
+    xants : list of tuples, optional
         List of antenna-polarization tuples that should be ignored. The
         expected format is (ant, antpol). Note that if, e.g., (81, "y") is
         excluded, then (81, "x") cannot be identified as cross-polarized and
-        will be exluded as well.
-    rawMetric : bool
+        will be exluded as well. Default is empty list.
+    rawMetric : bool, optional
         If True, return the raw power ratio instead of the modified z-score.
         Default is False.
 
@@ -564,35 +565,35 @@ class AntennaMetrics():
 
         Parameters
         ----------
-        dataFileList
+        dataFileList : list of str
             List of data filenames of the four different visibility polarizations
             for the same observation.
-        reds
+        reds : list of tuples of ints
             List of lists of tuples of antenna numbers that make up redundant baseline groups.
-        format : str
+        format : str, optional
             File type of data. Must be one of: 'miriad', 'uvh5', 'uvfits', 'fhd',
             'ms' (see pyuvdata docs). Default is 'miriad'.
 
         Attributes
         ----------
-        hd
+        hd : HERAData
             HERAData object generated from dataFileList.
-        data
+        data : array
             Data contained in HERAData object.
-        flags
+        flags : array
             Flags contained in HERAData object.
-        nsamples
+        nsamples : array
             Nsamples contained in HERAData object.
-        ants
+        ants : list of ints
             List of antennas in HERAData object.
-        pols
+        pols : list of str
             List of polarizations in HERAData object.
-        bls
+        bls : list of ints
             List of baselines in HERAData object.
-        dataFileList
+        dataFileList : list of str
             List of data filenames of the four different visibility polarizations
             for the same observation.
-        reds
+        reds : list of tuples of ints
             List of lists of tuples of antenna numbers that make up redundant baseline groups.
         version_str : str
             The version of the hera_qm module used to generate these metrics.
@@ -626,14 +627,15 @@ class AntennaMetrics():
 
         Parameters
         ----------
-        pols
+        pols : list of str, optional
             List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
             Default is self.pols.
-        xants
+        xants : list of tuples, optional
             List of antenna-polarization tuples that should be ignored. The
-            expected format is (ant, antpol).
-        rawMetric : bool
+            expected format is (ant, antpol). Default is empty list.
+        rawMetric : bool, optional
             If True, return the raw mean Vij metric instead of the modified z-score.
+            Default is False.
 
         Returns
         -------
@@ -659,19 +661,19 @@ class AntennaMetrics():
 
         Parameters
         ----------
-        data
+        data : array or HERAData
             Data for all polarizations, stored in a format that supports indexing
             as data[i,j,pol].
-        pols
+        pols : list of str, optional
             List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
             Default is self.pols.
-        xants
+        xants : list of tuples, optional
             List of antenna-polarization tuples that should be ignored. The
-            expected format is (ant, antpol).
-        rawMetric : bool
+            expected format is (ant, antpol). Default is empty list.
+        rawMetric : bool, optional
             If True, return the raw power correlations instead of the modified z-score.
             Default is False.
-        crossPol : bool
+        crossPol : bool, optional
             If True, return results only when the two visibility polarizations differ
             by a single flip. Default is False.
 
@@ -699,10 +701,10 @@ class AntennaMetrics():
 
         Parameters
         ----------
-        xants
+        xants : list of tuples, optional
             List of antenna-polarization tuples that should be ignored. The
-            expected format is (ant, antpol).
-        rawMetric : bool
+            expected format is (ant, antpol). Default is empty list.
+        rawMetric : bool, optional
             If True, return the raw power correlations instead of the modified z-score.
             Default is False.
 
@@ -729,10 +731,10 @@ class AntennaMetrics():
 
         Parameters
         ----------
-        xants
+        xants : list of tuples, optional
             List of antenna-polarization tuples that should be ignored. The
-            expected format is (ant, antpol).
-        rawMetric : bool
+            expected format is (ant, antpol). Default is empty list.
+        rawMetric : bool, optional
             If True, return the raw power correlations instead of the modified z-score.
             Default is False.
 
@@ -788,11 +790,11 @@ class AntennaMetrics():
 
         Parameters
         ----------
-        run_mean_vij : bool
+        run_mean_vij : bool, optional
             Define if mean_Vij_metrics is executed. Default is True.
-        run_red_corr : bool
+        run_red_corr : bool, optional
             Define if red_corr_metrics is executed. Default is True.
-        run_cross_pols : bool
+        run_cross_pols : bool, optional
             Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics
             are executed. Default is True
 
@@ -856,19 +858,19 @@ class AntennaMetrics():
 
         Parameters
         ----------
-        crossCut : float
+        crossCut : float, optional
             Modified z-score cut for most cross-polarized antennas. Default is 5 "sigmas".
-        deadCut : float
+        deadCut : float, optional
             Modified z-score cut for most likely dead antennas. Default is 5 "sigmas".
-        alwaysDeadCut : float
+        alwaysDeadCut : float, optional
             Modified z-score cut for definitely dead antennas. Default is 10 "sigmas".
             These are all thrown away at once without waiting to iteratively throw away
             only the worst offender.
-        run_mean_vij : bool
+        run_mean_vij : bool, optional
             Define if mean_Vij_metrics is executed. Default is True.
-        run_red_corr : bool
+        run_red_corr : bool, optional
             Define if red_corr_metrics is executed. Default is True.
-        run_cross_pols : bool
+        run_cross_pols : bool, optional
             Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
             Default is True.
 
@@ -949,6 +951,8 @@ class AntennaMetrics():
         ----------
         filename : str
             The file into which metrics will be written.
+        overwrite: bool, optional
+            Whether to overwrite an existing file. Default is False.
 
         """
         if not hasattr(self, 'xants'):
@@ -993,36 +997,36 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
 
     Parameters
     ----------
-    files
+    files : list of str
         List of files to run ant metrics on. Can be any of the 4 polarizations.
-    pols
+    pols : list of str, optional
         List of polarizations to perform metrics over. Allowed polarizations: 'xx',
         'yy', 'xy', 'yx'. Default is ['xx', 'yy', 'xy', 'yx'].
-    crossCut : float
+    crossCut : float, optional
         Modified Z-Score limit to cut cross-polarized antennas. Default is 5.0.
-    deadCut : float
+    deadCut : float, optional
         Modifized Z-Score limit to cut dead antennas. Default is 5.0.
-    alwaysDeadCut : float
+    alwaysDeadCut : float, optional
         Modified Z-Score limit for antennas that are definitely dead. Antennas with
         z-scores above this limit are thrown away before iterative flagging.
         Default is 10.0.
-    metrics_path : str
+    metrics_path : str, optional
         Full path to directory to story output metric. Default is the same directory
         as input data files.
-    extension : str
+    extension : str, optional
         File extension to add to output files. Default is ant_metrics.hdf5.
-    vis_format : str
+    vis_format : str, optional
         File format of input visibility data. Must be one of: 'miriad', 'uvh5',
         'uvfits', 'fhd', 'ms' (see pyuvdata docs). Default is 'miriad'.
-    verbose : bool
+    verbose : bool, optional
         If True, print out statements during iterative flagging. Default is True.
-    history : str
+    history : str, optional
         The history the add to metrics. Default is nothing (empty string).
-    run_mean_vij : bool
+    run_mean_vij : bool, optional
         Define if mean_Vij_metrics is executed. Default is True.
-    run_red_corr : bool
+    run_red_corr : bool, optional
         Define if red_corr_metrics is executed. Default is True.
-    run_cross_pols : bool
+    run_cross_pols : bool, optional
         Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
         Default is True
 

@@ -119,7 +119,7 @@ def write_metrics(metrics, filename=None, filetype='json'):
     filename : str
         The base filename to write out. If not specified, the default is
         the filename saved in the metrics dictionary.
-    filetype : {"json", "pkl"}
+    filetype : {"json", "pkl"}, optional
         The file format of output metrics file. Default is "json".
     """
     # get pols
@@ -203,25 +203,26 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
     ----------
     metrics : dict
         A dictionary of metrics from OmniCal_Metrics.run_metrics().
-    plot_type : {"std", "ft", "hist"}
+    plot_type : {"std", "ft", "hist"}, optional
         The plot type to make. "std" plots the standard deviations of
         omni-firstcal phase differences. Large standard deviations
         are not ideal. "hist" plots the histogram of gain phase
         solutions. "ft" plots the FFT of the antenna gain differences.
         Default is "std".
-    ax : matplotlib axis object
+    ax : matplotlib axis object, optional
         The axis on which to generate plots. If None, axes will be generated
         as necessary. Default is None.
-    save : bool
+    save : bool, optional
         If True, save image as a png. Default is False.
-    fname : str
+    fname : str, optional
         Filename to save image as. If not specified, a filename is generated
         based on the input filename saved in the metrics dictionary.
-    outpath : str
+    outpath : str, optional
         Path to place file in. If not specified, will default to location
         of the input *omni.calfits file.
-    plot_kwargs : dict
+    plot_kwargs : dict, optional
         A dictionary of keyword arguments to be passed to the plot command.
+        Default is {'marker': 'o', 'color': 'k', 'linestyle': '', 'markersize': 6}
 
     Returns
     -------
@@ -308,20 +309,20 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
     ----------
     metrics : dict
         A metrics dictionary from OmniCal_Metrics.run_metrics().
-    ax : matplotlib axis object
+    ax : matplotlib axis object, optional
         The axis on which to generate plots. If None, axes will be generated
         as necessary. Default is None.
-    save : bool, default=False
+    save : bool, optional
         If True, save image as a png. Default is False.
-    fname : str
+    fname : str, optional
         Filename to save image as. If not specified, a filename is generated
         based on the input filename saved in the metrics dictionary.
-    outpath : str
+    outpath : str, optional
         Path to place file in. If not specified, will default to location
         of the input *omni.calfits file.
-
-    plot_kwargs : dict
+    plot_kwargs : dict, optional
         A dictionary of keyword arguments to be passed to the plot command.
+        Default is {'marker': 'o', 'color': 'k', 'linestyle': '', 'markersize': 6}.
 
     Returns
     -------
@@ -398,8 +399,8 @@ class OmniCal_Metrics(object):
         omni_calfits : str
             Path to a calfits file output from omnical, typically
             ending in *.omni.calfits.
-        history : str
-            History string to be added to output files.
+        history : str, optional
+            History string to be added to output files. Default is empty string.
 
         Attributes
         ----------
@@ -491,8 +492,16 @@ class OmniCal_Metrics(object):
         fcfiles : list
             A list of single-pol firstcal delay solution files matching ordering
             of polarization in .omni.calfits file.
-
-        See self.compile_metrics() for details on remaining keyword arguments.
+        cut_edges : bool
+            If True, removes Ncut channels from top and bottom of band. Default is True.
+        Ncut : int
+            Number of channels to remove from top and bottom of band (if cut_edges is True).
+            Default is 100.
+        phs_std_cut : float
+            The cut for standard deviation of phase solutions in radians. Default is 0.3.
+        chisq_std_zscore : float
+            The sigma tolerance (or z-score tolerance) for standard deviation of
+            the chi-squared fluctuations. Default is 4.0.
 
         Returns
         -------
@@ -640,10 +649,10 @@ class OmniCal_Metrics(object):
         ----------
         chisq : ndarray, shape=(Nants, Ntimes, Nfreqs)
             An ndarray containing chi-squared value for each antenna (single pol).
-        chisq_std_cut : float
+        chisq_std_zscore_cut : float, optional
             The sigma tolerance (or z-score tolerance) for standard deviation of
             the chi-squared fluctuations. Default is 4.0.
-        return_dict : bool
+        return_dict : bool, optional
             If True, return per-antenna metrics as a dictionary with antenna number as key
             rather than an ndarray. Default is True.
 
@@ -684,7 +693,7 @@ class OmniCal_Metrics(object):
         gain_diff : ndarray, dtype=complex, shape=(Nants, Ntimes, Nfreqs)
             A complex ndarray containing omnical gain phases divided by
             firstcal gain phases for a single pol.
-        return_dict : bool
+        return_dict : bool, optional
             If True, return antenna output as dictionary with antenna name as key.
             Default is True
 
@@ -720,10 +729,10 @@ class OmniCal_Metrics(object):
         ----------
         gain_diff : ndarray, dtype=complex float, shape=(Nants, Ntimes, Nfreqs)
             A complex ndarray containing omnical gains divided by firstcal gains.
-        phs_std_cut : float
+        phs_std_cut : float, optional
             The cut for standard deviation of phase solutions in radians. Default
             is 0.3.
-        return_dict : bool
+        return_dict : bool, optional
             If True, return per-antenna output as dictionary with antenna name as key.
             Default is True.
 
@@ -777,32 +786,34 @@ class OmniCal_Metrics(object):
 
         Parameters
         ----------
-        ants : list
-            A list of ant numbers to plot.
-        time_index : int
+        ants : list, optional
+            A list of ant numbers to plot. If not specified all antennas
+            are plotted.
+        time_index : int, optional
             The index of time axis to plot. Default is 0.
-        pol_index : int
+        pol_index : int, optional
             The index of cross polarization axis to plot. Default is 0.
-        divide_fc : bool
+        divide_fc : bool, optional
             If True, divide out firstcal gains from omnical gains.
             Note that this only works if self.firstcal_file is not None.
             Default is False.
-        plot_type : {"phs", "amp"}
+        plot_type : {"phs", "amp"}, optional
             The type of plot to make. "phs" is phase, "amp" is amplitude of the
-            complex gain solutions.
-        ax : matplotlib axis object
+            complex gain solutions. Default is "phs"
+        ax : matplotlib axis object, optional
             The axis on which to generate plots. If None, axes will be generated
             as necessary. Default is None.
-        save : bool
+        save : bool, optional
             If True, save image as a png. Default is False.
-        fname : str
+        fname : str, optional
             Filename to save image as. If not specified, a filename is generated
             based on the input filename saved in the metrics dictionary.
-        outpath : str
+        outpath : str, optional
             Path to place file in. If not specified, will default to location
             of the input *omni.calfits file.
-        plot_kwargs : dict
+        plot_kwargs : dict, optional
             A dictionary of keyword arguments to be passed to the plotting function.
+            Default is {'marker': 'o', 'markersize': 2, 'alpha': 0.75, 'linestyle': ''}.
 
         Returns
         -------
@@ -875,23 +886,23 @@ class OmniCal_Metrics(object):
 
         Parameters
         ----------
-        pol_index : int
+        pol_index : int, optional
             The polarization index to plot. Default is 0.
-        ants : list
+        ants : list, optional
             A list of ant numbers to plot. If not specified all antennas
             are plotted.
-        ax : matplotlib axis object
+        ax : matplotlib axis object, optional
             The axis on which to generate plots. If None, axes will be generated
             as necessary. Default is None.
-        save : bool
+        save : bool, optional
             If True, save image as a png. Default is False.
-        fname : str
+        fname : str, optional
             Filename to save image as. If not specified, a filename is generated
             based on the input filename saved in the metrics dictionary.
-        outpath : str
+        outpath : str, optional
             Path to place file in. If not specified, will default to location
             of the input *omni.calfits file.
-        plot_kwargs : dict
+        plot_kwargs : dict, optional
             A dictionary of keyword arguments to be passed to the plotting function.
 
         Returns
@@ -969,10 +980,12 @@ def omnical_metrics_run(files, args, history):
 
     Parameters
     ----------
-    files
+    files : list of str
         A list of *omni.calfits file to run metrics on.
-    args
+    args : argparse.Namespace
         Parsed command-line arguments generated via argparse.ArgumentParser.parse_args.
+    history : str
+        History string to append to omnical metrics object.
 
     Returns
     -------

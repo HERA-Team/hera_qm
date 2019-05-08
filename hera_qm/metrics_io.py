@@ -55,12 +55,12 @@ def _reds_list_to_dict(reds):
 
     Parameters
     ----------
-    reds
+    reds : list of (lists or tuples)
         List of list of tuples. e.g. list of list of antenna pairs for each baseline group.
 
     Returns
     -------
-    reds
+    reds : OrderedDict
         OrderedDict of baseline groups able to save to HDF5.
     """
     return OrderedDict([(i, np.array(reds[i], dtype=antpair_dtype))
@@ -72,12 +72,12 @@ def _reds_dict_to_list(reds):
 
     Parameters
     ----------
-    reds
+    reds : OrderedDict
         OrderedDict of redundant baseline groups.
 
     Returns
     -------
-    reds
+    reds : list of lists
         List of lists of baseline groups.
     """
     if isinstance(reds, dict):
@@ -101,9 +101,9 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
     Parameters
     ----------
-    h5file
+    h5file : file object
         An h5py file object into which data is written. This file is edited in place.
-    path
+    path : str
         An absolute path in HDF5 to store the current dictionary.
     in_dict : dict
         A dictionary to be recursively walked and stored in h5file.
@@ -237,7 +237,7 @@ def write_metric_file(filename, input_dict, overwrite=False):
         in Future), or a python pickle (Deprecated in Future).
     input_dict : dict
         Dictionary to be recursively written to the given file.
-    overwrite : bool
+    overwrite : bool, optional
         If True, overwrite an existing file instead of raising error. Default is False.
 
     Returns
@@ -306,16 +306,16 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
 
     Parameters
     ----------
-    h5file
+    h5file : file object
         An h5py file object into which data is written. This file is edited in place.
-    path
+    path : str
         An absolute path in HDF5 to store the current dictionary.
-    group_is_ordered : bool
-        If True, the dictionary is unpacked as an OrderedDictionary.
+    group_is_ordered : bool, optional
+        If True, the dictionary is unpacked as an OrderedDictionary. Default is False.
 
     Returns
     -------
-    out_dict
+    out_dict : dict
         The dictionary as saved in the output file.
 
     Raises
@@ -370,7 +370,7 @@ def _parse_key(key):
 
     Returns
     -------
-    out_key
+    out_key : int or tuple or str
         Parsed key as an int, antpol tuple, or string.
 
     """
@@ -496,12 +496,12 @@ def _parse_value(in_val):
 
     Parameters
     ----------
-    in_val
+    in_val : unicode or str
         The unicode or string value to be parsed.
 
     Returns
     -------
-    parsed_val
+    parsed_val : int or float or complex or str
         The input value cast as an int, float or complex, otherwise a string.
     """
     try:
@@ -530,7 +530,7 @@ def _parse_dict(input_str, value_type=int):
     ----------
     input_str : str
         The string to be processed.
-    value_type
+    value_type : data-type, optional
         The data type to cast value as. Default is int.
 
     Returns
@@ -569,7 +569,7 @@ def _parse_list_of_strings(input_str):
 
     Returns
     -------
-    files
+    files : list of str
         The list of strings representing input files.
 
     """
@@ -663,12 +663,12 @@ def _parse_dict_of_dicts(input_str, value_type=float):
     ----------
     input_str : str
         The input string to be processed.
-    value_type
+    value_type : data-type, optional
         The type to cast values in nested dictionaries to. Default is float.
 
     Returns
     -------
-    output
+    output : dict
         A dictionary of dictionaries. The keys of the outer dictionary should
         be the names of the associated metrics.
 
@@ -700,12 +700,12 @@ def _parse_list_of_dict_of_dicts(input_str, value_type=float):
     ----------
     input_str : str
         The input string to be processed.
-    value_type
+    value_type : data-type, optional
         The type to cast values in nested dictionaries to. Default is float.
 
     Returns
     -------
-    output
+    output : dict
         A dictionary of dictionary of dictionaries.
 
     """
@@ -734,12 +734,12 @@ def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
     ----------
     input_str : str
         The input string to be processed.
-    value_type
+    value_type : data-type, optional
         The type to cast values in nested dictionaries to. Default is float.
 
     Returns
     -------
-    output
+    output : dict
         A dictionary of dictionary of dictionaries.
 
     """

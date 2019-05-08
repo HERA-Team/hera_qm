@@ -43,7 +43,7 @@ def get_metrics_ArgumentParser(method_name):
 
     Returns
     -------
-    ap
+    ap : argparse.ArgumentParser
         An argparse.ArgumentParser instance with the relevant options for the selected method
     """
     methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_h1c_run",
@@ -397,9 +397,9 @@ def generate_fullpol_file_list(files, pol_list):
 
     Parameters
     ----------
-    files : list
+    files : list of str
         The list of files to look for.
-    pol_list : list
+    pol_list : list of str
         The list of polarizations to look for, as strings (e.g., ['xx', 'xy', 'yx',
         'yy']).
 
@@ -646,8 +646,8 @@ def dynamic_slice(arr, slice_obj, axis=-1):
         The array to take a slice of.
     slice_obj : numpy slice object
         The slice object defining which subset of the array to get.
-    axis : int
-        The axis along which to slice the array.
+    axis : int, optional
+        The axis along which to slice the array. Default is -1.
 
     Returns
     -------
@@ -675,7 +675,7 @@ def strip_extension(path, return_ext=False):
     ----------
     path : str
         Path you wish to strip of its extension.
-    return_ext : bool
+    return_ext : bool, optional
         If True, return the extension as well. Default is False.
 
     Returns

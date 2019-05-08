@@ -23,7 +23,7 @@ def _get_git_output(args, capture_stderr=False):
     ----------
     args : list
         A list of command line arguments to pass to git.
-    capture_stderr : bool
+    capture_stderr : bool, optional
         If True, capture stderr as well as stdout. Default is False.
 
     Returns

@@ -73,23 +73,23 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
         A 2D or 3D ndarray containing visibility data, with
         shape (Ntimes, Nfreqs, :). Or UVData object
         holding visibility data.
-    t_int : ndarray
+    t_int : ndarray, optional
         A 2D or 3D ndarray containing the integration time
         of the visibilities matching shape of data.
         If None and data is UVData, will use UVData ~flags *
         nsample * integration_time as input.
-    axis : int or tuple
-        Axes along which to take sequential difference.
-    pad : bool
+    axis : int or tuple, optional
+        Axes along which to take sequential difference. Default is (0,)
+    pad : bool, optional
         If True, insert an extra (flagged) column at the end
         of axis such that diff_data has same shape as input.
         Default is True.
-    run_check : bool
+    run_check : bool, optional
         If True, run the UVData.check() function when complete.
         Default is True.
-    history : str
+    history : str, optional
         A string to prepend to history of UVData if provided,
-        in addition to a standard history comment.
+        in addition to a standard history comment. Default is empty string.
 
     Returns
     -------
@@ -243,11 +243,11 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
     bls : list
         A list of antenna-pair tuples or UVData baseline integers to
         correlate.
-    iterax : {"freq", "time", None}
+    iterax : {"freq", "time", None}, optional
         A data axis to iterate calculation over. If not specified,
         no iteration is done. Default is None.
     return_corr : bool, optional
-        If True, calculate and return correlation matrix.
+        If True, calculate and return correlation matrix. Default is False.
 
     Returns
     -------
@@ -378,29 +378,31 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
     plot_corr : bool, optional
         If True, calculate and plot correlation matrix instead.
         Default is False.
-    ax : matplotlib.axes.Axis object
+    ax : matplotlib.axes.Axis object, optional
         If provided, the axis object to add plot to. If not specified,
         a new axis will be created. Default is None.
-    cmap : str
+    cmap : str, optional
         Colormap to use. Default is "viridis".
-    vmin, vmax : float
-        Colorscale min and max.
-    component : {"real", "imag", "abs"}
+    vmin : float, optional
+        Colorscale min. Default is None.
+    vmax : float, optional
+        Colorscale max. Default is None.
+    component : {"real", "imag", "abs"}, optional
         Component of matrix to plot. Default is "abs".
-    colorbar : bool
-        If True, plot a colorbar.
-    tlsize : int
-        Tick-label size.
-    tlrot : int
-        Tick-label rotation in degrees.
-    figsize : tuple
-        Len-2 integer tuple for figure-size if ax is None.
-    times : list
+    colorbar : bool, optional
+        If True, plot a colorbar. Default is True.
+    tlsize : int, optional
+        Tick-label size. Default is 10.
+    tlrot : int, optional
+        Tick-label rotation in degrees. Default is 35.
+    figsize : tuple, optional
+        Len-2 integer tuple for figure-size if ax is None. Default is None.
+    times : list, optional
         List of times to select on UVData before calculating matrices.
-        Cannot be fed if freqs if also fed.
-    freqs : list
+        Cannot be fed if freqs if also fed. Default is None.
+    freqs : list, optional
         List of frequencies to select on UVData before calculating
-        matrices. Cannot be fed if times is also fed.
+        matrices. Cannot be fed if times is also fed. Default is None.
 
     Returns
     -------
@@ -496,51 +498,51 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
     bls : list
         A list of antenna-pair tuples or UVData baseline integers to
         correlate.
-    component : {"real", "imag", "abs", "angle"}
+    component : {"real", "imag", "abs", "angle"}, optional
         Component of visibility data to plot. Default is "real".
     whiten : bool, optional
         If True, divide data component by abs of data before plotting.
         Default is False.
-    colorbar : bool
+    colorbar : bool, optional
         If True, add a colorbar. Default is True.
-    axes : ndarray
+    axes : ndarray, optional
         ndarray of axes objects to use in plotting. If not specified, axes will
         be generated as needed to create plots. Default is None.
-    colorax : {"freq", "time"}
+    colorax : {"freq", "time"}, optional
         Data axis to colorize. Default is "freq".
-    alpha : float
+    alpha : float, optional
         Transparency of points. Default is 1.
-    msize : int
+    msize : int, optional
         Marker size. Default is 1.
-    marker : str
+    marker : str, optional
         Type of marker to use. Default is ".".
-    grid : bool
+    grid : bool, optional
         If True, add a grid to the scatter plots. Default is True.
-    one2one : bool
+    one2one : bool, optional
         If True, add a 1-to-1 line. Default is True.
-    loglog : bool
+    loglog : bool, optional
         If True, logscale the x and y axes. Default is False.
-    freqs : ndarray
+    freqs : ndarray, optional
         Array of frequencies to select on before plotting. If not specified,
         all frequencies are used.
-    times : ndarray
+    times : ndarray, optional
         Array of times to select on before plotting. If not specified, all
         times are used.
-    figsize : tuple
+    figsize : tuple, optional
         Figure size if axes is None.
-    xylim : tuple
+    xylim : tuple, optional
         xy limits of the subplots.
-    cbfontsize : int
+    cbfontsize : int, optional
         Fontsize of colorbar label and ticks. Default is 10.
-    axfontsize : int
+    axfontsize : int, optional
         Fontsize of axes labels. Default is 14.
-    force_plot : bool
+    force_plot : bool, optional
         If Nbls > 10 and force_plot is False, this function errors. Default is False.
-    tlsize : int
+    tlsize : int, optional
         Ticklabel size of subplots. Default is 10.
-    facecolor : str
+    facecolor : str, optional
         Facecolor of subplots. Default is "lightgrey".
-    cmap : str
+    cmap : str, optional
         Colormap to use for scatter plot. Default is "viridis".
 
     Returns

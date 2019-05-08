@@ -28,18 +28,18 @@ def flag_xants(uv, xants, inplace=True):
 
     Parameters
     ----------
-    uv
+    uv : UVData or UVCal or UVFlag
         Object containing data to be flagged. Should be a UVData, UVCal, or
         UVFlag object.
-    xants
+    xants : list of ints
         List of antenna numbers to completely flag.
-    inplace : bool
+    inplace : bool, optional
         If True, apply flags to the uv object. If False, return a UVFlag object
         with only xants flaged. Default is True.
 
     Returns
     -------
-    uvo
+    uvo : UVData or UVCal or UVFlag
         If inplace is True, uvo is a reference to the input uv object, but with
         the flags specified in xants flagged. If inplace is False, uvo is a new
         UVFlag object with only xants flaged.
@@ -114,7 +114,7 @@ def resolve_xrfi_path(xrfi_path, fname):
     return dirname
 
 
-def _check_convolve_dims(d, Kt, Kf, fcn='filter'):
+def _check_convolve_dims(d, Kt, Kf):
     """Check the kernel sizes to be used in various convolution-like operations.
 
     If the kernel sizes are too big, replace them with the largest allowable size
@@ -445,19 +445,19 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
         A UVFlag object in 'metric' mode.
     uvf_f : UVFlag object
         A UVFlag object in 'flag' mode.
-    nsig_p : float
+    nsig_p : float, optional
         The Number of sigma above which to flag pixels which are near previously
         flagged pixels. Default is 2.0.
-    nsig_f : float
+    nsig_f : float, optional
         The Number of sigma above which to flag channels which are near fully
         flagged frequency channels. Bypassed if None (Default).
-    nsig_t : float
+    nsig_t : float, optional
         Number of sigma above which to flag integrations which are near fully
         flagged integrations. Bypassed if None (Default)
-    avg_method : {"mean", "absmean", "quadmean"}
+    avg_method : {"mean", "absmean", "quadmean"}, optional
         Method to average metric data for frequency and time watershedding.
         Default is "quadmean".
-    inplace : bool
+    inplace : bool, optional
         If True, update uvf_f. If False, create a new flag object. Default is True.
 
     Returns
@@ -565,8 +565,8 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
         A 2D or 1D array. Should be in units of standard deviations.
     fin : array
         The input (boolean) flags used as the seed of the watershed. Same size as d.
-    nsig : float
-        The number of sigma to flag above for points near flagged points.
+    nsig : float, optional
+        The number of sigma to flag above for points near flagged points. Default is 2.
 
     Returns
     -------
@@ -617,14 +617,14 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     ----------
     uvf_m : UVFlag object
         A UVFlag object in 'metric' mode (i.e., number of sigma data is from middle).
-    nsig_p : float
+    nsig_p : float, optional
         The number of sigma above which to flag pixels. Default is 6.0. Bypassed
         if None.
-    nsig_f : float
+    nsig_f : float, optional
         The number of sigma above which to flag channels. Bypassed if None (Default).
-    nsig_t : float
+    nsig_t : float, optional
         The number of sigma above which to flag integrations. Bypassed if None (Default).
-    avg_method : {"mean", "absmean", "quadmean"}
+    avg_method : {"mean", "absmean", "quadmean"}, optional
         Method to average metric data for frequency and time flagging. Default is
         "quadmean".
 
@@ -708,21 +708,21 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
 
     Parameters
     ----------
-    uvf
+    uvf : UVFlag or str or list
         A UVFlag object, path to UVFlag file, or list of these. These must be in
         'flag' mode, and either match the uv argument, or be a waterfall that can
         be made to match it.
-    uv
+    uv : UVData or UVCal
         A UVData or UVCal object to which to apply flags.
-    keep_existing : bool
+    keep_existing : bool, optional
         If True, add flags to existing flags in uv. If False, replace existing
         flags in uv. Default is True.
-    force_pol : bool
+    force_pol : bool, optional
         If True, will use 1 pol to broadcast to any other pol. If False, will
         require polarizations to match. Default is False.
-    history : str
-        The history string to be added to uv.history.
-    return_net_flags : bool
+    history : str, optional
+        The history string to be added to uv.history. Default is empty string.
+    return_net_flags : bool, optional
         If True, return a UVFlag object with net flags applied. If False, do not
         return net flags. Default is False.
 
@@ -779,11 +779,11 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
 
     Parameters
     ----------
-    uv
+    uv : UVData or UVCal
         A UVData or UVCal object to calculate metrics on.
     algorithm : str
         The metric algorithm name. Must be defined in algorithm_dict.
-    cal_mode : {"gain", "chisq", "tot_chisq"}
+    cal_mode : {"gain", "chisq", "tot_chisq"}, optional
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
@@ -864,29 +864,30 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 
     Parameters
     ----------
-    uv
+    uv : UVData or UVCal
         The UVData or UVCal object to flag.
-    Kt : int
+    Kt : int, optional
         The time size for detrending box. Default is 8.
-    Kf : int
+    Kf : int, optional
         The frequency size for detrending box. Default is 8.
-    sig_init : float
+    sig_init : float, optional
         The initial sigma to flag. Default is 6.0.
-    sig_adj : float
+    sig_adj : float, optional
         The number of sigma to flag adjacent to flagged data. Default is 2.0.
-    px_threshold : float
+    px_threshold : float, optional
         The fraction of flags required to trigger a broadcast across baselines
         for a given (time, frequency) pixel. Default is 0.2.
-    freq_threshold : float
+    freq_threshold : float, optional
         The fraction of channels required to trigger broadcast across frequency
         (for a single time). Default is 0.5.
-    time_threshold : The fraction of times required to trigger broadcast across
+    time_threshold : float, optional
+        The fraction of times required to trigger broadcast across
         time (for a single frequency). Default is 0.05.
-    return_summary : bool
+    return_summary : bool, optional
         If True, return a UVFlag object with the fraction of baselines/antennas
         that were flagged in the initial flag/watershed (before broadcasting).
         Default is False.
-    cal_mode : {"gain", "chisq", "tot_chisq"}
+    cal_mode : {"gain", "chisq", "tot_chisq"}, optional
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
@@ -926,7 +927,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
 
     Parameters
     ----------
-    uv
+    uv : UVData or UVCal
         A UVData or UVCal object on which to calculate the metric.
     alg : str, optional
         The algorithm for calculating the metric. Default is "detrend_medfilt".
@@ -936,9 +937,9 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     Kf : int, optional
         The size of kernel in frequency dimension for detrending in the xrfi
         algorithm. Default is 8.
-    xants : list
+    xants : list, optional
         A list of antennas to flag. Default is an empty list.
-    cal_mode : {"gain", "chisq", "tot_chisq"}
+    cal_mode : {"gain", "chisq", "tot_chisq"}, optional
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
@@ -1046,7 +1047,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         The extension to replace penultimate extension in a calfits file for output
         calibration including flags. Defaults is "flagged_abs". For example, an
         input_cal of "foo.goo.calfits" would result in "foo.flagged_abs.calfits".
-    clobber : bool
+    clobber : bool, optional
         If True, overwrite existing files. Default is False.
 
     Returns
@@ -1191,7 +1192,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
 
     Parameters
     ----------
-    indata
+    indata : UVData or str
         A UVData object or data file on which to run RFI flagging.
     history : str
         The history string to include in files.
@@ -1200,7 +1201,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         generic read function, but will be implemented for partial io.
     extension : str, optional
         The extension to be appended to input file name. Default is "flags.h5".
-    summary : bool
+    summary : bool, optional
         If True, compute a summary of RFI flags and store in a .h5 file.
         Default is False.
     summary_ext : str, optional
@@ -1214,23 +1215,23 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         pyuvdata's generic read function, but will be implemented for partial io.
     calfits_file : str, optional
         The calfits file to use to flag on gains and/or chisquared values.
-    kt_size : int
+    kt_size : int, optional
         The size of the kernel in time dimension for detrend in xrfi algorithm.
         Default is 8.
-    kf_size : int
+    kf_size : int, optional
         The size of the kernel in frequency dimension for detrend in xrfi algorithm.
         Default is 8.
-    sig_init : float
+    sig_init : float, optional
         The starting number of sigmas to flag on. Default is 6.0.
-    sig_adj : float
+    sig_adj : float, optional
         The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
-    px_threshold : float
+    px_threshold : float, optional
         The fraction of flags required to trigger a broadcast across baselines for
         a given (time, frequency) pixel. Default is 0.2.
-    freq_threshold : float
+    freq_threshold : float, optional
         The fraction of channels required to trigger a broadcast across frequency
         (for a single time). Default is 0.5.
-    time_threshold : float
+    time_threshold : float, optional
         The fraction of times required to trigger a broadcast across time
         (for a single frequency). Default is 0.05.
     ex_ants : str, optional
@@ -1239,7 +1240,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     metrics_file : str, optional
         A metrics file that contains a list of excluded antennas. Flags of
         visibilities formed with these antennas will be set to True.
-    filename : str
+    filename : str, optional
         The file for which to flag RFI (only one file allowed).
 
     Returns
@@ -1385,21 +1386,21 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
         generic read function, but will be implemented for partial io.
     xrfi_path : str, optional
         The path to save output to. Default is same directory as input file.
-    outfile_format : {"miriad", "uvfits", "uvh5"}
+    outfile_format : {"miriad", "uvfits", "uvh5"}, optional
         The file format for output files. Default is "miriad".
-    extension : str
+    extension : str, optional
         The extension to be appended to input file name. Default is "R".
-    overwrite : bool
+    overwrite : bool, optional
         If True, overwrite the output file if it already exists. Default is False.
-    flag_file : str
+    flag_file : str, optional
         The path to the npz file containing full flag array to insert into data file.
-    waterfalls
+    waterfalls, optional
         A list or comma separated string of npz file names containing waterfalls
         of flags to broadcast to full flag array and union with flag array in flag_file.
-    output_uvflag : bool
+    output_uvflag : bool, optional
         If True, save a UVFlag file with the final flag array. The flag array will
         be identical to what is stored in the data.
-    output_uvflag_ext : str
+    output_uvflag_ext : str, optional
         The extension to be appended to input file name. Default is "flags.h5".
 
     Returns
