@@ -7,8 +7,8 @@ import sys
 from hera_qm import utils
 from hera_qm import xrfi
 
-a = utils.get_metrics_ArgumentParser('xrfi_apply')
-args = a.parse_args()
+ap = utils.get_metrics_ArgumentParser('xrfi_apply')
+args = ap.parse_args()
 filename = args.filename
 history = ' '.join(sys.argv)
 

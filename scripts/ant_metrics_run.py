@@ -7,8 +7,8 @@ from hera_qm import utils
 from hera_qm import ant_metrics
 import sys
 
-a = utils.get_metrics_ArgumentParser('ant_metrics')
-args = a.parse_args()
+ap = utils.get_metrics_ArgumentParser('ant_metrics')
+args = ap.parse_args()
 history = ' '.join(sys.argv)
 if args.pol == '':
     args.pol = ['xx', 'yy', 'xy', 'yx']

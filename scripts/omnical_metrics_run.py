@@ -7,8 +7,8 @@ from hera_qm import utils
 from hera_qm import omnical_metrics
 import sys
 
-a = utils.get_metrics_ArgumentParser('omnical_metrics')
-args = a.parse_args()
+ap = utils.get_metrics_ArgumentParser('omnical_metrics')
+args = ap.parse_args()
 files = args.files
 history = ' '.join(sys.argv)
 

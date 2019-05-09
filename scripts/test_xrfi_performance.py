@@ -25,9 +25,9 @@ VERBOSE = False
 PLOT = False
 
 
-def get_accuracy(f, rfi, verbose=VERBOSE):
-    correctly_flagged = np.average(f[rfi])
-    m = f.copy()
+def get_accuracy(flags, rfi, verbose=VERBOSE):
+    correctly_flagged = np.average(flags[rfi])
+    m = flags.copy()
     m[rfi] = 0
     false_positive = float(np.sum(m)) / (m.size - len(rfi[0]))
     if verbose:
@@ -40,7 +40,7 @@ def fake_flags(SIZE):
     return fakeflags
 
 
-def plot_waterfall(data, f, mx=10, drng=10, mode='lin'):
+def plot_waterfall(data, flags, mx=10, drng=10, mode='lin'):
     if not PLOT:
         return
     plt.subplot(121)
@@ -48,17 +48,17 @@ def plot_waterfall(data, f, mx=10, drng=10, mode='lin'):
     capo.plot.waterfall(data, mode='lin', mx=10, drng=10)
     plt.colorbar()
     plt.subplot(122)
-    capo.plot.waterfall(f, mode='lin', mx=10, drng=10)
+    capo.plot.waterfall(flags, mode='lin', mx=10, drng=10)
     plt.imshow(f, aspect='auto', cmap='jet')
     plt.colorbar()
     plt.show()
 
 
-def plot_result(f, rfi):
+def plot_result(flags, rfi):
     if not PLOT:
         return
     plt.plot(rfi[0], rfi[1], 'ko')
-    fi = np.where(f)
+    fi = np.where(flags)
     plt.plot(fi[0], fi[1], 'r.')
     plt.show()
 
@@ -122,22 +122,22 @@ class Template():
         cf, fp = self.ans['detrend_deriv']
         args = [(True, True), (True, False), (False, True)]
         mode = self.mode['detrend_deriv']
-        for i in range(3):
-            self._run_test(xrfi.detrend_deriv, args[i], cf[i], fp[i], nsig=4,
-                           fmode=mode[i])
+        for ind in range(3):
+            self._run_test(xrfi.detrend_deriv, args[ind], cf[ind], fp[ind], nsig=4,
+                           fmode=mode[ind])
 
     def test_detrend_medfilt(self):
         cf, fp = self.ans['detrend_medfilt']
         argsList = [(8, 8), (7, 9), (9, 7), (1000, 1000)]
-        for i in range(4):
-            self._run_test(xrfi.detrend_medfilt, argsList[i], cf[i], fp[i], nsig=4)
+        for ind in range(4):
+            self._run_test(xrfi.detrend_medfilt, argsList[ind], cf[ind], fp[ind], nsig=4)
 
     def test_detrend_medminfilt(self):
         cf, fp = self.ans['detrend_medminfilt']
         argsList = [(8, 8), (7, 9), (9, 7), (1000, 1000)]
         mode = self.mode['detrend_medminfilt']
-        for i in range(4):
-            self._run_test(xrfi.detrend_medminfilt, argsList[i], cf[i], fp[i], nsig=4, fmode=mode[i])
+        for ind in range(4):
+            self._run_test(xrfi.detrend_medminfilt, argsList[ind], cf[ind], fp[ind], nsig=4, fmode=mode[ind])
 
     def test_xrfi_simple(self):
         cf, fp = self.ans['xrfi_simple']
@@ -145,8 +145,8 @@ class Template():
         fflags = fake_flags(SIZE)
         argsList = [args, (fflags, 6, 6, 1)]
         fmode = [False, True]
-        for i in range(2):
-            self._run_test(xrfi.xrfi_simple, argsList[i], cf[i], fp[i], nsig=.5, fmode=fmode[i])
+        for ind in range(2):
+            self._run_test(xrfi.xrfi_simple, argsList[ind], cf[ind], fp[ind], nsig=.5, fmode=fmode[ind])
 
     def test_xrfi(self):
         cf, fp = self.ans['xrfi']
@@ -159,8 +159,8 @@ class Template():
         fflags = fake_flags(SIZE)
         argsList = [args, (fflags, 6, 2)]
         mode = self.mode['watershed']
-        for i in range(2):
-            self._run_test(xrfi.watershed_flag, argsList[i], cf[i], fp[i], nsig=.5, fmode=mode[i])
+        for ind in range(2):
+            self._run_test(xrfi.watershed_flag, argsList[ind], cf[ind], fp[ind], nsig=.5, fmode=mode[ind])
 
 
 class TestSparseScatter(Template, unittest.TestCase):
@@ -172,7 +172,7 @@ class TestSparseScatter(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for ind in xrange(NTRIALS):
                 data = np.array(qmtest.real_noise((SIZE, SIZE)))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
@@ -194,7 +194,7 @@ class TestDenseScatter(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for ind in xrange(NTRIALS):
                 data = qmtest.real_noise((SIZE, SIZE))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
@@ -218,13 +218,13 @@ class TestCluster(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for ind in xrange(NTRIALS):
                 data = qmtest.real_noise((SIZE, SIZE))
-                x, y = (np.random.randint(SIZE - 1, size=RFI),
-                        np.random.randint(SIZE - 1, size=RFI))
-                x = np.concatenate([x, x, x + 1, x + 1])
-                y = np.concatenate([y, y + 1, y, y + 1])
-                rfi = (np.array(x), np.array(y))
+                xpos, ypos = (np.random.randint(SIZE - 1, size=RFI),
+                              np.random.randint(SIZE - 1, size=RFI))
+                xpos = np.concatenate([xpos, xpos, xpos + 1, xpos + 1])
+                ypos = np.concatenate([ypos, ypos + 1, ypos, ypos + 1])
+                rfi = (np.array(xpos), np.array(ypos))
                 data[rfi] = NSIG
                 yield data, rfi
             return
@@ -245,13 +245,13 @@ class TestLines(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for ind in xrange(NTRIALS):
                 data = qmtest.real_noise((SIZE, SIZE))
-                x, y = (np.random.randint(SIZE, size=RFI),
-                        np.random.randint(SIZE, size=RFI))
+                xpos, ypos = (np.random.randint(SIZE, size=RFI),
+                              np.random.randint(SIZE, size=RFI))
                 mask = np.zeros_like(data)
-                mask[x] = 1
-                mask[:, y] = 1
+                mask[xpos] = 1
+                mask[:, ypos] = 1
                 data += mask * NSIG
                 yield data, np.where(mask)
             return
@@ -273,7 +273,7 @@ class TestBackground(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for i in xrange(NTRIALS):
+            for ind in xrange(NTRIALS):
                 sin_t = np.sin(np.linspace(0, 2 * np.pi, SIZE))
                 sin_t.shape = (-1, 1)
                 sin_f = np.sin(np.linspace(0, 4 * np.pi, SIZE))
