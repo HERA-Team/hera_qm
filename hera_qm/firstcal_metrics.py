@@ -135,7 +135,8 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         ax.set_xlim(-1, Nants)
         ax.set_xticks(range(Nants))
         ax.set_xticklabels(metrics['ants'])
-        [label.set_rotation(20) for label in ax.get_xticklabels()]
+        for label in ax.get_xticklabels():
+            label.set_rotation(20)
         ax.set_xlabel('antenna number', fontsize=14)
         ax.set_ylabel('delay solution standard deviation [ns]', fontsize=14)
 
@@ -145,7 +146,8 @@ def plot_stds(metrics, fname=None, ax=None, xaxis='ant', kwargs={}, save=False):
         ax.grid(True, zorder=0)
         ax.tick_params(size=8)
         ax.plot(xax, yax, c='k', marker='.', linestyle='-', alpha=0.85, zorder=1)
-        [label.set_rotation(20) for label in ax.get_xticklabels()]
+        for label in ax.get_xticklabels():
+            label.set_rotation(20)
         ax.set_xlabel('fractional JD of {}'.format(metrics['start_JD']), fontsize=14)
         ax.set_ylabel('delay solution standard deviation [ns]', fontsize=14)
 
