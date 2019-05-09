@@ -278,8 +278,8 @@ def write_metric_file(filename, input_dict, overwrite=False):
             if os.path.exists(filename) and not overwrite:
                 raise IOError('File exists and overwrite set to False.')
 
-        with h5py.File(filename, 'w') as f:
-            header = f.create_group('Header')
+        with h5py.File(filename, 'w') as outfile:
+            header = outfile.create_group('Header')
             header.attrs['key_is_string'] = True
 
             header['history'] = qm_utils._str_to_bytes(input_dict.pop('history',
@@ -292,9 +292,9 @@ def write_metric_file(filename, input_dict, overwrite=False):
             header['version'].attrs['key_is_string'] = True
 
             # Create group for metrics data in file
-            mgrp = f.create_group('Metrics')
+            mgrp = outfile.create_group('Metrics')
             mgrp.attrs['key_is_string'] = True
-            _recursively_save_dict_to_group(f, "/Metrics/", input_dict)
+            _recursively_save_dict_to_group(outfile, "/Metrics/", input_dict)
 
     return
 
@@ -648,8 +648,8 @@ def _parse_list_of_list_of_antpairs(input_str):
         sublist = []
         tuple_regex = r"\((.*?)\)"
         tuples = re.findall(tuple_regex, li)
-        for t in tuples:
-            ant1, ant2 = t.split(",")
+        for tup in tuples:
+            ant1, ant2 = tup.split(",")
             sublist.append(tuple((int(ant1), int(ant2))))
         output.append(sublist)
     return output
@@ -679,11 +679,11 @@ def _parse_dict_of_dicts(input_str, value_type=float):
 
     # initialize output
     output = {}
-    for d in dicts:
+    for dicti in dicts:
         # key is first capture group
-        key = str(d[0])
+        key = str(dicti[0])
         # subdictionary is second capture group
-        subdict = _parse_dict(d[1], value_type=value_type)
+        subdict = _parse_dict(dicti[1], value_type=value_type)
         output[key] = subdict
 
     return output
@@ -716,8 +716,8 @@ def _parse_list_of_dict_of_dicts(input_str, value_type=float):
 
     # initialize output
     output = OrderedDict()
-    for num, d in enumerate(dicts):
-        subdict = _parse_dict_of_dicts(d, value_type=value_type)
+    for num, dicti in enumerate(dicts):
+        subdict = _parse_dict_of_dicts(dicti, value_type=value_type)
         output[num] = subdict
 
     return output
@@ -755,11 +755,11 @@ def _parse_dict_of_dict_of_dicts(input_str, value_type=float):
 
     # initialize output
     output = {}
-    for d in dicts:
+    for dicti in dicts:
         # key is first capture group
-        key = _parse_key(d[0])
+        key = _parse_key(dicti[0])
         # subdictionary is second capture group
-        subdict = _parse_dict_of_dicts(d[1], value_type=value_type)
+        subdict = _parse_dict_of_dicts(dicti[1], value_type=value_type)
         output[key] = subdict
 
     return output
@@ -888,9 +888,9 @@ def load_metric_file(filename):
                       PendingDeprecationWarning)
         metric_dict = _load_pickle_metrics(filename)
     else:
-        with h5py.File(filename, 'r') as f:
-            metric_dict = _recursively_load_dict_to_group(f, "/Header/")
-            metric_dict.update(_recursively_load_dict_to_group(f, "/Metrics/"))
+        with h5py.File(filename, 'r') as infile:
+            metric_dict = _recursively_load_dict_to_group(infile, "/Header/")
+            metric_dict.update(_recursively_load_dict_to_group(infile, "/Metrics/"))
 
     _recursively_validate_dict(metric_dict)
     return metric_dict

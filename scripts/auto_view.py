@@ -60,19 +60,19 @@ if len(args.files) == 0:
         times[(ant, pol)] = float(redis.hgetall(key).get('time', 0))
 else:
     counts = {}
-    for f in args.files:
-        uvd = apm.UV(f)
+    for fname in args.files:
+        uvd = apm.UV(fname)
         pol = uvutils.polnum2str(uvd['pol']).lower()
         uvd.select('auto', 1, 1)
-        for (uvw, t, (i, j)), d, f in uvd.all(raw=True):
+        for (uvw, this_t, (ant1, ant2)), auto, fname in uvd.all(raw=True):
             try:
-                counts[(i, pol)] += 1
-                autos[(i, pol)] += d
-                times[(i, pol)] += t
+                counts[(ant1, pol)] += 1
+                autos[(ant1, pol)] += auto
+                times[(ant1, pol)] += this_t
             except KeyError:
-                counts[(i, pol)] = 1
-                autos[(i, pol)] = d
-                times[(i, pol)] = t
+                counts[(ant1, pol)] = 1
+                autos[(ant1, pol)] = auto
+                times[(ant1, pol)] = this_t
     for key in autos.keys():
         autos[key] /= counts[key]
         times[key] /= counts[key]
@@ -87,8 +87,8 @@ else:
 ants = np.unique([ant for (ant, pol) in autos.keys()])
 # Find most recent time, only keep spectra from that time
 latest = np.max(times.values())
-for key, t in times.items():
-    if latest - t > 1. / 60. / 24.:
+for key, this_t in times.items():
+    if latest - this_t > 1. / 60. / 24.:
         # more than a minute from latest, use NaN to flag
         autos[key] = np.nan
         amps[key] = np.nan
@@ -99,8 +99,8 @@ parser = mc.get_mc_argument_parser()
 mcargs = parser.parse_args(args=[])  # args=[] to throw away command line arguments
 db = mc.connect_to_mc_db(mcargs)
 session = db.sessionmaker()
-h = sys_handling.Handling(session)
-stations_conn = h.get_all_fully_connected_at_date(at_date=latest)
+hsession = sys_handling.Handling(session)
+stations_conn = hsession.get_all_fully_connected_at_date(at_date=latest)
 antpos = np.zeros((np.max(ants) + 1, 2))
 ants_connected = []
 antnames = ["" for x in range(np.max(ants) + 1)]
@@ -120,7 +120,7 @@ receiverators = ["" for x in range(np.max(ants) + 1)]
 rxr_nums = np.zeros(np.max(ants) + 1, dtype=int)
 pams = ["" for x in range(np.max(ants) + 1)]
 for ant in ants_connected:
-    pinfo = h.get_pam_info(antnames[ant], latest)
+    pinfo = hsession.get_pam_info(antnames[ant], latest)
     receiverators[ant] = pinfo['e'][0][:-1]
     pams[ant] = pinfo['e'][1]
     result = re.findall(r'RI(\d+)', pinfo['e'][0])[0]
@@ -156,7 +156,7 @@ if args.log:
 else:
     vmin = 0
     vmax = 12
-f = plt.figure(figsize=(10, 8))
+fig = plt.figure(figsize=(10, 8))
 for ant in ants_connected:
     for pol in ['xx', 'yy']:
         try:
@@ -184,10 +184,10 @@ plt.ylim([antpos[ants_connected, 1].min() - 0.05 * yr, antpos[ants_connected, 1]
 plt.title(str(latest.datetime) + ' UTC; JD=' + str(latest.jd))
 # Add polarization key
 for pol in ['xx', 'yy']:
-    x = antpos[ants_connected, 0].min()
-    y = antpos[ants_connected, 1].min() + 3 * (poli[pol])
-    plt.scatter(x, y, c=vmax, vmin=vmin, vmax=vmax, cmap=goodbad)
-    plt.annotate(pol_labels[pol] + ' pol', xy=[x + 1, y], textcoords='data', verticalalignment='center')
+    xpos = antpos[ants_connected, 0].min()
+    ypos = antpos[ants_connected, 1].min() + 3 * (poli[pol])
+    plt.scatter(xpos, ypos, c=vmax, vmin=vmin, vmax=vmax, cmap=goodbad)
+    plt.annotate(pol_labels[pol] + ' pol', xy=[xpos + 1, ypos], textcoords='data', verticalalignment='center')
 xmin = plt.gca().get_xlim()[0]
 ymin = plt.gca().get_ylim()[0]
 plt.plot([xmin, xmin + xr / 6., xmin + xr / 6.], [ymin * 3. / 4., ymin * 3. / 4., ymin], 'k')
@@ -197,19 +197,19 @@ plt.savefig(filename)
 
 
 # Autos v rxr
-f, axarr = plt.subplots(1, np.max(rxr_nums), sharex=True, sharey=True, figsize=(15, 8))
+fig, axarr = plt.subplots(1, np.max(rxr_nums), sharex=True, sharey=True, figsize=(15, 8))
 for rxr in np.unique(rxr_nums[ants_connected]):
     ind = np.where(rxr_nums == rxr)[0]
-    for i, ant in enumerate(ind):
+    for anti, ant in enumerate(ind):
         for pol in ['xx', 'yy']:
             try:
                 if not np.isnan(amps[(ant, pol)]):
-                    ax = axarr[rxr - 1].scatter(0, i + 0.3 * poli[pol], c=amps[(ant, pol)],
+                    ax = axarr[rxr - 1].scatter(0, anti + 0.3 * poli[pol], c=amps[(ant, pol)],
                                                 vmin=vmin, vmax=vmax, cmap=goodbad)
                 else:
-                    axarr[rxr - 1].scatter(0, i + 0.3 * poli[pol], marker='x', color='k')
+                    axarr[rxr - 1].scatter(0, anti + 0.3 * poli[pol], marker='x', color='k')
             except BaseException:
-                axarr[rxr - 1].scatter(0, i + 0.3 * poli[pol], marker='x', color='k')
+                axarr[rxr - 1].scatter(0, anti + 0.3 * poli[pol], marker='x', color='k')
         axarr[rxr - 1].annotate(str(ant) + ',' + pams[ant], xy=[0.01, i])
     axarr[rxr - 1].set_yticks([])
     axarr[rxr - 1].set_xticks([])
@@ -219,19 +219,19 @@ plt.xlim([-.01, .1])
 plt.subplots_adjust(bottom=0.15)
 plt.subplots_adjust(wspace=0)
 # cbar_ax = f.add_axes([.14, .05, .72, .05])
-cbar_ax = f.add_axes([.13, .05, .67, .05])
+cbar_ax = fig.add_axes([.13, .05, .67, .05])
 if args.log:
     label = '10log10(Median Autos)'
 else:
     label = 'Median Autos'
-f.colorbar(ax, cax=cbar_ax, orientation='horizontal', label=label)
-f.suptitle(str(latest.datetime) + ' UTC')
+fig.colorbar(ax, cax=cbar_ax, orientation='horizontal', label=label)
+fig.suptitle(str(latest.datetime) + ' UTC')
 # Add polarization key
-p_ax = f.add_axes([0.82, 0.03, 0.06, 0.08])
+p_ax = fig.add_axes([0.82, 0.03, 0.06, 0.08])
 for pol in ['xx', 'yy']:
-    y = poli[pol]
-    plt.scatter(0, y, c=vmax, vmin=vmin, vmax=vmax, cmap=goodbad)
-    plt.annotate(pol_labels[pol] + ' pol', xy=[1, y], textcoords='data', verticalalignment='center')
+    yval = poli[pol]
+    plt.scatter(0, yval, c=vmax, vmin=vmin, vmax=vmax, cmap=goodbad)
+    plt.annotate(pol_labels[pol] + ' pol', xy=[1, yval], textcoords='data', verticalalignment='center')
 plt.xlim([-1, 4])
 plt.ylim([-1, 2])
 p_ax.set_xticks([])
@@ -241,7 +241,7 @@ filename = os.path.join(outpath, basename + '.auto_v_rxr.png')
 plt.savefig(filename)
 
 # Plot spectra
-f = plt.figure(figsize=(20, 12))
+fig = plt.figure(figsize=(20, 12))
 # Number of subplots in X and Y directions
 nants = len(ants)
 nx = int(np.ceil(np.log2(nants + 1)))
@@ -272,7 +272,7 @@ for ai, ant in enumerate(ants):
     ax.set_ylim([vmin, 1.3 * vmax])
     if ai == 0:
         plt.legend(loc='best')
-f.suptitle(str(latest.datetime) + ' UTC; JD=' + str(latest.jd))
+fig.suptitle(str(latest.datetime) + ' UTC; JD=' + str(latest.jd))
 filename = os.path.join(outpath, basename + '.auto_specs.png')
 plt.savefig(filename)
 
@@ -285,39 +285,39 @@ def plot_rms(data, POL='xx'):
     Args:
         data (dict): Dictionary of auto's.
         POL (str): String of polarization."""
-    f = plt.figure(figsize=(20, 12))
+    fig = plt.figure(figsize=(20, 12))
     CHUNK = 256
     BINS = 24
     rmscolors = 'bgrcmy'
     ants = sorted([i for (i, pp) in data if pp == POL])
-    N = np.ceil(np.sqrt(len(ants)))
-    M = np.ceil(len(ants) / float(N))
+    Nrow = np.ceil(np.sqrt(len(ants)))
+    Mcol = np.ceil(len(ants) / float(Nrow))
     bins = np.logspace(-2, 4, BINS, base=2.)
-    for cnt, i in enumerate(ants):
-        ax = plt.subplot(N, M, cnt + 1)
-        for j, ch in enumerate(xrange(0, 1024, CHUNK)):
-            d = data[i, POL][ch:ch + CHUNK].flatten()
-            h, b = np.histogram(np.sqrt(d / 2), bins)
-            h = 10**np.log10(h + .1)
-            b = 0.5 * (b[1:] + b[:-1])
-            ax.fill_between(np.log2(b), h, .1, where=h > .1, color=rmscolors[j], alpha=.5)
-        bounds = np.where(bins < 2**0, d.size, np.where(bins > 2**2, d.size, 0))
+    for cnt, ant in enumerate(ants):
+        ax = plt.subplot(Nrow, Mcol, cnt + 1)
+        for ch in xrange(0, 1024, CHUNK):
+            dchunk = data[ant, POL][ch:ch + CHUNK].flatten()
+            hist, hbins = np.histogram(np.sqrt(dchunk / 2), bins)
+            hist = 10**np.log10(hist + .1)
+            hbins = 0.5 * (hbins[1:] + hbins[:-1])
+            ax.fill_between(np.log2(bins), hist, .1, where=hist > .1, color=rmscolors[j], alpha=.5)
+        bounds = np.where(bins < 2**0, dchunk.size, np.where(bins > 2**2, dchunk.size, 0))
         ax.fill_between(np.log2(bins), bounds, .1, where=bounds > .1, color='black', alpha=.6)
         ax.set_yscale('log')
         plt.xlim(-2, 3)
         plt.ylim(d.size / 1e2, d.size)
-        if i in ants_connected:
+        if ant in ants_connected:
             lcolor = 'r'
         else:
             lcolor = 'b'
-        plt.text(0.5, 0.8, str(i), fontsize=12, transform=ax.transAxes, color=lcolor)
+        plt.text(0.5, 0.8, str(ant), fontsize=12, transform=ax.transAxes, color=lcolor)
         ax.get_yaxis().set_visible(False)
-        if cnt < (N - 1) * M:
+        if cnt < (Nrow - 1) * Mcol:
             ax.get_xaxis().set_ticklabels([])
         else:
             plt.xlabel(r'$V_{\rm rms}$ [bits]')
         plt.grid()
-    f.suptitle(str(latest.datetime) + ' UTC' + '    {0}'.format(POL) + '; JD=' + str(latest.jd))
+    fig.suptitle(str(latest.datetime) + ' UTC' + '    {0}'.format(POL) + '; JD=' + str(latest.jd))
     plt.tight_layout(rect=(0, 0, 1, .95))
 
 

@@ -86,17 +86,17 @@ def load_omnical_metrics(filename):
 
         # ensure keys of ant_dicts are not strings
         # loop over pols
-        for h, p in enumerate(metrics.keys()):
+        for key, metric in metrics.items():
             # loop over items in each pol metric dict
-            for k in metrics[p].keys():
-                if isinstance(metrics[p][k], (dict, odict)):
-                    if isinstance(list(metrics[p][k].values())[0], list):
-                        metrics[p][k] = odict([(int(i), np.array(metrics[p][k][i])) for i in metrics[p][k]])
-                    elif isinstance(list(metrics[p][k].values())[0], (np.unicode, np.unicode_)):
-                        metrics[p][k] = odict([(int(i), metrics[p][k][i].astype(np.complex128)) for i in metrics[p][k]])
+            for key2 in metric.keys():
+                if isinstance(metric[key2], (dict, odict)):
+                    if isinstance(list(metric[key2].values())[0], list):
+                        metric[key2] = odict([(int(i), np.array(metric[key2][i])) for i in metric[key2]])
+                    elif isinstance(list(metric[key2].values())[0], (np.unicode, np.unicode_)):
+                        metric[key2] = odict([(int(i), metric[key2][i].astype(np.complex128)) for i in metric[key2]])
 
-                elif isinstance(metrics[p][k], list):
-                    metrics[p][k] = np.array(metrics[p][k])
+                elif isinstance(metric[key2], list):
+                    metric[key2] = np.array(metric[key2])
 
     # load pickle
     elif filetype == 'pkl':
@@ -137,30 +137,30 @@ def write_metrics(metrics, filename=None, filetype='json'):
         # change ndarrays to lists
         metrics_out = copy.deepcopy(metrics)
         # loop over pols
-        for h, pol in enumerate(metrics_out.keys()):
+        for pol in metrics_out.keys():
             # loop over keys
-            for i, k in enumerate(metrics_out[pol].keys()):
-                if isinstance(metrics_out[pol][k], np.ndarray):
-                    metrics_out[pol][k] = metrics[pol][k].tolist()
-                elif isinstance(metrics_out[pol][k], (dict, odict)):
-                    if list(metrics_out[pol][k].values())[0].dtype == np.complex:
-                        metrics_out[pol][k] = odict([(j, metrics_out[pol][k][j].astype(np.str)) for j in metrics_out[pol][k]])
-                    metrics_out[pol][k] = odict([(str(j), metrics_out[pol][k][j].tolist()) for j in metrics_out[pol][k]])
-                elif isinstance(metrics_out[pol][k], (np.bool, np.bool_)):
-                    metrics_out[pol][k] = bool(metrics_out[pol][k])
-                elif isinstance(metrics_out[pol][k], np.float):
-                    metrics_out[pol][k] = float(metrics_out[pol][k])
-                elif isinstance(metrics_out[pol][k], np.integer):
-                    metrics_out[pol][k] = int(metrics_out[pol][k])
+            for key in metrics_out[pol].keys():
+                if isinstance(metrics_out[pol][key], np.ndarray):
+                    metrics_out[pol][key] = metrics[pol][key].tolist()
+                elif isinstance(metrics_out[pol][key], (dict, odict)):
+                    if list(metrics_out[pol][key].values())[0].dtype == np.complex:
+                        metrics_out[pol][key] = odict([(j, metrics_out[pol][key][j].astype(np.str)) for j in metrics_out[pol][key]])
+                    metrics_out[pol][key] = odict([(str(j), metrics_out[pol][key][j].tolist()) for j in metrics_out[pol][key]])
+                elif isinstance(metrics_out[pol][key], (np.bool, np.bool_)):
+                    metrics_out[pol][key] = bool(metrics_out[pol][key])
+                elif isinstance(metrics_out[pol][key], np.float):
+                    metrics_out[pol][key] = float(metrics_out[pol][key])
+                elif isinstance(metrics_out[pol][key], np.integer):
+                    metrics_out[pol][key] = int(metrics_out[pol][key])
 
-        with open(filename, 'w') as f:
-            json.dump(metrics_out, f, indent=4)
+        with open(filename, 'w') as outfile:
+            json.dump(metrics_out, outfile, indent=4)
 
     elif filetype == 'pkl':
         if filename.split('.')[-1] != 'pkl':
             filename += '.pkl'
-        with open(filename, 'wb') as f:
-            outp = pkl.Pickler(f)
+        with open(filename, 'wb') as outfile:
+            outp = pkl.Pickler(outfile)
             outp.dump(metrics)
 
 
@@ -257,31 +257,33 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         ax.tick_params(size=8)
         ax.set_xticks(range(metrics['Nants']))
         ax.set_xticklabels(metrics['ant_array'])
-        [t.set_rotation(20) for t in ax.get_xticklabels()]
+        for label in ax.get_xticklabels():
+            label.set_rotation(20)
         ax.set_ylim(0, ymax)
         ax.set_title("{0}".format(metrics['filename']))
 
     if plot_type == 'hist':
         ylines = np.array(list(metrics['ant_phs_hists'].values()))
         ax.grid(True)
-        p = [ax.plot(metrics['ant_phs_hist_bins'], ylines[i], alpha=0.75) for i in range(len(ylines))]
+        plist = [ax.plot(metrics['ant_phs_hist_bins'], ylines[i], alpha=0.75)
+                 for i in range(len(ylines))]
         ax.set_xlabel('gain phase [radians]', fontsize=14)
         ax1 = fig.add_axes([0.99, 0.1, 0.03, 0.8])
         ax1.axis('off')
-        ax1.legend(np.concatenate(p), metrics['ant_array'])
+        ax1.legend(np.concatenate(plist), metrics['ant_array'])
         ax.set_title("gain phase histogram for {0}".format(metrics['filename']))
 
     if plot_type == 'ft':
         ylines = np.abs(np.array(list(metrics['ant_gain_fft'].values())))
         ax.grid(True)
-        p = [ax.plot(metrics['ant_gain_dly'] * 1e9, ylines[i], alpha=0.75)
-             for i in range(len(ylines))]
+        plist = [ax.plot(metrics['ant_gain_dly'] * 1e9, ylines[i], alpha=0.75)
+                 for i in range(len(ylines))]
         ax.set_xlabel('delay [ns]', fontsize=14)
         ax.set_ylabel(r'radians sec$^{-1}$', fontsize=14)
         ax.set_yscale('log')
         ax1 = fig.add_axes([0.99, 0.1, 0.03, 0.8])
         ax1.axis('off')
-        ax1.legend(np.concatenate(p), metrics['ant_array'])
+        ax1.legend(np.concatenate(plist), metrics['ant_array'])
         ax.set_title("abs val of FT(complex gains) for {0}".format(metrics['filename']))
 
     if save is True:
@@ -521,7 +523,7 @@ class OmniCal_Metrics(object):
         full_metrics = odict()
 
         # loop over polarization
-        for i, pol in enumerate(self.pols):
+        for poli, pol in enumerate(self.pols):
             # select freq channels
             if cut_edges is True:
                 self.band = np.arange(Ncut, self.Nfreqs - Ncut)
@@ -531,15 +533,15 @@ class OmniCal_Metrics(object):
             # get chisq metrics
             (chisq_avg, chisq_tot_avg, chisq_ant_avg, chisq_ant_std, chisq_ant_std_loc,
              chisq_ant_std_scale, chisq_ant_std_zscore, chisq_ant_std_zscore_max,
-             chisq_good_sol) = self.chisq_metric(self.chisq[:, :, :, i], chisq_std_zscore_cut=chisq_std_zscore_cut)
+             chisq_good_sol) = self.chisq_metric(self.chisq[:, :, :, poli], chisq_std_zscore_cut=chisq_std_zscore_cut)
 
             if run_fc_metrics is True:
                 # run phs FT metric
-                ant_gain_fft, ant_gain_dly = self.phs_FT_metric(self.gain_diff[:, :, :, i])
+                ant_gain_fft, ant_gain_dly = self.phs_FT_metric(self.gain_diff[:, :, :, poli])
 
                 # run phs std metric
                 (ant_phs_std, ant_phs_std_max, ant_phs_std_good_sol, ant_phs_std_per_time, ant_phs_hists,
-                 ant_phs_hist_bins) = self.phs_std_metric(self.gain_diff[:, :, :, i], phs_std_cut=phs_std_cut)
+                 ant_phs_hist_bins) = self.phs_std_metric(self.gain_diff[:, :, :, poli], phs_std_cut=phs_std_cut)
 
             # initialize metrics
             metrics = odict()
@@ -561,9 +563,9 @@ class OmniCal_Metrics(object):
             metrics['Ncut'] = Ncut
             metrics['band'] = self.band
             metrics['ant_array'] = self.ant_array
-            metrics['jones'] = self.jones[i]
-            metrics['pol'] = self.pols[i]
-            metrics['ant_pol'] = self.pols[i][0]
+            metrics['jones'] = self.jones[poli]
+            metrics['pol'] = self.pols[poli]
+            metrics['ant_pol'] = self.pols[poli][0]
             metrics['times'] = self.times
             metrics['Ntimes'] = self.Ntimes
             metrics['Nants'] = self.Nants
@@ -629,7 +631,7 @@ class OmniCal_Metrics(object):
         firstcal_delays = []
         firstcal_gains = []
         pol_sort = []
-        for i, fcfile in enumerate(fc_files):
+        for fcfile in fc_files:
             fc_delays, fc_gains, fc_pol = load_firstcal_gains(fcfile)
             # convert to 'xy' pol convention and then select omni_pol from fc_pols
             fc_pol = self.jones2pol[fc_pol]
@@ -755,7 +757,8 @@ class OmniCal_Metrics(object):
         phs_diff -= phs_diff_mean[:, :, np.newaxis]
 
         # take standard deviation across time & freq
-        ant_phs_std = np.sqrt(np.array(list(map(astats.biweight_midvariance, phs_diff[:, :, self.band]))))
+        ant_phs_std = np.sqrt(np.array(list(map(astats.biweight_midvariance,
+                                                phs_diff[:, :, self.band]))))
         ant_phs_std_max = np.max(ant_phs_std)
         ant_phs_std_good_sol = ant_phs_std_max < phs_std_cut
 
@@ -764,10 +767,10 @@ class OmniCal_Metrics(object):
 
         # make histogram
         ant_phs_hists = []
-        for i, phs in enumerate(phs_diff):
-            h, bins = np.histogram(phs, bins=128, range=(-np.pi, np.pi), density=True)
+        for phs in phs_diff:
+            hist, bins = np.histogram(phs, bins=128, range=(-np.pi, np.pi), density=True)
             bins = 0.5 * (bins[1:] + bins[:-1])
-            ant_phs_hists.append(h)
+            ant_phs_hists.append(hist)
         ant_phs_hists = np.array(ant_phs_hists)
 
         ant_phs_hist_bins = bins
@@ -840,14 +843,14 @@ class OmniCal_Metrics(object):
             gains = self.omni_gains[ants, time_index, :, pol_index].T
             if divide_fc is True:
                 gains = self.gain_diff[ants, time_index, :, pol_index].T
-            p = np.array(ax.plot(self.freqs / 1e6, np.angle(gains), **plot_kwargs)).ravel()
+            plist = np.array(ax.plot(self.freqs / 1e6, np.angle(gains), **plot_kwargs)).ravel()
 
             # axes
             ax.set_xlabel('frequency [MHz]', fontsize=14)
             ax.set_ylabel('gain phase [radians]', fontsize=14)
             ax1 = ax.figure.add_axes([0.99, 0.1, 0.03, 0.8])
             ax1.axis('off')
-            ax1.legend(p, self.ant_array[ants])
+            ax1.legend(plist, self.ant_array[ants])
             ax.set_title("{0} : JD={1} : {2} pol".format(self.filename, self.times[time_index], self.pols[pol_index]))
 
         elif plot_type == 'amp':
@@ -856,14 +859,14 @@ class OmniCal_Metrics(object):
             gains = self.omni_gains[ants, time_index, :, pol_index].T.copy()
             if divide_fc is True:
                 gains /= self.firstcal_gains[ants, time_index, :, pol_index].T
-            p = np.array(ax.plot(self.freqs / 1e6, np.abs(gains), **plot_kwargs)).ravel()
+            plist = np.array(ax.plot(self.freqs / 1e6, np.abs(gains), **plot_kwargs)).ravel()
 
             # axes
             ax.set_xlabel('frequency [MHz]', fontsize=14)
             ax.set_ylabel('gain amplitude', fontsize=14)
             ax1 = ax.figure.add_axes([0.99, 0.1, 0.03, 0.8])
             ax1.axis('off')
-            ax1.legend(p, self.ant_array[ants])
+            ax1.legend(plist, self.ant_array[ants])
             ax.set_title("{0} : JD={1} : {2} pol".format(self.filename, self.times[time_index], self.pols[pol_index]))
 
         if save is True:
@@ -929,7 +932,7 @@ class OmniCal_Metrics(object):
         ax.grid(True)
         ydata = self.chisq_tavg[ants, :, pol_index].T
         ylim = np.percentile(ydata.ravel(), 75) * 3
-        p = ax.plot(self.freqs / 1e6, ydata)
+        plist = ax.plot(self.freqs / 1e6, ydata)
         ax.set_xlabel('frequency [MHz]', fontsize=14)
         ax.set_ylabel('chi-square avg over time', fontsize=14)
         ax.set_ylim(0, ylim * 2)
@@ -937,7 +940,7 @@ class OmniCal_Metrics(object):
 
         ax = ax.figure.add_axes([0.99, 0.1, 0.02, 0.8])
         ax.axis('off')
-        ax.legend(p, self.ant_array)
+        ax.legend(plist, self.ant_array)
 
         if save is True:
             if fname is None:

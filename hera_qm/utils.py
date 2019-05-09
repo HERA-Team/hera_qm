@@ -18,17 +18,17 @@ from six.moves import range
 import six
 
 if six.PY2:
-    def _bytes_to_str(b):
-        return b
+    def _bytes_to_str(inbyte):
+        return inbyte
 
-    def _str_to_bytes(s):
-        return s
+    def _str_to_bytes(instr):
+        return instr
 else:
-    def _bytes_to_str(b):
-        return b.decode('utf8')
+    def _bytes_to_str(inbyte):
+        return inbyte.decode('utf8')
 
-    def _str_to_bytes(s):
-        return s.encode('utf8')
+    def _str_to_bytes(instr):
+        return instr.encode('utf8')
 
 
 # argument-generating function for *_run wrapper functions
@@ -530,7 +530,7 @@ def metrics2mc(filename, ftype):
 
     Returns
     -------
-    d : dict
+    mdict : dict
         Dictionary containing keys and data to pass to M&C.
 
         Structure is as follows:
@@ -540,7 +540,7 @@ def metrics2mc(filename, ftype):
                 d['array_metrics'][metric]: Single metric value
 
     """
-    d = {'ant_metrics': {}, 'array_metrics': {}}
+    mdict = {'ant_metrics': {}, 'array_metrics': {}}
     if ftype == 'ant':
         from hera_qm.ant_metrics import load_antenna_metrics
         data = load_antenna_metrics(filename)
@@ -549,45 +549,45 @@ def metrics2mc(filename, ftype):
         for key, category in key2cat.items():
             for met, array in data[key].items():
                 metric = '_'.join([category, met])
-                d['ant_metrics'][metric] = []
+                mdict['ant_metrics'][metric] = []
                 for antpol, val in array.items():
-                    d['ant_metrics'][metric].append([antpol[0], antpol[1], val])
+                    mdict['ant_metrics'][metric].append([antpol[0], antpol[1], val])
             for met in ['crossed_ants', 'dead_ants', 'xants']:
                 metric = '_'.join(['ant_metrics', met])
-                d['ant_metrics'][metric] = []
+                mdict['ant_metrics'][metric] = []
                 for antpol in data[met]:
-                    d['ant_metrics'][metric].append([antpol[0], antpol[1], 1])
-            d['ant_metrics']['ant_metrics_removal_iteration'] = []
+                    mdict['ant_metrics'][metric].append([antpol[0], antpol[1], 1])
+            mdict['ant_metrics']['ant_metrics_removal_iteration'] = []
             metric = 'ant_metrics_removal_iteration'
             for antpol, val in data['removal_iteration'].items():
-                d['ant_metrics'][metric].append([antpol[0], antpol[1], val])
+                mdict['ant_metrics'][metric].append([antpol[0], antpol[1], val])
 
     elif ftype == 'firstcal':
         from hera_qm.firstcal_metrics import load_firstcal_metrics
         data = load_firstcal_metrics(filename)
         pol = str(data['pol'])
         met = 'firstcal_metrics_good_sol_' + pol
-        d['array_metrics'][met] = data['good_sol']
+        mdict['array_metrics'][met] = data['good_sol']
         met = 'firstcal_metrics_agg_std_' + pol
-        d['array_metrics'][met] = data['agg_std']
+        mdict['array_metrics'][met] = data['agg_std']
         met = 'firstcal_metrics_max_std_' + pol
-        d['array_metrics'][met] = data['max_std']
+        mdict['array_metrics'][met] = data['max_std']
         for met in ['ant_z_scores', 'ant_avg', 'ant_std']:
             metric = '_'.join(['firstcal_metrics', met])
-            d['ant_metrics'][metric] = []
+            mdict['ant_metrics'][metric] = []
             for ant, val in data[met].items():
-                d['ant_metrics'][metric].append([ant, pol, val])
+                mdict['ant_metrics'][metric].append([ant, pol, val])
         metric = 'firstcal_metrics_bad_ants'
-        d['ant_metrics'][metric] = []
+        mdict['ant_metrics'][metric] = []
         for ant in data['bad_ants']:
-            d['ant_metrics'][metric].append([ant, pol, 1.])
+            mdict['ant_metrics'][metric].append([ant, pol, 1.])
         metric = 'firstcal_metrics_rot_ants'
-        d['ant_metrics'][metric] = []
+        mdict['ant_metrics'][metric] = []
 
         try:
             if data['rot_ants'] is not None:
                 for ant in data['rot_ants']:
-                    d['ant_metrics'][metric].append([ant, pol, 1.])
+                    mdict['ant_metrics'][metric].append([ant, pol, 1.])
         except KeyError:
             # Old files simply did not have rot_ants
             pass
@@ -598,7 +598,7 @@ def metrics2mc(filename, ftype):
         pols = full_mets.keys()
 
         # iterate over polarizations (e.g. XX, YY, XY, YX)
-        for i, pol in enumerate(pols):
+        for pol in pols:
             # unpack metrics from full_mets
             metrics = full_mets[pol]
 
@@ -609,7 +609,7 @@ def metrics2mc(filename, ftype):
                 try:
                     if metrics[met] is None:
                         continue
-                    d['array_metrics'][catmet] = metrics[met]
+                    mdict['array_metrics'][catmet] = metrics[met]
                 except KeyError:
                     pass
 
@@ -623,18 +623,20 @@ def metrics2mc(filename, ftype):
                     if metrics[met] is None:
                         continue
                     # if catmet already exists extend it
-                    if catmet in d['ant_metrics']:
-                        d['ant_metrics'][catmet].extend([[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]])
+                    if catmet in mdict['ant_metrics']:
+                        mdict['ant_metrics'][catmet].extend([[a, metrics['ant_pol'].lower(),
+                                                              metrics[met][a]] for a in metrics[met]])
                     # if not, assign it
                     else:
-                        d['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]]
+                        mdict['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(),
+                                                         metrics[met][a]] for a in metrics[met]]
                 except KeyError:
                     pass
 
     else:
         raise ValueError('Metric file type ' + ftype + ' is not recognized.')
 
-    return d
+    return mdict
 
 
 def dynamic_slice(arr, slice_obj, axis=-1):

@@ -12,7 +12,7 @@ from . import utils
 from . import version
 
 
-def check_noise_variance(data):
+def check_noise_variance(uvd):
     """Calculate the noise levels of each baseline/pol relative to the autos.
 
     This function calculates the noise for each baseline/pol by differencing
@@ -21,7 +21,7 @@ def check_noise_variance(data):
 
     Parameters
     ----------
-    data : UVData object
+    uvd : UVData object
         A UVData object with data to be analyzed.
 
     Returns
@@ -38,28 +38,28 @@ def check_noise_variance(data):
 
     """
     Cij = {}
-    for key, d in data.antpairpol_iter():
-        inds = data.antpair2ind(key[0], key[1])
-        integration_time = data.integration_time[inds]
+    for key, data in uvd.antpairpol_iter():
+        inds = uvd.antpair2ind(key[0], key[1])
+        integration_time = uvd.integration_time[inds]
         if not len(set(integration_time)) == 1:
             raise NotImplementedError(("Integration times which vary with "
                                        "time are currently not supported."))
         else:
             integration_time = integration_time[0]
-        w = data.get_nsamples(key)
+        w = uvd.get_nsamples(key)
         bl = (key[0], key[1])
-        ai = data.get_data((key[0], key[0], key[2])).real
-        aj = data.get_data((key[1], key[1], key[2])).real
+        ai = uvd.get_data((key[0], key[0], key[2])).real
+        aj = uvd.get_data((key[1], key[1], key[2])).real
         ww = w[1:, 1:] * w[1:, :-1] * w[:-1, 1:] * w[:-1, :-1]
 
-        dd = (((d[:-1, :-1] - d[:-1, 1:]) - (d[1:, :-1] - d[1:, 1:])) * ww
+        dd = (((data[:-1, :-1] - data[:-1, 1:]) - (data[1:, :-1] - data[1:, 1:])) * ww
               / np.sqrt(4))
         dai = (((ai[:-1, :-1] + ai[:-1, 1:]) + (ai[1:, :-1] + ai[1:, 1:])) * ww
                / 4)
         daj = (((aj[:-1, :-1] + aj[:-1, 1:]) + (aj[1:, :-1] + aj[1:, 1:])) * ww
                / 4)
         Cij[key] = (np.sum(np.abs(dd)**2, axis=0) / np.sum(dai * daj, axis=0)
-                    * (data.channel_width * integration_time))
+                    * (uvd.channel_width * integration_time))
 
     return Cij
 
@@ -131,10 +131,10 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
         if pad:
             for ax in axis:
                 # get padding vector
-                p = utils.dynamic_slice(np.zeros_like(data, dtype=np.float), slice(0, 1), axis=ax)
+                zero_slice = utils.dynamic_slice(np.zeros_like(data, dtype=np.float), slice(0, 1), axis=ax)
                 # pad arrays
-                data = np.concatenate([data, p], axis=ax)
-                t_int = np.concatenate([t_int, p], axis=ax)
+                data = np.concatenate([data, zero_slice], axis=ax)
+                t_int = np.concatenate([t_int, zero_slice], axis=ax)
 
         for ax in axis:
             # difference data to get noise
@@ -191,22 +191,22 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
             bl_slice = uvd.antpair2ind(bl, ordered=False)
 
             # configure data and t_int
-            d = data.get_data(bl, squeeze='none')[:, 0, :, :]
-            t = data.get_nsamples(bl, squeeze='none')[:, 0, :, :] \
-                * (~data.get_flags(bl, squeeze='none')[:, 0, :, :]).astype(np.float64) \
-                * data.integration_time[data.antpair2ind(bl, ordered=False)][:, None, None]
+            bl_data = data.get_data(bl, squeeze='none')[:, 0, :, :]
+            bl_t = (data.get_nsamples(bl, squeeze='none')[:, 0, :, :]
+                    * (~data.get_flags(bl, squeeze='none')[:, 0, :, :]).astype(np.float64)
+                    * data.integration_time[data.antpair2ind(bl, ordered=False)][:, None, None])
 
             # take difference
-            d, t = sequential_diff(d, t_int=t, axis=axis, pad=pad)
+            bl_data, bl_t = sequential_diff(bl_data, t_int=bl_t, axis=axis, pad=pad)
 
             # configure output flags, nsample
-            f = np.isclose(t, 0.0)
-            n = t / uvd.integration_time[uvd.antpair2ind(bl, ordered=False)][:, None, None]
+            flags = np.isclose(bl_t, 0.0)
+            nsample = bl_t / uvd.integration_time[uvd.antpair2ind(bl, ordered=False)][:, None, None]
 
             # assign data
-            uvd.data_array[bl_slice, 0, :, :] = d
-            uvd.flag_array[bl_slice, 0, :, :] = f
-            uvd.nsample_array[bl_slice, 0, :, :] = n
+            uvd.data_array[bl_slice, 0, :, :] = bl_data
+            uvd.flag_array[bl_slice, 0, :, :] = flags
+            uvd.nsample_array[bl_slice, 0, :, :] = nsample
 
         # run check
         if run_check:
@@ -318,43 +318,41 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
     cov = np.empty((Nbls, Nbls, Ntimes, Nfreqs), dtype=np.complex) * np.nan
 
     # iterate over bls
-    for i, bl1 in enumerate(bls):
+    for bl1i, bl1 in enumerate(bls):
         # skip if completely flagged
         if np.isclose(m1[bl1], 0.0).all():
             continue
 
         # iterate over bls
-        for j, bl2 in enumerate(bls):
+        for bl2i, bl2 in enumerate(bls):
             # skip if completely flagged
             if np.isclose(m2[bl2], 0.0).all():
                 continue
 
             # get cov
             w12 = w1[bl1] * w2[bl2]
-            c = np.sum((d1[bl1] - m1[bl1]) * (d2[bl2] - m2[bl2]).conj() * w12, axis=sumaxes, keepdims=True) \
-                / np.sum(w12, axis=sumaxes, keepdims=True).clip(1e-10, np.inf)
-
-            # assign
-            cov[i, j] = c
+            cov[bl1i, bl2i] = (np.sum((d1[bl1] - m1[bl1]) * (d2[bl2] - m2[bl2]).conj()
+                                      * w12, axis=sumaxes, keepdims=True)
+                               / np.sum(w12, axis=sumaxes, keepdims=True).clip(1e-10, np.inf))
 
     # calculate correlation matrix
     if return_corr:
         # get stds of bls
         std = np.empty((2, Nbls, Ntimes, Nfreqs), dtype=np.complex) * np.nan
-        for i, bl in enumerate(bls):
+        for bli, bl in enumerate(bls):
             d1diff = d1[bl] - m1[bl]
-            std[0, i] = np.sqrt(np.abs(np.sum(d1diff * d1diff.conj() * w1[bl],
-                                              axis=sumaxes, keepdims=True)
-                                       / np.sum(w1[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
+            std[0, bli] = np.sqrt(np.abs(np.sum(d1diff * d1diff.conj() * w1[bl],
+                                                axis=sumaxes, keepdims=True)
+                                         / np.sum(w1[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
             d2diff = d2[bl] - m2[bl]
-            std[1, i] = np.sqrt(np.abs(np.sum(d2diff * d2diff.conj() * w2[bl],
-                                              axis=sumaxes, keepdims=True)
-                                       / np.sum(w2[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
+            std[1, bli] = np.sqrt(np.abs(np.sum(d2diff * d2diff.conj() * w2[bl],
+                                                axis=sumaxes, keepdims=True)
+                                         / np.sum(w2[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf)))
 
         # turn cov into corr
-        for i in range(Nbls):
-            for j in range(Nbls):
-                cov[i, j] /= std[0, i] * std[1, j]
+        for bli in range(Nbls):
+            for blj in range(Nbls):
+                cov[bli, blj] /= std[0, bli] * std[1, blj]
     return cov
 
 
@@ -598,20 +596,20 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
 
     # get colorax
     if colorax == 'freq':
-        c = np.repeat(uvd1.freq_array / 1e6, uvd1.Ntimes, axis=0).ravel()
+        color = np.repeat(uvd1.freq_array / 1e6, uvd1.Ntimes, axis=0).ravel()
         clabel = r"$\rm Frequency\ [MHz]$"
     elif colorax == 'time':
         jd = int(np.floor(np.median(uvd1.time_array)))
-        c = np.repeat(np.unique(uvd1.time_array)[:, None] % jd, uvd1.Nfreqs, axis=1).ravel()
+        color = np.repeat(np.unique(uvd1.time_array)[:, None] % jd, uvd1.Nfreqs, axis=1).ravel()
         clabel = r"$\rm Julian\ Date\ \%\ {}$".format(jd)
     else:
         raise ValueError("Didn't recognize colorax {}".format(colorax))
 
     # iterate over bl-bl pairs
-    for i, bl1 in enumerate(bls):
-        for j, bl2 in enumerate(bls):
+    for bli, bl1 in enumerate(bls):
+        for blj, bl2 in enumerate(bls):
             # get ax
-            ax = axes[i, j]
+            ax = axes[bli, blj]
 
             # turn on grid
             if grid:
@@ -628,10 +626,10 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
                 f2 = uvd2.get_flags(bl2).ravel()
             except KeyError:
                 # data key didn't exist...
-                d1 = np.zeros_like(c)
-                d2 = np.zeros_like(c)
-                f1 = np.ones_like(c, dtype=np.bool)
-                f2 = np.ones_like(c, dtype=np.bool)
+                d1 = np.zeros_like(color)
+                d2 = np.zeros_like(color)
+                f1 = np.ones_like(color, dtype=np.bool)
+                f2 = np.ones_like(color, dtype=np.bool)
 
             d1[f1] *= np.nan
             d2[f2] *= np.nan
@@ -642,8 +640,8 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
             d2 = cast(d2)
 
             # plot
-            cax = ax.scatter(d1, d2, alpha=alpha, s=msize, cmap=cmap, c=c, marker=marker)
-            if (i == 0 and j == 0) and (f1.all() or f2.all()) and (xylim is None):
+            cax = ax.scatter(d1, d2, alpha=alpha, s=msize, cmap=cmap, c=color, marker=marker)
+            if (bli == 0 and blj == 0) and (f1.all() or f2.all()) and (xylim is None):
                 raise ValueError("xylim was not specified and is therefore determined by\n"
                                  "range of first bl-pair, but these data are completely flagged.")
 
@@ -667,7 +665,7 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
             ax.pos = pos
 
             # ax tick labels
-            if i == Nbls - 1:
+            if bli == Nbls - 1:
                 # last row, make axes labels
                 if ax.get_xlabel() == "":
                     ax.set_xlabel("{} {} [{}]".format(bl2, component, uvd2.vis_units),
@@ -676,7 +674,7 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
             else:
                 # not last row, get rid of tick labels
                 ax.set_xticklabels([])
-            if j == 0:
+            if blj == 0:
                 # first column, make axes labels
                 if ax.get_ylabel() == "":
                     ax.set_ylabel("{} {} [{}]".format(bl1, component, uvd1.vis_units),
