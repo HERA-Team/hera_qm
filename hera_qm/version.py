@@ -46,10 +46,10 @@ def _get_git_output(args, capture_stderr=False):
     return data.decode('utf8')
 
 
-def _unicode_to_str(u):
+def _unicode_to_str(unicode_in):
     if six.PY2:
-        return u.encode('utf8')
-    return u
+        return unicode_in.encode('utf8')
+    return unicode_in
 
 
 def construct_version_info():
