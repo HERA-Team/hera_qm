@@ -505,7 +505,7 @@ class FirstCalMetrics(object):
             metrics['start_JD'] = self.start_JD
             metrics['frac_JD'] = self.frac_JD
             metrics['std_cut'] = std_cut
-            metrics['pol'] = self.pols[i]
+            metrics['pol'] = self.pols[pol_ind]
             metrics['rot_ants'] = self.rot_ants
 
             if self.history != '':

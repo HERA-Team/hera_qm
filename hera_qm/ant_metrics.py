@@ -924,7 +924,7 @@ class AntennaMetrics():
                     self.crossedAntsRemoved.append((worstCrossAnt[0], antpol))
                     self.removalIter[(worstCrossAnt[0], antpol)] = iter
                     if verbose:
-                        print('On iteration', n, 'we flag\t', end='')
+                        print('On iteration', iter, 'we flag\t', end='')
                         print((worstCrossAnt[0], antpol))
             elif (worstDeadCutRatio > worstCrossCutRatio
                     and worstDeadCutRatio > 1.0):
