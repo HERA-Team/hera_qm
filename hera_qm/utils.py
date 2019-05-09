@@ -623,11 +623,13 @@ def metrics2mc(filename, ftype):
                     if metrics[met] is None:
                         continue
                     # if catmet already exists extend it
-                    if catmet in d['ant_metrics']:
-                        mdict['ant_metrics'][catmet].extend([[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]])
+                    if catmet in mdict['ant_metrics']:
+                        mdict['ant_metrics'][catmet].extend([[a, metrics['ant_pol'].lower(),
+                                                              metrics[met][a]] for a in metrics[met]])
                     # if not, assign it
                     else:
-                        mdict['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(), metrics[met][a]] for a in metrics[met]]
+                        mdict['ant_metrics'][catmet] = [[a, metrics['ant_pol'].lower(),
+                                                         metrics[met][a]] for a in metrics[met]]
                 except KeyError:
                     pass
 
