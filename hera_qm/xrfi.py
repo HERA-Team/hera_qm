@@ -114,7 +114,7 @@ def resolve_xrfi_path(xrfi_path, fname):
     return dirname
 
 
-def _check_convolve_dims(d, Kt, Kf):
+def _check_convolve_dims(data, Kt, Kf):
     """Check the kernel sizes to be used in various convolution-like operations.
 
     If the kernel sizes are too big, replace them with the largest allowable size
@@ -122,7 +122,7 @@ def _check_convolve_dims(d, Kt, Kf):
 
     Parameters
     ----------
-    d : array
+    data : array
         2D array that will undergo convolution-like operations.
     Kt : int
         Integer representing box dimension in time to apply statistic.
@@ -132,29 +132,29 @@ def _check_convolve_dims(d, Kt, Kf):
     Returns
     -------
     Kt : int
-        Input Kt or d.shape[0] if Kt is larger than first dim of d.
+        Input Kt or data.shape[0] if Kt is larger than first dim of arr.
     Kf : int
-        Input Kf or d.shape[1] if Kf is larger than first dim of d.
+        Input Kf or data.shape[1] if Kf is larger than first dim of arr.
 
     Raises
     ------
     ValueError:
-        If the number of dimensions of the data array is not 2, a ValueError is raised.
+        If the number of dimensions of the arr array is not 2, a ValueError is raised.
     """
-    if d.ndim != 2:
+    if data.ndim != 2:
         raise ValueError('Input to filter must be 2D array.')
-    if Kt > d.shape[0]:
+    if Kt > data.shape[0]:
         warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kt, d.shape[0]))
-        Kt = d.shape[0]
-    if Kf > d.shape[1]:
+                      "using the size of the data for the kernel size".format(Kt, data.shape[0]))
+        Kt = data.shape[0]
+    if Kf > data.shape[1]:
         warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kf, d.shape[1]))
-        Kf = d.shape[1]
+                      "using the size of the data for the kernel size".format(Kf, data.shape[1]))
+        Kf = data.shape[1]
     return Kt, Kf
 
 
-def robust_divide(a, b):
+def robust_divide(num, den):
     """Prevent division by zero.
 
     This function will compute division between two array-like objects by setting
@@ -164,29 +164,29 @@ def robust_divide(a, b):
 
     Parameters
     ----------
-    a : array
+    num : array
         The numerator.
-    b : array
+    den : array
         The denominator.
 
     Returns
     -------
-    f : array
-        The result of dividing a / b. Elements where b is small (or zero) are set
+    out : array
+        The result of dividing num / den. Elements where b is small (or zero) are set
         to infinity.
 
     """
-    thresh = np.finfo(b.dtype).eps
-    f = np.true_divide(a, b, where=(np.abs(b) > thresh))
-    f = np.where(np.abs(b) > thresh, f, np.inf)
-    return f
+    thresh = np.finfo(den.dtype).eps
+    out = np.true_divide(num, den, where=(np.abs(den) > thresh))
+    out = np.where(np.abs(den) > thresh, out, np.inf)
+    return out
 
 
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
 #############################################################################
 
-def medmin(d, flags=None):
+def medmin(data, flags=None):
     """Calculate the median minus minimum statistic of array.
 
     Note
@@ -199,7 +199,7 @@ def medmin(d, flags=None):
 
     Parameters
     ----------
-    d : array
+    data : array
         2D data array of the shape (time,frequency).
     flags : array, optional
         2D flag array to be interpretted as mask for d. NOT USED in this function,
@@ -211,17 +211,17 @@ def medmin(d, flags=None):
         The result of the medmin statistic.
 
     """
-    _ = _check_convolve_dims(d, 1, 1)  # Just check data dims
-    mn = np.min(d, axis=0)
+    _ = _check_convolve_dims(data, 1, 1)  # Just check data dims
+    mn = np.min(data, axis=0)
     return 2 * np.median(mn) - np.min(mn)
 
 
-def medminfilt(d, flags=None, Kt=8, Kf=8):
+def medminfilt(data, flags=None, Kt=8, Kf=8):
     """Filter an array on scales of Kt,Kf indexes with medmin.
 
     Parameters
     ----------
-    d : array
+    data : array
         2D data array of the shape (time, frequency).
     flags : array, optional
         2D flag array to be interpretted as mask for d. NOT USED in this function,
@@ -239,17 +239,17 @@ def medminfilt(d, flags=None, Kt=8, Kf=8):
         The filtered array with the same shape as input array.
 
     """
-    Kt, Kf = _check_convolve_dims(d, Kt, Kf)
-    d_sm = np.empty_like(d)
-    for i in range(d.shape[0]):
-        for j in range(d.shape[1]):
-            i0, j0 = max(0, i - Kt), max(0, j - Kf)
-            i1, j1 = min(d.shape[0], i + Kt), min(d.shape[1], j + Kf)
-            d_sm[i, j] = medmin(d[i0:i1, j0:j1])
+    Kt, Kf = _check_convolve_dims(data, Kt, Kf)
+    d_sm = np.empty_like(data)
+    for ind1 in range(data.shape[0]):
+        for ind2 in range(data.shape[1]):
+            i0, j0 = max(0, ind1 - Kt), max(0, ind2 - Kf)
+            i1, j1 = min(data.shape[0], ind1 + Kt), min(data.shape[1], ind2 + Kf)
+            d_sm[ind1, ind2] = medmin(data[i0:i1, j0:j1])
     return d_sm
 
 
-def detrend_deriv(d, flags=None, dt=True, df=True):
+def detrend_deriv(data, flags=None, dt=True, df=True):
     """Detrend array by taking the derivative in either time, frequency, or both.
 
     Note
@@ -259,7 +259,7 @@ def detrend_deriv(d, flags=None, dt=True, df=True):
 
     Parameters
     ----------
-    d : array
+    data : array
         2D data array of the shape (time,frequency).
     flags : array, optional
         2D flag array to be interpretted as mask for d. NOT USED in this function,
@@ -271,18 +271,18 @@ def detrend_deriv(d, flags=None, dt=True, df=True):
 
     Returns
     -------
-    f : array
+    out : array
         A detrended array with same shape as input array.
 
     """
-    _ = _check_convolve_dims(d, 1, 1)  # Just check data dims
+    _ = _check_convolve_dims(data, 1, 1)  # Just check data dims
     if not (dt or df):
         raise ValueError("dt and df cannot both be False when calling detrend_deriv")
     if df:
         # take gradient along frequency
-        d_df = np.gradient(d, axis=1)
+        d_df = np.gradient(data, axis=1)
     else:
-        d_df = d
+        d_df = data
     if dt:
         # take gradient along time
         d_dtdf = np.gradient(d_df, axis=0)
@@ -297,16 +297,16 @@ def detrend_deriv(d, flags=None, dt=True, df=True):
     sig_t.shape = (-1, 1)
     sig = np.sqrt(sig_f * sig_t / np.median(sig_t))
     # don't divide by zero, instead turn those entries into +inf
-    f = robust_divide(d_dtdf, sig)
-    return f
+    out = robust_divide(d_dtdf, sig)
+    return out
 
 
-def detrend_medminfilt(d, flags=None, Kt=8, Kf=8):
+def detrend_medminfilt(data, flags=None, Kt=8, Kf=8):
     """Detrend array using medminfilt statistic. See medminfilt.
 
     Parameters
     ----------
-    d : array
+    data : array
         2D data array of the shape (time, frequency) to detrend.
     flags : array, optional
         2D flag array to be interpretted as mask for d. NOT USED in this function,
@@ -320,27 +320,27 @@ def detrend_medminfilt(d, flags=None, Kt=8, Kf=8):
 
     Returns
     -------
-    f : array
+    out : array
         An array of outlier significance metric.
 
     """
-    _ = _check_convolve_dims(d, 1, 1)  # Just check data dimensions
-    d_sm = medminfilt(np.abs(d), Kt=(2 * Kt + 1), Kf=(2 * Kf + 1))
-    d_rs = d - d_sm
+    _ = _check_convolve_dims(data, 1, 1)  # Just check data dimensions
+    d_sm = medminfilt(np.abs(data), Kt=(2 * Kt + 1), Kf=(2 * Kf + 1))
+    d_rs = data - d_sm
     d_sq = np.abs(d_rs)**2
     # puts minmed on same scale as average
     sig = np.sqrt(medminfilt(d_sq, Kt=(2 * Kt + 1), Kf=(2 * Kf + 1))) * (np.sqrt(Kt**2 + Kf**2) / .64)
     # don't divide by zero, instead turn those entries into +inf
-    f = robust_divide(d_rs, sig)
-    return f
+    out = robust_divide(d_rs, sig)
+    return out
 
 
-def detrend_medfilt(d, flags=None, Kt=8, Kf=8):
+def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
     """Detrend array using a median filter.
 
     Parameters
     ----------
-    d : array
+    data : array
         2D data array to detrend.
     flags : array, optional
         2D flag array to be interpretted as mask for d. NOT USED in this function,
@@ -354,37 +354,37 @@ def detrend_medfilt(d, flags=None, Kt=8, Kf=8):
 
     Returns
     -------
-    f : array
+    out : array
         An array containing the outlier significance metric. Same type and size as d.
 
     """
     # Delay import so scipy is not required for any use of hera_qm
     from scipy.signal import medfilt2d
 
-    Kt, Kf = _check_convolve_dims(d, Kt, Kf)
-    d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
-    d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
-    if np.iscomplexobj(d):
-        d_sm_r = medfilt2d(d.real, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
-        d_sm_i = medfilt2d(d.imag, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+    Kt, Kf = _check_convolve_dims(data, Kt, Kf)
+    data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
+    data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
+    if np.iscomplexobj(data):
+        d_sm_r = medfilt2d(data.real, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+        d_sm_i = medfilt2d(data.imag, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
         d_sm = d_sm_r + 1j * d_sm_i
     else:
-        d_sm = medfilt2d(d, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
-    d_rs = d - d_sm
+        d_sm = medfilt2d(data, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+    d_rs = data - d_sm
     d_sq = np.abs(d_rs)**2
     # puts median on same scale as average
     sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
-    f = robust_divide(d_rs, sig)
-    return f[Kt:-Kt, Kf:-Kf]
+    out = robust_divide(d_rs, sig)
+    return out[Kt:-Kt, Kf:-Kf]
 
 
-def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
+def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
     """Detrend array using a mean filter.
 
     Parameters
     ----------
-    d : array
+    data : array
         2D data array to detrend.
     flags : array, optional
         2D flag array to be interpretted as mask for d.
@@ -397,28 +397,28 @@ def detrend_meanfilt(d, flags=None, Kt=8, Kf=8):
 
     Returns
     -------
-    f : array
+    out : array
         An array containing the outlier significance metric. Same type and size as d.
     """
     # Delay import so astropy is not required for any use of hera_qm
     # Using astropy instead of scipy for treatement of Nan: http://docs.astropy.org/en/stable/convolution/
     from astropy.convolution import convolve
 
-    Kt, Kf = _check_convolve_dims(d, Kt, Kf)
+    Kt, Kf = _check_convolve_dims(data, Kt, Kf)
     kernel = np.ones((2 * Kt + 1, 2 * Kf + 1))
     # do a mirror extend, like in scipy's convolve, which astropy doesn't support
-    d = np.concatenate([d[Kt - 1::-1], d, d[:-Kt - 1:-1]], axis=0)
-    d = np.concatenate([d[:, Kf - 1::-1], d, d[:, :-Kf - 1:-1]], axis=1)
+    data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
+    data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
     if flags is not None:
         flags = np.concatenate([flags[Kt - 1::-1], flags, flags[:-Kt - 1:-1]], axis=0)
         flags = np.concatenate([flags[:, Kf - 1::-1], flags, flags[:, :-Kf - 1:-1]], axis=1)
-    d_sm = convolve(d, kernel, mask=flags, boundary='extend')
-    d_rs = d - d_sm
+    d_sm = convolve(data, kernel, mask=flags, boundary='extend')
+    d_rs = data - d_sm
     d_sq = np.abs(d_rs)**2
     sig = np.sqrt(convolve(d_sq, kernel, mask=flags))
     # don't divide by zero, instead turn those entries into +inf
-    f = robust_divide(d_rs, sig)
-    return f[Kt:-Kt, Kf:-Kf]
+    out = robust_divide(d_rs, sig)
+    return out[Kt:-Kt, Kf:-Kf]
 
 
 # Update algorithm_dict whenever new metric algorithm is created.
@@ -496,28 +496,28 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
     if uvf_m.type == 'baseline':
         # Pixel watershed
         # TODO: bypass pixel-based if none
-        for b in np.unique(uvf.baseline_array):
-            i = np.where(uvf.baseline_array == b)[0]
+        for bl in np.unique(uvf.baseline_array):
+            ind = np.where(uvf.baseline_array == bl)[0]
             for pi in range(uvf.polarization_array.size):
-                farr[i, 0, :, pi] += _ws_flag_waterfall(marr[i, 0, :, pi],
-                                                        farr[i, 0, :, pi], nsig_p)
+                farr[ind, 0, :, pi] += _ws_flag_waterfall(marr[ind, 0, :, pi],
+                                                          farr[ind, 0, :, pi], nsig_p)
         if nsig_f is not None:
             # Channel watershed
-            d = uvutils.collapse(marr, avg_method, axis=(0, 1, 3), weights=warr)
-            f = np.all(farr, axis=(0, 1, 3))
-            farr[:, :, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, 1, -1, 1)
+            tempd = uvutils.collapse(marr, avg_method, axis=(0, 1, 3), weights=warr)
+            tempf = np.all(farr, axis=(0, 1, 3))
+            farr[:, :, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_f).reshape(1, 1, -1, 1)
         if nsig_t is not None:
             # Time watershed
             ts = np.unique(uvf.time_array)
-            d = np.zeros(ts.size)
-            f = np.zeros(ts.size, dtype=np.bool)
-            for i, t in enumerate(ts):
-                d[i] = uvutils.collapse(marr[uvf.time_array == t, 0, :, :], avg_method,
-                                        weights=warr[uvf.time_array == t, 0, :, :])
-                f[i] = np.all(farr[uvf.time_array == t, 0, :, :])
-            f = _ws_flag_waterfall(d, f, nsig_t)
-            for i, t in enumerate(ts):
-                farr[uvf.time_array == t, :, :, :] += f[i]
+            tempd = np.zeros(ts.size)
+            tempf = np.zeros(ts.size, dtype=np.bool)
+            for ti, time in enumerate(ts):
+                tempd[ti] = uvutils.collapse(marr[uvf.time_array == time, 0, :, :], avg_method,
+                                             weights=warr[uvf.time_array == time, 0, :, :])
+                tempf[ti] = np.all(farr[uvf.time_array == time, 0, :, :])
+            tempf = _ws_flag_waterfall(tempd, tempf, nsig_t)
+            for ti, time in enumerate(ts):
+                farr[uvf.time_array == time, :, :, :] += tempf[ti]
     elif uvf_m.type == 'antenna':
         # Pixel watershed
         for ai in range(uvf.ant_array.size):
@@ -526,34 +526,34 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
                                                             farr[ai, 0, :, :, pi].T, nsig_p).T
         if nsig_f is not None:
             # Channel watershed
-            d = uvutils.collapse(marr, avg_method, axis=(0, 1, 3, 4), weights=warr)
-            f = np.all(farr, axis=(0, 1, 3, 4))
-            farr[:, :, :, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, 1, -1, 1, 1)
+            tempd = uvutils.collapse(marr, avg_method, axis=(0, 1, 3, 4), weights=warr)
+            tempf = np.all(farr, axis=(0, 1, 3, 4))
+            farr[:, :, :, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_f).reshape(1, 1, -1, 1, 1)
         if nsig_t is not None:
             # Time watershed
-            d = uvutils.collapse(marr, avg_method, axis=(0, 1, 2, 4), weights=warr)
-            f = np.all(farr, axis=(0, 1, 2, 4))
-            farr[:, :, :, :, :] += _ws_flag_waterfall(d, f, nsig_t).reshape(1, 1, 1, -1, 1)
+            tempd = uvutils.collapse(marr, avg_method, axis=(0, 1, 2, 4), weights=warr)
+            tempf = np.all(farr, axis=(0, 1, 2, 4))
+            farr[:, :, :, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_t).reshape(1, 1, 1, -1, 1)
     elif uvf_m.type == 'waterfall':
         # Pixel watershed
         for pi in range(uvf.polarization_array.size):
             farr[:, :, pi] += _ws_flag_waterfall(marr[:, :, pi], farr[:, :, pi], nsig_p)
         if nsig_f is not None:
             # Channel watershed
-            d = uvutils.collapse(marr, avg_method, axis=(0, 2), weights=warr)
-            f = np.all(farr, axis=(0, 2))
-            farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_f).reshape(1, -1, 1)
+            tempd = uvutils.collapse(marr, avg_method, axis=(0, 2), weights=warr)
+            tempf = np.all(farr, axis=(0, 2))
+            farr[:, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_f).reshape(1, -1, 1)
         if nsig_t is not None:
             # Time watershed
-            d = uvutils.collapse(marr, avg_method, axis=(1, 2), weights=warr)
-            f = np.all(farr, axis=(1, 2))
-            farr[:, :, :] += _ws_flag_waterfall(d, f, nsig_t).reshape(-1, 1, 1)
+            tempd = uvutils.collapse(marr, avg_method, axis=(1, 2), weights=warr)
+            tempf = np.all(farr, axis=(1, 2))
+            farr[:, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_t).reshape(-1, 1, 1)
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
     return uvf
 
 
-def _ws_flag_waterfall(d, fin, nsig=2.):
+def _ws_flag_waterfall(data, fin, nsig=2.):
     """Perform the watershed algorithm on 1D or 2D arrays of metric and input flags.
 
     This is a helper function for watershed_flag, but not usually called
@@ -561,7 +561,7 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
 
     Parameters
     ----------
-    d : array
+    data : array
         A 2D or 1D array. Should be in units of standard deviations.
     fin : array
         The input (boolean) flags used as the seed of the watershed. Same size as d.
@@ -570,44 +570,45 @@ def _ws_flag_waterfall(d, fin, nsig=2.):
 
     Returns
     -------
-    f : array
+    fout : array
         A boolean array matching size of d and fin, with watershedded flags.
 
     Raises
     ------
     ValueError:
-        If the shapes of d and fin do not match, or if the number of dimensions is not
+        If the shapes of data and fin do not match, or if the number of dimensions is not
         equal to 1 or 2, a ValueError is raised.
 
     """
-    if d.shape != fin.shape:
-        raise ValueError('d and f must match in shape. Shapes are: ' + str(d.shape)
+    if data.shape != fin.shape:
+        raise ValueError('data and fin must match in shape. Shapes are: ' + str(data.shape)
                          + ' and ' + str(fin.shape))
-    f = copy.deepcopy(fin)
+    fout = copy.deepcopy(fin)
     # There may be an elegant way to combine these... for the future.
-    if d.ndim == 1:
+    if data.ndim == 1:
         prevn = 0
-        x = np.where(f)[0]
-        while x.size != prevn:
-            prevn = x.size
+        foutx = np.where(fout)[0]
+        while foutx.size != prevn:
+            prevn = foutx.size
             for dx in [-1, 1]:
-                xp = (x + dx).clip(0, f.size - 1)
-                i = np.where(d[xp] > nsig)[0]  # if our metric > sig
-                f[xp[i]] = 1
-                x = np.where(f)[0]
-    elif d.ndim == 2:
+                xp = (foutx + dx).clip(0, fout.size - 1)
+                ind = np.where(data[xp] > nsig)[0]  # if our metric > sig
+                fout[xp[ind]] = 1
+                foutx = np.where(fout)[0]
+    elif data.ndim == 2:
         prevx, prevy = 0, 0
-        x, y = np.where(f)
-        while x.size != prevx and y.size != prevy:
-            prevx, prevy = x.size, y.size
+        foutx, fouty = np.where(fout)
+        while foutx.size != prevx and fouty.size != prevy:
+            prevx, prevy = foutx.size, fouty.size
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-                xp, yp = (x + dx).clip(0, f.shape[0] - 1), (y + dy).clip(0, f.shape[1] - 1)
-                i = np.where(d[xp, yp] > nsig)[0]  # if our metric > sig
-                f[xp[i], yp[i]] = 1
-                x, y = np.where(f)
+                xp, yp = ((foutx + dx).clip(0, fout.shape[0] - 1),
+                          (fouty + dy).clip(0, fout.shape[1] - 1))
+                ind = np.where(data[xp, yp] > nsig)[0]  # if our metric > sig
+                fout[xp[ind], yp[ind]] = 1
+                foutx, fouty = np.where(fout)
     else:
         raise ValueError('Data must be 1D or 2D.')
-    return f
+    return fout
 
 
 def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
@@ -656,46 +657,46 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     if uvf_m.type == 'baseline':
         if nsig_f is not None:
             # Channel flagging
-            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3),
-                                 weights=uvf_m.weights_array)
-            indf = np.where(d >= nsig_f)[0]
+            data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3),
+                                    weights=uvf_m.weights_array)
+            indf = np.where(data >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :] = True
         if nsig_t is not None:
             # Time flagging
             ts = np.unique(uvf_m.time_array)
-            d = np.zeros(ts.size)
-            for i, t in enumerate(ts):
-                d[i] = uvutils.collapse(uvf_m.metric_array[uvf_m.time_array == t, 0, :, :],
-                                        avg_method,
-                                        weights=uvf_m.weights_array[uvf_m.time_array == t, 0, :, :])
-            indf = np.where(d >= nsig_t)[0]
-            for t in ts[indf]:
-                uvf_f.flag_array[uvf_f.time_array == t, :, :, :] = True
+            data = np.zeros(ts.size)
+            for ti, time in enumerate(ts):
+                data[ti] = uvutils.collapse(uvf_m.metric_array[uvf_m.time_array == time, 0, :, :],
+                                            avg_method,
+                                            weights=uvf_m.weights_array[uvf_m.time_array == time, 0, :, :])
+            indf = np.where(data >= nsig_t)[0]
+            for time in ts[indf]:
+                uvf_f.flag_array[uvf_f.time_array == time, :, :, :] = True
     elif uvf_m.type == 'antenna':
         if nsig_f is not None:
             # Channel flag
-            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3, 4),
-                                 weights=uvf_m.weights_array)
-            indf = np.where(d >= nsig_f)[0]
+            data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3, 4),
+                                    weights=uvf_m.weights_array)
+            indf = np.where(data >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :, :] = True
         if nsig_t is not None:
             # Time watershed
-            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 2, 4),
-                                 weights=uvf_m.weights_array)
-            indt = np.where(d >= nsig_t)[0]
+            data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 2, 4),
+                                    weights=uvf_m.weights_array)
+            indt = np.where(data >= nsig_t)[0]
             uvf_f.flag_array[:, :, :, indt, :] = True
     elif uvf_m.type == 'waterfall':
         if nsig_f is not None:
             # Channel flag
-            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 2),
-                                 weights=uvf_m.weights_array)
-            indf = np.where(d >= nsig_f)[0]
+            data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 2),
+                                    weights=uvf_m.weights_array)
+            indf = np.where(data >= nsig_f)[0]
             uvf_f.flag_array[:, indf, :] = True
         if nsig_t is not None:
             # Time watershed
-            d = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(1, 2),
-                                 weights=uvf_m.weights_array)
-            indt = np.where(d >= nsig_t)[0]
+            data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(1, 2),
+                                    weights=uvf_m.weights_array)
+            indt = np.where(data >= nsig_t)[0]
             uvf_f.flag_array[indt, :, :] = True
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
@@ -748,21 +749,21 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
     if not isinstance(uvf, (list, tuple, np.ndarray)):
         uvf = [uvf]
     net_flags = UVFlag(uv, mode='flag', copy_flags=keep_existing, history=history)
-    for f in uvf:
-        if isinstance(f, str):
-            f = UVFlag(f)  # Read file
-        elif not isinstance(f, UVFlag):
+    for uvf_i in uvf:
+        if isinstance(uvf_i, str):
+            uvf_i = UVFlag(uvf_i)  # Read file
+        elif not isinstance(uvf_i, UVFlag):
             raise ValueError('Input to apply_flag must be UVFlag or path to UVFlag file.')
-        if f.mode != 'flag':
+        if uvf_i.mode != 'flag':
             raise ValueError('UVFlag objects must be in mode "flag" to apply to data.')
-        if f.type == 'waterfall':
-            f = f.copy()  # don't change the input object
+        if uvf_i.type == 'waterfall':
+            uvf_i = uvf_i.copy()  # don't change the input object
             if expected_type == 'baseline':
-                f.to_baseline(uv, force_pol=force_pol)
+                uvf_i.to_baseline(uv, force_pol=force_pol)
             else:
-                f.to_antenna(uv, force_pol=force_pol)
+                uvf_i.to_antenna(uv, force_pol=force_pol)
         # Use built-in or function
-        net_flags |= f
+        net_flags |= uvf_i
     uv.flag_array += net_flags.flag_array
     uv.history += 'FLAGGING HISTORY: ' + history + ' END OF FLAGGING HISTORY.'
 
@@ -818,20 +819,20 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
     else:
         uvf.weights_array = np.logical_not(uv.flag_array).astype(np.float)
     if issubclass(uv.__class__, UVData):
-        for key, d in uv.antpairpol_iter():
+        for key, data in uv.antpairpol_iter():
             ind1, ind2, pol = uv._key2inds(key)
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
                 flags = uv.flag_array[ind, 0, :, ipol]
-                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(d), flags=flags, **kwargs)
+                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
             uvf.to_waterfall()
             for pi in range(uv.Njones):
-                d = np.abs(uv.total_quality_array[0, :, :, pi].T)
+                data = np.abs(uv.total_quality_array[0, :, :, pi].T)
                 flags = np.all(uv.flag_array[:, 0, :, :, pi], axis=0).T
-                uvf.metric_array[:, :, pi] = alg_func(d, flags=flags, **kwargs)
+                uvf.metric_array[:, :, pi] = alg_func(data, flags=flags, **kwargs)
         else:
             for ai in range(uv.Nants_data):
                 for pi in range(uv.Njones):
@@ -839,13 +840,13 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
                     # expected time, freq
                     flags = uv.flag_array[ai, 0, :, :, pi].T
                     if cal_mode == 'gain':
-                        d = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
+                        data = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
                     elif cal_mode == 'chisq':
-                        d = np.abs(uv.quality_array[ai, 0, :, :, pi].T)
+                        data = np.abs(uv.quality_array[ai, 0, :, :, pi].T)
                     else:
                         raise ValueError('When calculating metric for UVCal object, '
                                          'cal_mode must be "gain", "chisq", or "tot_chisq".')
-                    uvf.metric_array[ai, 0, :, :, pi] = alg_func(d, flags=flags, **kwargs).T
+                    uvf.metric_array[ai, 0, :, :, pi] = alg_func(data, flags=flags, **kwargs).T
     return uvf
 
 
