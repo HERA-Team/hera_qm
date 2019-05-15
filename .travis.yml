@@ -42,7 +42,7 @@ before_script:
   - sleep 3
   - python -c "from pyuvdata import version; version.main()"
 script:
-  - python -m pytest pyuvdata --cov=hera_qm --cov-config=.coveragerc --cov-report xml:./coverage.xml --cov-report term
+  - python -m pytest hera_qm --cov=hera_qm --cov-config=.coveragerc --cov-report xml:./coverage.xml --cov-report term
   - pycodestyle */*.py hera_qm/tests/*.py --ignore=E501,W503
   - pydocstyle hera_qm/*.py --convention=numpy
 after_success:
