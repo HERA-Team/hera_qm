@@ -8,4 +8,6 @@ cd $DIR/..
 python setup.py install
 
 cd hera_qm/tests
-nosetests --nologcapture --with-coverage --cover-erase --cover-package=hera_qm --cover-html "$@"
+python -m pytest --cov=hera_qm --cov-config=../../.coveragerc\
+       --cov-report term --cov-report html:cover \
+       "$@"
