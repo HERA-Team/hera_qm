@@ -244,7 +244,7 @@ class Test_FirstCalMetrics_two_pols(unittest.TestCase):
             self.FC.metrics[key].pop('fc_filename', None)
             self.FC.metrics[key].pop('fc_filestem', None)
             self.FC.metrics[key].pop('version', None)
-        qmtest.recursive_compare_dicts(self.FC.metrics, known_output)
+        assert qmtest.recursive_compare_dicts(self.FC.metrics, known_output)
 
 
 class TestFirstcalMetricsRun(unittest.TestCase):
