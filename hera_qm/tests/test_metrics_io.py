@@ -15,7 +15,7 @@ import hera_qm.tests as qmtest
 from hera_qm.version import hera_qm_version_str
 
 
-class test_class(object):
+class dummy_class(object):
     """A dummy class to break h5py object types."""
 
     def __init__(self):
@@ -60,7 +60,7 @@ def test_recursive_error_for_dict_of_object():
     """Test a TypeError is raised if dictionary items are objects."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     path = '/'
-    bad_dict = {'0': test_class()}
+    bad_dict = {'0': dummy_clas()}
     with h5py.File(test_file, 'w') as h5_test:
         pytest.raises(TypeError, metrics_io._recursively_save_dict_to_group,
                       h5_test, path, bad_dict)
@@ -71,7 +71,7 @@ def test_recursive_error_for_object_in_nested_dict():
     """Test TypeError is raised if object is nested in dict."""
     test_file = os.path.join(DATA_PATH, 'test_output', 'test.h5')
     path = '/'
-    bad_dict = {'0': {'0.0': test_class()}}
+    bad_dict = {'0': {'0.0': dummy_clas()}}
     with h5py.File(test_file, 'w') as h5_test:
         pytest.raises(TypeError, metrics_io._recursively_save_dict_to_group,
                       h5_test, path, bad_dict)
