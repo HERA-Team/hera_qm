@@ -31,39 +31,63 @@ def recursive_compare_dicts(d1, d2):
     assert set(d1.keys()) == set(d2.keys())
     for key in d1:
         if isinstance(d1[key], (list)):
-            try:
-                assert d1[key] == list(d2[key])
-            except (AssertionError, TypeError) as err:
-                print('d1:', key, 'key value type:', type(d1[key]),
-                      'data type:', type(d1[key][0]), d1[key])
-                print('d2:', key, 'key value type:', type(d1[key]),
-                      'data type:', type(d2[key][0]), d2[key])
-                raise err
+            assert d1[key] == list(d2[key]), ("key: {key} has type {key1_type} in d1 and {key2_type} in d2\n"
+                                              "d1:  data has type {data1_type} and value {data1_val}\n"
+                                              "d2:  data has type {data2_type} and value {data2_val}\n"
+                                              .format(key1=key,
+                                                      key1_type=type(d1[key]),
+                                                      key2_type=type(d2[key]),
+                                                      data1_type=type(d1[key][0]),
+                                                      data1_val=d1[key],
+                                                      data2_type=type(d2[key][0]),
+                                                      data2_val=d2[key]
+                                                      )
+                                              )
+
         elif isinstance(d1[key], (np.ndarray)):
             if np.issubdtype(d1[key].dtype, np.string_):
                 assert np.array_equal(d1[key], np.asarray(d2[key]))
             else:
-                try:
-                    assert np.allclose(d1[key], np.asarray(d2[key]))
-                except (AssertionError, TypeError) as err:
-                    print('d1:', key, 'key value type:', type(d1[key]),
-                          'data type:', type(d1[key][0]), d1[key])
-                    print('d2:', key, 'key value type:', type(d1[key]),
-                          'data type:', type(d2[key][0]), d2[key])
-                    raise err
+                assert np.allclose(d1[key], np.asarray(d2[key])), ("key: {key} has type {key1_type} in d1 and {key2_type} in d2\n"
+                                                                   "d1:  data has type {data1_type} and value {data1_val}\n"
+                                                                   "d2:  data has type {data2_type} and value {data2_val}\n"
+                                                                   .format(key1=key,
+                                                                           key1_type=type(d1[key]),
+                                                                           key2_type=type(d2[key]),
+                                                                           data1_type=type(d1[key][0]),
+                                                                           data1_val=d1[key],
+                                                                           data2_type=type(d2[key][0]),
+                                                                           data2_val=d2[key]
+                                                                           )
+                                                                   )
         elif isinstance(d1[key], dict):
             recursive_compare_dicts(d1[key], d2[key])
         elif isinstance(d1[key], (float, np.float, np.float32)):
-            assert np.allclose(d1[key], d2[key])
+            assert np.allclose(d1[key], d2[key]), ("key: {key} has type {key1_type} in d1 and {key2_type} in d2\n"
+                                                   "d1:  data has type {data1_type} and value {data1_val}\n"
+                                                   "d2:  data has type {data2_type} and value {data2_val}\n"
+                                                   .format(key1=key,
+                                                           key1_type=type(d1[key]),
+                                                           key2_type=type(d2[key]),
+                                                           data1_type=type(d1[key][0]),
+                                                           data1_val=d1[key],
+                                                           data2_type=type(d2[key][0]),
+                                                           data2_val=d2[key]
+                                                           )
+                                                   )
         else:
-            try:
-                assert d1[key] == d2[key]
-            except (AssertionError, TypeError) as err:
-                print('d1:', key, 'key value type:', type(d1[key]),
-                      'data type:', type(d1[key][0]), d1[key])
-                print('d2:', key, 'key value type:', type(d1[key]),
-                      'data type:', type(d2[key][0]), d2[key])
-                raise err
+            assert d1[key] == d2[key], ("key: {key} has type {key1_type} in d1 and {key2_type} in d2\n"
+                                        "d1:  data has type {data1_type} and value {data1_val}\n"
+                                        "d2:  data has type {data2_type} and value {data2_val}\n"
+                                        .format(key1=key,
+                                                key1_type=type(d1[key]),
+                                                key2_type=type(d2[key]),
+                                                data1_type=type(d1[key][0]),
+                                                data1_val=d1[key],
+                                                data2_type=type(d2[key][0]),
+                                                data2_val=d2[key]
+                                                )
+                                        )
 
 
 try:
