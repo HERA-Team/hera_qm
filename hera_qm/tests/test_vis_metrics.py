@@ -8,11 +8,9 @@ import numpy as np
 from pyuvdata import UVData
 from pyuvdata import utils as uvutils
 from hera_qm.data import DATA_PATH
-import hera_qm.tests as qmtest
 import os
-import pyuvdata.tests as uvtest
 import copy
-import nose.tools as nt
+import pytest
 from scipy import stats
 
 
@@ -65,20 +63,20 @@ def test_vis_bl_cov():
     # test basic execution
     bls = [(0, 1), (11, 12), (12, 13), (13, 14), (23, 24), (24, 25)]
     cov = vis_metrics.vis_bl_bl_cov(uvd, uvd, bls)
-    nt.assert_equal(cov.shape, (6, 6, 1, 1))
-    nt.assert_equal(cov.dtype, np.complex128)
-    nt.assert_almost_equal(cov[0, 0, 0, 0], (51.06967733738634 + 0j))
+    assert cov.shape == (6, 6, 1, 1)
+    assert cov.dtype == np.complex128
+    assert np.isclose(cov[0, 0, 0, 0], (51.06967733738634 + 0j))
 
     # test iterax
     cov = vis_metrics.vis_bl_bl_cov(uvd, uvd, bls, iterax='freq')
-    nt.assert_equal(cov.shape, (6, 6, 1, 1024))
+    assert cov.shape == (6, 6, 1, 1024)
     cov = vis_metrics.vis_bl_bl_cov(uvd, uvd, bls, iterax='time')
-    nt.assert_equal(cov.shape, (6, 6, 1, 1))
+    assert cov.shape == (6, 6, 1, 1)
 
     # test corr
     corr = vis_metrics.vis_bl_bl_cov(uvd, uvd, bls, return_corr=True)
-    nt.assert_true(np.isclose(np.abs(corr).max(), 1.0))
-    nt.assert_almost_equal(corr[1, 0, 0, 0], (0.4204243425812837 - 0.3582194575457562j))
+    assert np.isclose(np.abs(corr).max(), 1.0)
+    assert np.isclose(corr[1, 0, 0, 0], (0.4204243425812837 - 0.3582194575457562j))
 
 
 @qmtest.skipIf_no_matplotlib
@@ -120,13 +118,13 @@ def test_plot_bl_bl_scatter():
     plt.close('all')
 
     # test exceptions
-    nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, bls, component='foo')
-    nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, uvd.get_antpairs())
-    nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, bls, colorax='foo')
+    pytest.raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, bls, component='foo')
+    pytest.raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, uvd.get_antpairs())
+    pytest.raises(ValueError, vis_metrics.plot_bl_bl_scatter, uvd, uvd, bls, colorax='foo')
     uv = copy.deepcopy(uvd)
     # test flagged first bl data and no xylim fails
     uv.flag_array[uv.antpair2ind(bls[0], ordered=False)] = True
-    nt.assert_raises(ValueError, vis_metrics.plot_bl_bl_scatter, uv, uv, bls)
+    pytest.raises(ValueError, vis_metrics.plot_bl_bl_scatter, uv, uv, bls)
     # once xylim specified, should pass
     fig = vis_metrics.plot_bl_bl_scatter(uv, uv, bls, xylim=(-50, 50))
     plt.close('all')
@@ -138,33 +136,33 @@ def test_sequential_diff():
 
     # diff across time
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=0, pad=False)
-    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes - 1)
-    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs)
+    assert uvd_diff.Ntimes == uvd.Ntimes - 1
+    assert uvd_diff.Nfreqs == uvd.Nfreqs
 
     # diff across freq
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=1, pad=False)
-    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes)
-    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs - 1)
+    assert uvd_diff.Ntimes == uvd.Ntimes
+    assert uvd_diff.Nfreqs == uvd.Nfreqs - 1
 
     # diff across both
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=False)
-    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes - 1)
-    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs - 1)
+    assert uvd_diff.Ntimes == uvd.Ntimes - 1
+    assert uvd_diff.Nfreqs == uvd.Nfreqs - 1
 
     # switch diff and test closeness to within 5 decimals
     uvd_diff2 = vis_metrics.sequential_diff(uvd, axis=(1, 0), pad=False)
-    nt.assert_true(np.isclose(uvd_diff.data_array, uvd_diff2.data_array, atol=1e-5).all())
+    assert np.isclose(uvd_diff.data_array, uvd_diff2.data_array, atol=1e-5).all()
 
     # test flag propagation
     uvd.flag_array[uvd.antpair2ind(89, 96, ordered=False)[:1]] = True
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0,), pad=False)
-    nt.assert_true(uvd_diff.get_flags(89, 96)[0].all())
-    nt.assert_false(uvd_diff.get_flags(89, 96)[1:].any())
+    assert uvd_diff.get_flags(89, 96)[0].all()
+    assert not uvd_diff.get_flags(89, 96)[1:].any()
 
     # test exception
-    nt.assert_raises(ValueError, vis_metrics.sequential_diff, uvd, axis=3)
-    nt.assert_raises(ValueError, vis_metrics.sequential_diff, 'foo')
-    nt.assert_raises(ValueError, vis_metrics.sequential_diff, np.arange(10), t_int='foo')
+    pytest.raises(ValueError, vis_metrics.sequential_diff, uvd, axis=3)
+    pytest.raises(ValueError, vis_metrics.sequential_diff, 'foo')
+    pytest.raises(ValueError, vis_metrics.sequential_diff, np.arange(10), t_int='foo')
 
     # fake noise test
     uvn = copy.deepcopy(uvd)
@@ -189,19 +187,16 @@ def test_sequential_diff():
     uvn_diff3 = vis_metrics.sequential_diff(uvn, axis=(0, 1), pad=False)
 
     # assert noise std is equal to 1 within sampling error
-    nt.assert_almost_equal(np.std(uvn_diff1.data_array), 1.0,
-                           delta=1 / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff2.data_array), 1.0,
-                           delta=1 / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
-    nt.assert_almost_equal(np.std(uvn_diff3.data_array), 1.0,
-                           delta=1 / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    assert np.isclose(np.std(uvn_diff1.data_array), 1.0, atol=1 / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    assert np.isclose(np.std(uvn_diff2.data_array), 1.0, atol=1 / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
+    assert np.isclose(np.std(uvn_diff3.data_array), 1.0, atol=1 / np.sqrt(uvn.Ntimes * uvn.Nfreqs))
 
     # test pad
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=True)
-    nt.assert_equal(uvd_diff.Ntimes, uvd.Ntimes)
-    nt.assert_equal(uvd_diff.Nfreqs, uvd.Nfreqs)
-    nt.assert_true(uvd_diff.flag_array[:, 0, -1, 0].all())
-    nt.assert_true(uvd_diff.select(times=np.unique(uvd_diff.time_array)[-1:], inplace=False).flag_array.all())
+    assert uvd_diff.Ntimes == uvd.Ntimes
+    assert uvd_diff.Nfreqs == uvd.Nfreqs
+    assert uvd_diff.flag_array[:, 0, -1, 0].all()
+    assert uvd_diff.select(times=np.unique(uvd_diff.time_array)[-1:], inplace=False).flag_array.all()
 
 
 if __name__ == '__main__':
