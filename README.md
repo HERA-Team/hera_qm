@@ -87,7 +87,7 @@ and call pipelines. `xrfi_h1c_run` is a wrapper we retroactively made to reflect
 what we did for H1C.
 
 ### UVFlag
-UVFlag has been moved to `pyuvdata`.
+UVFlag has been moved to [pyuvdata](https://github.com/RadioAstronomySoftwareGroup/pyuvdata).
 
 
 ## Known Issues and Planned Improvements
