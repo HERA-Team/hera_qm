@@ -1,8 +1,4 @@
 from setuptools import setup
-import glob
-import os.path as path
-from os import listdir
-import sys
 import os
 from hera_qm import version
 import os.path as op
@@ -43,7 +39,9 @@ setup_args = {
                 'scripts/xrfi_h1c_run.py'],
     'version': version.version,
     'package_data': {'hera_qm': data_files},
+    'setup_requires': ['pytest-runner'],
     'install_requires': ['astropy>=2.0', 'h5py'],
+    'tests_require': ['pytest'],
     'zip_safe': False,
 }
 
