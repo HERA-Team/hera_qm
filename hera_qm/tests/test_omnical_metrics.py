@@ -2,7 +2,6 @@
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
-import numpy as np
 from hera_qm import omnical_metrics
 from hera_qm.data import DATA_PATH
 import hera_qm.tests as qmtest
@@ -11,7 +10,6 @@ import os
 from hera_qm import utils
 import sys
 from collections import OrderedDict
-from pyuvdata import UVCal
 
 
 class Test_OmniCal_Metrics(unittest.TestCase):
