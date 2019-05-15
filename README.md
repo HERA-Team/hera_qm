@@ -45,8 +45,8 @@ Clone the repo using
 Navigate into the directory and run `python setup.py install`.
 
 ### Running Tests
-Requires installation of `nose` package.
-From the source `hera_qm` directory run: `nosetests hera_qm`.
+Uses the `pytest` package to execute test suite.
+From the source `hera_qm` directory run: ```pytest``` or ```python -m pytest```.
 
 ## Package Details and Usage
 There are currently five primary modules which drive HERA quality metrics.
