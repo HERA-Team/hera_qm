@@ -88,6 +88,7 @@ def recursive_compare_dicts(d1, d2):
                                                 data2_val=d2[key]
                                                 )
                                         )
+    return True
 
 
 try:
