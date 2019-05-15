@@ -252,7 +252,7 @@ class TestLowLevelFunctions(unittest.TestCase):
 
         # This function recursively walks dictionary and compares
         # data types together with asserts or np.allclose
-        qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
+        assert qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
 
 
 class TestAntennaMetrics(unittest.TestCase):
@@ -410,7 +410,7 @@ class TestAntennaMetrics(unittest.TestCase):
             file_val = loaded[jsonStat]
             obj_val = getattr(am, stat)
             if isinstance(file_val, dict):
-                qmtest.recursive_compare_dicts(file_val, obj_val)
+                assert qmtest.recursive_compare_dicts(file_val, obj_val)
             else:
                 self.assertEqual(file_val, obj_val)
         os.remove(outfile)
