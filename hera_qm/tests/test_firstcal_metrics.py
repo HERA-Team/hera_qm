@@ -14,6 +14,7 @@ from hera_qm import utils
 import hera_qm.tests as qmtest
 from hera_qm import metrics_io
 import sys
+import pytest
 
 
 class Test_FirstCalMetrics(unittest.TestCase):
@@ -55,8 +56,8 @@ class Test_FirstCalMetrics(unittest.TestCase):
         """Test an error is raised if bad filetype is given to write."""
         self.FC.run_metrics()
         outfile = os.path.join(self.out_dir, 'firstcal_metrics.npz')
-        self.assertRaises(ValueError, self.FC.write_metrics,
-                          filename=outfile, filetype='npz')
+        pytest.raises(ValueError, self.FC.write_metrics,
+                      filename=outfile, filetype='npz')
 
     def test_write_load_metrics(self):
         # run metrics
@@ -197,7 +198,6 @@ class Test_FirstCalMetrics(unittest.TestCase):
         infile = os.path.join(DATA_PATH, 'zen.2457555.42443.xx.HH.uvcA.bad.first.calfits')
         FC = firstcal_metrics.FirstCalMetrics(infile)
         FC.run_metrics(std_cut=0.5)
-        out_dir = os.path.join(DATA_PATH, 'test_output')
         # test pickup of rotant key
         self.assertIn('rot_ants', FC.metrics['xx'].keys())
         # test rotants is correct
