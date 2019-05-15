@@ -5,21 +5,16 @@
 
 from __future__ import print_function
 import unittest
-import nose.tools as nt
+import pytest
 import numpy as np
 import os
 import sys
-import six
-import json
 import copy
-import h5py
-import warnings
 import pyuvdata.tests as uvtest
 from hera_qm import utils
 from hera_qm import ant_metrics
 from hera_qm import metrics_io
 from hera_qm.data import DATA_PATH
-from hera_qm.version import hera_qm_version_str
 import hera_qm.tests as qmtest
 
 
@@ -256,7 +251,7 @@ class TestLowLevelFunctions(unittest.TestCase):
         hdf5_dict.pop('version', None)
 
         # This function recursively walks dictionary and compares
-        # data types together with nt.assert_type_equal or np.allclose
+        # data types together with asserts or np.allclose
         qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
 
 
@@ -370,8 +365,8 @@ class TestAntennaMetrics(unittest.TestCase):
                      'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
                      'datafile_list', 'reds', 'version']
         for stat, jsonStat in zip(self.summaryStats, jsonStats):
-            nt.assert_true(np.array_equal(loaded[jsonStat],
-                                          getattr(am, stat)))
+            assert np.array_equal(loaded[jsonStat],
+                                  getattr(am, stat))
         os.remove(outfile)
 
     def test_save_json(self):
@@ -437,7 +432,7 @@ class TestAntennaMetrics(unittest.TestCase):
         am.save_antenna_metrics(outfile, overwrite=True)
         outname = os.path.join(DATA_PATH, 'test_output',
                                'ant_metrics_output.hdf5')
-        nt.assert_true(os.path.isfile(outname))
+        assert os.path.isfile(outname)
         os.remove(outname)
 
     def test_cross_detection(self):
@@ -474,7 +469,6 @@ class TestAntmetricsRun(unittest.TestCase):
         a = utils.get_metrics_ArgumentParser('ant_metrics')
         if DATA_PATH not in sys.path:
             sys.path.append(DATA_PATH)
-        arg0 = "-p xx,yy,xy,yx"
         arg1 = "--crossCut=5"
         arg2 = "--deadCut=5"
         arg3 = "--extension=.ant_metrics.hdf5"
@@ -495,18 +489,17 @@ class TestAntmetricsRun(unittest.TestCase):
 
         history = cmd
 
-        nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run,
-                         args.files, pols, args.crossCut, args.deadCut,
-                         args.alwaysDeadCut, args.metrics_path,
-                         args.extension, args.vis_format,
-                         args.verbose, history, args.run_mean_vij,
-                         args.run_red_corr, args.run_cross_pols)
+        pytest.raises(AssertionError, ant_metrics.ant_metrics_run,
+                      args.files, pols, args.crossCut, args.deadCut,
+                      args.alwaysDeadCut, args.metrics_path,
+                      args.extension, args.vis_format,
+                      args.verbose, history, args.run_mean_vij,
+                      args.run_red_corr, args.run_cross_pols)
 
     def test_run_ant_metrics_one_file(self):
         a = utils.get_metrics_ArgumentParser('ant_metrics')
         if DATA_PATH not in sys.path:
             sys.path.append(DATA_PATH)
-        arg0 = "-p xx,yy,xy,yx"
         arg1 = "--crossCut=5"
         arg2 = "--deadCut=5"
         arg3 = "--extension=.ant_metrics.hdf5"
@@ -529,7 +522,7 @@ class TestAntmetricsRun(unittest.TestCase):
         pols = list(args.pol.split(','))
 
         # this test raises a warning, then fails...
-        uvtest.checkWarnings(nt.assert_raises,
+        uvtest.checkWarnings(pytest.raises,
                              [AssertionError, ant_metrics.ant_metrics_run,
                               args.files, pols, args.crossCut,
                               args.deadCut, args.alwaysDeadCut,
@@ -546,7 +539,6 @@ class TestAntmetricsRun(unittest.TestCase):
         a = utils.get_metrics_ArgumentParser('ant_metrics')
         if DATA_PATH not in sys.path:
             sys.path.append(DATA_PATH)
-        arg0 = "-p xx,yy,xy,yx"
         arg1 = "--crossCut=5"
         arg2 = "--deadCut=5"
         arg3 = "--extension=.ant_metrics.hdf5"
@@ -569,13 +561,13 @@ class TestAntmetricsRun(unittest.TestCase):
         args = a.parse_args(cmd.split())
         history = cmd
         pols = list(args.pol.split(','))
-        nt.assert_raises(AssertionError, ant_metrics.ant_metrics_run,
-                         args.files, pols, args.crossCut,
-                         args.deadCut, args.alwaysDeadCut,
-                         args.metrics_path,
-                         args.extension, args.vis_format,
-                         args.verbose, history, args.run_mean_vij,
-                         args.run_red_corr, args.run_cross_pols)
+        pytest.raises(AssertionError, ant_metrics.ant_metrics_run,
+                      args.files, pols, args.crossCut,
+                      args.deadCut, args.alwaysDeadCut,
+                      args.metrics_path,
+                      args.extension, args.vis_format,
+                      args.verbose, history, args.run_mean_vij,
+                      args.run_red_corr, args.run_cross_pols)
 
     def test_ant_metrics_run_all_metrics(self):
         # get arguments
@@ -615,7 +607,7 @@ class TestAntmetricsRun(unittest.TestCase):
                                     run_mean_vij=args.run_mean_vij,
                                     run_red_corr=args.run_red_corr,
                                     run_cross_pols=args.run_cross_pols)
-        nt.assert_true(os.path.exists(dest_file))
+        assert os.path.exists(dest_file)
         os.remove(dest_file)
 
     def test_ant_metrics_run_only_mean_vij(self):
@@ -656,7 +648,7 @@ class TestAntmetricsRun(unittest.TestCase):
                                     run_mean_vij=args.run_mean_vij,
                                     run_red_corr=args.run_red_corr,
                                     run_cross_pols=args.run_cross_pols)
-        nt.assert_true(os.path.exists(dest_file))
+        assert os.path.exists(dest_file)
         os.remove(dest_file)
 
     def test_ant_metrics_run_only_red_corr(self):
@@ -697,7 +689,7 @@ class TestAntmetricsRun(unittest.TestCase):
                                     run_mean_vij=args.run_mean_vij,
                                     run_red_corr=args.run_red_corr,
                                     run_cross_pols=args.run_cross_pols)
-        nt.assert_true(os.path.exists(dest_file))
+        assert os.path.exists(dest_file)
         os.remove(dest_file)
 
     def test_ant_metrics_run_only_cross_pols(self):
@@ -738,7 +730,7 @@ class TestAntmetricsRun(unittest.TestCase):
                                     run_mean_vij=args.run_mean_vij,
                                     run_red_corr=args.run_red_corr,
                                     run_cross_pols=args.run_cross_pols)
-        nt.assert_true(os.path.exists(dest_file))
+        assert os.path.exists(dest_file)
         os.remove(dest_file)
 
 
