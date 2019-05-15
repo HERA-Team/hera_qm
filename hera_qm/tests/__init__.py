@@ -97,4 +97,4 @@ try:
 except(ImportError):
     matplotlib_intalled = False
 reason = 'matplotlib is not installed, skipping tests that require it.'
-skipIf_no_matplotlib = pytest.mark.skipif(not matplotlib_intalled, reason)
+skipIf_no_matplotlib = pytest.mark.skipif(not matplotlib_intalled, reason=reason)
