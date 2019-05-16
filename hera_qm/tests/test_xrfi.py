@@ -132,10 +132,18 @@ def test_robus_divide():
     assert np.array_equal(c, np.array([1. / 2., np.inf, np.inf]))
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def fake_data():
     size = 100
-    return np.zeros((size, size))
+    fake_data = np.zeros((size, size))
+
+    # yield returns the data and lets us do post test clean up after
+    yield fake_data
+
+    # post-test clean up
+    del(fake_data)
+
+    return
 
 
 def test_medmin(fake_data):
