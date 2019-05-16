@@ -21,7 +21,6 @@ def firstcal_setup():
     infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
     FC = firstcal_metrics.FirstCalMetrics(infile)
     out_dir = os.path.join(DATA_PATH, 'test_output')
-    return FC, infile, out_dir
 
     class DataHolder():
         def __init__(self, FC, infile, out_dir):
@@ -35,6 +34,8 @@ def firstcal_setup():
 
     # post-test cleanup
     del(firstcal_setup)
+
+    return
 
 
 def test_init(firstcal_setup):
