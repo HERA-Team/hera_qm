@@ -8,7 +8,6 @@ import pytest
 import numpy as np
 import os
 import sys
-import copy
 import pyuvdata.tests as uvtest
 from hera_qm import utils
 from hera_qm import ant_metrics
@@ -39,7 +38,7 @@ class fake_data():
         return self.data.keys()
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def lowlevel_data():
     data = fake_data()
     ants = [0, 1, 2, 3]
@@ -47,13 +46,32 @@ def lowlevel_data():
     pols = ['xx', 'xy', 'yx', 'yy']
     antpols = ['x', 'y']
     bls = [(0, 1), (1, 2), (2, 3), (0, 2), (1, 3), (0, 3)]
-    return data, ants, reds, pols, antpols, bls
+
+    class DataHolder(object):
+        def __init__(self, data, ants, reds, pols, antpols, bls):
+            self.data = data
+            self.ants = ants
+            self.reds = reds
+            self.pols = pols
+            self.antpols = antpols
+            self.bls = bls
+
+    lowlevel_data = DataHolder(data, ants, reds, pols, antpols, bls)
+
+    # yield returns the data we need but lets us continue after for cleanup
+    yield lowlevel_data
+
+    # post-test cleanup
+    del(lowlevel_data)
 
 
 def test_mean_Vij_metrics(lowlevel_data):
-    data, ants, reds, pols, antpols, bls = lowlevel_data
-    mean_Vij = ant_metrics.mean_Vij_metrics(data, pols, antpols,
-                                            ants, bls, rawMetric=True)
+    mean_Vij = ant_metrics.mean_Vij_metrics(lowlevel_data.data,
+                                            lowlevel_data.pols,
+                                            lowlevel_data.antpols,
+                                            lowlevel_data.ants,
+                                            lowlevel_data.bls,
+                                            rawMetric=True)
     # The reference dictionaries here
     # and in other functions were determined
     # by running the metrics by hand with the
@@ -63,7 +81,9 @@ def test_mean_Vij_metrics(lowlevel_data):
            (3, 'x'): 0.667, (3, 'y'): 0.755}
     for key, val in ref.items():
         assert np.allclose(val, mean_Vij[key], atol=1e-3)
-    zs = ant_metrics.mean_Vij_metrics(data, pols, antpols, ants, bls)
+    zs = ant_metrics.mean_Vij_metrics(lowlevel_data.data, lowlevel_data.pols,
+                                      lowlevel_data.antpols, lowlevel_data.ants,
+                                      lowlevel_data.bls)
     ref = {(0, 'x'): 1.443, (0, 'y'): 4.970, (1, 'x'): -0.218,
            (1, 'y'): 0.373, (2, 'x'): 0.218, (2, 'y'): -0.373,
            (3, 'x'): -1.131, (3, 'y'): -0.976}
@@ -72,16 +92,21 @@ def test_mean_Vij_metrics(lowlevel_data):
 
 
 def test_red_corr_metrics(lowlevel_data):
-    data, ants, reds, pols, antpols, bls = lowlevel_data
-    red_corr = ant_metrics.red_corr_metrics(data, pols, antpols, ants,
-                                            reds, rawMetric=True)
+    red_corr = ant_metrics.red_corr_metrics(lowlevel_data.data,
+                                            lowlevel_data.pols,
+                                            lowlevel_data.antpols,
+                                            lowlevel_data.ants,
+                                            lowlevel_data.reds, rawMetric=True)
     ref = {(0, 'x'): 0.468, (0, 'y'): 0.479, (1, 'x'): 0.614,
            (1, 'y'): 0.472, (2, 'x'): 0.536, (2, 'y'): 0.623,
            (3, 'x'): 0.567, (3, 'y'): 0.502}
     for (key, val) in ref.items():
         assert np.isclose(val, red_corr[key], atol=1e-3)
-    zs = ant_metrics.red_corr_metrics(data, pols, antpols,
-                                      ants, reds)
+    zs = ant_metrics.red_corr_metrics(lowlevel_data.data,
+                                      lowlevel_data.pols,
+                                      lowlevel_data.antpols,
+                                      lowlevel_data.ants,
+                                      lowlevel_data.reds)
     ref = {(0, 'x'): -1.445, (0, 'y'): -0.516, (1, 'x'): 1.088,
            (1, 'y'): -0.833, (2, 'x'): -0.261, (2, 'y'): 6.033,
            (3, 'x'): 0.261, (3, 'y'): 0.516}
@@ -91,10 +116,12 @@ def test_red_corr_metrics(lowlevel_data):
 
 def test_red_corr_metrics_NaNs(lowlevel_data):
     ''' Test that antennas not in reds return NaNs for redundant metrics '''
-    data, ants, reds, pols, antpols, bls = lowlevel_data
-    ants = copy.copy(ants)
-    ants.append(99)
-    red_corr = ant_metrics.red_corr_metrics(data, pols, antpols, ants, reds,
+    lowlevel_data.ants.append(99)
+    red_corr = ant_metrics.red_corr_metrics(lowlevel_data.data,
+                                            lowlevel_data.pols,
+                                            lowlevel_data.antpols,
+                                            lowlevel_data.ants,
+                                            lowlevel_data.reds,
                                             rawMetric=True)
     ref = {(0, 'x'): 0.468, (0, 'y'): 0.479, (1, 'x'): 0.614,
            (1, 'y'): 0.472, (2, 'x'): 0.536, (2, 'y'): 0.623,
@@ -105,8 +132,11 @@ def test_red_corr_metrics_NaNs(lowlevel_data):
             assert np.isnan(red_corr[key])
         else:
             assert np.isclose(val, red_corr[key], atol=1e-3)
-    zs = ant_metrics.red_corr_metrics(data, pols, antpols,
-                                      ants, reds)
+    zs = ant_metrics.red_corr_metrics(lowlevel_data.data,
+                                      lowlevel_data.pols,
+                                      lowlevel_data.antpols,
+                                      lowlevel_data.ants,
+                                      lowlevel_data.reds)
     ref = {(0, 'x'): -1.445, (0, 'y'): -0.516, (1, 'x'): 1.088,
            (1, 'y'): -0.833, (2, 'x'): -0.261, (2, 'y'): 6.033,
            (3, 'x'): 0.261, (3, 'y'): 0.516, (99, 'x'): np.NaN,
@@ -119,18 +149,22 @@ def test_red_corr_metrics_NaNs(lowlevel_data):
 
 
 def test_mean_Vij_cross_pol_metrics(lowlevel_data):
-    data, ants, reds, pols, antpols, bls = lowlevel_data
-    mean_Vij_cross_pol = ant_metrics.mean_Vij_cross_pol_metrics(data, pols,
-                                                                antpols, ants,
-                                                                bls, rawMetric=True)
+    mean_Vij_cross_pol = ant_metrics.mean_Vij_cross_pol_metrics(lowlevel_data.data,
+                                                                lowlevel_data.pols,
+                                                                lowlevel_data.antpols,
+                                                                lowlevel_data.ants,
+                                                                lowlevel_data.bls,
+                                                                rawMetric=True)
     ref = {(0, 'x'): 0.746, (0, 'y'): 0.746, (1, 'x'): 0.811,
            (1, 'y'): 0.811, (2, 'x'): 0.907, (2, 'y'): 0.907,
            (3, 'x'): 1.091, (3, 'y'): 1.091}
     for key, val in ref.items():
         assert np.isclose(val, mean_Vij_cross_pol[key], atol=1e-3)
-    zs = ant_metrics.mean_Vij_cross_pol_metrics(data, pols,
-                                                antpols,
-                                                ants, bls)
+    zs = ant_metrics.mean_Vij_cross_pol_metrics(lowlevel_data.data,
+                                                lowlevel_data.pols,
+                                                lowlevel_data.antpols,
+                                                lowlevel_data.ants,
+                                                lowlevel_data.bls)
     ref = {(0, 'x'): -0.948, (0, 'y'): -0.948, (1, 'x'): -0.401,
            (1, 'y'): -0.401, (2, 'x'): 0.401, (2, 'y'): 0.401,
            (3, 'x'): 1.944, (3, 'y'): 1.944}
@@ -139,18 +173,22 @@ def test_mean_Vij_cross_pol_metrics(lowlevel_data):
 
 
 def test_red_corr_cross_pol_metrics(lowlevel_data):
-    data, ants, reds, pols, antpols, bls = lowlevel_data
-    red_corr_cross_pol = ant_metrics.red_corr_cross_pol_metrics(data, pols,
-                                                                antpols, ants,
-                                                                reds, rawMetric=True)
+    red_corr_cross_pol = ant_metrics.red_corr_cross_pol_metrics(lowlevel_data.data,
+                                                                lowlevel_data.pols,
+                                                                lowlevel_data.antpols,
+                                                                lowlevel_data.ants,
+                                                                lowlevel_data.reds,
+                                                                rawMetric=True)
     ref = {(0, 'x'): 1.062, (0, 'y'): 1.062, (1, 'x'): 0.934,
            (1, 'y'): 0.934, (2, 'x'): 0.917, (2, 'y'): 0.917,
            (3, 'x'): 1.027, (3, 'y'): 1.027}
     for key, val in ref.items():
         assert np.isclose(val, red_corr_cross_pol[key], atol=1e-3)
-    zs = ant_metrics.red_corr_cross_pol_metrics(data, pols,
-                                                antpols,
-                                                ants, reds)
+    zs = ant_metrics.red_corr_cross_pol_metrics(lowlevel_data.data,
+                                                lowlevel_data.pols,
+                                                lowlevel_data.antpols,
+                                                lowlevel_data.ants,
+                                                lowlevel_data.reds)
     ref = {(0, 'x'): 1.001, (0, 'y'): 1.001, (1, 'x'): -0.572,
            (1, 'y'): -0.572, (2, 'x'): -0.777, (2, 'y'): -0.777,
            (3, 'x'): 0.572, (3, 'y'): 0.572}
@@ -196,13 +234,14 @@ def test_average_abs_metrics():
 
 
 def test_compute_median_auto_power_dict(lowlevel_data):
-    data, ants, reds, pols, antpols, bls = lowlevel_data
-    power = ant_metrics.compute_median_auto_power_dict(data, pols, reds)
+    power = ant_metrics.compute_median_auto_power_dict(lowlevel_data.data,
+                                                       lowlevel_data.pols,
+                                                       lowlevel_data.reds)
     for key, p in power.items():
-        testp = np.median(np.mean(np.abs(data.get_data(*key))**2,
+        testp = np.median(np.mean(np.abs(lowlevel_data.data.get_data(*key))**2,
                                   axis=0))
         assert p == testp
-    for key in list(data.keys()):
+    for key in list(lowlevel_data.data.keys()):
         assert (key[0], key[1], key[2]) in power
 
 
@@ -259,7 +298,7 @@ def test_load_ant_metrics_json():
     assert qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def antmetrics_data():
     dataFileList = [DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA',
                     DATA_PATH + '/zen.2457698.40355.yy.HH.uvcA',
@@ -316,11 +355,22 @@ def antmetrics_data():
                     'removalIter', 'finalMetrics', 'allMetrics',
                     'finalModzScores', 'allModzScores', 'crossCut',
                     'deadCut', 'dataFileList', 'reds']
-    return dataFileList, reds, summaryStats
+
+    class DataHolder():
+        def __init__(self, dataFileList, reds, summaryStats):
+            self.dataFileList = dataFileList
+            self.reds = reds
+            self.summaryStats = summaryStats
+    antmetrics_data = DataHolder(dataFileList, reds, summaryStats)
+
+    # yield returns the data we need but lets us continue after for cleanup
+    yield antmetrics_data
+
+    # post-test cleanup
+    del(antmetrics_data)
 
 
 def test_load_errors(antmetrics_data):
-    dataFileList, reds, summaryStats = antmetrics_data
     with pytest.raises(ValueError):
         uvtest.checkWarnings(ant_metrics.AntennaMetrics,
                              [[DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'], []],
@@ -338,8 +388,8 @@ def test_load_errors(antmetrics_data):
 
 
 def test_init(antmetrics_data):
-    dataFileList, reds, summaryStats = antmetrics_data
-    am = ant_metrics.AntennaMetrics(dataFileList, reds,
+    am = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+                                    antmetrics_data.reds,
                                     fileformat='miriad')
     assert len(am.ants) == 19
     assert set(am.pols) == set(['xx', 'yy', 'xy', 'yx'])
@@ -349,8 +399,8 @@ def test_init(antmetrics_data):
 
 
 def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(antmetrics_data):
-    dataFileList, reds, summaryStats = antmetrics_data
-    am = ant_metrics.AntennaMetrics(dataFileList, reds,
+    am = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+                                    antmetrics_data.reds,
                                     fileformat='miriad')
     with pytest.raises(KeyError):
         filename = os.path.join(DATA_PATH, 'test_output',
@@ -358,7 +408,7 @@ def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(antmetric
         am.save_antenna_metrics(filename)
 
     am.iterative_antenna_metrics_and_flagging()
-    for stat in summaryStats:
+    for stat in antmetrics_data.summaryStats:
         assert hasattr(am, stat)
     assert (81, 'x') in am.xants
     assert (81, 'y') in am.xants
@@ -374,18 +424,18 @@ def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(antmetric
                  'final_metrics', 'all_metrics', 'final_mod_z_scores',
                  'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
                  'datafile_list', 'reds', 'version']
-    for stat, jsonStat in zip(summaryStats, jsonStats):
+    for stat, jsonStat in zip(antmetrics_data.summaryStats, jsonStats):
         assert np.array_equal(loaded[jsonStat],
                               getattr(am, stat))
     os.remove(outfile)
 
 
 def test_save_json(antmetrics_data):
-    dataFileList, reds, summaryStats = antmetrics_data
-    am = ant_metrics.AntennaMetrics(dataFileList, reds,
+    am = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+                                    antmetrics_data.reds,
                                     fileformat='miriad')
     am.iterative_antenna_metrics_and_flagging()
-    for stat in summaryStats:
+    for stat in antmetrics_data.summaryStats:
         assert hasattr(am, stat)
     assert (81, 'x') in am.xants
     assert (81, 'y') in am.xants
@@ -418,7 +468,7 @@ def test_save_json(antmetrics_data):
                  'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
                  'datafile_list', 'reds', 'version']
 
-    for stat, jsonStat in zip(summaryStats, jsonStats):
+    for stat, jsonStat in zip(antmetrics_data.summaryStats, jsonStats):
         file_val = loaded[jsonStat]
         obj_val = getattr(am, stat)
         if isinstance(file_val, dict):
@@ -429,11 +479,11 @@ def test_save_json(antmetrics_data):
 
 
 def test_add_file_appellation(antmetrics_data):
-    dataFileList, reds, summaryStats = antmetrics_data
-    am = ant_metrics.AntennaMetrics(dataFileList, reds,
+    am = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+                                    antmetrics_data.reds,
                                     fileformat='miriad')
     am.iterative_antenna_metrics_and_flagging()
-    for stat in summaryStats:
+    for stat in antmetrics_data.summaryStats:
         assert hasattr(am, stat)
     assert (81, 'x') in am.xants
     assert (81, 'y') in am.xants
@@ -451,11 +501,11 @@ def test_add_file_appellation(antmetrics_data):
 
 
 def test_cross_detection(antmetrics_data):
-    dataFileList, reds, summaryStats = antmetrics_data
-    am2 = ant_metrics.AntennaMetrics(dataFileList, reds,
+    am2 = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+                                     antmetrics_data.reds,
                                      fileformat='miriad')
     am2.iterative_antenna_metrics_and_flagging(crossCut=3, deadCut=10)
-    for stat in summaryStats:
+    for stat in antmetrics_data.summaryStats:
         assert hasattr(am2, stat)
     assert (81, 'x') in am2.xants
     assert (81, 'y') in am2.xants
@@ -464,8 +514,8 @@ def test_cross_detection(antmetrics_data):
 
 
 def test_totally_dead_ants(antmetrics_data):
-    dataFileList, reds, summaryStats = antmetrics_data
-    am2 = ant_metrics.AntennaMetrics(dataFileList, reds,
+    am2 = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+                                     antmetrics_data.reds,
                                      fileformat='miriad')
     deadant = 9
     for ant1, ant2 in am2.bls:
