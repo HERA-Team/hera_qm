@@ -13,7 +13,7 @@ import pytest
 from scipy import stats
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def vismetrics_data():
     data = UVData()
     filename = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
@@ -36,27 +36,39 @@ def vismetrics_data():
     for key in data.get_antpairpols():
         ind = data._key2inds(key)[0]
         data.data_array[ind, 0, :, 0] = ant_dat[key[0]] * ant_dat[key[1]].conj()
-    return data, data1, data2
+
+    class DataHolder(object):
+        def __init__(self, data, data1, data2):
+            self.data = data
+            self.data1 = data1
+            self.data2 = data2
+
+    vismetrics_data = DataHolder(data, data1, data2)
+    # yield lets us return the data and then continue with clean up after
+    yield vismetrics_data
+
+    # post test clean up
+    del(vismetrics_data)
+
+    return
 
 
 def test_check_noise_variance(vismetrics_data):
-    data, data1, data2 = vismetrics_data
-    nos = vis_metrics.check_noise_variance(data)
-    for bl in data.get_antpairs():
-        inds = data.antpair2ind(*bl)
+    nos = vis_metrics.check_noise_variance(vismetrics_data.data)
+    for bl in vismetrics_data.data.get_antpairs():
+        inds = vismetrics_data.data.antpair2ind(*bl)
         n = nos[bl + (uvutils.parse_polstr('xx'),)]
-        assert n.shape == (data.Nfreqs - 1,)
-        nsamp = data.channel_width * data.integration_time[inds][0]
+        assert n.shape == (vismetrics_data.data.Nfreqs - 1,)
+        nsamp = vismetrics_data.data.channel_width * vismetrics_data.data.integration_time[inds][0]
         np.testing.assert_almost_equal(n, np.ones_like(n) * nsamp,
                                        -np.log10(nsamp))
 
 
 def test_check_noise_variance_inttime_error(vismetrics_data):
-    data, data1, data2 = vismetrics_data
-    data.integration_time = (data.integration_time
-                             * np.arange(data.integration_time.size))
+    vismetrics_data.data.integration_time = (vismetrics_data.data.integration_time
+                                             * np.arange(vismetrics_data.data.integration_time.size))
     pytest.raises(NotImplementedError,
-                  vis_metrics.check_noise_variance, data)
+                  vis_metrics.check_noise_variance, vismetrics_data.data)
 
 
 def test_vis_bl_cov():
