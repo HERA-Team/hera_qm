@@ -16,111 +16,120 @@ import sys
 import pytest
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def firstcal_setup():
     infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
     FC = firstcal_metrics.FirstCalMetrics(infile)
     out_dir = os.path.join(DATA_PATH, 'test_output')
     return FC, infile, out_dir
 
+    class DataHolder():
+        def __init__(self, FC, infile, out_dir):
+            self.FC = FC
+            self.infile = infile
+            self.out_dir = out_dir
+    firstcal_setup = DataHolder(FC, infile, out_dir)
+
+    # yield returns the data we need but lets us continue after for cleanup
+    yield firstcal_setup
+
+    # post-test cleanup
+    del(firstcal_setup)
+
 
 def test_init(firstcal_setup):
-    FC, infile, out_dir = firstcal_setup
-    assert FC.Nants == 17
-    assert len(FC.delays) == 17
+    assert firstcal_setup.FC.Nants == 17
+    assert len(firstcal_setup.FC.delays) == 17
 
 
 def test_run_metrics(firstcal_setup):
-    FC, infile, out_dir = firstcal_setup
-    FC.run_metrics(std_cut=1.0)
-    assert FC.metrics['yy']['good_sol'] is True
-    assert FC.metrics['yy']['bad_ants'] == []
-    assert 9 in FC.metrics['yy']['z_scores']
-    assert 9 in FC.metrics['yy']['ant_std']
-    assert 9 in FC.metrics['yy']['ant_avg']
-    assert 9 in FC.metrics['yy']['ants']
-    assert 9 in FC.metrics['yy']['z_scores']
-    assert 9 in FC.metrics['yy']['ant_z_scores']
-    assert np.isclose(1.0, FC.metrics['yy']['std_cut'])
-    assert np.isclose(FC.metrics['yy']['agg_std'], 0.044662349588061437)
-    assert np.isclose(FC.metrics['yy']['max_std'], 0.089829821120782846)
-    assert 'yy' == FC.metrics['yy']['pol']
+    firstcal_setup.FC.run_metrics(std_cut=1.0)
+    assert firstcal_setup.FC.metrics['yy']['good_sol'] is True
+    assert firstcal_setup.FC.metrics['yy']['bad_ants'] == []
+    assert 9 in firstcal_setup.FC.metrics['yy']['z_scores']
+    assert 9 in firstcal_setup.FC.metrics['yy']['ant_std']
+    assert 9 in firstcal_setup.FC.metrics['yy']['ant_avg']
+    assert 9 in firstcal_setup.FC.metrics['yy']['ants']
+    assert 9 in firstcal_setup.FC.metrics['yy']['z_scores']
+    assert 9 in firstcal_setup.FC.metrics['yy']['ant_z_scores']
+    assert np.isclose(1.0, firstcal_setup.FC.metrics['yy']['std_cut'])
+    assert np.isclose(firstcal_setup.FC.metrics['yy']['agg_std'], 0.044662349588061437)
+    assert np.isclose(firstcal_setup.FC.metrics['yy']['max_std'], 0.089829821120782846)
+    assert 'yy' == firstcal_setup.FC.metrics['yy']['pol']
 
     # Test bad ants detection
-    FC.delay_fluctuations[0, :] *= 1000
-    FC.run_metrics()
-    assert FC.ants[0] == FC.metrics['yy']['bad_ants']
+    firstcal_setup.FC.delay_fluctuations[0, :] *= 1000
+    firstcal_setup.FC.run_metrics()
+    assert firstcal_setup.FC.ants[0] == firstcal_setup.FC.metrics['yy']['bad_ants']
     # Test bad full solution
-    FC.delay_fluctuations[1:, :] *= 1000
-    FC.run_metrics()
-    assert FC.metrics['yy']['good_sol'] is False
+    firstcal_setup.FC.delay_fluctuations[1:, :] *= 1000
+    firstcal_setup.FC.run_metrics()
+    assert firstcal_setup.FC.metrics['yy']['good_sol'] is False
 
 
 def test_write_error_bad_type(firstcal_setup):
-    FC, infile, out_dir = firstcal_setup
     """Test an error is raised if bad filetype is given to write."""
-    FC.run_metrics()
-    outfile = os.path.join(out_dir, 'firstcal_metrics.npz')
-    pytest.raises(ValueError, FC.write_metrics,
+    firstcal_setup.FC.run_metrics()
+    outfile = os.path.join(firstcal_setup.out_dir, 'firstcal_metrics.npz')
+    pytest.raises(ValueError, firstcal_setup.FC.write_metrics,
                   filename=outfile, filetype='npz')
 
 
 def test_write_load_metrics(firstcal_setup):
-    FC, infile, out_dir = firstcal_setup
     # run metrics
-    FC.run_metrics()
-    num_keys = len(FC.metrics.keys())
-    outfile = os.path.join(out_dir, 'firstcal_metrics.json')
+    firstcal_setup.FC.run_metrics()
+    num_keys = len(firstcal_setup.FC.metrics.keys())
+    outfile = os.path.join(firstcal_setup.out_dir, 'firstcal_metrics.json')
     if os.path.isfile(outfile):
         os.remove(outfile)
     # write json
-    FC.write_metrics(filename=outfile, filetype='json')
+    firstcal_setup.FC.write_metrics(filename=outfile, filetype='json')
     assert os.path.isfile(outfile)
     # load json
-    FC.load_metrics(filename=outfile)
-    assert len(FC.metrics.keys()) == num_keys
+    firstcal_setup.FC.load_metrics(filename=outfile)
+    assert len(firstcal_setup.FC.metrics.keys()) == num_keys
     # erase
     os.remove(outfile)
     # write pickle
-    outfile = os.path.join(out_dir, 'firstcal_metrics.pkl')
+    outfile = os.path.join(firstcal_setup.out_dir, 'firstcal_metrics.pkl')
     if os.path.isfile(outfile):
         os.remove(outfile)
 
-    FC.write_metrics(filename=outfile, filetype='pkl')
+    firstcal_setup.FC.write_metrics(filename=outfile, filetype='pkl')
     assert os.path.isfile(outfile)
     # load pickle
-    FC.load_metrics(filename=outfile)
-    assert len(FC.metrics.keys()) == num_keys
+    firstcal_setup.FC.load_metrics(filename=outfile)
+    assert len(firstcal_setup.FC.metrics.keys()) == num_keys
     os.remove(outfile)
 
-    outfile = os.path.join(out_dir, 'firstcal_metrics.hdf5')
+    outfile = os.path.join(firstcal_setup.out_dir, 'firstcal_metrics.hdf5')
     if os.path.isfile(outfile):
         os.remove(outfile)
-    FC.write_metrics(filename=outfile, filetype='hdf5')
+    firstcal_setup.FC.write_metrics(filename=outfile, filetype='hdf5')
     assert os.path.isfile(outfile)
     # load pickle
-    FC.load_metrics(filename=outfile)
+    firstcal_setup.FC.load_metrics(filename=outfile)
     # These are added by default in hdf5 writes but not necessary here
-    FC.metrics.pop('history', None)
-    FC.metrics.pop('version', None)
-    assert len(FC.metrics.keys()) == num_keys
+    firstcal_setup.FC.metrics.pop('history', None)
+    firstcal_setup.FC.metrics.pop('version', None)
+    assert len(firstcal_setup.FC.metrics.keys()) == num_keys
     os.remove(outfile)
 
     # Check some exceptions
-    outfile = os.path.join(out_dir, 'firstcal_metrics.txt')
-    pytest.raises(IOError, FC.load_metrics, filename=outfile)
-    outfile = FC.fc_filestem + '.first_metrics.json'
-    FC.write_metrics(filetype='json')  # No filename
+    outfile = os.path.join(firstcal_setup.out_dir, 'firstcal_metrics.txt')
+    pytest.raises(IOError, firstcal_setup.FC.load_metrics, filename=outfile)
+    outfile = firstcal_setup.FC.fc_filestem + '.first_metrics.json'
+    firstcal_setup.FC.write_metrics(filetype='json')  # No filename
     assert os.path.isfile(outfile)
     os.remove(outfile)
 
-    outfile = FC.fc_filestem + '.first_metrics.pkl'
-    FC.write_metrics(filetype='pkl')  # No filename
+    outfile = firstcal_setup.FC.fc_filestem + '.first_metrics.pkl'
+    firstcal_setup.FC.write_metrics(filetype='pkl')  # No filename
     assert os.path.isfile(outfile)
     os.remove(outfile)
 
-    outfile = FC.fc_filestem + '.first_metrics.hdf5'
-    FC.write_metrics(filetype='hdf5')  # No filename
+    outfile = firstcal_setup.FC.fc_filestem + '.first_metrics.hdf5'
+    firstcal_setup.FC.write_metrics(filetype='hdf5')  # No filename
     assert os.path.isfile(outfile)
     os.remove(outfile)
 
@@ -228,28 +237,37 @@ def test_delay_smoothing():
     assert np.isclose(FC.delay_fluctuations[0, 0], 0.024669144881121961, atol=0.000001)
 
 
-@pytest.fixture()
+@pytest.fixture(scope='function')
 def firstcal_twopol():
     infile = os.path.join(DATA_PATH, 'zen.2458098.49835.HH.first.calfits')
     FC = firstcal_metrics.FirstCalMetrics(infile)
     out_dir = os.path.join(DATA_PATH, 'test_output')
-    return FC, infile, out_dir
+
+    class DataHolder(object):
+        def __init__(self, FC, infile, out_dir):
+            self.FC = FC
+            self.infile = infile
+            self.out_dir = out_dir
+    firstcal_twopol = DataHolder(FC, infile, out_dir)
+
+    # yield returns the data we need but lets us continue after for cleanup
+    yield firstcal_twopol
+
+    # post-test cleanup
+    del(firstcal_twopol)
 
 
 def test_init_two_pol(firstcal_twopol):
-    FC, infile, out_dir = firstcal_twopol
-
-    assert FC.Nants == 11
-    assert len(FC.delays) == 11
+    assert firstcal_twopol.FC.Nants == 11
+    assert len(firstcal_twopol.FC.delays) == 11
 
 
 def test_run_metrics_two_pols(firstcal_twopol):
-    FC, infile, out_dir = firstcal_twopol
     # These results were run with a seed of 0, the seed shouldn't matter
     # but you never know.
     two_pol_known_results = os.path.join(DATA_PATH, 'example_two_polarization_firstcal_results.hdf5')
     np.random.seed(0)
-    FC.run_metrics(std_cut=.5)
+    firstcal_twopol.FC.run_metrics(std_cut=.5)
     known_output = metrics_io.load_metric_file(two_pol_known_results)
 
     known_output.pop('history', None)
@@ -260,11 +278,11 @@ def test_run_metrics_two_pols(firstcal_twopol):
         known_output[key].pop('fc_filename', None)
         known_output[key].pop('fc_filestem', None)
         known_output[key].pop('version', None)
-    for key in FC.metrics:
-        FC.metrics[key].pop('fc_filename', None)
-        FC.metrics[key].pop('fc_filestem', None)
-        FC.metrics[key].pop('version', None)
-    assert qmtest.recursive_compare_dicts(FC.metrics, known_output)
+    for key in firstcal_twopol.FC.metrics:
+        firstcal_twopol.FC.metrics[key].pop('fc_filename', None)
+        firstcal_twopol.FC.metrics[key].pop('fc_filestem', None)
+        firstcal_twopol.FC.metrics[key].pop('version', None)
+    assert qmtest.recursive_compare_dicts(firstcal_twopol.FC.metrics, known_output)
 
 
 def test_firstcal_metrics_run():
