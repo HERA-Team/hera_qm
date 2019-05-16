@@ -137,83 +137,80 @@ def test_write_load_metrics(firstcal_setup):
 
 @qmtest.skipIf_no_matplotlib
 def test_plot_delays(firstcal_setup):
-    FC, infile, out_dir = firstcal_setup
     import matplotlib.pyplot as plt
-    fname = os.path.join(out_dir, 'dlys.png')
+    fname = os.path.join(firstcal_setup.out_dir, 'dlys.png')
     if os.path.isfile(fname):
         os.remove(fname)
-    FC.plot_delays(fname=fname, save=True)
+    firstcal_setup.FC.plot_delays(fname=fname, save=True)
     assert os.path.isfile(fname)
     os.remove(fname)
     plt.close('all')
-    FC.plot_delays(fname=fname, save=True, plot_type='solution')
+    firstcal_setup.FC.plot_delays(fname=fname, save=True, plot_type='solution')
     assert os.path.isfile(fname)
     os.remove(fname)
     plt.close('all')
-    FC.plot_delays(fname=fname, save=True, plot_type='fluctuation')
+    firstcal_setup.FC.plot_delays(fname=fname, save=True, plot_type='fluctuation')
     assert os.path.isfile(fname)
     os.remove(fname)
     plt.close('all')
 
     # Check cm defaults to spectral
-    FC.plot_delays(fname=fname, save=True, cmap='foo')
+    firstcal_setup.FC.plot_delays(fname=fname, save=True, cmap='foo')
     assert os.path.isfile(fname)
     os.remove(fname)
     plt.close('all')
     # check return figs
-    fig = FC.plot_delays()
+    fig = firstcal_setup.FC.plot_delays()
     assert fig is not None
     plt.close('all')
 
 
 @qmtest.skipIf_no_matplotlib
 def test_plot_zscores(firstcal_setup):
-    FC, infile, out_dir = firstcal_setup
     import matplotlib.pyplot as plt
     # check exception
-    pytest.raises(NameError, FC.plot_zscores)
-    FC.run_metrics()
-    pytest.raises(NameError, FC.plot_zscores, plot_type='foo')
+    pytest.raises(NameError, firstcal_setup.FC.plot_zscores)
+    firstcal_setup.FC.run_metrics()
+    pytest.raises(NameError, firstcal_setup.FC.plot_zscores, plot_type='foo')
     # check output
-    fname = os.path.join(out_dir, 'zscrs.png')
+    fname = os.path.join(firstcal_setup.out_dir, 'zscrs.png')
     if os.path.isfile(fname):
         os.remove(fname)
-    FC.plot_zscores(fname=fname, save=True)
+    firstcal_setup.FC.plot_zscores(fname=fname, save=True)
     assert os.path.isfile(fname)
     os.remove(fname)
     plt.close('all')
-    FC.plot_zscores(fname=fname, plot_type='time_avg', save=True)
+    firstcal_setup.FC.plot_zscores(fname=fname, plot_type='time_avg', save=True)
     assert os.path.isfile(fname)
     os.remove(fname)
     plt.close('all')
     # check return fig
-    fig = FC.plot_zscores()
+    fig = firstcal_setup.FC.plot_zscores()
     assert fig is not None
     plt.close('all')
 
 
 @qmtest.skipIf_no_matplotlib
 def test_plot_stds(firstcal_setup):
-    FC, infile, out_dir = firstcal_setup
     import matplotlib.pyplot as plt
     # check exception
-    pytest.raises(NameError, FC.plot_stds)
-    FC.run_metrics()
-    pytest.raises(NameError, FC.plot_stds, xaxis='foo')
+    pytest.raises(NameError, firstcal_setup.FC.plot_stds)
+    firstcal_setup.FC.run_metrics()
+    pytest.raises(NameError, firstcal_setup.FC.plot_stds, xaxis='foo')
     # check output
-    fname = os.path.join(out_dir, 'stds.png')
+    fname = os.path.join(firstcal_setup.out_dir, 'stds.png')
     if os.path.isfile(fname):
         os.remove(fname)
-    FC.plot_stds(fname=fname, save=True)
+    firstcal_setup.FC.plot_stds(fname=fname, save=True)
     assert os.path.isfile(fname)
     os.remove(fname)
     plt.close('all')
-    FC.plot_stds(fname=fname, xaxis='time', save=True)
+    firstcal_setup.FC.plot_stds(fname=fname, xaxis='time', save=True)
     assert os.path.isfile(fname)
     os.remove(fname)
     plt.close('all')
     # check return fig
-    fig = FC.plot_stds()
+    fig = firstcal_setup.FC.plot_stds()
     assert fig is not None
     plt.close('all')
 
