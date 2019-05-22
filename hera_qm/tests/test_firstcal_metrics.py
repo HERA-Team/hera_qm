@@ -135,9 +135,8 @@ def test_write_load_metrics(firstcal_setup):
     os.remove(outfile)
 
 
-@qmtest.skipIf_no_matplotlib
 def test_plot_delays(firstcal_setup):
-    import matplotlib.pyplot as plt
+    plt = pytest.importorskip("matplotlib.pyplot")
     fname = os.path.join(firstcal_setup.out_dir, 'dlys.png')
     if os.path.isfile(fname):
         os.remove(fname)
@@ -165,9 +164,8 @@ def test_plot_delays(firstcal_setup):
     plt.close('all')
 
 
-@qmtest.skipIf_no_matplotlib
 def test_plot_zscores(firstcal_setup):
-    import matplotlib.pyplot as plt
+    plt = pytest.importorskip("matplotlib.pyplot")
     # check exception
     pytest.raises(NameError, firstcal_setup.FC.plot_zscores)
     firstcal_setup.FC.run_metrics()
@@ -190,9 +188,8 @@ def test_plot_zscores(firstcal_setup):
     plt.close('all')
 
 
-@qmtest.skipIf_no_matplotlib
 def test_plot_stds(firstcal_setup):
-    import matplotlib.pyplot as plt
+    plt = pytest.importorskip("matplotlib.pyplot")
     # check exception
     pytest.raises(NameError, firstcal_setup.FC.plot_stds)
     firstcal_setup.FC.run_metrics()

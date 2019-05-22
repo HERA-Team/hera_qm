@@ -143,9 +143,8 @@ def test_write_load_metrics(omnical_data):
     os.remove(outfile)
 
 
-@qmtest.skipIf_no_matplotlib
 def test_plot_phs_metrics(omnical_data):
-    import matplotlib.pyplot as plt
+    plt = pytest.importorskip("matplotlib.pyplot")
 
     # run metrics w/ fc file
     full_metrics = omnical_data.OM.run_metrics(fcfiles=omnical_data.fc_file)
@@ -215,9 +214,8 @@ def test_plot_phs_metrics(omnical_data):
     plt.close('all')
 
 
-@qmtest.skipIf_no_matplotlib
 def test_plot_chisq_metrics(omnical_data):
-    import matplotlib.pyplot as plt
+    plt = pytest.importorskip("matplotlib.pyplot")
     full_metrics = omnical_data.OM.run_metrics(fcfiles=omnical_data.fc_file)
     metrics = full_metrics['XX']
     fname = os.path.join(omnical_data.OM.filedir, 'chisq.png')
@@ -250,9 +248,8 @@ def test_plot_chisq_metrics(omnical_data):
     plt.close('all')
 
 
-@qmtest.skipIf_no_matplotlib
 def test_plot_chisq_tavg(omnical_data):
-    import matplotlib.pyplot as plt
+    plt = pytest.importorskip("matplotlib.pyplot")
     omnical_data.OM.run_metrics(fcfiles=omnical_data.fc_file)
     fname = os.path.join(omnical_data.OM.filedir, 'chisq_tavg.png')
     # test execution
@@ -271,9 +268,8 @@ def test_plot_chisq_tavg(omnical_data):
     plt.close('all')
 
 
-@qmtest.skipIf_no_matplotlib
 def test_plot_gains(omnical_data):
-    import matplotlib.pyplot as plt
+    plt = pytest.importorskip("matplotlib.pyplot")
     omnical_data.OM.run_metrics(fcfiles=omnical_data.fc_file)
     fname = os.path.join(omnical_data.OM.filedir, 'gains.png')
     if os.path.isfile(fname):
@@ -328,9 +324,8 @@ def test_plot_gains(omnical_data):
     plt.close('all')
 
 
-@qmtest.skipIf_no_matplotlib
 def test_plot_metrics(omnical_data):
-    import matplotlib.pyplot as plt
+    plt = pytest.importorskip("matplotlib.pyplot")
     # test execution
     full_metrics = omnical_data.OM.run_metrics(fcfiles=omnical_data.fc_file)
     metrics = full_metrics['XX']
@@ -376,6 +371,7 @@ def omnicalrun_data():
 
 
 def test_firstcal_metrics_run(omnicalrun_data):
+    pytest.importorskip('matplotlib.pyplot')
     # get arg parse
     a = utils.get_metrics_ArgumentParser('omnical_metrics')
     if DATA_PATH not in sys.path:

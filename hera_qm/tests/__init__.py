@@ -89,13 +89,3 @@ def recursive_compare_dicts(d1, d2):
                                                 )
                                         )
     return True
-
-
-try:
-    import matplotlib
-
-    matplotlib_intalled = True
-except(ImportError):
-    matplotlib_intalled = False
-reason = 'matplotlib is not installed, skipping tests that require it.'
-skipIf_no_matplotlib = pytest.mark.skipif(not matplotlib_intalled, reason=reason)
