@@ -270,7 +270,7 @@ class TestFirstcalMetricsRun(unittest.TestCase):
         # Test running with file
         filename = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
         dest_file = os.path.join(DATA_PATH, 'test_output',
-                                 'zen.2457555.50099.yy.HH.uvcA.first.'
+                                 'zen.2457555.50099.yy.HH.uvcA.'
                                  + 'firstcal_metrics.hdf5')
         if os.path.exists(dest_file):
             os.remove(dest_file)
