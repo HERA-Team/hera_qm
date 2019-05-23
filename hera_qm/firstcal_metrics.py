@@ -882,6 +882,8 @@ def firstcal_metrics_run(files, args, history):
             metrics_path = args.metrics_path
         print(metrics_path)
         metrics_basename = utils.strip_extension(os.path.basename(filename)) + args.extension
-        metrics_filename = os.path.join(metrics_path, metrics_basename)
+        # Sometimes the firstcal output has an extra '.first.' in the name
+        # the replace attempts to remove this but does nothing if it does not find `.first.` in the string
+        metrics_filename = os.path.join(metrics_path, metrics_basename).replace('.first.', '.')
         fm.write_metrics(filename=metrics_filename, filetype=args.filetype,
                          overwrite=args.clobber)
