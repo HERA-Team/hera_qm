@@ -3,9 +3,8 @@
 # Licensed under the MIT License
 
 import numpy as np
-import nose.tools as nt
+import pytest
 
-from pyuvdata.tests import skip
 np.random.seed(0)
 
 
@@ -29,49 +28,64 @@ def recursive_compare_dicts(d1, d2):
     Walks through two input dicts and compares each key.
     Makes calls to nt.assert_type_equals and np.allclose to compare values.
     """
-    nt.assert_equal(set(d1.keys()), set(d2.keys()))
+    assert set(d1.keys()) == set(d2.keys())
     for key in d1:
         if isinstance(d1[key], (list)):
-            try:
-                nt.assert_list_equal(d1[key], list(d2[key]))
-            except (AssertionError, TypeError) as err:
-                print('d1:', key, 'key value type:', type(d1[key]),
-                      'data type:', type(d1[key][0]), d1[key])
-                print('d2:', key, 'key value type:', type(d1[key]),
-                      'data type:', type(d2[key][0]), d2[key])
-                raise err
+            assert d1[key] == list(d2[key]), ("key: {key} has type {key1_type} in d1 and {key2_type} in d2\n"
+                                              "d1:  data has type {data1_type} and value {data1_val}\n"
+                                              "d2:  data has type {data2_type} and value {data2_val}\n"
+                                              .format(key1=key,
+                                                      key1_type=type(d1[key]),
+                                                      key2_type=type(d2[key]),
+                                                      data1_type=type(d1[key][0]),
+                                                      data1_val=d1[key],
+                                                      data2_type=type(d2[key][0]),
+                                                      data2_val=d2[key]
+                                                      )
+                                              )
+
         elif isinstance(d1[key], (np.ndarray)):
             if np.issubdtype(d1[key].dtype, np.string_):
-                nt.assert_true(np.array_equal(d1[key], np.asarray(d2[key])))
+                assert np.array_equal(d1[key], np.asarray(d2[key]))
             else:
-                try:
-                    nt.assert_true(np.allclose(d1[key], np.asarray(d2[key])))
-                except (AssertionError, TypeError) as err:
-                    print('d1:', key, 'key value type:', type(d1[key]),
-                          'data type:', type(d1[key][0]), d1[key])
-                    print('d2:', key, 'key value type:', type(d1[key]),
-                          'data type:', type(d2[key][0]), d2[key])
-                    raise err
+                assert np.allclose(d1[key], np.asarray(d2[key])), ("key: {key} has type {key1_type} in d1 and {key2_type} in d2\n"
+                                                                   "d1:  data has type {data1_type} and value {data1_val}\n"
+                                                                   "d2:  data has type {data2_type} and value {data2_val}\n"
+                                                                   .format(key1=key,
+                                                                           key1_type=type(d1[key]),
+                                                                           key2_type=type(d2[key]),
+                                                                           data1_type=type(d1[key][0]),
+                                                                           data1_val=d1[key],
+                                                                           data2_type=type(d2[key][0]),
+                                                                           data2_val=d2[key]
+                                                                           )
+                                                                   )
         elif isinstance(d1[key], dict):
             recursive_compare_dicts(d1[key], d2[key])
         elif isinstance(d1[key], (float, np.float, np.float32)):
-            nt.assert_true(np.allclose(d1[key], d2[key]))
+            assert np.allclose(d1[key], d2[key]), ("key: {key} has type {key1_type} in d1 and {key2_type} in d2\n"
+                                                   "d1:  data has type {data1_type} and value {data1_val}\n"
+                                                   "d2:  data has type {data2_type} and value {data2_val}\n"
+                                                   .format(key1=key,
+                                                           key1_type=type(d1[key]),
+                                                           key2_type=type(d2[key]),
+                                                           data1_type=type(d1[key][0]),
+                                                           data1_val=d1[key],
+                                                           data2_type=type(d2[key][0]),
+                                                           data2_val=d2[key]
+                                                           )
+                                                   )
         else:
-            try:
-                nt.assert_equal(d1[key], d2[key])
-            except (AssertionError, TypeError) as err:
-                print('d1:', key, 'key value type:', type(d1[key]),
-                      'data type:', type(d1[key][0]), d1[key])
-                print('d2:', key, 'key value type:', type(d1[key]),
-                      'data type:', type(d2[key][0]), d2[key])
-                raise err
-
-
-def skipIf_no_matplotlib(test_func):
-    """Define a decorator to skip tests that require matplotlib."""
-    reason = 'matplotlib is not installed, skipping tests that require it.'
-    try:
-        import matplotlib
-    except(ImportError):
-        return skip(reason)(test_func)
-    return test_func
+            assert d1[key] == d2[key], ("key: {key} has type {key1_type} in d1 and {key2_type} in d2\n"
+                                        "d1:  data has type {data1_type} and value {data1_val}\n"
+                                        "d2:  data has type {data2_type} and value {data2_val}\n"
+                                        .format(key1=key,
+                                                key1_type=type(d1[key]),
+                                                key2_type=type(d2[key]),
+                                                data1_type=type(d1[key][0]),
+                                                data1_val=d1[key],
+                                                data2_type=type(d2[key][0]),
+                                                data2_val=d2[key]
+                                                )
+                                        )
+    return True
