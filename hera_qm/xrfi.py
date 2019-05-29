@@ -1058,6 +1058,13 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     """
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
     dirname = resolve_xrfi_path(xrfi_path, data_file)
+    # Create subdirectory
+    if xrfi_subfolder == '':
+        # Get JD string
+        xrfi_subfolder = '.'.join(os.path.basename(data_file).split('.')[1:3])
+    dirname = os.path.join(dirname, xrfi_subfolder)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
     # Initial run on cal data products
@@ -1099,15 +1106,6 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # OR everything together for initial flags
     uvf_apriori.to_waterfall(method='and', keep_pol=False)
     uvf_init = uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf | uvf_apriori
-
-    # Write out initial (combined) metrics and flags
-    basename = qm_utils.strip_extension(os.path.basename(data_file))
-    outfile = '.'.join([basename, init_metrics_ext])
-    outpath = os.path.join(dirname, outfile)
-    uvf_metrics.write(outpath, clobber=clobber)
-    outfile = '.'.join([basename, init_flags_ext])
-    outpath = os.path.join(dirname, outfile)
-    uvf_init.write(outpath, clobber=clobber)
 
     # Second round -- use init flags to mask and recalculate everything
     # Read in data file
@@ -1157,13 +1155,26 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     uvf_temp.to_metric(convert_wgts=True)
     uvf_final = flag(uvf_temp, nsig_p=1.0, nsig_f=freq_threshold, nsig_t=time_threshold)
 
-    # Write out final metrics and flags
-    outfile = '.'.join([basename, final_metrics_ext])
-    outpath = os.path.join(dirname, outfile)
-    uvf_metrics2.write(outpath, clobber=clobber)
-    outfile = '.'.join([basename, final_flags_ext])
-    outpath = os.path.join(dirname, outfile)
-    uvf_final.write(outpath, clobber=clobber)
+    # Write everything out
+    uvf_list = [uvf_v, uvf_og, uvf_ox, uvf_ag, uvf_ax, uvf_metrics,
+                uvf_v2, uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2, uvf_d2, uvf_metrics2,
+                uvf_apriori, uvf_vf, uvf_ogf, uvf_oxf, uvf_agf, uvf_axf, uvf_fws, uvf_init,
+                uvf_vf2, uvf_ogf2, uvf_oxf2, uvf_agf2, uvf_axf2, uvf_df2, uvf_fws2,
+                uvf_combined2, uvf_final]
+    ext_list = ['init_v_metrics', 'init_og_metrics', 'init_ox_metrics', 'init_ag_metrics',
+                'init_ax_metrics', 'init_combined_metrics', 'final_v_metrics',
+                'final_og_metrics', 'final_ox_metrics', 'final_ag_metrics',
+                'final_ax_metrics', 'final_data_metrics', 'final_combined_metrics',
+                'apriori_flags', 'init_v_flags', 'init_og_flags', 'init_ox_flags',
+                'init_ag_flags', 'init_ax_flags', 'init_combined_flags', 'init_flags'
+                'final_v_flags', 'final_og_flags', 'final_ox_flags',
+                'final_ag_flags', 'final_ax_flags', 'final_d_flags',
+                'final_combined_flags', 'final_flags']
+    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    for uvf, ext in zip(uvf_list, ext_list):
+        outfile = '.'.join([basename, ext])
+        outpath = os.path.join(dirname, outfile)
+        uvf.write(outpath, clobber=clobber)
 
     # Save calfits with new flags
     flag_apply(uvf_final, uvc_a, force_pol=True, history=history)
