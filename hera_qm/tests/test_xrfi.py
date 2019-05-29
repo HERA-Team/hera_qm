@@ -742,12 +742,12 @@ def test_xrfi_run():
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
     messages = (2 * ['This object is already a waterfall'] + 2 * ['It seems that the latitude']
-                + 2 * ['This object is already a waterfall'])
-    categories = 2 * [UserWarning] + 2 * [DeprecationWarning] + 2 * [UserWarning]
+                + 2 * ['This object is already a waterfall'] + ['Cannot collapse polarization'])
+    categories = 2 * [UserWarning] + 2 * [DeprecationWarning] + 3 * [UserWarning]
     uvtest.checkWarnings(xrfi.xrfi_run, [test_c_file, test_c_file, test_uvh5_file,
                                          test_uvh5_file, 'Just a test'],
                          {'xrfi_path': xrfi_path, 'kt_size': 3},
-                         nwarnings=6, message=messages, category=categories)
+                         nwarnings=7, message=messages, category=categories)
 
     basename = utils.strip_extension(os.path.basename(test_uvh5_file))
     exts = ['init_xrfi_metrics', 'init_flags', 'final_xrfi_metrics', 'final_flags']
