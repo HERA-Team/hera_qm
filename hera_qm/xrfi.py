@@ -1165,6 +1165,12 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     outpath = os.path.join(dirname, outfile)
     uvf_final.write(outpath, clobber=clobber)
 
+    # Inject hacky chi^2 cut
+    uvf_chi_cut = UVFlag(uvc_o)
+    uvf_chi_cut.metric_array = uvc_o.total_quality_array.copy()
+    uvf_chi_cutf = flag(uvf_chi_cut, nsig_p=100.)
+    uvf_final |= uvf_chi_cutf
+
     # Save calfits with new flags
     flag_apply(uvf_final, uvc_a, force_pol=True, history=history)
     basename = qm_utils.strip_extension(os.path.basename(acalfits_file))
