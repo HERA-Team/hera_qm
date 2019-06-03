@@ -6,6 +6,9 @@ dist/
 *.coverage
 *.egg-info/
 
+#pytest caching
+.pytest_cache/
+
 # Sphinx documentation
 docs/_build
 docs/_static
