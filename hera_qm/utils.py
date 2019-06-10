@@ -288,18 +288,6 @@ def get_metrics_ArgumentParser(method_name):
                         'file to flag on.')
         ap.add_argument('--data_file', default=None, type=str, help='Raw visibility '
                         'data file to flag on.')
-        ap.add_argument('--init_metrics_ext', default='init_xrfi_metrics.h5', type=str,
-                        help='Extension to be appended to input file name '
-                        'for initial metric object. Default is "init_xrfi_metrics.h5".')
-        ap.add_argument('--init_flags_ext', default='init_flags.h5', type=str,
-                        help='Extension to be appended to input file name '
-                        'for initial flag object. Default is "init_flags.h5".')
-        ap.add_argument('--final_metrics_ext', default='final_xrfi_metrics.h5', type=str,
-                        help='Extension to be appended to input file name '
-                        'for final metric object. Default is "final_xrfi_metrics.h5".')
-        ap.add_argument('--final_flags_ext', default='final_flags.h5', type=str,
-                        help='Extension to be appended to input file name '
-                        'for final flag object. Default is "final_flags.h5".')
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,

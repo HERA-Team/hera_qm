@@ -993,8 +993,6 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
 
 
 def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
-             init_metrics_ext='init_xrfi_metrics.h5', init_flags_ext='init_flags.h5',
-             final_metrics_ext='final_xrfi_metrics.h5', final_flags_ext='final_flags.h5',
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
              freq_threshold=0.35, time_threshold=0.5, ex_ants=None, metrics_file=None,
              cal_ext='flagged_abs', clobber=False):
@@ -1014,20 +1012,9 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         The raw visibility data file to flag.
     history : str
         The history string to include in files.
-    init_metrics_ext : str, optional
-        The extension to be appended to input file name for the initial metric object.
-        Default is "init_xrfi_metrics.h5".
-    init_flags_ext : str, optional
-        The extension to be appended to input file name for the initial flag object.
-        Default is "init_flags.h5".
-    final_metrics_ext : str, optional
-        The extension to be appended to input file name for final metric object.
-        Default is "final_xrfi_metrics.h5".
-    final_flags_ext : str, optional
-        The extension to be appended to input file name for final flag object.
-        Default is "final_flags.h5".
     xrfi_path : str, optional
-        Path to save xrfi files to. Default is the same directory as data_file.
+        Path to save xrfi files to. Default is a subdirectory "{JD}/" inside
+        the same directory as data_file.
     kt_size : int, optional
         The size of kernel in time dimension for detrend in xrfi algorithm.
         Default is 8.
