@@ -1156,16 +1156,15 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
                 uvf_v2, uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2, uvf_d2, uvf_metrics2,
                 uvf_apriori, uvf_vf, uvf_ogf, uvf_oxf, uvf_agf, uvf_axf, uvf_fws, uvf_init,
                 uvf_vf2, uvf_ogf2, uvf_oxf2, uvf_agf2, uvf_axf2, uvf_df2, uvf_fws2,
-                uvf_combined2, uvf_final]
-    ext_list = ['init_v_metrics', 'init_og_metrics', 'init_ox_metrics', 'init_ag_metrics',
-                'init_ax_metrics', 'init_combined_metrics', 'final_v_metrics',
-                'final_og_metrics', 'final_ox_metrics', 'final_ag_metrics',
-                'final_ax_metrics', 'final_data_metrics', 'final_combined_metrics',
-                'apriori_flags', 'init_v_flags', 'init_og_flags', 'init_ox_flags',
-                'init_ag_flags', 'init_ax_flags', 'init_combined_flags', 'init_flags'
-                'final_v_flags', 'final_og_flags', 'final_ox_flags',
-                'final_ag_flags', 'final_ax_flags', 'final_d_flags',
-                'final_combined_flags', 'final_flags']
+                uvf_combined2]
+    ext_list = ['v_metrics1', 'og_metrics1', 'ox_metrics1', 'ag_metrics1',
+                'ax_metrics1', 'combined_metrics1', 'v_metrics1',
+                'og_metrics1', 'ox_metrics1', 'ag_metrics1',
+                'ax_metrics1', 'data_metrics1', 'combined_metrics1',
+                'apriori_flags', 'v_flags1', 'og_flags1', 'ox_flags1',
+                'ag_flags1', 'ax_flags1', 'combined_flags1', 'flags1'
+                'v_flags2', 'og_flags2', 'ox_flags2',
+                'ag_flags2', 'ax_flags2', 'd_flags2', 'combined_flags2']
     basename = qm_utils.strip_extension(os.path.basename(data_file))
     for uvf, ext in zip(uvf_list, ext_list):
         outfile = '.'.join([basename, ext])
@@ -1177,7 +1176,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     basename = qm_utils.strip_extension(os.path.basename(acalfits_file))
     basename = qm_utils.strip_extension(basename)  # Also get rid of .abs
     outfile = '.'.join([basename, cal_ext, 'calfits'])
-    outpath = os.path.join(dirname, outfile)
+    outpath = os.path.join(os.path.dirname(acalfits_file), outfile)
     uvc_a.write_calfits(outpath, clobber=clobber)
 
 
