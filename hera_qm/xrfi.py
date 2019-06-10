@@ -91,7 +91,7 @@ def flag_xants(uv, xants, inplace=True):
         return uvo
 
 
-def resolve_xrfi_path(xrfi_path, fname):
+def resolve_xrfi_path(xrfi_path, fname, jd_subdir=False):
     """Determine xrfi_path based on given directory or default to dirname of given file.
 
     Parameters
@@ -100,6 +100,9 @@ def resolve_xrfi_path(xrfi_path, fname):
         Directory to which to write xrfi outputs.
     fname : str
         Filename to determine backup directory if xrfi_path == ''.
+    jd_subdir : bool, optional
+        Whether to append the filename directory with a subdirectory with
+        {JD}_xrfi (when xrfi_path is ''). Default is False.
 
     Returns
     -------
@@ -111,6 +114,12 @@ def resolve_xrfi_path(xrfi_path, fname):
         dirname = xrfi_path
     else:
         dirname = os.path.dirname(os.path.abspath(fname))
+        if jd_subdir:
+            # Get JD string
+            xrfi_subfolder = '.'.join(os.path.basename(data_file).split('.')[1:3]) + '_xrfi'
+            dirname = os.path.join(dirname, xrfi_subfolder)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
     return dirname
 
 
