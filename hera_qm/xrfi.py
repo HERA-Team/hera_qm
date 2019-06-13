@@ -613,8 +613,7 @@ def _ws_flag_waterfall(data, fin, nsig=2.):
 
 def xrfi_waterfall(data, flags=None, Kt=8, Kf=8, nsig_init=6., nsig_adj=2.,
                    algorithm='detrend_medfilt'):
-    """Compute metrics on a single waterfall, then flag outliers and expand
-    flags with the watershed algorithm.
+    """Compute metrics, flag, and then watershed on a single waterfall.
     
     Parameters
     ----------
