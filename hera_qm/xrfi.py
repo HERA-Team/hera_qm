@@ -430,10 +430,46 @@ def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
     return out[Kt:-Kt, Kf:-Kf]
 
 
+def modz_full_array(data, flags=None, Kt=8, Kf=8):
+    """Calculating the modified z-score where the medians are taken across the
+    full array, rather than a defined kernel size. This is a special case of
+    detrend_medfilt, but is a separate function so it only takes the median once
+    for efficiency.
+
+    Parameters
+    ----------
+    data : array
+        2D data array to detrend.
+    flags : array, optional
+        2D flag array to be interpretted as mask for d. NOT USED in this function,
+        but kept for symmetry with other preprocessing functions.
+
+    Returns
+    -------
+    out : array
+        An array containing the outlier significance metric. Same type and size as d.
+
+    """
+    if np.iscomplexobj(data):
+        med_r = np.median(data.real)
+        med_i = np.median(data.imag)
+        mad_r = np.median(np.abs(data.real - med_r))
+        mad_i = np.median(np.abs(data.imag - med_i))
+        mad = np.sqrt(mad_r**2 + mad_i**2)
+        d_rs = data - med_r - 1j * med_i
+    else:
+        med = np.median(data)
+        mad = np.median(np.abs(data - med))
+        d_rs = data - med
+    # don't divide by zero, instead turn those entries into +inf
+    out = robust_divide(d_rs, (1.486 * mad))
+    return out
+
+
 # Update algorithm_dict whenever new metric algorithm is created.
 algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': detrend_deriv,
                   'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt,
-                  'detrend_meanfilt': detrend_meanfilt}
+                  'detrend_meanfilt': detrend_meanfilt, 'modz_full_array': modz_full_array}
 
 #############################################################################
 # RFI flagging algorithms
@@ -985,6 +1021,46 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
     return uvf_m, uvf_fws
 
+
+def chi_sq_pipe(uv, alg='modz_full_array', sig_init=6.0, sig_adj=2.0):
+    """Zero-center and normalize the full total chi squared array, flag, and watershed.
+
+    Parameters
+    ----------
+    uv : UVCal
+        A UVCal object on which to calculate the metric.
+    alg : str, optional
+        The algorithm for calculating the metric. Default is "modz_full_array".
+    sig_init : float, optional
+        The starting number of sigmas to flag on. Default is 6.0.
+    sig_adj : float, optional
+        The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
+
+    Returns
+    -------
+    uvf_m : UVFlag object
+        A UVFlag object with metric after collapsing to single pol.
+        The weights array is set to ones.
+    uvf_fws : UVFlag object
+        A UVFlag object with flags after watershed.
+
+    """
+    uvf_m = calculate_metric(uv, alg, cal_mode='tot_chisq')
+    uvf_m.to_waterfall(keep_pol=False)
+    # This next line resets the weights to 1 (with data) or 0 (no data) to equally
+    # combine with the other metrics.
+    uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
+    alg_func = algorithm_dict[alg]
+    # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
+    uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
+                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
+    # Flag and watershed on each data product individually.
+    # That is, on each complete file (e.g. calibration gains), not on individual
+    # antennas/baselines. We don't broadcast until the very end.
+    uvf_f = flag(uvf_m, nsig_p=sig_init)
+    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
+    return uvf_m, uvf_fws
+
 #############################################################################
 # Wrappers -- Interact with input and output files
 #   Note: "current" wrappers should have simple names, but when replaced,
@@ -1092,9 +1168,15 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Flag on combined metrics
     uvf_f = flag(uvf_metrics, nsig_p=sig_init)
     uvf_fws = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False)
+
+    # Get the absolute chi-squared values
+    uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='modz_full_array', sig_init=sig_init,
+                                         sig_adj=sig_adj)
+
     # OR everything together for initial flags
     uvf_apriori.to_waterfall(method='and', keep_pol=False)
-    uvf_init = uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf | uvf_apriori
+    uvf_init = (uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf
+                | uvf_chisq_f | uvf_apriori)
 
     # Second round -- use init flags to mask and recalculate everything
     # Read in data file
@@ -1145,17 +1227,17 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     uvf_final = flag(uvf_temp, nsig_p=1.0, nsig_f=freq_threshold, nsig_t=time_threshold)
 
     # Write everything out
-    uvf_list = [uvf_v, uvf_og, uvf_ox, uvf_ag, uvf_ax, uvf_metrics,
+    uvf_list = [uvf_v, uvf_og, uvf_ox, uvf_ag, uvf_ax, uvf_metrics, uvf_chisq,
                 uvf_v2, uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2, uvf_d2, uvf_metrics2,
-                uvf_apriori, uvf_vf, uvf_ogf, uvf_oxf, uvf_agf, uvf_axf, uvf_fws, uvf_init,
-                uvf_vf2, uvf_ogf2, uvf_oxf2, uvf_agf2, uvf_axf2, uvf_df2, uvf_fws2,
-                uvf_combined2]
+                uvf_apriori, uvf_vf, uvf_ogf, uvf_oxf, uvf_agf, uvf_axf, uvf_fws,
+                uvf_chisq_f, uvf_init, uvf_vf2, uvf_ogf2, uvf_oxf2, uvf_agf2,
+                uvf_axf2, uvf_df2, uvf_fws2, uvf_combined2]
     ext_list = ['v_metrics1', 'og_metrics1', 'ox_metrics1', 'ag_metrics1',
-                'ax_metrics1', 'combined_metrics1', 'v_metrics1',
-                'og_metrics1', 'ox_metrics1', 'ag_metrics1',
-                'ax_metrics1', 'data_metrics1', 'combined_metrics1',
+                'ax_metrics1', 'combined_metrics1', 'chi_sq_renormed', 'v_metrics2',
+                'og_metrics2', 'ox_metrics2', 'ag_metrics2',
+                'ax_metrics2', 'data_metrics2', 'combined_metrics2',
                 'apriori_flags', 'v_flags1', 'og_flags1', 'ox_flags1',
-                'ag_flags1', 'ax_flags1', 'combined_flags1', 'flags1'
+                'ag_flags1', 'ax_flags1', 'combined_flags1', 'chi_sq_flags', 'flags1'
                 'v_flags2', 'og_flags2', 'ox_flags2',
                 'ag_flags2', 'ax_flags2', 'd_flags2', 'combined_flags2']
     basename = qm_utils.strip_extension(os.path.basename(data_file))
