@@ -507,9 +507,9 @@ def test_xrfi_waterfall():
     # test basic functions
     np.random.seed(21)
     data = 100 * np.ones((10, 10))
-    data += np.random.rand(10, 10)
+    data += np.random.randn(10, 10)
     data[3, 3] += 100
-    data[3, 4] += 1
+    data[3, 4] += 3
     flags = xrfi.xrfi_waterfall(data)
     assert np.sum(flags) == 2
     assert flags[3, 3]
@@ -518,13 +518,15 @@ def test_xrfi_waterfall():
     assert np.sum(flags) == 1
     assert flags[3, 3]
 
+
+def test_xrfi_waterfall_prior_flags():
     # test with prior flags
     np.random.seed(21)
     data = 100 * np.ones((10, 10))
-    data += np.random.rand(10, 10)
+    data += np.random.randn(10, 10)
     prior_flags = np.zeros((10, 10), dtype=bool)
     prior_flags[3, 3] = True
-    data[3, 4] += 1
+    data[3, 4] += 3
     flags = xrfi.xrfi_waterfall(data, flags=prior_flags)
     assert np.sum(flags) == 2
     assert flags[3, 3]
@@ -533,9 +535,12 @@ def test_xrfi_waterfall():
     assert np.sum(flags) == 1
     assert flags[3, 3]
 
+
+def test_xrfi_waterfall_error():
     # test errors
+    data = np.ones((10, 10))
     with pytest.raises(KeyError):
-        xrfi.xrfi_waterfall(data, flags=prior_flags, algorithm='not_an_algorithm')
+        xrfi.xrfi_waterfall(data, algorithm='not_an_algorithm')
 
 
 def test_flag():
