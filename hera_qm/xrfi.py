@@ -611,6 +611,48 @@ def _ws_flag_waterfall(data, fin, nsig=2.):
     return fout
 
 
+def xrfi_waterfall(data, flags=None, Kt=8, Kf=8, nsig_init=6., nsig_adj=2.,
+                   algorithm='detrend_medfilt'):
+    """Compute metrics, flag, and then watershed on a single waterfall.
+
+    Parameters
+    ----------
+    data : array
+        2D data array (Ntimes, Nfreqs) to use in flagging.
+    flags : array, optional
+        2D flag array to be interpretted as mask for data. Ignored for many algorithms
+        for calculating metrics of "outlierness" (e.g. detrend_medfilt) but always
+        ORed with the intial flags from the metrics before the watershed is applied.
+    Kt : int, optional
+        The box size in time (first) dimension to apply medfilt over. Default is
+        8 pixels.
+    Kf : int, optional
+        The box size in frequency (second) dimension to apply medfilt over. Default
+        is 8 pixels.
+    nsig_init : float, optional
+        The number of sigma in the metric above which to flag pixels. Default is 6.
+    nsig_adj : float, optional
+        The number of sigma to flag above for points near flagged points. Default is 2.
+    algorithm : str
+        The metric algorithm name. Must be defined in algorithm_dict.
+
+    Returns
+    -------
+    new_flags : array
+        A final boolean array of flags matching the size of data.
+    """
+    try:
+        alg_func = algorithm_dict[algorithm]
+    except KeyError:
+        raise KeyError('Algorithm not found in list of available functions.')
+    metrics = alg_func(data, flags=flags, Kt=Kt, Kf=Kf)
+    init_flags = (metrics >= nsig_init)
+    if flags is not None:
+        init_flags |= flags
+    new_flags = _ws_flag_waterfall(metrics, init_flags, nsig=nsig_adj)
+    return new_flags
+
+
 def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     """Create a set of flags based on a "metric" type UVFlag object.
 
