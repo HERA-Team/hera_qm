@@ -116,7 +116,7 @@ def resolve_xrfi_path(xrfi_path, fname, jd_subdir=False):
         dirname = os.path.dirname(os.path.abspath(fname))
         if jd_subdir:
             # Get JD string
-            xrfi_subfolder = '.'.join(os.path.basename(data_file).split('.')[1:3]) + '_xrfi'
+            xrfi_subfolder = '.'.join(os.path.basename(fname).split('.')[1:3]) + '_xrfi'
             dirname = os.path.join(dirname, xrfi_subfolder)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
