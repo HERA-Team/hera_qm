@@ -1140,7 +1140,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
 
     """
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
-    dirname = resolve_xrfi_path(xrfi_path, data_file, jdsubdir=True)
+    dirname = resolve_xrfi_path(xrfi_path, data_file, jd_subdir=True)
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
     # Initial run on cal data products
