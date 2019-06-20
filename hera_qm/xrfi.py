@@ -454,24 +454,26 @@ def zscore_full_array(data, flags=None, modified=False):
         An array containing the outlier significance metric. Same type and size as d.
 
     """
-    data = np.ma.masked_array(data, flags)
+    data = np.array(data)  # makes a copy of the data
+    data[flags] = np.nan
     if modified:
         if np.any(np.iscomplex(data)):
-            med_r = np.ma.median(data).data.real
-            med_i = np.ma.median(data).data.imag
-            mad_r = np.ma.median(np.abs(data.real) - med_r)
-            mad_i = np.ma.median(np.abs(data.imag) - med_i)
+            med_r = np.nanmedian(data).data.real
+            med_i = np.nanmedian(data).data.imag
+            mad_r = np.nanmedian(np.abs(data.real) - med_r)
+            mad_i = np.nanmedian(np.abs(data.imag) - med_i)
             mad = np.sqrt(mad_r**2 + mad_i**2)
             d_rs = data - med_r - 1j * med_i
         else:
-            med = np.ma.median(data)
-            mad = np.ma.median(np.abs(data - med))
+            med = np.nanmedian(data)
+            mad = np.nanmedian(np.abs(data - med))
             d_rs = data - med
         # don't divide by zero, instead turn those entries into +inf
         out = robust_divide(d_rs, (1.486 * mad))
     else:
-        d_rs = data - np.ma.mean(data)
-        out = robust_divide(d_rs, np.ma.std(data))
+        d_rs = data - np.nanmean(data)
+        out = robust_divide(d_rs, np.nanstd(data))
+    out[np.isnan(out)] = np.inf  # turn all nans into infs
     return out
 
 
