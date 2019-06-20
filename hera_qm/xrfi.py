@@ -469,10 +469,10 @@ def zscore_full_array(data, flags=None, modified=False):
             mad = np.nanmedian(np.abs(data - med))
             d_rs = data - med
         # don't divide by zero, instead turn those entries into +inf
-        out = robust_divide(d_rs, (1.486 * mad))
+        out = robust_divide(d_rs, np.array([1.486 * mad]))
     else:
         d_rs = data - np.nanmean(data)
-        out = robust_divide(d_rs, np.nanstd(data))
+        out = robust_divide(d_rs, np.array([np.nanstd(data)]))
     out[np.isnan(out)] = np.inf  # turn all nans into infs
     return out
 
