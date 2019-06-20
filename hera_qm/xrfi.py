@@ -464,8 +464,8 @@ def zscore_full_array(data, flags=None, modified=False):
             mad = np.sqrt(mad_r**2 + mad_i**2)
             d_rs = data - med_r - 1j * med_i
         else:
-            med = np.median(data)
-            mad = np.median(np.abs(data - med))
+            med = np.ma.median(data)
+            mad = np.ma.median(np.abs(data - med))
             d_rs = data - med
         # don't divide by zero, instead turn those entries into +inf
         out = robust_divide(d_rs, (1.486 * mad))
