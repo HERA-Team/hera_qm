@@ -1256,7 +1256,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
                 'og_metrics2.h5', 'ox_metrics2.h5', 'ag_metrics2.h5',
                 'ax_metrics2.h5', 'data_metrics2.h5', 'chi_sq_renormed2.h5', 'combined_metrics2.h5',
                 'apriori_flags.h5', 'v_flags1.h5', 'og_flags1.h5', 'ox_flags1.h5',
-                'ag_flags1.h5', 'ax_flags1.h5', 'combined_flags1.h5', 'chi_sq_flags1.h5', 'flags1.h5'
+                'ag_flags1.h5', 'ax_flags1.h5', 'combined_flags1.h5', 'chi_sq_flags1.h5', 'flags1.h5',
                 'v_flags2.h5', 'og_flags2.h5', 'ox_flags2.h5',
                 'ag_flags2.h5', 'ax_flags2.h5', 'd_flags2.h5', 'chi_sq_flags2.h5', 'combined_flags2.h5']
     basename = qm_utils.strip_extension(os.path.basename(data_file))
