@@ -116,7 +116,7 @@ def resolve_xrfi_path(xrfi_path, fname, jd_subdir=False):
         dirname = os.path.dirname(os.path.abspath(fname))
         if jd_subdir:
             # Get JD string
-            xrfi_subfolder = '.'.join(os.path.basename(fname).split('.')[1:3]) + '_xrfi'
+            xrfi_subfolder = '.'.join(os.path.basename(fname).split('.')[0:4]) + '_xrfi'
             dirname = os.path.join(dirname, xrfi_subfolder)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
@@ -1249,14 +1249,14 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
                 uvf_apriori, uvf_vf, uvf_ogf, uvf_oxf, uvf_agf, uvf_axf, uvf_fws,
                 uvf_chisq_f, uvf_init, uvf_vf2, uvf_ogf2, uvf_oxf2, uvf_agf2,
                 uvf_axf2, uvf_df2, uvf_fws2, uvf_combined2]
-    ext_list = ['v_metrics1', 'og_metrics1', 'ox_metrics1', 'ag_metrics1',
-                'ax_metrics1', 'combined_metrics1', 'chi_sq_renormed1', 'v_metrics2',
-                'og_metrics2', 'ox_metrics2', 'ag_metrics2',
-                'ax_metrics2', 'data_metrics2', 'chi_sq_renormed2', 'combined_metrics2',
-                'apriori_flags', 'v_flags1', 'og_flags1', 'ox_flags1',
-                'ag_flags1', 'ax_flags1', 'combined_flags1', 'chi_sq_flags1', 'flags1'
-                'v_flags2', 'og_flags2', 'ox_flags2',
-                'ag_flags2', 'ax_flags2', 'd_flags2', 'chi_sq_flags2', 'combined_flags2']
+    ext_list = ['v_metrics1.h5', 'og_metrics1.h5', 'ox_metrics1.h5', 'ag_metrics1.h5',
+                'ax_metrics1.h5', 'combined_metrics1.h5', 'chi_sq_renormed1.h5', 'v_metrics2.h5',
+                'og_metrics2.h5', 'ox_metrics2.h5', 'ag_metrics2.h5',
+                'ax_metrics2.h5', 'data_metrics2.h5', 'chi_sq_renormed2.h5', 'combined_metrics2.h5',
+                'apriori_flags.h5', 'v_flags1.h5', 'og_flags1.h5', 'ox_flags1.h5',
+                'ag_flags1.h5', 'ax_flags1.h5', 'combined_flags1.h5', 'chi_sq_flags1.h5', 'flags1.h5'
+                'v_flags2.h5', 'og_flags2.h5', 'ox_flags2.h5',
+                'ag_flags2.h5', 'ax_flags2.h5', 'd_flags2.h5', 'chi_sq_flags2.h5', 'combined_flags2.h5']
     basename = qm_utils.strip_extension(os.path.basename(data_file))
     for uvf, ext in zip(uvf_list, ext_list):
         outfile = '.'.join([basename, ext])
