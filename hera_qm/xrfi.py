@@ -116,7 +116,7 @@ def resolve_xrfi_path(xrfi_path, fname, jd_subdir=False):
         dirname = os.path.dirname(os.path.abspath(fname))
         if jd_subdir:
             # Get JD string
-            xrfi_subfolder = '.'.join(os.path.basename(fname).split('.')[0:4]) + '_xrfi'
+            xrfi_subfolder = '.'.join(os.path.basename(fname).split('.')[0:3]) + '.xrfi'
             dirname = os.path.join(dirname, xrfi_subfolder)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
@@ -1246,22 +1246,27 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     uvf_final = flag(uvf_temp, nsig_p=1.0, nsig_f=freq_threshold, nsig_t=time_threshold)
 
     # Write everything out
-    uvf_list = [uvf_v, uvf_og, uvf_ox, uvf_ag, uvf_ax, uvf_metrics, uvf_chisq,
-                uvf_v2, uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2, uvf_d2, uvf_metrics2,
-                uvf_apriori, uvf_vf, uvf_ogf, uvf_oxf, uvf_agf, uvf_axf, uvf_fws,
-                uvf_chisq_f, uvf_init, uvf_vf2, uvf_ogf2, uvf_oxf2, uvf_agf2,
-                uvf_axf2, uvf_df2, uvf_fws2, uvf_combined2]
-    ext_list = ['v_metrics1.h5', 'og_metrics1.h5', 'ox_metrics1.h5', 'ag_metrics1.h5',
-                'ax_metrics1.h5', 'combined_metrics1.h5', 'chi_sq_renormed1.h5', 'v_metrics2.h5',
-                'og_metrics2.h5', 'ox_metrics2.h5', 'ag_metrics2.h5',
-                'ax_metrics2.h5', 'data_metrics2.h5', 'chi_sq_renormed2.h5', 'combined_metrics2.h5',
-                'apriori_flags.h5', 'v_flags1.h5', 'og_flags1.h5', 'ox_flags1.h5',
-                'ag_flags1.h5', 'ax_flags1.h5', 'combined_flags1.h5', 'chi_sq_flags1.h5', 'flags1.h5',
-                'v_flags2.h5', 'og_flags2.h5', 'ox_flags2.h5',
-                'ag_flags2.h5', 'ax_flags2.h5', 'd_flags2.h5', 'chi_sq_flags2.h5', 'combined_flags2.h5']
-    assert len(uvf_list) == len(ext_list)
+    uvf_dict = {'apriori_flags.h5': uvf_apriori,
+                'v_metrics1.h5': uvf_v, 'v_flags1.h5': uvf_vf,
+                'og_metrics1.h5': uvf_og, 'og_flags1.h5': uvf_ogf,
+                'ox_metrics1.h5': uvf_ox, 'ox_flags1.h5': uvf_oxf,
+                'ag_metrics1.h5': uvf_ag, 'ag_flags1.h5': uvf_agf,
+                'ax_metrics1.h5': uvf_ax, 'ax_flags1.h5': uvf_axf,
+                'chi_sq_renormed1.h5': uvf_chisq, 'chi_sq_flags1.h5': uvf_chisq_f,
+                'combined_metrics1.h5': uvf_metrics, 'combined_flags1.h5': uvf_fws,
+                'flags1.h5': uvf_init,
+                'v_metrics2.h5': uvf_v2, 'v_flags2.h5': uvf_vf2,
+                'og_metrics2.h5': uvf_og2, 'og_flags2.h5': uvf_ogf2,
+                'ox_metrics2.h5': uvf_ox2, 'ox_flags2.h5': uvf_oxf2,
+                'ag_metrics2.h5': uvf_ag2, 'ag_flags2.h5': uvf_agf2,
+                'ax_metrics2.h5': uvf_ax2, 'ax_flags2.h5': uvf_axf2,
+                'data_metrics2.h5': uvf_d2, 'data_flags2.h5': uvf_df2,
+                'chi_sq_renormed2.h5': uvf_chisq2, 'chi_sq_flags2.h5': uvf_fws2,
+                'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
+                'flags2.h5': uvf_combined2, 'final_flags': uvf_final}
+
     basename = qm_utils.strip_extension(os.path.basename(data_file))
-    for uvf, ext in zip(uvf_list, ext_list):
+    for ext, uvf in uvf_dict.items():
         outfile = '.'.join([basename, ext])
         outpath = os.path.join(dirname, outfile)
         uvf.write(outpath, clobber=clobber)
