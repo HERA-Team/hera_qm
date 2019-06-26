@@ -1461,7 +1461,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
     uvf_file = copy.deepcopy(uvf_total)
     for dfile in data_files:
         abs_in = qm_utils.strip_extension(dfile) + '.abs.calfits'
-        abs_out = qm_utils.strip_extension(dfile) + '.flagged_abs.calfits'
+        abs_out = qm_utils.strip_extension(dfile) + '.flagged_abs_thresholded.calfits'
         uvc_a.read_calfits(abs_in)
         time_inds = []
         for t in uvc_a.time_array:
