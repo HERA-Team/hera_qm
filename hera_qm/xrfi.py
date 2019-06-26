@@ -850,7 +850,7 @@ def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
     ztseries = modzscore_1d(spec, detrend=detrend)
     # Flag based on zscores and thresholds
     uvf_f.flag_array[:, zspec >= nsig_f, :] = True
-    uvf_f.flag_array[zteries >= nsig_t, :, :] = True
+    uvf_f.flag_array[ztseries >= nsig_t, :, :] = True
 
     return uvf_f
 
