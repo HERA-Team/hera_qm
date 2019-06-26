@@ -1419,11 +1419,9 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
     types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
     mexts = ['og_metrics', 'ox_metrics', 'ag_metrics', 'ax_metrics',
              'v_metrics', 'data_metrics', 'chi_sq_renormed', 'combined_metrics']
-    fexts = ['og_flags2', 'ox_flags2', 'ag_flags2', 'ax_flags2',
-             'v_flags2', 'data_flags2', 'chi_sq_flags2', 'combined_flags2']
     # Read in the metrics objects
     filled_metrics = []
-    for ext in exts:
+    for ext in mexts:
         if ext != 'data_metrics':
             # Fill in 2nd metrics with 1st metrics where 2nd are not available.
             files1 = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in directories]
@@ -1451,6 +1449,10 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         outpath = os.path.join(outdir, outfile)
         uvf_f.write(outpath, clobber=clobber_xrfi)
         uvf_total |= uvf_f
+
+    # Read non thresholded flags and combine
+    files = [glob.glob(d + '/*.flags2.h5')[0] for d in directories]
+    uvf_total |= UVFlag(files)
 
     # Apply to abs calfits
     uvc_a = UVCal()
