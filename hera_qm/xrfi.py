@@ -847,7 +847,7 @@ def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
     spec = np.ma.median(data, axis=(0, 2))
     zspec = modzscore_1d(spec, detrend=detrend)
     tseries = np.ma.median(data, axis=(1, 2))
-    ztseries = modzscore_1d(spec, detrend=detrend)
+    ztseries = modzscore_1d(tseries, detrend=detrend)
     # Flag based on zscores and thresholds
     uvf_f.flag_array[:, zspec >= nsig_f, :] = True
     uvf_f.flag_array[ztseries >= nsig_t, :, :] = True
