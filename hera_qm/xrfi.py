@@ -1424,8 +1424,8 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
     for ext in mexts:
         if ext != 'data_metrics':
             # Fill in 2nd metrics with 1st metrics where 2nd are not available.
-            files1 = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in directories]
-            files2 = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in directories]
+            files1 = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
+            files2 = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
             uvf1 = UVFlag(files1)
             uvf2 = UVFlag(files2)
             uvf2.metric_array = np.where(np.isinf(uvf2.metric_array), uvf1.metric_array,
@@ -1433,7 +1433,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
             filled_metrics.append(uvf2)
         else:
             # Data was only run in second iteration
-            files = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in directories]
+            files = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
             filled_metrics.append(UVFlag(files))
 
     # Threshold each metric and save flag object
@@ -1451,7 +1451,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         uvf_total |= uvf_f
 
     # Read non thresholded flags and combine
-    files = [glob.glob(d + '/*.flags2.h5')[0] for d in directories]
+    files = [glob.glob(d + '/*.flags2.h5')[0] for d in xrfi_dirs]
     uvf_total |= UVFlag(files)
 
     # Apply to abs calfits
