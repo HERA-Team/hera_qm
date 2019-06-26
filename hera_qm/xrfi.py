@@ -520,7 +520,7 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
         d_sq = np.abs(d_rs)**2
         sig = np.sqrt(np.nanmedian(d_sq) / .456)
         zscore = robust_divide(d_rs, np.array([sig]))
-    return zscore.astype(type(data))
+    return zscore
 
 
 # Update algorithm_dict whenever new metric algorithm is created.
