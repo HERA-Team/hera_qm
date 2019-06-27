@@ -14,7 +14,6 @@ from pyuvdata import utils as uvutils
 from .version import hera_qm_version_str
 from .metrics_io import process_ex_ants
 import warnings
-import copy
 import collections
 from six.moves import range
 import glob
@@ -589,7 +588,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
     if inplace:
         uvf = uvf_f
     else:
-        uvf = copy.deepcopy(uvf_f)
+        uvf = uvf_f.copy()
 
     # Convenience
     farr = uvf.flag_array
@@ -686,7 +685,7 @@ def _ws_flag_waterfall(data, fin, nsig=2.):
     if data.shape != fin.shape:
         raise ValueError('data and fin must match in shape. Shapes are: ' + str(data.shape)
                          + ' and ' + str(fin.shape))
-    fout = copy.deepcopy(fin)
+    fout = fin.copy()
     # There may be an elegant way to combine these... for the future.
     if data.ndim == 1:
         prevn = 0
@@ -750,7 +749,7 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
         raise ValueError('uvf_m must be UVFlag instance with mode == "metric."')
 
     # initialize
-    uvf_f = copy.deepcopy(uvf_m)
+    uvf_f = uvf_m.copy()
     uvf_f.to_flag()
 
     # Pixel flagging
@@ -839,7 +838,7 @@ def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
                          + ' type == "waterfall."')
 
     # initialize
-    uvf_f = copy.deepcopy(uvf_m)
+    uvf_f = uvf_m.copy()
     uvf_f.to_flag()
     # Mask invalid values. Masked medians are slow, but these are done only on waterfalls.
     data = np.ma.masked_array(uvf_m.metric_array, ~np.isfinite(uvf_m.metric_array))
@@ -1058,7 +1057,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
     uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, cal_mode=cal_mode)
     uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None)
     uvf_f = watershed_flag(uvf, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
-    uvf_w = copy.deepcopy(uvf_f)
+    uvf_w = uvf_f.copy()
     uvf_w.to_waterfall()
     # I realize the naming convention has flipped, which results in nsig_f=time_threshold.
     # time_threshold is defined as fraction of time flagged to flag a given channel.
@@ -1438,7 +1437,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
             filled_metrics.append(UVFlag(files))
 
     # Threshold each metric and save flag object
-    uvf_total = copy.deepcopy(filled_metrics[0])
+    uvf_total = filled_metrics.copy()
     uvf_total.to_flag()
     for i, uvf_m in enumerate(filled_metrics):
         if types[i] == 'chi_sq_renormed':
@@ -1458,7 +1457,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
     # Apply to abs calfits
     uvc_a = UVCal()
     # This is a terrible hack we need to fix when we have a select method.
-    uvf_file = copy.deepcopy(uvf_total)
+    uvf_file = uvf_total.copy()
     for dfile in data_files:
         abs_in = qm_utils.strip_extension(dfile) + '.abs.calfits'
         abs_out = qm_utils.strip_extension(dfile) + '.flagged_abs_thresholded.calfits'
