@@ -1465,7 +1465,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         uvc_a.read_calfits(abs_in)
         time_inds = []
         for t in uvc_a.time_array:
-            time_inds.append(np.where(uvf_total.time_array == t)[0])
+            time_inds.append(np.where(uvf_total.time_array == t)[0][0])
         # Again, this needs to be fixed.
         uvf_file.flag_array = uvf_total.flag_array[time_inds, :, :].copy()
         flag_apply(uvf_file, uvc_a, force_pol=True, history=history)
