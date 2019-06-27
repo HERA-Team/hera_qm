@@ -1437,7 +1437,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
             filled_metrics.append(UVFlag(files))
 
     # Threshold each metric and save flag object
-    uvf_total = filled_metrics.copy()
+    uvf_total = filled_metrics[0].copy()
     uvf_total.to_flag()
     for i, uvf_m in enumerate(filled_metrics):
         if types[i] == 'chi_sq_renormed':
