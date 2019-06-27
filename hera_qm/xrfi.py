@@ -1178,8 +1178,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0, sig_a
 
 def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
-             freq_threshold=0.35, time_threshold=0.5, ex_ants=None, metrics_file=None,
-             cal_ext='flagged_abs', clobber=False):
+             ex_ants=None, metrics_file=None, clobber=False):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
@@ -1210,12 +1209,6 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     sig_adj : float, optional
         The number of sigmas to flag on for data adjacent to a flag.
         Default is 2.0.
-    freq_threshold : float, optional
-        The fraction of times required to trigger a broadcast across times
-        (at a single freq). Default is 0.35.
-    time_threshold : float, optional
-        The fraction of channels required to trigger broadcast across frequency
-        (at a single time). Default is 0.5.
     ex_ants : str, optional
         A comma-separated list of antennas to exclude. Flags of visibilities formed
         with these antennas will be set to True. Default is None (i.e., no antennas
@@ -1224,10 +1217,6 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         Metrics file that contains a list of excluded antennas. Flags of visibilities
         formed with these antennas will be set to True. Default is None (i.e.,
         no antennas will be excluded).
-    cal_ext : str, optional
-        The extension to replace penultimate extension in a calfits file for output
-        calibration including flags. Defaults is "flagged_abs". For example, an
-        input_cal of "foo.goo.calfits" would result in "foo.flagged_abs.calfits".
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
 
@@ -1334,12 +1323,6 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     uvf_combined2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
                      | uvf_vf2 | uvf_df2 | uvf_chisq_f2 | uvf_init)
 
-    # Threshold
-    # TODO: remove this when we have day-long thresholding implemented
-    uvf_temp = uvf_combined2.copy()
-    uvf_temp.to_metric(convert_wgts=True)
-    uvf_final = flag(uvf_temp, nsig_p=1.0, nsig_f=freq_threshold, nsig_t=time_threshold)
-
     # Write everything out
     uvf_dict = {'apriori_flags.h5': uvf_apriori,
                 'v_metrics1.h5': uvf_v, 'v_flags1.h5': uvf_vf,
@@ -1366,17 +1349,9 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         outpath = os.path.join(dirname, outfile)
         uvf.write(outpath, clobber=clobber)
 
-    # Save calfits with new flags
-    flag_apply(uvf_final, uvc_a, force_pol=True, history=history)
-    basename = qm_utils.strip_extension(os.path.basename(acalfits_file))
-    basename = qm_utils.strip_extension(basename)  # Also get rid of .abs
-    outfile = '.'.join([basename, cal_ext, 'calfits'])
-    outpath = os.path.join(os.path.dirname(acalfits_file), outfile)
-    uvc_a.write_calfits(outpath, clobber=clobber)
-
 
 def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsig_t=5.0,
-                      cal_ext='flagged_abs', clobber_xrfi=False, clobber_cal=True):
+                      cal_ext='flagged_abs', clobber=False):
     """Apply thresholding across all times or all frequencies, using a full day
     of data.
 
@@ -1386,7 +1361,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         Paths to the raw data files which have been used to calibrate and rfi flag so far.
     history : str
         The history string to include in files.
-    k_size : int, optional
+    kt_size : int, optional
         The size of kernel in time dimension for detrend in xrfi algorithm.
         Default is 8.
     kf_size : int, optional
@@ -1400,11 +1375,8 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         The extension to replace penultimate extension in a calfits file for output
         calibration including flags. Defaults is "flagged_abs". For example, an
         input_cal of "foo.goo.calfits" would result in "foo.flagged_abs.calfits".
-    clobber_xrfi : bool, optional
-        If True, overwrite existing xrfi files. Default is False.
-    clobber_cal : bool, optional
-        If True, overwrite existing flagged calibration file. Default is True because
-        this will overwrite the file written in xrfi_run().
+    clobber : bool, optional
+        If True, overwrite existing files. Default is False.
 
     Returns
     -------
@@ -1412,6 +1384,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
 
     """
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    data_files = sorted(data_files)
     xrfi_dirs = [resolve_xrfi_path('', dfile, jd_subdir=True) for dfile in data_files]
     basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
     outdir = resolve_xrfi_path('', data_files[0])
@@ -1447,7 +1420,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t, detrend=detrend)
         outfile = '.'.join([basename, types[i] + '_threshold_flags.h5'])
         outpath = os.path.join(outdir, outfile)
-        uvf_f.write(outpath, clobber=clobber_xrfi)
+        uvf_f.write(outpath, clobber=clobber)
         uvf_total |= uvf_f
 
     # Read non thresholded flags and combine
@@ -1459,8 +1432,9 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
     # This is a terrible hack we need to fix when we have a select method.
     uvf_file = uvf_total.copy()
     for dfile in data_files:
-        abs_in = qm_utils.strip_extension(dfile) + '.abs.calfits'
-        abs_out = qm_utils.strip_extension(dfile) + '.flagged_abs_thresholded.calfits'
+        basename = qm_utils.strip_extension(dfile)
+        abs_in = '.'.join([basename, 'abs', 'calfits'])
+        abs_out = '.'.join([basenames, cal_ext, 'calfits'])
         uvc_a.read_calfits(abs_in)
         time_inds = []
         for t in uvc_a.time_array:
@@ -1468,7 +1442,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         # Again, this needs to be fixed.
         uvf_file.flag_array = uvf_total.flag_array[time_inds, :, :].copy()
         flag_apply(uvf_file, uvc_a, force_pol=True, history=history)
-        uvc_a.write_calfits(abs_out, clobber=clobber_cal)
+        uvc_a.write_calfits(abs_out, clobber=clobber)
 
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
