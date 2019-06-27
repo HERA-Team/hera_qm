@@ -5,6 +5,7 @@ build/
 dist/
 *.coverage
 *.egg-info/
+*.eggs/pytest*
 
 #pytest caching
 .pytest_cache/
