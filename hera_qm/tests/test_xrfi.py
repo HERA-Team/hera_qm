@@ -357,6 +357,29 @@ def test_zscore_full_array_modified_complex(fake_data):
     assert np.allclose(out, (fake_data - fake_med - 1j * fake_med) / (1.486 * fake_mad))
 
 
+def test_modzscore_1d_no_detrend():
+    npix = 1000
+    np.random.seed(182)
+    data = np.random.randn(npix)
+    data[50] = 500
+    out = xrfi.modzscore_1d(data, detrend=False)
+    assert out.shape == (npix,)
+    assert np.isclose(out[50], 500, rtol=.2)
+    assert np.isclose(np.median(np.abs(out)), .67, rtol=.1)
+
+
+def test_modzscore_1d():
+    npix = 1000
+    np.random.seed(182)
+    data = np.random.randn(npix)
+    data[50] = 500
+    data += .1 * np.arange(npix)
+    out = xrfi.modzscore_1d(data)
+    assert out.shape == (npix,)
+    assert np.isclose(out[50], 500, rtol=.2)
+    assert np.isclose(np.median(np.abs(out)), .67, rtol=.1)
+
+
 def test_watershed_flag():
     # generate a metrics and flag UVFlag object
     uv = UVData()
