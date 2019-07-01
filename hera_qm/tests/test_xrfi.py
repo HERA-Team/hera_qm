@@ -312,6 +312,51 @@ def test_detrend_meanfilt_flags(fake_data):
     assert np.allclose(dm1, dm2)
 
 
+def test_zscore_full_array(fake_data):
+    # Make some fake data
+    np.random.seed(182)
+    fake_data[...] = np.random.randn(fake_data.shape[0], fake_data.shape[1])
+    out = xrfi.zscore_full_array(fake_data)
+    fake_mean = np.mean(fake_data)
+    fake_std = np.std(fake_data)
+    assert np.all(out == (fake_data - fake_mean) / fake_std)
+
+
+def test_zscore_full_array_flags(fake_data):
+    # Make some fake data
+    np.random.seed(182)
+    fake_data[...] = np.random.randn(fake_data.shape[0], fake_data.shape[1])
+    flags = np.zeros(fake_data.shape, dtype=np.bool)
+    flags[45, 33] = True
+    out = xrfi.zscore_full_array(fake_data, flags=flags)
+    fake_mean = np.mean(np.ma.masked_array(fake_data, flags))
+    fake_std = np.std(np.ma.masked_array(fake_data, flags))
+    out_exp = (fake_data - fake_mean) / fake_std
+    out_exp[45, 33] = np.inf
+    assert np.all(out == out_exp)
+
+
+def test_zscore_full_array_modified(fake_data):
+    # Make some fake data
+    np.random.seed(182)
+    fake_data[...] = np.random.randn(fake_data.shape[0], fake_data.shape[1])
+    out = xrfi.zscore_full_array(fake_data, modified=True)
+    fake_med = np.median(fake_data)
+    fake_mad = np.median(np.abs(fake_data - fake_med))
+    assert np.all(out == (fake_data - fake_med) / (1.486 * fake_mad))
+
+
+def test_zscore_full_array_modified_complex(fake_data):
+    # Make some fake data
+    np.random.seed(182)
+    rands = np.random.randn(100, 100)
+    fake_data = rands + 1j * rands
+    out = xrfi.zscore_full_array(fake_data, modified=True)
+    fake_med = np.median(rands)
+    fake_mad = np.sqrt(2) * np.median(np.abs(rands - fake_med))
+    assert np.allclose(out, (fake_data - fake_med - 1j * fake_med) / (1.486 * fake_mad))
+
+
 def test_watershed_flag():
     # generate a metrics and flag UVFlag object
     uv = UVData()

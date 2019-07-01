@@ -455,13 +455,14 @@ def zscore_full_array(data, flags=None, modified=False):
 
     """
     data = np.array(data)  # makes a copy of the data
-    data[flags] = np.nan
+    if flags is not None:
+        data[flags] = np.nan
     if modified:
         if np.any(np.iscomplex(data)):
-            med_r = np.nanmedian(data).data.real
-            med_i = np.nanmedian(data).data.imag
-            mad_r = np.nanmedian(np.abs(data.real) - med_r)
-            mad_i = np.nanmedian(np.abs(data.imag) - med_i)
+            med_r = np.nanmedian(data).real
+            med_i = np.nanmedian(data).imag
+            mad_r = np.nanmedian(np.abs(data.real - med_r))
+            mad_i = np.nanmedian(np.abs(data.imag - med_i))
             mad = np.sqrt(mad_r**2 + mad_i**2)
             d_rs = data - med_r - 1j * med_i
         else:
