@@ -100,6 +100,16 @@ def test_resolve_xrfi_path_does_not_exist():
     assert os.path.dirname(os.path.abspath(test_d_file)) == dirname
 
 
+def test_resolve_xrfi_path_jd_subdir():
+    dirname = xrfi.resolve_xrfi_path('', test_d_file, jd_subdir=True)
+    expected_dir = os.path.join(os.path.dirname(os.path.abspath(test_d_file)),
+                                '.'.join(os.path.basename(test_d_file).split('.')[0:3])
+                                + '.xrfi')
+    assert dirname == expected_dir
+    assert os.path.exists(expected_dir)
+    shutil.rmtree(expected_dir)
+
+
 def test_check_convolve_dims_3D():
     # Error if d.ndims != 2
     pytest.raises(ValueError, xrfi._check_convolve_dims, np.ones((3, 2, 3)), 1, 2)
