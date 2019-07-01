@@ -308,7 +308,7 @@ def get_metrics_ArgumentParser(method_name):
                         'visibilities formed with these antennas will be set to True.')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing files (default False)')
-    elif method_name == 'delay_threshold_run':
+    elif method_name == 'day_threshold_run':
         ap.prog = 'xrfi_day_threshold_run.py'
         ap.add_argument('data_files', type=str, nargs='+', help='List of paths to \
                         the raw data files which have been used to calibrate and \

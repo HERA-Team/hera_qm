@@ -153,14 +153,25 @@ def test_get_metrics_ArgumentParser_xrfi_run():
     a = utils.get_metrics_ArgumentParser('xrfi_run')
     # First try defaults - test a few of them
     args = a.parse_args('')
-    assert args.init_metrics_ext == 'init_xrfi_metrics.h5'
     assert args.kt_size == 8
     assert args.sig_init == 6.0
-    assert args.freq_threshold == 0.35
     assert args.ex_ants is None
     # try to set something
-    args = a.parse_args(['--time_threshold', '0.4'])
-    assert args.time_threshold == 0.4
+    args = a.parse_args(['--sig_adj', '3.0'])
+    assert args.sig_adj == 3.0
+
+
+def test_get_metrics_ArgumentParser_day_threshold_run():
+    a = utils.get_metrics_ArgumentParser('day_threshold_run')
+    # First try defaults - test a few of them
+    args = a.parse_args(['fooey'])
+    assert args.kt_size == 8
+    assert args.nsig_f == 5.0
+    assert args.cal_ext == 'flagged_abs'
+    assert args.data_files == ['fooey']
+    # try to set something
+    args = a.parse_args(['--nsig_t', '3.0', 'fooey'])
+    assert args.nsig_t == 3.0
 
 
 def test_get_metrics_ArgumentParser_xrfi_apply():
