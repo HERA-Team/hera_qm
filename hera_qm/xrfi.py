@@ -1341,7 +1341,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
                 'data_metrics2.h5': uvf_d2, 'data_flags2.h5': uvf_df2,
                 'chi_sq_renormed2.h5': uvf_chisq2, 'chi_sq_flags2.h5': uvf_fws2,
                 'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
-                'flags2.h5': uvf_combined2, 'final_flags': uvf_final}
+                'flags2.h5': uvf_combined2}
 
     basename = qm_utils.strip_extension(os.path.basename(data_file))
     for ext, uvf in uvf_dict.items():
