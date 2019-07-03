@@ -815,33 +815,46 @@ def test_xrfi_h1c_idr2_2_pipe():
     assert uvf_m.weights_array.max() == 1.
 
 
-def test_xrfi_run():
+def test_xrfi_run(tmpdir):
     # Run in nicest way possible
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
-    messages = (2 * ['This object is already a waterfall'] + 2 * ['It seems that the latitude']
-                + 2 * ['This object is already a waterfall'])
-    categories = 2 * [UserWarning] + 2 * [DeprecationWarning] + 2 * [UserWarning]
-    uvtest.checkWarnings(xrfi.xrfi_run, [test_c_file, test_c_file, test_uvh5_file,
-                                         test_uvh5_file, 'Just a test'],
-                         {'xrfi_path': xrfi_path, 'kt_size': 3},
-                         nwarnings=6, message=messages, category=categories)
+    mess1 = ['This object is already a waterfall']
+    mess2 = ['It seems that the latitude']
+    messages = 2 * mess1 + mess2 + mess1 + mess2 + 3 * mess1
+    cat1 = [UserWarning]
+    cat2 = [DeprecationWarning]
+    categories = 2 * cat1 + cat2 + cat1 + cat2 + 3 * cat1
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    tmp_path = tmpdir.strpath
+    fake_obs = 'zen.2457698.40355.HH'
+    ocal_file = os.path.join(tmp_path, fake_obs + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+                                         raw_dfile, 'Just a test'], {'kt_size': 3},
+                         nwarnings=8, message=messages, category=categories)
+    # remove spoofed files
+    for fname in [ocal_file, acal_file, model_file, raw_dfile]:
+        os.remove(fname)
 
-    basename = utils.strip_extension(os.path.basename(test_uvh5_file))
-    exts = ['init_xrfi_metrics', 'init_flags', 'final_xrfi_metrics', 'final_flags']
+    outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
+    exts = ['ag_flags1', 'ag_flags2', 'ag_metrics1', 'ag_metrics2', 'apriori_flags',
+            'ax_flags1', 'ax_flags2', 'ax_metrics1', 'ax_metrics2', 'chi_sq_flags1',
+            'chi_sq_flags2', 'chi_sq_renormed1', 'chi_sq_renormed2', 'combined_flags1',
+            'combined_flags2', 'combined_metrics1', 'combined_metrics2',
+            'data_flags2', 'data_metrics2', 'flags1', 'flags2', 'og_flags1', 'og_flags2',
+            'og_metrics1', 'og_metrics2', 'ox_flags1', 'ox_flags2', 'ox_metrics1',
+            'ox_metrics2', 'v_flags1', 'v_flags2', 'v_metrics1', 'v_metrics2']
     for ext in exts:
-        out = '.'.join([basename, ext, 'h5'])
-        out = os.path.join(xrfi_path, out)
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
-        os.remove(out)  # cleanup
-
-    basename = utils.strip_extension(os.path.basename(test_c_file))
-    # Also get rid of ".abs" (which is actually "omni" in this test)
-    basename = utils.strip_extension(basename)
-    outfile = '.'.join([basename, 'flagged_abs', 'calfits'])
-    outpath = os.path.join(xrfi_path, outfile)
-    assert os.path.exists(outpath)
-    os.remove(outpath)  # cleanup
+    shutil.rmtree(outdir)  # cleanup
 
 
 def test_xrfi_h1c_run():
