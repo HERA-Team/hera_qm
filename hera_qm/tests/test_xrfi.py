@@ -816,7 +816,6 @@ def test_xrfi_h1c_idr2_2_pipe():
 
 
 def test_xrfi_run(tmpdir):
-    # Run in nicest way possible
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
     mess1 = ['This object is already a waterfall']
@@ -855,6 +854,49 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
     shutil.rmtree(outdir)  # cleanup
+
+
+def test_day_threshold_run(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    mess2 = ['It seems that the latitude']
+    messages = 2 * mess1 + mess2 + mess1 + mess2 + 3 * mess1
+    cat1 = [UserWarning]
+    cat2 = [DeprecationWarning]
+    categories = 2 * cat1 + cat2 + cat1 + cat2 + 3 * cat1
+    # Spoof the files - run xrfi_run twice on spoofed files.
+    tmp_path = tmpdir.strpath
+    fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    data_files = []
+    for fake_obs in fake_obses:
+        ocal_file = os.path.join(tmp_path, fake_obs + '.omni.calfits')
+        shutil.copyfile(test_c_file, ocal_file)
+        acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
+        shutil.copyfile(test_c_file, acal_file)
+        raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+        shutil.copyfile(test_uvh5_file, raw_dfile)
+        data_files.append(raw_dfile)
+        model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
+        shutil.copyfile(test_uvh5_file, model_file)
+        uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+                                             raw_dfile, 'Just a test'], {'kt_size': 3},
+                             nwarnings=8, message=messages, category=categories)
+        # remove spoofed files
+        for fname in [ocal_file, acal_file, model_file, raw_dfile]:
+            os.remove(fname)
+
+    xrfi.day_threshold_run(data_files, 'just a test', kt_size=3)
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
+    for type in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + type + '_threshold_flags.h5'
+        outfile = os.path.join(tmp_path, basename)
+        assert os.path.exists(outfile)
+
+    for fake_obs in fake_obses:
+        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.h5')
+        assert os.path.exists(calfile)
 
 
 def test_xrfi_h1c_run():
