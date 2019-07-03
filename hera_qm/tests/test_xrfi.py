@@ -869,23 +869,36 @@ def test_day_threshold_run(tmpdir):
     tmp_path = tmpdir.strpath
     fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
     # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
-    data_files = []
-    for fake_obs in fake_obses:
-        ocal_file = os.path.join(tmp_path, fake_obs + '.omni.calfits')
-        shutil.copyfile(test_c_file, ocal_file)
-        acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
-        shutil.copyfile(test_c_file, acal_file)
-        raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
-        shutil.copyfile(test_uvh5_file, raw_dfile)
-        data_files.append(raw_dfile)
-        model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
-        shutil.copyfile(test_uvh5_file, model_file)
-        uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                             raw_dfile, 'Just a test'], {'kt_size': 3},
-                             nwarnings=8, message=messages, category=categories)
-        # remove spoofed files
-        for fname in [ocal_file, acal_file, model_file, raw_dfile]:
-            os.remove(fname)
+    ocal_file = os.path.join(tmp_path, fake_obses[0] + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[0] + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obses[0] + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    data_files = [raw_dfile]
+    model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+                                         raw_dfile, 'Just a test'], {'kt_size': 3},
+                         nwarnings=8, message=messages, category=categories)
+    # Need to adjust time arrays when duplicating files
+    uvd = UVData()
+    uvd.read_uvh5(data_files[0])
+    uvd.time_array += uvd.time_array.max() + uvd.integration_time.mean() / (24. * 3600.)
+    data_files += [os.path.join(tmp_path, fake_obses[1] + '.uvh5')]
+    uvd.write_uvh5(data_files[1])
+    model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
+    uvd.write_uvh5(model_file)
+    uvc = UVCal()
+    uvc.read_calfits(ocal_file)
+    uvc.time_array += uvc.time_array.max() + uvc.integration_time / (24. * 3600.)
+    ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
+    uvc.write_calfits(ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
+    uvc.write_calfits(acal_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+                                         data_files[1], 'Just a test'], {'kt_size': 3},
+                         nwarnings=8, message=messages, category=categories)
 
     xrfi.day_threshold_run(data_files, 'just a test', kt_size=3)
     types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
