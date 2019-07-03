@@ -1055,3 +1055,49 @@ def test_xrfi_h1c_apply_errors():
         open(dest_file, 'a').close()
     pytest.raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, xrfi_path=xrfi_path,
                   flag_file=test_f_file_flags, outfile_format='uvfits', extension='R')
+
+
+def test_threshold_wf():
+    # generate a dummy metric waterfall
+    np.random.seed(0)
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvm = xrfi.calculate_metric(uvc, 'detrend_medfilt', Kt=3, Kf=3)
+    uvm.to_waterfall()
+
+    # populate with noise and add bad times / channels
+    uvm.metric_array = np.random.chisquare(100, uvm.metric_array.size).reshape(uvm.metric_array.shape) / 100
+
+    # no flags should exist
+    uvf = xrfi.threshold_wf(uvm, nsig_f=5, nsig_t=5, detrend=False)
+    assert not uvf.flag_array.any()
+
+    # time broadcasting tests
+    uvm.metric_array[:, 100] = 6.0  # should get this
+    uvm.metric_array[0, 150] = 100.0  # should not get this
+    uvm.metric_array[0, 200] = 5.0
+    uvm.metric_array[1, 200] = 5.0  # should get this
+    uvf = xrfi.threshold_wf(uvm, nsig_f=5, nsig_t=100, detrend=False)
+    assert uvf.flag_array[:, 100].all()
+    assert not uvf.flag_array[:, 150].any()
+    assert uvf.flag_array[:, 200].all()
+
+    # freq broadcasting tests
+    uvm.metric_array = np.random.chisquare(100, uvm.metric_array.size).reshape(uvm.metric_array.shape) / 100
+    uvm.metric_array[0, ::3] = 6.0  # should get this
+    uvm.metric_array[1, 50] = 100  # should not get this
+    uvf = xrfi.threshold_wf(uvm, nsig_f=100, nsig_t=5, detrend=False)
+    assert uvf.flag_array[0].all()
+    assert not uvf.flag_array[1].any()
+
+    # test with detrend
+    uvm.metric_array = np.random.chisquare(100, uvm.metric_array.size).reshape(uvm.metric_array.shape) / 100
+    uvm.metric_array[0, :] = 100  # should not get this (failure mode)
+    uvf = xrfi.threshold_wf(uvm, nsig_f=5, nsig_t=5, detrend=True)
+    assert not uvf.flag_array[0].any()
+
+    # exceptions
+    uvm = xrfi.calculate_metric(uvc, 'detrend_medfilt', Kt=3, Kf=3)
+    pytest.raises(ValueError, xrfi.threshold_wf, uvm)  # UVFlag object but not a waterfall
+    pytest.raises(ValueError, xrfi.threshold_wf, uvf)  # UVFlag object but not a metric
+    pytest.raises(ValueError, xrfi.threshold_wf, 'foo')  # not a UVFlag object
