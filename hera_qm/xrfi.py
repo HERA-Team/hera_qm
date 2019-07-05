@@ -446,8 +446,9 @@ def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
 
 
 def zscore_full_array(data, flags=None, modified=False):
-    """Calculate the z-score where the kernel is the
-    full array, rather than a defined kernel size. This is a special case of
+    """Calculate the z-score for full array, rather than a defined kernel size.
+
+    This is a special case of
     detrend_medfilt/detrend_meanfilt, but is a separate function so it only
     takes the median/mean once for efficiency. It also doesn't introduce edge
     effects that would be very drastic if one were to call detrend_medfilt with
@@ -514,7 +515,6 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
     -------
     zscore : array
         An array containing the outlier significance metric. Same type and size as d.
-
     """
 
     if detrend:
@@ -865,8 +865,9 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
 
 
 def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
-    """Flags on a "metric" type UVFlag object by collapsing to one dimension,
-    thresholding, then broadcasting back to waterfall.
+    """Flag on a "waterfall" type UVFlag in "metric" mode.
+
+    Collapses to one dimension, thresholds, then broadcasts back to waterfall.
 
     Parameters
     ----------
@@ -1411,8 +1412,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
 
 def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsig_t=5.0,
                       cal_ext='flagged_abs', clobber=False):
-    """Apply thresholding across all times or all frequencies, using a full day
-    of data.
+    """Apply thresholding across all times/frequencies, using a full day of data.
 
     Parameters
     ----------
