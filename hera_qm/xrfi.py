@@ -516,7 +516,6 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
     zscore : array
         An array containing the outlier significance metric. Same type and size as d.
     """
-
     if detrend:
         # Delay import so scipy is not required for use of hera_qm
         from scipy.signal import medfilt
