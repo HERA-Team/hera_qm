@@ -123,7 +123,7 @@ def resolve_xrfi_path(xrfi_path, fname, jd_subdir=False):
     return dirname
 
 
-def _check_convolve_dims(data, K1, K2=np.inf):
+def _check_convolve_dims(data, K1=None, K2=None):
     """Check the kernel sizes to be used in various convolution-like operations.
 
     If the kernel sizes are too big, replace them with the largest allowable size
@@ -133,8 +133,9 @@ def _check_convolve_dims(data, K1, K2=np.inf):
     ----------
     data : array
         1- or 2-D array that will undergo convolution-like operations.
-    K1 : int
+    K1 : int, optional
         Integer representing box dimension in first dimension to apply statistic.
+        Defaults to None (see Returns)
     K2 : int, optional
         Integer representing box dimension in second dimension to apply statistic.
         Only used if data is two dimensional
@@ -143,6 +144,7 @@ def _check_convolve_dims(data, K1, K2=np.inf):
     -------
     K1 : int
         Input K1 or data.shape[0] if K1 is larger than first dim of arr.
+        If K1 is not provided, will return data.shape[0].
     K2 : int (only if data is two dimensional)
         Input K2 or data.shape[1] if K2 is larger than second dim of arr.
         If data is 2D but K2 is not provided, will return data.shape[1].
@@ -154,10 +156,18 @@ def _check_convolve_dims(data, K1, K2=np.inf):
     """
     if data.ndim not in (1, 2):
         raise ValueError('Input to filter must be 1- or 2-D array.')
+    if K1 is None:
+        warnings.warn("No K1 input provided. Using the size of the data for the "
+                      "kernel size.")
+        K1 = data.shape[0]
     if K1 > data.shape[0]:
         warnings.warn("K1 value {0:d} is larger than the data of dimension {1:d}; "
                       "using the size of the data for the kernel size".format(K1, data.shape[0]))
         K1 = data.shape[0]
+    if (data.ndim == 2) and (K2 is None):
+        warnings.warn("No K2 input provided. Using the size of the data for the "
+                      "kernel size.")
+        K2 = data.shape[1]
     if (data.ndim == 2) and (K2 > data.shape[1]):
         warnings.warn("K2 value {0:d} is larger than the data of dimension {1:d}; "
                       "using the size of the data for the kernel size".format(K2, data.shape[1]))

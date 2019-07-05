@@ -115,6 +115,26 @@ def test_check_convolve_dims_3D():
     pytest.raises(ValueError, xrfi._check_convolve_dims, np.ones((3, 2, 3)), 1, 2)
 
 
+def test_check_convolve_dims_1D():
+    size = 10
+    d = np.ones(size)
+    K = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size + 1],
+                             nwarnings=1, category=UserWarning,
+                             message='K1 value {:d} is larger than the data'.format(size))
+    assert K == size
+
+
+def test_check_convolve_dims_kernel_not_given():
+    size = 10
+    d = np.ones((size, size))
+    K1, K2 = uvtest.checkWarnings(xrfi._check_convolve_dims, [d],
+                                  nwarnings=2, category=UserWarning,
+                                  message=['No K1 input provided.',
+                                           'No K2 input provided.'])
+    assert K1 == size
+    assert K2 == size
+
+
 def test_check_convolve_dims_Kt_too_big():
     size = 10
     d = np.ones((size, size))
