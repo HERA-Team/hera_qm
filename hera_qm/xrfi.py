@@ -123,7 +123,7 @@ def resolve_xrfi_path(xrfi_path, fname, jd_subdir=False):
     return dirname
 
 
-def _check_convolve_dims(data, Kt, Kf):
+def _check_convolve_dims(data, K1, K2=np.inf):
     """Check the kernel sizes to be used in various convolution-like operations.
 
     If the kernel sizes are too big, replace them with the largest allowable size
@@ -132,35 +132,40 @@ def _check_convolve_dims(data, Kt, Kf):
     Parameters
     ----------
     data : array
-        2D array that will undergo convolution-like operations.
-    Kt : int
-        Integer representing box dimension in time to apply statistic.
-    Kf : int
-        Integer representing box dimension in frequency to apply statistic.
+        1- or 2-D array that will undergo convolution-like operations.
+    K1 : int
+        Integer representing box dimension in first dimension to apply statistic.
+    K2 : int, optional
+        Integer representing box dimension in second dimension to apply statistic.
+        Only used if data is two dimensional
 
     Returns
     -------
-    Kt : int
-        Input Kt or data.shape[0] if Kt is larger than first dim of arr.
-    Kf : int
-        Input Kf or data.shape[1] if Kf is larger than first dim of arr.
+    K1 : int
+        Input K1 or data.shape[0] if K1 is larger than first dim of arr.
+    K2 : int (only if data is two dimensional)
+        Input K2 or data.shape[1] if K2 is larger than second dim of arr.
+        If data is 2D but K2 is not provided, will return data.shape[1].
 
     Raises
     ------
     ValueError:
-        If the number of dimensions of the arr array is not 2, a ValueError is raised.
+        If the number of dimensions of the arr array is not 1 or 2, a ValueError is raised.
     """
-    if data.ndim != 2:
-        raise ValueError('Input to filter must be 2D array.')
-    if Kt > data.shape[0]:
-        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kt, data.shape[0]))
-        Kt = data.shape[0]
-    if Kf > data.shape[1]:
-        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kf, data.shape[1]))
-        Kf = data.shape[1]
-    return Kt, Kf
+    if data.ndim not in (1, 2):
+        raise ValueError('Input to filter must be 1- or 2-D array.')
+    if K1 > data.shape[0]:
+        warnings.warn("K1 value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(K1, data.shape[0]))
+        K1 = data.shape[0]
+    if (data.ndim == 2) and (K2 > data.shape[1]):
+        warnings.warn("K2 value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(K2, data.shape[1]))
+        K2 = data.shape[1]
+    if data.ndim == 1:
+        return K1
+    else:
+        return K1, K2
 
 
 def robust_divide(num, den):
@@ -506,6 +511,7 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
         # Delay import so scipy is not required for use of hera_qm
         from scipy.signal import medfilt
 
+        kern = _check_convolve_dims(data, kern)
         data = np.concatenate([data[kern - 1::-1], data, data[:-kern - 1:-1]])
         # detrend in 1D. Do real/imag regardless of whether data are complex because it's cheap.
         d_sm_r = medfilt(data.real, kernel_size=2 * kern + 1)
@@ -1435,7 +1441,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
     for dfile in data_files:
         basename = qm_utils.strip_extension(dfile)
         abs_in = '.'.join([basename, 'abs', 'calfits'])
-        abs_out = '.'.join([basenames, cal_ext, 'calfits'])
+        abs_out = '.'.join([basename, cal_ext, 'calfits'])
         uvc_a.read_calfits(abs_in)
         time_inds = []
         for t in uvc_a.time_array:
