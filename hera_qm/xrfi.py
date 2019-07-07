@@ -103,6 +103,7 @@ def resolve_xrfi_path(xrfi_path, fname, jd_subdir=False):
     jd_subdir : bool, optional
         Whether to append the filename directory with a subdirectory with
         {JD}_xrfi (when xrfi_path is ''). Default is False.
+        This option assumes the standard HERA naming scheme: zen.{JD}.{JD_decimal}.HH.uvh5
 
     Returns
     -------
@@ -871,7 +872,7 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
 def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
     """Flag on a "waterfall" type UVFlag in "metric" mode.
 
-    Collapses to one dimension, thresholds, then broadcasts back to waterfall.
+    Use median to collapses to one dimension, thresholds, then broadcasts back to waterfall.
 
     Parameters
     ----------
@@ -908,6 +909,7 @@ def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
     data = np.ma.masked_array(uvf_m.metric_array, ~np.isfinite(uvf_m.metric_array))
     # Collapse to 1D and calculate z scores
     spec = np.ma.median(data, axis=(0, 2))
+    # NB: The zscore calculation does not recognize the masked above.
     zspec = modzscore_1d(spec, detrend=detrend)
     tseries = np.ma.median(data, axis=(1, 2))
     ztseries = modzscore_1d(tseries, detrend=detrend)
@@ -1226,9 +1228,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0, sig_a
     # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
     uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
                                            flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
-    # Flag and watershed on each data product individually.
-    # That is, on each complete file (e.g. calibration gains), not on individual
-    # antennas/baselines. We don't broadcast until the very end.
+    # Flag and watershed on waterfall
     uvf_f = flag(uvf_m, nsig_p=sig_init)
     uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
     return uvf_m, uvf_fws
