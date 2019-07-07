@@ -1443,7 +1443,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
 
 
 def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsig_t=5.0,
-                      cal_ext='flagged_abs', clobber=False):
+                      clobber=False):
     """Apply thresholding across all times/frequencies, using a full day of data.
 
     Parameters
