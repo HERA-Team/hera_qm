@@ -910,16 +910,44 @@ def test_xrfi_run(tmpdir):
         os.remove(fname)
 
     outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
-    exts = ['ag_flags1', 'ag_flags2', 'ag_metrics1', 'ag_metrics2', 'apriori_flags',
-            'ax_flags1', 'ax_flags2', 'ax_metrics1', 'ax_metrics2', 'chi_sq_flags1',
-            'chi_sq_flags2', 'chi_sq_renormed1', 'chi_sq_renormed2', 'combined_flags1',
-            'combined_flags2', 'combined_metrics1', 'combined_metrics2',
-            'data_flags2', 'data_metrics2', 'flags1', 'flags2', 'og_flags1', 'og_flags2',
-            'og_metrics1', 'og_metrics2', 'ox_flags1', 'ox_flags2', 'ox_metrics1',
-            'ox_metrics2', 'v_flags1', 'v_flags2', 'v_metrics1', 'v_metrics2']
-    for ext in exts:
+    ext_labels = {'ag_flags1': 'Abscal gains, round 1. Flags.',
+                  'ag_flags2': 'Abscal gains, round 2. Flags.',
+                  'ag_metrics1': 'Abscal gains, round 1.',
+                  'ag_metrics2': 'Abscal gains, round 2.',
+                  'apriori_flags': 'A priori flags.',
+                  'ax_flags1': 'Abscal chisq, round 1. Flags.',
+                  'ax_flags2': 'Abscal chisq, round 2. Flags.',
+                  'ax_metrics1': 'Abscal chisq, round 1.',
+                  'ax_metrics2': 'Abscal chisq, round 2.',
+                  'chi_sq_flags1': 'Renormalized chisq, round 1. Flags.',
+                  'chi_sq_flags2': 'Renormalized chisq, round 2. Flags.',
+                  'chi_sq_renormed1': 'Renormalized chisq, round 1.',
+                  'chi_sq_renormed2': 'Renormalized chisq, round 2.',
+                  'combined_flags1': 'Flags from combined metrics, round 1.',
+                  'combined_flags2': 'Flags from combined metrics, round 2.',
+                  'combined_metrics1': 'Combined metrics, round 1.',
+                  'combined_metrics2': 'Combined metrics, round 2.',
+                  'data_flags2': 'Data, round 2. Flags.',
+                  'data_metrics2': 'Data, round 2.',
+                  'flags1': 'ORd flags, round 1.',
+                  'flags2': 'ORd flags, round 2.',
+                  'og_flags1': 'Omnical gains, round 1. Flags.',
+                  'og_flags2': 'Omnical gains, round 2. Flags.',
+                  'og_metrics1': 'Omnical gains, round 1.',
+                  'og_metrics2': 'Omnical gains, round 2.',
+                  'ox_flags1': 'Omnical chisq, round 1. Flags.',
+                  'ox_flags2': 'Omnical chisq, round 2. Flags.',
+                  'ox_metrics1': 'Omnical chisq, round 1.',
+                  'ox_metrics2': 'Omnical chisq, round 2.',
+                  'v_flags1': 'Omnical visibility solutions, round 1. Flags.',
+                  'v_flags2': 'Omnical visibility solutions, round 2. Flags.',
+                  'v_metrics1': 'Omnical visibility solutions, round 1.',
+                  'v_metrics2': 'Omnical visibility solutions, round 2.'}
+    for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
+        uvf = UVFlag(out)
+        assert uvf.label == label
     shutil.rmtree(outdir)  # cleanup
 
 

@@ -1138,7 +1138,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 
 
 def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
-              sig_init=6.0, sig_adj=2.0):
+              sig_init=6.0, sig_adj=2.0, label=''):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
@@ -1165,6 +1165,8 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         The starting number of sigmas to flag on. Default is 6.0.
     sig_adj : float, optional
         The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
+    label: str, optional
+        Label to be added to UVFlag objects.
 
     Returns
     -------
@@ -1177,6 +1179,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     """
     flag_xants(uv, xants)
     uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode)
+    uvf_m.label = label
     uvf_m.to_waterfall(keep_pol=False)
     # This next line resets the weights to 1 (with data) or 0 (no data) to equally
     # combine with the other metrics.
@@ -1191,10 +1194,12 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     # antennas/baselines. We don't broadcast until the very end.
     uvf_f = flag(uvf_m, nsig_p=sig_init)
     uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
+    uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
 
-def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0, sig_adj=2.0):
+def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
+                sig_adj=2.0, label=''):
     """Zero-center and normalize the full total chi squared array, flag, and watershed.
 
     Parameters
@@ -1209,6 +1214,8 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0, sig_a
         The starting number of sigmas to flag on. Default is 6.0.
     sig_adj : float, optional
         The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
+    label: str, optional
+        Label to be added to UVFlag objects.
 
     Returns
     -------
@@ -1220,6 +1227,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0, sig_a
 
     """
     uvf_m = calculate_metric(uv, alg, cal_mode='tot_chisq', modified=modified)
+    uvf_m.label = label
     uvf_m.to_waterfall(keep_pol=False)
     # This next line resets the weights to 1 (with data) or 0 (no data) to equally
     # combine with the other metrics.
@@ -1231,6 +1239,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0, sig_a
     # Flag and watershed on waterfall
     uvf_f = flag(uvf_m, nsig_p=sig_init)
     uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
+    uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
 #############################################################################
@@ -1297,34 +1306,41 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Calculate metric on abscal data
     uvc_a = UVCal()
     uvc_a.read_calfits(acalfits_file)
-    uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True)
+    uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
     uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Abscal gains, round 1.')
     uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Abscal chisq, round 1.')
 
     # Calculate metric on omnical data
     uvc_o = UVCal()
     uvc_o.read_calfits(ocalfits_file)
     flag_apply(uvf_apriori, uvc_o, keep_existing=True)
     uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Omnical gains, round 1.')
     uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Omnical chisq, round 1.')
 
     # Calculate metric on model vis
     uv_v = UVData()
     uv_v.read(model_file)
     uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
-                              sig_init=sig_init, sig_adj=sig_adj)
+                              sig_init=sig_init, sig_adj=sig_adj,
+                              label='Omnical visibility solutions, round 1.')
 
     # Get the absolute chi-squared values
     uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
-                                         sig_init=sig_init, sig_adj=sig_adj)
+                                         sig_init=sig_init, sig_adj=sig_adj,
+                                         label='Renormalized chisq, round 1.')
 
     # Combine the metrics together
     uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax, uvf_chisq],
                                         method='quadmean', inplace=False)
+    uvf_metrics.label = 'Combined metrics, round 1.'
     alg_func = algorithm_dict['detrend_medfilt']
     uvf_metrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0],
                                                  flags=~uvf_metrics.weights_array[:, :, 0].astype(np.bool),
@@ -1333,11 +1349,13 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Flag on combined metrics
     uvf_f = flag(uvf_metrics, nsig_p=sig_init)
     uvf_fws = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False)
+    uvf_fws.label = 'Flags from combined metrics, round 1.'
 
     # OR everything together for initial flags
     uvf_apriori.to_waterfall(method='and', keep_pol=False)
     uvf_init = (uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf
                 | uvf_chisq_f | uvf_apriori)
+    uvf_init.label = 'ORd flags, round 1.'
 
     # Second round -- use init flags to mask and recalculate everything
     # Read in data file
@@ -1350,32 +1368,40 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Change to meanfilt because it can mask flagged pixels
     # Calculate metric on abscal data
     uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Abscal gains, round 2.')
     uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Abscal chisq, round 2.')
 
     # Calculate metric on omnical data
     uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Omnical gains, round 2.')
     uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Omnical chisq, round 2.')
 
     # Calculate metric on model vis
     uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
-                                sig_init=sig_init, sig_adj=sig_adj)
+                                sig_init=sig_init, sig_adj=sig_adj,
+                                label='Omnical visibility solutions, round 2.')
 
     # Calculate metric on data file
     uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
-                                sig_init=sig_init, sig_adj=sig_adj)
+                                sig_init=sig_init, sig_adj=sig_adj,
+                                label='Data, round 2.')
 
     # Get the absolute chi-squared values
     uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
-                                           sig_init=sig_init, sig_adj=sig_adj)
+                                           sig_init=sig_init, sig_adj=sig_adj,
+                                           label='Renormalized chisq, round 2.')
 
     # Combine the metrics together
     uvf_metrics2 = uvf_d2.combine_metrics([uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2,
                                            uvf_v2, uvf_d2, uvf_chisq2],
                                           method='quadmean', inplace=False)
+    uvf_metrics2.label = 'Combined metrics, round 2.'
     alg_func = algorithm_dict['detrend_meanfilt']
     uvf_metrics2.metric_array[:, :, 0] = alg_func(uvf_metrics2.metric_array[:, :, 0],
                                                   flags=uvf_init.flag_array[:, :, 0],
@@ -1384,8 +1410,10 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Flag on combined metrics
     uvf_f2 = flag(uvf_metrics2, nsig_p=sig_init)
     uvf_fws2 = watershed_flag(uvf_metrics2, uvf_f2, nsig_p=sig_adj, inplace=False)
+    uvf_fws2.label = 'Flags from combined metrics, round 2.'
     uvf_combined2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
                      | uvf_vf2 | uvf_df2 | uvf_chisq_f2 | uvf_init)
+    uvf_combined2.label = 'ORd flags, round 2.'
 
     # Write everything out
     uvf_dict = {'apriori_flags.h5': uvf_apriori,
