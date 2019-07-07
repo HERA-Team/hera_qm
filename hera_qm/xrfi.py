@@ -152,7 +152,8 @@ def _check_convolve_dims(data, K1=None, K2=None):
     Raises
     ------
     ValueError:
-        If the number of dimensions of the arr array is not 1 or 2, a ValueError is raised.
+        If the number of dimensions of the arr array is not 1 or 2, a ValueError is raised;
+        If K1 < 1, or if data is 2D and K2 < 1.
     """
     if data.ndim not in (1, 2):
         raise ValueError('Input to filter must be 1- or 2-D array.')
@@ -160,18 +161,22 @@ def _check_convolve_dims(data, K1=None, K2=None):
         warnings.warn("No K1 input provided. Using the size of the data for the "
                       "kernel size.")
         K1 = data.shape[0]
-    if K1 > data.shape[0]:
+    elif K1 > data.shape[0]:
         warnings.warn("K1 value {0:d} is larger than the data of dimension {1:d}; "
                       "using the size of the data for the kernel size".format(K1, data.shape[0]))
         K1 = data.shape[0]
+    elif K1 < 1:
+        raise ValueError('K1 must be greater than or equal to 1.')
     if (data.ndim == 2) and (K2 is None):
         warnings.warn("No K2 input provided. Using the size of the data for the "
                       "kernel size.")
         K2 = data.shape[1]
-    if (data.ndim == 2) and (K2 > data.shape[1]):
+    elif (data.ndim == 2) and (K2 > data.shape[1]):
         warnings.warn("K2 value {0:d} is larger than the data of dimension {1:d}; "
                       "using the size of the data for the kernel size".format(K2, data.shape[1]))
         K2 = data.shape[1]
+    elif (data.ndim == 2) and (K2 < 1):
+        raise ValueError('K2 must be greater than or equal to 1.')
     if data.ndim == 1:
         return K1
     else:

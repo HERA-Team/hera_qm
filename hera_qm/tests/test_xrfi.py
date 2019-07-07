@@ -155,6 +155,13 @@ def test_check_convolve_dims_Kf_too_big():
     assert Kf == size
 
 
+def test_check_convolve_dims_K1K2_lt_one():
+    size = 10
+    data = np.ones((size, size))
+    pytest.raises(ValueError, xrfi._check_convolve_dims, data, 0, 2)
+    pytest.raises(ValueError, xrfi._check_convolve_dims, data, 2, 0)
+
+
 def test_robus_divide():
     a = np.array([1., 1., 1.], dtype=np.float32)
     b = np.array([2., 0., 1e-9], dtype=np.float32)
