@@ -323,11 +323,6 @@ def get_metrics_ArgumentParser(method_name):
                         help='The number of sigma above which to flag channels. Default is 5.0.')
         ap.add_argument('--nsig_t', default=5.0, type=float,
                         help='The number of sigma above which to flag integrations. Default is 5.0.')
-        ap.add_argument('--cal_ext', default='flagged_abs', type=str,
-                        help='Extension to replace penultimate extension in calfits '
-                        'file for output calibration including flags. Defaults is '
-                        '"flagged_abs". For example, a input_cal of "foo.goo.calfits" '
-                        'would result in "foo.flagged_abs.calfits".')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='If True, overwrite existing files. Default is False.')
         ap.add_argument("--run_if_first", default=None, type=str, help='only run \

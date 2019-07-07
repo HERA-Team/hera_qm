@@ -14,6 +14,6 @@ history = ' '.join(sys.argv)
 if args.run_if_first is None or sorted(args.data_files)[0] == args.run_if_first:
     xrfi.day_threshold_run(args.data_files, history, kt_size=args.kt_size,
                            kf_size=args.kf_size, nsig_f=args.nsig_f, nsig_t=args.nsig_t,
-                           cal_ext=args.cal_ext, clobber=args.clobber)
+                           clobber=args.clobber)
 else:
     print(sorted(args.data_files)[0], 'is not', args.run_if_first, '...skipping.')

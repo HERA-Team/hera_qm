@@ -1462,10 +1462,6 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         The number of sigma above which to flag channels. Default is 5.0.
     nsig_t : float, optional
         The number of sigma above which to flag integrations. Default is 5.0.
-    cal_ext : str, optional
-        The extension to replace penultimate extension in a calfits file for output
-        calibration including flags. Defaults is "flagged_abs". For example, an
-        input_cal of "foo.goo.calfits" would result in "foo.flagged_abs.calfits".
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
 
@@ -1522,10 +1518,12 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
     uvc_a = UVCal()
     # This is a terrible hack we need to fix when we have a select method.
     uvf_file = uvf_total.copy()
+    incal_ext = 'abs'
+    outcal_ext = 'flagged_abs'
     for dfile in data_files:
         basename = qm_utils.strip_extension(dfile)
-        abs_in = '.'.join([basename, 'abs', 'calfits'])
-        abs_out = '.'.join([basename, cal_ext, 'calfits'])
+        abs_in = '.'.join([basename, incal_ext, 'calfits'])
+        abs_out = '.'.join([basename, outcal_ext, 'calfits'])
         uvc_a.read_calfits(abs_in)
         time_inds = []
         for t in uvc_a.time_array:
