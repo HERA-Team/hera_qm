@@ -167,7 +167,6 @@ def test_get_metrics_ArgumentParser_day_threshold_run():
     args = a.parse_args(['fooey'])
     assert args.kt_size == 8
     assert args.nsig_f == 5.0
-    assert args.cal_ext == 'flagged_abs'
     assert args.data_files == ['fooey']
     # try to set something
     args = a.parse_args(['--nsig_t', '3.0', 'fooey'])
