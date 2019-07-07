@@ -1446,6 +1446,16 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
                       clobber=False):
     """Apply thresholding across all times/frequencies, using a full day of data.
 
+    This function will write UVFlag files for each data input (omnical gains,
+    omnical chisquared, abscal gains, etc.) for the full day. These files will be
+    written in the same directory as the first data_file, and have filenames
+    "zen.{JD}.{type}_threshold_flags.h5", where {type} describes the input data (e.g.
+    "og" for omnical gains).
+    This function will also copy the abscal calfits files but with flags defined
+    by the union of all flags from xrfi_run and the day thresholding. These files
+    will replace "abs" with "flagged_abs" in the filenames, and saved in the same
+    directory as each abscal file.
+
     Parameters
     ----------
     data_files : list of strings
