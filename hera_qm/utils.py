@@ -108,7 +108,6 @@ def get_metrics_ArgumentParser(method_name):
                               'red_corr_cross_pol_metrics are run. '
                               'Default: True'))
         ap.set_defaults(run_cross_pols=True)
-
     elif method_name == 'firstcal_metrics':
         ap.prog = 'firstcal_metrics.py'
         ap.add_argument('--std_cut', default=0.5, type=float,
@@ -328,7 +327,6 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument("--run_if_first", default=None, type=str, help='only run \
                         day_threshold_run if the first item in the sorted data_files \
                         list matches run_if_first (default None means always run)')
-
     elif method_name == 'xrfi_apply':
         ap.prog = 'xrfi_apply.py'
         ap.add_argument('--infile_format', default='miriad', type=str,

@@ -402,7 +402,7 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
         d_sm = medfilt2d(data, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
     d_rs = data - d_sm
     d_sq = np.abs(d_rs)**2
-    # puts median on same scale as average
+    # Factor of .456 is to put mod-z scores on same scale as standard deviation.
     sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
@@ -520,7 +520,7 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
     Returns
     -------
     zscore : array
-        An array containing the outlier significance metric. Same type and size as d.
+        An array containing the outlier significance metric. Same type and size as data.
     """
     if detrend:
         # Delay import so scipy is not required for use of hera_qm
@@ -534,11 +534,13 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
         d_sm = d_sm_r + 1j * d_sm_i
         d_rs = data - d_sm
         d_sq = np.abs(d_rs)**2
+        # Factor of .456 is to put mod-z scores on same scale as standard deviation.
         sig = np.sqrt(medfilt(d_sq, kernel_size=2 * kern + 1) / .456)
         zscore = robust_divide(d_rs, sig)[kern:-kern]
     else:
         d_rs = data - np.nanmedian(data.real) - 1j * np.nanmedian(data.imag)
         d_sq = np.abs(d_rs)**2
+        # Factor of .456 is to put mod-z scores on same scale as standard deviation.
         sig = np.sqrt(np.nanmedian(d_sq) / .456)
         zscore = robust_divide(d_rs, np.array([sig]))
     return zscore.astype(data.dtype)
@@ -1255,6 +1257,13 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
+    The algorithm is run on several data products: omnical gains, omnical chisq,
+    abscal gains, abscal chisq, omnical visibility solutions, renormalized chisq,
+    and the raw data. All of these, except the data, are run twice - first to
+    get an initial estimate of heavily contaminated data, and a second time
+    to get better estimate. The metrics and flags from each data product and both
+    rounds are stored in the xrfi_path (which defaults to a subdirectory, see
+    xrfi_path below). Also stored are the a priori flags and combined metrics/flags.
 
     Parameters
     ----------
