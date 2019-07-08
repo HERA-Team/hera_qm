@@ -47,7 +47,7 @@ def get_metrics_ArgumentParser(method_name):
         An argparse.ArgumentParser instance with the relevant options for the selected method
     """
     methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_h1c_run",
-               "delay_xrfi_h1c_idr2_1_run", "xrfi_run", "xrfi_apply"]
+               "delay_xrfi_h1c_idr2_1_run", "xrfi_run", "xrfi_apply", "day_threshold_run"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -108,7 +108,6 @@ def get_metrics_ArgumentParser(method_name):
                               'red_corr_cross_pol_metrics are run. '
                               'Default: True'))
         ap.set_defaults(run_cross_pols=True)
-
     elif method_name == 'firstcal_metrics':
         ap.prog = 'firstcal_metrics.py'
         ap.add_argument('--std_cut', default=0.5, type=float,
@@ -288,18 +287,6 @@ def get_metrics_ArgumentParser(method_name):
                         'file to flag on.')
         ap.add_argument('--data_file', default=None, type=str, help='Raw visibility '
                         'data file to flag on.')
-        ap.add_argument('--init_metrics_ext', default='init_xrfi_metrics.h5', type=str,
-                        help='Extension to be appended to input file name '
-                        'for initial metric object. Default is "init_xrfi_metrics.h5".')
-        ap.add_argument('--init_flags_ext', default='init_flags.h5', type=str,
-                        help='Extension to be appended to input file name '
-                        'for initial flag object. Default is "init_flags.h5".')
-        ap.add_argument('--final_metrics_ext', default='final_xrfi_metrics.h5', type=str,
-                        help='Extension to be appended to input file name '
-                        'for final metric object. Default is "final_xrfi_metrics.h5".')
-        ap.add_argument('--final_flags_ext', default='final_flags.h5', type=str,
-                        help='Extension to be appended to input file name '
-                        'for final flag object. Default is "final_flags.h5".')
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,
@@ -312,25 +299,34 @@ def get_metrics_ArgumentParser(method_name):
                         help='Starting number of sigmas to flag on. Default is 6.0.')
         ap.add_argument('--sig_adj', default=2.0, type=float,
                         help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.0.')
-        ap.add_argument('--freq_threshold', default=0.35, type=float,
-                        help='Fraction of times required to trigger broadcast across'
-                        ' times (single freq). Default is 0.35.')
-        ap.add_argument('--time_threshold', default=0.5, type=float,
-                        help='Fraction of channels required to trigger broadcast across'
-                        ' frequency (single time). Default is 0.5.')
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
         ap.add_argument('--metrics_file', default=None, type=str,
                         help='Metrics file that contains a list of excluded antennas. Flags of '
                         'visibilities formed with these antennas will be set to True.')
-        ap.add_argument('--cal_ext', default='flagged_abs', type=str,
-                        help='Extension to replace penultimate extension in calfits '
-                        'file for output calibration including flags. Defaults is '
-                        '"flagged_abs". For example, a input_cal of "foo.goo.calfits" '
-                        'would result in "foo.flagged_abs.calfits".')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing files (default False)')
+    elif method_name == 'day_threshold_run':
+        ap.prog = 'xrfi_day_threshold_run.py'
+        ap.add_argument('data_files', type=str, nargs='+', help='List of paths to \
+                        the raw data files which have been used to calibrate and \
+                        rfi flag so far.')
+        ap.add_argument('--kt_size', default=8, type=int,
+                        help='Size of kernel in time dimension for detrend in xrfi '
+                        'algorithm. Default is 8.')
+        ap.add_argument('--kf_size', default=8, type=int,
+                        help='Size of kernel in frequency dimension for detrend in '
+                        'xrfi algorithm. Default is 8.')
+        ap.add_argument('--nsig_f', default=5.0, type=float,
+                        help='The number of sigma above which to flag channels. Default is 5.0.')
+        ap.add_argument('--nsig_t', default=5.0, type=float,
+                        help='The number of sigma above which to flag integrations. Default is 5.0.')
+        ap.add_argument("--clobber", default=False, action="store_true",
+                        help='If True, overwrite existing files. Default is False.')
+        ap.add_argument("--run_if_first", default=None, type=str, help='only run \
+                        day_threshold_run if the first item in the sorted data_files \
+                        list matches run_if_first (default None means always run)')
     elif method_name == 'xrfi_apply':
         ap.prog = 'xrfi_apply.py'
         ap.add_argument('--infile_format', default='miriad', type=str,

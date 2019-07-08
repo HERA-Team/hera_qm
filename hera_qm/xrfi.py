@@ -14,9 +14,9 @@ from pyuvdata import utils as uvutils
 from .version import hera_qm_version_str
 from .metrics_io import process_ex_ants
 import warnings
-import copy
 import collections
 from six.moves import range
+import glob
 
 
 #############################################################################
@@ -91,7 +91,7 @@ def flag_xants(uv, xants, inplace=True):
         return uvo
 
 
-def resolve_xrfi_path(xrfi_path, fname):
+def resolve_xrfi_path(xrfi_path, fname, jd_subdir=False):
     """Determine xrfi_path based on given directory or default to dirname of given file.
 
     Parameters
@@ -100,6 +100,10 @@ def resolve_xrfi_path(xrfi_path, fname):
         Directory to which to write xrfi outputs.
     fname : str
         Filename to determine backup directory if xrfi_path == ''.
+    jd_subdir : bool, optional
+        Whether to append the filename directory with a subdirectory with
+        {JD}_xrfi (when xrfi_path is ''). Default is False.
+        This option assumes the standard HERA naming scheme: zen.{JD}.{JD_decimal}.HH.uvh5
 
     Returns
     -------
@@ -111,10 +115,16 @@ def resolve_xrfi_path(xrfi_path, fname):
         dirname = xrfi_path
     else:
         dirname = os.path.dirname(os.path.abspath(fname))
+        if jd_subdir:
+            # Get JD string
+            xrfi_subfolder = '.'.join(os.path.basename(fname).split('.')[0:3]) + '.xrfi'
+            dirname = os.path.join(dirname, xrfi_subfolder)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
     return dirname
 
 
-def _check_convolve_dims(data, Kt, Kf):
+def _check_convolve_dims(data, K1=None, K2=None):
     """Check the kernel sizes to be used in various convolution-like operations.
 
     If the kernel sizes are too big, replace them with the largest allowable size
@@ -123,35 +133,55 @@ def _check_convolve_dims(data, Kt, Kf):
     Parameters
     ----------
     data : array
-        2D array that will undergo convolution-like operations.
-    Kt : int
-        Integer representing box dimension in time to apply statistic.
-    Kf : int
-        Integer representing box dimension in frequency to apply statistic.
+        1- or 2-D array that will undergo convolution-like operations.
+    K1 : int, optional
+        Integer representing box dimension in first dimension to apply statistic.
+        Defaults to None (see Returns)
+    K2 : int, optional
+        Integer representing box dimension in second dimension to apply statistic.
+        Only used if data is two dimensional
 
     Returns
     -------
-    Kt : int
-        Input Kt or data.shape[0] if Kt is larger than first dim of arr.
-    Kf : int
-        Input Kf or data.shape[1] if Kf is larger than first dim of arr.
+    K1 : int
+        Input K1 or data.shape[0] if K1 is larger than first dim of arr.
+        If K1 is not provided, will return data.shape[0].
+    K2 : int (only if data is two dimensional)
+        Input K2 or data.shape[1] if K2 is larger than second dim of arr.
+        If data is 2D but K2 is not provided, will return data.shape[1].
 
     Raises
     ------
     ValueError:
-        If the number of dimensions of the arr array is not 2, a ValueError is raised.
+        If the number of dimensions of the arr array is not 1 or 2, a ValueError is raised;
+        If K1 < 1, or if data is 2D and K2 < 1.
     """
-    if data.ndim != 2:
-        raise ValueError('Input to filter must be 2D array.')
-    if Kt > data.shape[0]:
-        warnings.warn("Kt value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kt, data.shape[0]))
-        Kt = data.shape[0]
-    if Kf > data.shape[1]:
-        warnings.warn("Kf value {0:d} is larger than the data of dimension {1:d}; "
-                      "using the size of the data for the kernel size".format(Kf, data.shape[1]))
-        Kf = data.shape[1]
-    return Kt, Kf
+    if data.ndim not in (1, 2):
+        raise ValueError('Input to filter must be 1- or 2-D array.')
+    if K1 is None:
+        warnings.warn("No K1 input provided. Using the size of the data for the "
+                      "kernel size.")
+        K1 = data.shape[0]
+    elif K1 > data.shape[0]:
+        warnings.warn("K1 value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(K1, data.shape[0]))
+        K1 = data.shape[0]
+    elif K1 < 1:
+        raise ValueError('K1 must be greater than or equal to 1.')
+    if (data.ndim == 2) and (K2 is None):
+        warnings.warn("No K2 input provided. Using the size of the data for the "
+                      "kernel size.")
+        K2 = data.shape[1]
+    elif (data.ndim == 2) and (K2 > data.shape[1]):
+        warnings.warn("K2 value {0:d} is larger than the data of dimension {1:d}; "
+                      "using the size of the data for the kernel size".format(K2, data.shape[1]))
+        K2 = data.shape[1]
+    elif (data.ndim == 2) and (K2 < 1):
+        raise ValueError('K2 must be greater than or equal to 1.')
+    if data.ndim == 1:
+        return K1
+    else:
+        return K1, K2
 
 
 def robust_divide(num, den):
@@ -372,7 +402,7 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
         d_sm = medfilt2d(data, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
     d_rs = data - d_sm
     d_sq = np.abs(d_rs)**2
-    # puts median on same scale as average
+    # Factor of .456 is to put mod-z scores on same scale as standard deviation.
     sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
@@ -421,10 +451,106 @@ def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
     return out[Kt:-Kt, Kf:-Kf]
 
 
+def zscore_full_array(data, flags=None, modified=False):
+    """Calculate the z-score for full array, rather than a defined kernel size.
+
+    This is a special case of
+    detrend_medfilt/detrend_meanfilt, but is a separate function so it only
+    takes the median/mean once for efficiency. It also doesn't introduce edge
+    effects that would be very drastic if one were to call detrend_medfilt with
+    large kernel size.
+
+    Parameters
+    ----------
+    data : array
+        2D data array to process.
+    flags : array, optional
+        2D flag array to be interpretted as mask for d. ONLY used for the regular
+        zscore (not modified).
+    modified : bool, optional
+        Whether to calculate the modified z-scores. Default is False.
+
+    Returns
+    -------
+    out : array
+        An array containing the outlier significance metric. Same type and size as d.
+
+    """
+    data = np.array(data)  # makes a copy of the data
+    if flags is not None:
+        data[flags] = np.nan
+    if modified:
+        if np.any(np.iscomplex(data)):
+            med_r = np.nanmedian(data).real
+            med_i = np.nanmedian(data).imag
+            mad_r = np.nanmedian(np.abs(data.real - med_r))
+            mad_i = np.nanmedian(np.abs(data.imag - med_i))
+            mad = np.sqrt(mad_r**2 + mad_i**2)
+            d_rs = data - med_r - 1j * med_i
+        else:
+            med = np.nanmedian(data)
+            mad = np.nanmedian(np.abs(data - med))
+            d_rs = data - med
+        # don't divide by zero, instead turn those entries into +inf
+        out = robust_divide(d_rs, np.array([1.486 * mad]))
+    else:
+        d_rs = data - np.nanmean(data)
+        out = robust_divide(d_rs, np.array([np.nanstd(data)]))
+    out[np.isnan(out)] = np.inf  # turn all nans into infs
+    return out
+
+
+def modzscore_1d(data, flags=None, kern=8, detrend=True):
+    """Calculate modified zscores in 1d.
+
+    Parameters
+    ----------
+    data : array
+        1D data array to detrend.
+    flags : array, optional
+        1D flag array to be interpretted as mask for d. NOT USED in this function,
+        but kept for symmetry with other preprocessing functions.
+    kern : int, optional
+        The box size to apply medfilt over. Default is 8 pixels.
+    detrend : bool, optional
+        Whether to detrend the data before calculating zscores. Default is True.
+        Setting to False is equivalent to an infinite kernel, but the function
+        does it more efficiently.
+
+    Returns
+    -------
+    zscore : array
+        An array containing the outlier significance metric. Same type and size as data.
+    """
+    if detrend:
+        # Delay import so scipy is not required for use of hera_qm
+        from scipy.signal import medfilt
+
+        kern = _check_convolve_dims(data, kern)
+        data = np.concatenate([data[kern - 1::-1], data, data[:-kern - 1:-1]])
+        # detrend in 1D. Do real/imag regardless of whether data are complex because it's cheap.
+        d_sm_r = medfilt(data.real, kernel_size=2 * kern + 1)
+        d_sm_i = medfilt(data.imag, kernel_size=2 * kern + 1)
+        d_sm = d_sm_r + 1j * d_sm_i
+        d_rs = data - d_sm
+        d_sq = np.abs(d_rs)**2
+        # Factor of .456 is to put mod-z scores on same scale as standard deviation.
+        sig = np.sqrt(medfilt(d_sq, kernel_size=2 * kern + 1) / .456)
+        zscore = robust_divide(d_rs, sig)[kern:-kern]
+    else:
+        d_rs = data - np.nanmedian(data.real) - 1j * np.nanmedian(data.imag)
+        d_sq = np.abs(d_rs)**2
+        # Factor of .456 is to put mod-z scores on same scale as standard deviation.
+        sig = np.sqrt(np.nanmedian(d_sq) / .456)
+        zscore = robust_divide(d_rs, np.array([sig]))
+    return zscore.astype(data.dtype)
+
+
 # Update algorithm_dict whenever new metric algorithm is created.
 algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': detrend_deriv,
                   'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt,
-                  'detrend_meanfilt': detrend_meanfilt}
+                  'detrend_meanfilt': detrend_meanfilt, 'zscore_full_array': zscore_full_array,
+                  'modzscore_1d': modzscore_1d}
 
 #############################################################################
 # RFI flagging algorithms
@@ -486,7 +612,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
     if inplace:
         uvf = uvf_f
     else:
-        uvf = copy.deepcopy(uvf_f)
+        uvf = uvf_f.copy()
 
     # Convenience
     farr = uvf.flag_array
@@ -583,7 +709,7 @@ def _ws_flag_waterfall(data, fin, nsig=2.):
     if data.shape != fin.shape:
         raise ValueError('data and fin must match in shape. Shapes are: ' + str(data.shape)
                          + ' and ' + str(fin.shape))
-    fout = copy.deepcopy(fin)
+    fout = fin.copy()
     # There may be an elegant way to combine these... for the future.
     if data.ndim == 1:
         prevn = 0
@@ -689,19 +815,19 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
         raise ValueError('uvf_m must be UVFlag instance with mode == "metric."')
 
     # initialize
-    uvf_f = copy.deepcopy(uvf_m)
+    uvf_f = uvf_m.copy()
     uvf_f.to_flag()
 
     # Pixel flagging
     if nsig_p is not None:
-        uvf_f.flag_array[uvf_m.metric_array >= nsig_p] = True
+        uvf_f.flag_array[np.abs(uvf_m.metric_array) >= nsig_p] = True
 
     if uvf_m.type == 'baseline':
         if nsig_f is not None:
             # Channel flagging
             data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3),
                                     weights=uvf_m.weights_array)
-            indf = np.where(data >= nsig_f)[0]
+            indf = np.where(np.abs(data) >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :] = True
         if nsig_t is not None:
             # Time flagging
@@ -711,7 +837,7 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
                 data[ti] = uvutils.collapse(uvf_m.metric_array[uvf_m.time_array == time, 0, :, :],
                                             avg_method,
                                             weights=uvf_m.weights_array[uvf_m.time_array == time, 0, :, :])
-            indf = np.where(data >= nsig_t)[0]
+            indf = np.where(np.abs(data) >= nsig_t)[0]
             for time in ts[indf]:
                 uvf_f.flag_array[uvf_f.time_array == time, :, :, :] = True
     elif uvf_m.type == 'antenna':
@@ -719,29 +845,80 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
             # Channel flag
             data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 3, 4),
                                     weights=uvf_m.weights_array)
-            indf = np.where(data >= nsig_f)[0]
+            indf = np.where(np.abs(data) >= nsig_f)[0]
             uvf_f.flag_array[:, :, indf, :, :] = True
         if nsig_t is not None:
             # Time watershed
             data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 1, 2, 4),
                                     weights=uvf_m.weights_array)
-            indt = np.where(data >= nsig_t)[0]
+            indt = np.where(np.abs(data) >= nsig_t)[0]
             uvf_f.flag_array[:, :, :, indt, :] = True
     elif uvf_m.type == 'waterfall':
         if nsig_f is not None:
             # Channel flag
             data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(0, 2),
                                     weights=uvf_m.weights_array)
-            indf = np.where(data >= nsig_f)[0]
+            indf = np.where(np.abs(data) >= nsig_f)[0]
             uvf_f.flag_array[:, indf, :] = True
         if nsig_t is not None:
             # Time watershed
             data = uvutils.collapse(uvf_m.metric_array, avg_method, axis=(1, 2),
                                     weights=uvf_m.weights_array)
-            indt = np.where(data >= nsig_t)[0]
+            indt = np.where(np.abs(data) >= nsig_t)[0]
             uvf_f.flag_array[indt, :, :] = True
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
+    return uvf_f
+
+
+def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
+    """Flag on a "waterfall" type UVFlag in "metric" mode.
+
+    Use median to collapses to one dimension, thresholds, then broadcasts back to waterfall.
+
+    Parameters
+    ----------
+    uvf_m : UVFlag object
+        A UVFlag object in 'metric' mode (i.e., number of sigma data is from middle),
+        and type 'waterfall'.
+    nsig_f : float, optional
+        The number of sigma above which to flag channels. Default is 5.0.
+    nsig_t : float, optional
+        The number of sigma above which to flag integrations. Default is 5.0.
+    detrend : bool, optional
+        Whether to detrend the 1D data before calculating zscores. Default is True.
+
+    Returns
+    -------
+    uvf_f : UVFlag object
+        A UVFlag object in 'flag' mode with flags determined from uvf_m.
+
+    Raises
+    ------
+    ValueError:
+        If uvf_m is not a UVFlag object in metric mode, or if the type of uvf_m
+        is not "waterfall", a ValueError is raised.
+    """
+    # Check input
+    if (not isinstance(uvf_m, UVFlag)) or (uvf_m.mode != 'metric') or (uvf_m.type != 'waterfall'):
+        raise ValueError('uvf_m must be UVFlag instance with mode == "metric" and'
+                         + ' type == "waterfall."')
+
+    # initialize
+    uvf_f = uvf_m.copy()
+    uvf_f.to_flag()
+    # Mask invalid values. Masked medians are slow, but these are done only on waterfalls.
+    data = np.ma.masked_array(uvf_m.metric_array, ~np.isfinite(uvf_m.metric_array))
+    # Collapse to 1D and calculate z scores
+    spec = np.ma.median(data, axis=(0, 2))
+    # NB: The zscore calculation does not recognize the masked above.
+    zspec = modzscore_1d(spec, detrend=detrend)
+    tseries = np.ma.median(data, axis=(1, 2))
+    ztseries = modzscore_1d(tseries, detrend=detrend)
+    # Flag based on zscores and thresholds
+    uvf_f.flag_array[:, np.abs(zspec) >= nsig_f, :] = True
+    uvf_f.flag_array[np.abs(ztseries) >= nsig_t, :, :] = True
+
     return uvf_f
 
 
@@ -948,7 +1125,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
     uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, cal_mode=cal_mode)
     uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None)
     uvf_f = watershed_flag(uvf, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
-    uvf_w = copy.deepcopy(uvf_f)
+    uvf_w = uvf_f.copy()
     uvf_w.to_waterfall()
     # I realize the naming convention has flipped, which results in nsig_f=time_threshold.
     # time_threshold is defined as fraction of time flagged to flag a given channel.
@@ -963,7 +1140,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 
 
 def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
-              sig_init=6.0, sig_adj=2.0):
+              sig_init=6.0, sig_adj=2.0, label=''):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
@@ -990,6 +1167,8 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         The starting number of sigmas to flag on. Default is 6.0.
     sig_adj : float, optional
         The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
+    label: str, optional
+        Label to be added to UVFlag objects.
 
     Returns
     -------
@@ -1002,6 +1181,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     """
     flag_xants(uv, xants)
     uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode)
+    uvf_m.label = label
     uvf_m.to_waterfall(keep_pol=False)
     # This next line resets the weights to 1 (with data) or 0 (no data) to equally
     # combine with the other metrics.
@@ -1016,6 +1196,52 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     # antennas/baselines. We don't broadcast until the very end.
     uvf_f = flag(uvf_m, nsig_p=sig_init)
     uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
+    uvf_fws.label += ' Flags.'
+    return uvf_m, uvf_fws
+
+
+def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
+                sig_adj=2.0, label=''):
+    """Zero-center and normalize the full total chi squared array, flag, and watershed.
+
+    Parameters
+    ----------
+    uv : UVCal
+        A UVCal object on which to calculate the metric.
+    alg : str, optional
+        The algorithm for calculating the metric. Default is "modz_full_array".
+    modified : bool, optional
+        Whether to calculate the modified z-scores. Default is False.
+    sig_init : float, optional
+        The starting number of sigmas to flag on. Default is 6.0.
+    sig_adj : float, optional
+        The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
+    label: str, optional
+        Label to be added to UVFlag objects.
+
+    Returns
+    -------
+    uvf_m : UVFlag object
+        A UVFlag object with metric after collapsing to single pol.
+        The weights array is set to ones.
+    uvf_fws : UVFlag object
+        A UVFlag object with flags after watershed.
+
+    """
+    uvf_m = calculate_metric(uv, alg, cal_mode='tot_chisq', modified=modified)
+    uvf_m.label = label
+    uvf_m.to_waterfall(keep_pol=False)
+    # This next line resets the weights to 1 (with data) or 0 (no data) to equally
+    # combine with the other metrics.
+    uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
+    alg_func = algorithm_dict[alg]
+    # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
+    uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
+                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
+    # Flag and watershed on waterfall
+    uvf_f = flag(uvf_m, nsig_p=sig_init)
+    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
+    uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
 #############################################################################
@@ -1026,14 +1252,18 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
 
 
 def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
-             init_metrics_ext='init_xrfi_metrics.h5', init_flags_ext='init_flags.h5',
-             final_metrics_ext='final_xrfi_metrics.h5', final_flags_ext='final_flags.h5',
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
-             freq_threshold=0.35, time_threshold=0.5, ex_ants=None, metrics_file=None,
-             cal_ext='flagged_abs', clobber=False):
+             ex_ants=None, metrics_file=None, clobber=False):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
+    The algorithm is run on several data products: omnical gains, omnical chisq,
+    abscal gains, abscal chisq, omnical visibility solutions, renormalized chisq,
+    and the raw data. All of these, except the data, are run twice - first to
+    get an initial estimate of heavily contaminated data, and a second time
+    to get better estimate. The metrics and flags from each data product and both
+    rounds are stored in the xrfi_path (which defaults to a subdirectory, see
+    xrfi_path below). Also stored are the a priori flags and combined metrics/flags.
 
     Parameters
     ----------
@@ -1047,20 +1277,9 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         The raw visibility data file to flag.
     history : str
         The history string to include in files.
-    init_metrics_ext : str, optional
-        The extension to be appended to input file name for the initial metric object.
-        Default is "init_xrfi_metrics.h5".
-    init_flags_ext : str, optional
-        The extension to be appended to input file name for the initial flag object.
-        Default is "init_flags.h5".
-    final_metrics_ext : str, optional
-        The extension to be appended to input file name for final metric object.
-        Default is "final_xrfi_metrics.h5".
-    final_flags_ext : str, optional
-        The extension to be appended to input file name for final flag object.
-        Default is "final_flags.h5".
     xrfi_path : str, optional
-        Path to save xrfi files to. Default is the same directory as data_file.
+        Path to save xrfi files to. Default is a subdirectory "{JD}/" inside
+        the same directory as data_file.
     kt_size : int, optional
         The size of kernel in time dimension for detrend in xrfi algorithm.
         Default is 8.
@@ -1072,12 +1291,6 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     sig_adj : float, optional
         The number of sigmas to flag on for data adjacent to a flag.
         Default is 2.0.
-    freq_threshold : float, optional
-        The fraction of times required to trigger a broadcast across times
-        (at a single freq). Default is 0.35.
-    time_threshold : float, optional
-        The fraction of channels required to trigger broadcast across frequency
-        (at a single time). Default is 0.5.
     ex_ants : str, optional
         A comma-separated list of antennas to exclude. Flags of visibilities formed
         with these antennas will be set to True. Default is None (i.e., no antennas
@@ -1086,10 +1299,6 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         Metrics file that contains a list of excluded antennas. Flags of visibilities
         formed with these antennas will be set to True. Default is None (i.e.,
         no antennas will be excluded).
-    cal_ext : str, optional
-        The extension to replace penultimate extension in a calfits file for output
-        calibration including flags. Defaults is "flagged_abs". For example, an
-        input_cal of "foo.goo.calfits" would result in "foo.flagged_abs.calfits".
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
 
@@ -1099,37 +1308,48 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
 
     """
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
-    dirname = resolve_xrfi_path(xrfi_path, data_file)
+    dirname = resolve_xrfi_path(xrfi_path, data_file, jd_subdir=True)
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
     # Initial run on cal data products
     # Calculate metric on abscal data
     uvc_a = UVCal()
     uvc_a.read_calfits(acalfits_file)
-    uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True)
+    uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
     uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Abscal gains, round 1.')
     uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Abscal chisq, round 1.')
 
     # Calculate metric on omnical data
     uvc_o = UVCal()
     uvc_o.read_calfits(ocalfits_file)
     flag_apply(uvf_apriori, uvc_o, keep_existing=True)
     uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Omnical gains, round 1.')
     uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Omnical chisq, round 1.')
 
     # Calculate metric on model vis
     uv_v = UVData()
     uv_v.read(model_file)
     uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
-                              sig_init=sig_init, sig_adj=sig_adj)
+                              sig_init=sig_init, sig_adj=sig_adj,
+                              label='Omnical visibility solutions, round 1.')
+
+    # Get the absolute chi-squared values
+    uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
+                                         sig_init=sig_init, sig_adj=sig_adj,
+                                         label='Renormalized chisq, round 1.')
 
     # Combine the metrics together
-    uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax],
+    uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax, uvf_chisq],
                                         method='quadmean', inplace=False)
+    uvf_metrics.label = 'Combined metrics, round 1.'
     alg_func = algorithm_dict['detrend_medfilt']
     uvf_metrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0],
                                                  flags=~uvf_metrics.weights_array[:, :, 0].astype(np.bool),
@@ -1138,18 +1358,13 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Flag on combined metrics
     uvf_f = flag(uvf_metrics, nsig_p=sig_init)
     uvf_fws = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False)
+    uvf_fws.label = 'Flags from combined metrics, round 1.'
+
     # OR everything together for initial flags
     uvf_apriori.to_waterfall(method='and', keep_pol=False)
-    uvf_init = uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf | uvf_apriori
-
-    # Write out initial (combined) metrics and flags
-    basename = qm_utils.strip_extension(os.path.basename(data_file))
-    outfile = '.'.join([basename, init_metrics_ext])
-    outpath = os.path.join(dirname, outfile)
-    uvf_metrics.write(outpath, clobber=clobber)
-    outfile = '.'.join([basename, init_flags_ext])
-    outpath = os.path.join(dirname, outfile)
-    uvf_init.write(outpath, clobber=clobber)
+    uvf_init = (uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf
+                | uvf_chisq_f | uvf_apriori)
+    uvf_init.label = 'ORd flags, round 1.'
 
     # Second round -- use init flags to mask and recalculate everything
     # Read in data file
@@ -1162,27 +1377,40 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Change to meanfilt because it can mask flagged pixels
     # Calculate metric on abscal data
     uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Abscal gains, round 2.')
     uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Abscal chisq, round 2.')
 
     # Calculate metric on omnical data
     uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj)
+                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Omnical gains, round 2.')
     uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj)
+                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Omnical chisq, round 2.')
 
     # Calculate metric on model vis
     uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
-                                sig_init=sig_init, sig_adj=sig_adj)
+                                sig_init=sig_init, sig_adj=sig_adj,
+                                label='Omnical visibility solutions, round 2.')
 
     # Calculate metric on data file
     uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
-                                sig_init=sig_init, sig_adj=sig_adj)
+                                sig_init=sig_init, sig_adj=sig_adj,
+                                label='Data, round 2.')
+
+    # Get the absolute chi-squared values
+    uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
+                                           sig_init=sig_init, sig_adj=sig_adj,
+                                           label='Renormalized chisq, round 2.')
 
     # Combine the metrics together
-    uvf_metrics2 = uvf_d2.combine_metrics([uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2, uvf_v2, uvf_d2],
+    uvf_metrics2 = uvf_d2.combine_metrics([uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2,
+                                           uvf_v2, uvf_d2, uvf_chisq2],
                                           method='quadmean', inplace=False)
+    uvf_metrics2.label = 'Combined metrics, round 2.'
     alg_func = algorithm_dict['detrend_meanfilt']
     uvf_metrics2.metric_array[:, :, 0] = alg_func(uvf_metrics2.metric_array[:, :, 0],
                                                   flags=uvf_init.flag_array[:, :, 0],
@@ -1191,29 +1419,136 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Flag on combined metrics
     uvf_f2 = flag(uvf_metrics2, nsig_p=sig_init)
     uvf_fws2 = watershed_flag(uvf_metrics2, uvf_f2, nsig_p=sig_adj, inplace=False)
+    uvf_fws2.label = 'Flags from combined metrics, round 2.'
     uvf_combined2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
-                     | uvf_vf2 | uvf_df2 | uvf_init)
+                     | uvf_vf2 | uvf_df2 | uvf_chisq_f2 | uvf_init)
+    uvf_combined2.label = 'ORd flags, round 2.'
 
-    # Threshold
-    uvf_temp = uvf_combined2.copy()
-    uvf_temp.to_metric(convert_wgts=True)
-    uvf_final = flag(uvf_temp, nsig_p=1.0, nsig_f=freq_threshold, nsig_t=time_threshold)
+    # Write everything out
+    uvf_dict = {'apriori_flags.h5': uvf_apriori,
+                'v_metrics1.h5': uvf_v, 'v_flags1.h5': uvf_vf,
+                'og_metrics1.h5': uvf_og, 'og_flags1.h5': uvf_ogf,
+                'ox_metrics1.h5': uvf_ox, 'ox_flags1.h5': uvf_oxf,
+                'ag_metrics1.h5': uvf_ag, 'ag_flags1.h5': uvf_agf,
+                'ax_metrics1.h5': uvf_ax, 'ax_flags1.h5': uvf_axf,
+                'chi_sq_renormed1.h5': uvf_chisq, 'chi_sq_flags1.h5': uvf_chisq_f,
+                'combined_metrics1.h5': uvf_metrics, 'combined_flags1.h5': uvf_fws,
+                'flags1.h5': uvf_init,
+                'v_metrics2.h5': uvf_v2, 'v_flags2.h5': uvf_vf2,
+                'og_metrics2.h5': uvf_og2, 'og_flags2.h5': uvf_ogf2,
+                'ox_metrics2.h5': uvf_ox2, 'ox_flags2.h5': uvf_oxf2,
+                'ag_metrics2.h5': uvf_ag2, 'ag_flags2.h5': uvf_agf2,
+                'ax_metrics2.h5': uvf_ax2, 'ax_flags2.h5': uvf_axf2,
+                'data_metrics2.h5': uvf_d2, 'data_flags2.h5': uvf_df2,
+                'chi_sq_renormed2.h5': uvf_chisq2, 'chi_sq_flags2.h5': uvf_chisq_f2,
+                'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
+                'flags2.h5': uvf_combined2}
 
-    # Write out final metrics and flags
-    outfile = '.'.join([basename, final_metrics_ext])
-    outpath = os.path.join(dirname, outfile)
-    uvf_metrics2.write(outpath, clobber=clobber)
-    outfile = '.'.join([basename, final_flags_ext])
-    outpath = os.path.join(dirname, outfile)
-    uvf_final.write(outpath, clobber=clobber)
+    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    for ext, uvf in uvf_dict.items():
+        outfile = '.'.join([basename, ext])
+        outpath = os.path.join(dirname, outfile)
+        uvf.write(outpath, clobber=clobber)
 
-    # Save calfits with new flags
-    flag_apply(uvf_final, uvc_a, force_pol=True, history=history)
-    basename = qm_utils.strip_extension(os.path.basename(acalfits_file))
-    basename = qm_utils.strip_extension(basename)  # Also get rid of .abs
-    outfile = '.'.join([basename, cal_ext, 'calfits'])
-    outpath = os.path.join(dirname, outfile)
-    uvc_a.write_calfits(outpath, clobber=clobber)
+
+def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsig_t=5.0,
+                      clobber=False):
+    """Apply thresholding across all times/frequencies, using a full day of data.
+
+    This function will write UVFlag files for each data input (omnical gains,
+    omnical chisquared, abscal gains, etc.) for the full day. These files will be
+    written in the same directory as the first data_file, and have filenames
+    "zen.{JD}.{type}_threshold_flags.h5", where {type} describes the input data (e.g.
+    "og" for omnical gains).
+    This function will also copy the abscal calfits files but with flags defined
+    by the union of all flags from xrfi_run and the day thresholding. These files
+    will replace "abs" with "flagged_abs" in the filenames, and saved in the same
+    directory as each abscal file.
+
+    Parameters
+    ----------
+    data_files : list of strings
+        Paths to the raw data files which have been used to calibrate and rfi flag so far.
+    history : str
+        The history string to include in files.
+    kt_size : int, optional
+        The size of kernel in time dimension for detrend in xrfi algorithm.
+        Default is 8.
+    kf_size : int, optional
+        Size of kernel in frequency dimension for detrend in xrfi algorithm.
+        Default is 8.
+    nsig_f : float, optional
+        The number of sigma above which to flag channels. Default is 5.0.
+    nsig_t : float, optional
+        The number of sigma above which to flag integrations. Default is 5.0.
+    clobber : bool, optional
+        If True, overwrite existing files. Default is False.
+
+    Returns
+    -------
+    None
+
+    """
+    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    data_files = sorted(data_files)
+    xrfi_dirs = [resolve_xrfi_path('', dfile, jd_subdir=True) for dfile in data_files]
+    basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
+    outdir = resolve_xrfi_path('', data_files[0])
+    # Set up extensions to find the many files
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
+    mexts = ['og_metrics', 'ox_metrics', 'ag_metrics', 'ax_metrics',
+             'v_metrics', 'data_metrics', 'chi_sq_renormed', 'combined_metrics']
+    # Read in the metrics objects
+    filled_metrics = []
+    for ext in mexts:
+        if ext != 'data_metrics':
+            # Fill in 2nd metrics with 1st metrics where 2nd are not available.
+            files1 = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
+            files2 = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
+            uvf1 = UVFlag(files1)
+            uvf2 = UVFlag(files2)
+            uvf2.metric_array = np.where(np.isinf(uvf2.metric_array), uvf1.metric_array,
+                                         uvf2.metric_array)
+            filled_metrics.append(uvf2)
+        else:
+            # Data was only run in second iteration
+            files = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
+            filled_metrics.append(UVFlag(files))
+
+    # Threshold each metric and save flag object
+    uvf_total = filled_metrics[0].copy()
+    uvf_total.to_flag()
+    for i, uvf_m in enumerate(filled_metrics):
+        if types[i] == 'chi_sq_renormed':
+            detrend = False
+        else:
+            detrend = True
+        uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t, detrend=detrend)
+        outfile = '.'.join([basename, types[i] + '_threshold_flags.h5'])
+        outpath = os.path.join(outdir, outfile)
+        uvf_f.write(outpath, clobber=clobber)
+        uvf_total |= uvf_f
+
+    # Read non thresholded flags and combine
+    files = [glob.glob(d + '/*.flags2.h5')[0] for d in xrfi_dirs]
+    uvf_total |= UVFlag(files)
+
+    # Apply to abs calfits
+    uvc_a = UVCal()
+    # This is a terrible hack we need to fix when we have a select method.
+    uvf_file = uvf_total.copy()
+    incal_ext = 'abs'
+    outcal_ext = 'flagged_abs'
+    for dfile in data_files:
+        basename = qm_utils.strip_extension(dfile)
+        abs_in = '.'.join([basename, incal_ext, 'calfits'])
+        abs_out = '.'.join([basename, outcal_ext, 'calfits'])
+        uvc_a.read_calfits(abs_in)
+        time_inds = np.searchsorted(uvf_total.time_array, uvc_a.time_array)
+        # Again, this needs to be fixed.
+        uvf_file.flag_array = uvf_total.flag_array[time_inds, :, :].copy()
+        flag_apply(uvf_file, uvc_a, force_pol=True, history=history)
+        uvc_a.write_calfits(abs_out, clobber=clobber)
 
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',

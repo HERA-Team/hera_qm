@@ -100,9 +100,39 @@ def test_resolve_xrfi_path_does_not_exist():
     assert os.path.dirname(os.path.abspath(test_d_file)) == dirname
 
 
+def test_resolve_xrfi_path_jd_subdir():
+    dirname = xrfi.resolve_xrfi_path('', test_d_file, jd_subdir=True)
+    expected_dir = os.path.join(os.path.dirname(os.path.abspath(test_d_file)),
+                                '.'.join(os.path.basename(test_d_file).split('.')[0:3])
+                                + '.xrfi')
+    assert dirname == expected_dir
+    assert os.path.exists(expected_dir)
+    shutil.rmtree(expected_dir)
+
+
 def test_check_convolve_dims_3D():
     # Error if d.ndims != 2
     pytest.raises(ValueError, xrfi._check_convolve_dims, np.ones((3, 2, 3)), 1, 2)
+
+
+def test_check_convolve_dims_1D():
+    size = 10
+    d = np.ones(size)
+    K = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size + 1],
+                             nwarnings=1, category=UserWarning,
+                             message='K1 value {:d} is larger than the data'.format(size))
+    assert K == size
+
+
+def test_check_convolve_dims_kernel_not_given():
+    size = 10
+    d = np.ones((size, size))
+    K1, K2 = uvtest.checkWarnings(xrfi._check_convolve_dims, [d],
+                                  nwarnings=2, category=UserWarning,
+                                  message=['No K1 input provided.',
+                                           'No K2 input provided.'])
+    assert K1 == size
+    assert K2 == size
 
 
 def test_check_convolve_dims_Kt_too_big():
@@ -110,7 +140,7 @@ def test_check_convolve_dims_Kt_too_big():
     d = np.ones((size, size))
     Kt, Kf = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size + 1, size],
                                   nwarnings=1, category=UserWarning,
-                                  message='Kt value {:d} is larger than the data'.format(size))
+                                  message='K1 value {:d} is larger than the data'.format(size))
     assert Kt == size
     assert Kf == size
 
@@ -120,9 +150,16 @@ def test_check_convolve_dims_Kf_too_big():
     d = np.ones((size, size))
     Kt, Kf = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size, size + 1],
                                   nwarnings=1, category=UserWarning,
-                                  message='Kt value {:d} is larger than the data'.format(size))
+                                  message='K1 value {:d} is larger than the data'.format(size))
     assert Kt == size
     assert Kf == size
+
+
+def test_check_convolve_dims_K1K2_lt_one():
+    size = 10
+    data = np.ones((size, size))
+    pytest.raises(ValueError, xrfi._check_convolve_dims, data, 0, 2)
+    pytest.raises(ValueError, xrfi._check_convolve_dims, data, 2, 0)
 
 
 def test_robus_divide():
@@ -235,8 +272,8 @@ def test_detrend_medfilt(fake_data):
     Kf = 101
     dm = uvtest.checkWarnings(xrfi.detrend_medfilt, [fake_data, None, Kt, Kf], nwarnings=2,
                               category=[UserWarning, UserWarning],
-                              message=['Kt value {:d} is larger than the data'.format(Kt),
-                                       'Kf value {:d} is larger than the data'.format(Kf)])
+                              message=['K1 value {:d} is larger than the data'.format(Kt),
+                                       'K2 value {:d} is larger than the data'.format(Kf)])
 
     # read in "answer" array
     # this is output that corresponds to .size==100, Kt==101, Kf==101
@@ -300,6 +337,74 @@ def test_detrend_meanfilt_flags(fake_data):
     dm2 = xrfi.detrend_meanfilt(fake_data, flags=flags, Kt=Kt, Kf=Kf)
     dm2[ind, :] = dm1[ind, :]  # These don't have valid values, so don't compare them.
     assert np.allclose(dm1, dm2)
+
+
+def test_zscore_full_array(fake_data):
+    # Make some fake data
+    np.random.seed(182)
+    fake_data[...] = np.random.randn(fake_data.shape[0], fake_data.shape[1])
+    out = xrfi.zscore_full_array(fake_data)
+    fake_mean = np.mean(fake_data)
+    fake_std = np.std(fake_data)
+    assert np.all(out == (fake_data - fake_mean) / fake_std)
+
+
+def test_zscore_full_array_flags(fake_data):
+    # Make some fake data
+    np.random.seed(182)
+    fake_data[...] = np.random.randn(fake_data.shape[0], fake_data.shape[1])
+    flags = np.zeros(fake_data.shape, dtype=np.bool)
+    flags[45, 33] = True
+    out = xrfi.zscore_full_array(fake_data, flags=flags)
+    fake_mean = np.mean(np.ma.masked_array(fake_data, flags))
+    fake_std = np.std(np.ma.masked_array(fake_data, flags))
+    out_exp = (fake_data - fake_mean) / fake_std
+    out_exp[45, 33] = np.inf
+    assert np.all(out == out_exp)
+
+
+def test_zscore_full_array_modified(fake_data):
+    # Make some fake data
+    np.random.seed(182)
+    fake_data[...] = np.random.randn(fake_data.shape[0], fake_data.shape[1])
+    out = xrfi.zscore_full_array(fake_data, modified=True)
+    fake_med = np.median(fake_data)
+    fake_mad = np.median(np.abs(fake_data - fake_med))
+    assert np.all(out == (fake_data - fake_med) / (1.486 * fake_mad))
+
+
+def test_zscore_full_array_modified_complex(fake_data):
+    # Make some fake data
+    np.random.seed(182)
+    rands = np.random.randn(100, 100)
+    fake_data = rands + 1j * rands
+    out = xrfi.zscore_full_array(fake_data, modified=True)
+    fake_med = np.median(rands)
+    fake_mad = np.sqrt(2) * np.median(np.abs(rands - fake_med))
+    assert np.allclose(out, (fake_data - fake_med - 1j * fake_med) / (1.486 * fake_mad))
+
+
+def test_modzscore_1d_no_detrend():
+    npix = 1000
+    np.random.seed(182)
+    data = np.random.randn(npix)
+    data[50] = 500
+    out = xrfi.modzscore_1d(data, detrend=False)
+    assert out.shape == (npix,)
+    assert np.isclose(out[50], 500, rtol=.2)
+    assert np.isclose(np.median(np.abs(out)), .67, rtol=.1)
+
+
+def test_modzscore_1d():
+    npix = 1000
+    np.random.seed(182)
+    data = np.random.randn(npix)
+    data[50] = 500
+    data += .1 * np.arange(npix)
+    out = xrfi.modzscore_1d(data)
+    assert out.shape == (npix,)
+    assert np.isclose(out[50], 500, rtol=.2)
+    assert np.isclose(np.median(np.abs(out)), .67, rtol=.1)
 
 
 def test_watershed_flag():
@@ -777,33 +882,134 @@ def test_xrfi_h1c_idr2_2_pipe():
     assert uvf_m.weights_array.max() == 1.
 
 
-def test_xrfi_run():
-    # Run in nicest way possible
+def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
-    messages = (2 * ['This object is already a waterfall'] + 2 * ['It seems that the latitude']
-                + 2 * ['This object is already a waterfall'])
-    categories = 2 * [UserWarning] + 2 * [DeprecationWarning] + 2 * [UserWarning]
-    uvtest.checkWarnings(xrfi.xrfi_run, [test_c_file, test_c_file, test_uvh5_file,
-                                         test_uvh5_file, 'Just a test'],
-                         {'xrfi_path': xrfi_path, 'kt_size': 3},
-                         nwarnings=6, message=messages, category=categories)
+    mess1 = ['This object is already a waterfall']
+    mess2 = ['It seems that the latitude']
+    messages = 2 * mess1 + mess2 + mess1 + mess2 + 3 * mess1
+    cat1 = [UserWarning]
+    cat2 = [DeprecationWarning]
+    categories = 2 * cat1 + cat2 + cat1 + cat2 + 3 * cat1
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    tmp_path = tmpdir.strpath
+    fake_obs = 'zen.2457698.40355.HH'
+    ocal_file = os.path.join(tmp_path, fake_obs + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+                                         raw_dfile, 'Just a test'], {'kt_size': 3},
+                         nwarnings=8, message=messages, category=categories)
+    # remove spoofed files
+    for fname in [ocal_file, acal_file, model_file, raw_dfile]:
+        os.remove(fname)
 
-    basename = utils.strip_extension(os.path.basename(test_uvh5_file))
-    exts = ['init_xrfi_metrics', 'init_flags', 'final_xrfi_metrics', 'final_flags']
-    for ext in exts:
-        out = '.'.join([basename, ext, 'h5'])
-        out = os.path.join(xrfi_path, out)
+    outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
+    ext_labels = {'ag_flags1': 'Abscal gains, round 1. Flags.',
+                  'ag_flags2': 'Abscal gains, round 2. Flags.',
+                  'ag_metrics1': 'Abscal gains, round 1.',
+                  'ag_metrics2': 'Abscal gains, round 2.',
+                  'apriori_flags': 'A priori flags.',
+                  'ax_flags1': 'Abscal chisq, round 1. Flags.',
+                  'ax_flags2': 'Abscal chisq, round 2. Flags.',
+                  'ax_metrics1': 'Abscal chisq, round 1.',
+                  'ax_metrics2': 'Abscal chisq, round 2.',
+                  'chi_sq_flags1': 'Renormalized chisq, round 1. Flags.',
+                  'chi_sq_flags2': 'Renormalized chisq, round 2. Flags.',
+                  'chi_sq_renormed1': 'Renormalized chisq, round 1.',
+                  'chi_sq_renormed2': 'Renormalized chisq, round 2.',
+                  'combined_flags1': 'Flags from combined metrics, round 1.',
+                  'combined_flags2': 'Flags from combined metrics, round 2.',
+                  'combined_metrics1': 'Combined metrics, round 1.',
+                  'combined_metrics2': 'Combined metrics, round 2.',
+                  'data_flags2': 'Data, round 2. Flags.',
+                  'data_metrics2': 'Data, round 2.',
+                  'flags1': 'ORd flags, round 1.',
+                  'flags2': 'ORd flags, round 2.',
+                  'og_flags1': 'Omnical gains, round 1. Flags.',
+                  'og_flags2': 'Omnical gains, round 2. Flags.',
+                  'og_metrics1': 'Omnical gains, round 1.',
+                  'og_metrics2': 'Omnical gains, round 2.',
+                  'ox_flags1': 'Omnical chisq, round 1. Flags.',
+                  'ox_flags2': 'Omnical chisq, round 2. Flags.',
+                  'ox_metrics1': 'Omnical chisq, round 1.',
+                  'ox_metrics2': 'Omnical chisq, round 2.',
+                  'v_flags1': 'Omnical visibility solutions, round 1. Flags.',
+                  'v_flags2': 'Omnical visibility solutions, round 2. Flags.',
+                  'v_metrics1': 'Omnical visibility solutions, round 1.',
+                  'v_metrics2': 'Omnical visibility solutions, round 2.'}
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
-        os.remove(out)  # cleanup
+        uvf = UVFlag(out)
+        assert uvf.label == label
+    shutil.rmtree(outdir)  # cleanup
 
-    basename = utils.strip_extension(os.path.basename(test_c_file))
-    # Also get rid of ".abs" (which is actually "omni" in this test)
-    basename = utils.strip_extension(basename)
-    outfile = '.'.join([basename, 'flagged_abs', 'calfits'])
-    outpath = os.path.join(xrfi_path, outfile)
-    assert os.path.exists(outpath)
-    os.remove(outpath)  # cleanup
+
+def test_day_threshold_run(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    mess2 = ['It seems that the latitude']
+    messages = 2 * mess1 + mess2 + mess1 + mess2 + 3 * mess1
+    cat1 = [UserWarning]
+    cat2 = [DeprecationWarning]
+    categories = 2 * cat1 + cat2 + cat1 + cat2 + 3 * cat1
+    # Spoof the files - run xrfi_run twice on spoofed files.
+    tmp_path = tmpdir.strpath
+    fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    ocal_file = os.path.join(tmp_path, fake_obses[0] + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[0] + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obses[0] + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    data_files = [raw_dfile]
+    model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+                                         raw_dfile, 'Just a test'], {'kt_size': 3},
+                         nwarnings=8, message=messages, category=categories)
+    # Need to adjust time arrays when duplicating files
+    uvd = UVData()
+    uvd.read_uvh5(data_files[0])
+    dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
+    uvd.time_array += dt
+    uvd.set_lsts_from_time_array()
+    data_files += [os.path.join(tmp_path, fake_obses[1] + '.uvh5')]
+    uvd.write_uvh5(data_files[1])
+    model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
+    uvd.write_uvh5(model_file)
+    uvc = UVCal()
+    uvc.read_calfits(ocal_file)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.time_array += dt
+    ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
+    uvc.write_calfits(ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
+    uvc.write_calfits(acal_file)
+    # uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+    #                                      data_files[1], 'Just a test'], {'kt_size': 3},
+    #                      nwarnings=8, message=messages, category=categories)
+    xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], 'Just a test',
+                  kt_size=3)
+
+    xrfi.day_threshold_run(data_files, 'just a test', kt_size=3)
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
+    for type in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
+        outfile = os.path.join(tmp_path, basename)
+        assert os.path.exists(outfile)
+
+    for fake_obs in fake_obses:
+        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
+        assert os.path.exists(calfile)
 
 
 def test_xrfi_h1c_run():
@@ -817,7 +1023,7 @@ def test_xrfi_h1c_run():
                          {'filename': test_d_file, 'history': 'Just a test.',
                           'model_file': test_d_file, 'model_file_format': 'miriad',
                           'xrfi_path': xrfi_path}, nwarnings=191,
-                         message=['indata is None'] + 190 * ['Kt value 8'])
+                         message=['indata is None'] + 190 * ['K1 value 8'])
 
 
 def test_xrfi_h1c_run_no_indata():
@@ -1017,3 +1223,88 @@ def test_xrfi_h1c_apply_errors():
         open(dest_file, 'a').close()
     pytest.raises(ValueError, xrfi.xrfi_h1c_apply, test_d_file, history, xrfi_path=xrfi_path,
                   flag_file=test_f_file_flags, outfile_format='uvfits', extension='R')
+
+
+def test_threshold_wf_no_rfi():
+    # generate a dummy metric waterfall
+    np.random.seed(0)
+    uvm = UVFlag(test_f_file)
+    uvm.to_waterfall()
+
+    # populate with noise and add bad times / channels
+    # Note we're breaking the object here to get larger time dimension. But should be ok for test.
+    uvm.metric_array = np.random.chisquare(100, 10000).reshape((100, 100, 1)) / 100
+
+    # no flags should exist
+    uvf = xrfi.threshold_wf(uvm, nsig_f=5, nsig_t=5, detrend=False)
+    assert not uvf.flag_array.any()
+
+
+def test_threshold_wf_time_broadcast():
+    # generate a dummy metric waterfall
+    np.random.seed(0)
+    uvm = UVFlag(test_f_file)
+    uvm.to_waterfall()
+
+    # populate with noise and add bad times / channels
+    # Note we're breaking the object here to get larger time dimension. But should be ok for test.
+    uvm.metric_array = np.random.chisquare(100, 10000).reshape((100, 100, 1)) / 100
+
+    # time broadcasting tests
+    uvm.metric_array[:, 50] = 6.0  # should get this
+    uvm.metric_array[0, 75] = 100.0  # should not get this
+    uvm.metric_array[:50, 30] = 5.0
+    uvm.metric_array[80:, 30] = 5.0  # should get this
+    uvf = xrfi.threshold_wf(uvm, nsig_f=5, nsig_t=100, detrend=False)
+    assert uvf.flag_array[:, 50].all()
+    assert not uvf.flag_array[:, 75].any()
+    assert uvf.flag_array[:, 30].all()
+
+
+def test_threshold_wf_freq_broadcast():
+    # generate a dummy metric waterfall
+    np.random.seed(0)
+    uvm = UVFlag(test_f_file)
+    uvm.to_waterfall()
+
+    # populate with noise and add bad times / channels
+    # Note we're breaking the object here to get larger time dimension. But should be ok for test.
+    uvm.metric_array = np.random.chisquare(100, 10000).reshape((100, 100, 1)) / 100
+
+    # freq broadcasting tests
+    uvm.metric_array[10, ::3] = 6.0  # should get this
+    uvm.metric_array[1, 50] = 100  # should not get this
+    uvf = xrfi.threshold_wf(uvm, nsig_f=100, nsig_t=5, detrend=False)
+    assert uvf.flag_array[10].all()
+    assert not uvf.flag_array[1].any()
+
+
+def test_threshold_wf_detrend():
+    # generate a dummy metric waterfall
+    np.random.seed(0)
+    uvm = UVFlag(test_f_file)
+    uvm.to_waterfall()
+
+    # populate with noise and add bad times / channels
+    # Note we're breaking the object here to get larger time dimension. But should be ok for test.
+    uvm.metric_array = np.random.chisquare(100, 10000).reshape((100, 100, 1)) / 100
+
+    # test with detrend
+    uvm.metric_array[50, :] += .5  # should get this
+    uvm.metric_array += .01 * np.arange(100).reshape((100, 1, 1))
+    uvf = xrfi.threshold_wf(uvm, nsig_f=5, nsig_t=5, detrend=True)
+    assert uvf.flag_array[50].all()
+    uvf = xrfi.threshold_wf(uvm, nsig_f=5, nsig_t=5, detrend=False)
+    assert not uvf.flag_array[50].all()
+
+
+def test_threshold_wf_exceptions():
+    # generate a dummy metric waterfall
+    np.random.seed(0)
+    uvf = UVFlag(test_f_file)
+
+    # exceptions
+    pytest.raises(ValueError, xrfi.threshold_wf, uvf)  # UVFlag object but not a waterfall
+    uvf.to_flag()
+    pytest.raises(ValueError, xrfi.threshold_wf, uvf)  # UVFlag object but not a metric
+    pytest.raises(ValueError, xrfi.threshold_wf, 'foo')  # not a UVFlag object
