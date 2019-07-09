@@ -44,10 +44,10 @@ setup_args = {
     'setup_requires': ['pytest-runner'],
     'install_requires': [
         'astropy>=2.0',
-        'h5py'
+        'h5py',
         'six',
         'numpy>=1.10',
-        'pyuvdata'
+        'pyuvdata',
     ],
     'tests_require': ['pytest'],
     'zip_safe': False,
