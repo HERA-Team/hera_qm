@@ -8,14 +8,11 @@ from __future__ import print_function, division, absolute_import
 from six.moves import zip, range
 import numpy as np
 from copy import deepcopy
-import json
 import os
 import re
 from collections import OrderedDict
 from .version import hera_qm_version_str
 from . import utils, metrics_io
-import h5py
-import warnings
 
 
 def get_ant_metrics_dict():

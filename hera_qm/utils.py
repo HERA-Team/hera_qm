@@ -4,16 +4,13 @@
 """Module for general purpose utility functions."""
 
 from __future__ import print_function, division, absolute_import
-from functools import reduce
 import re
 import os
 import warnings
 import argparse
 import numpy as np
 from pyuvdata import UVCal, UVData
-from pyuvdata import telescopes as uvtel
 from pyuvdata import utils as uvutils
-import copy
 from six.moves import range
 import six
 

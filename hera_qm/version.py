@@ -3,13 +3,13 @@
 # Licensed under the MIT License
 """Generate version information for hera_qm."""
 
+import json
 import os
 import subprocess
-import json
-import six
-
+import sys
 
 hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
+PY2 = sys.version_info < (3, 0)
 
 
 def _get_git_output(args, capture_stderr=False):
@@ -41,13 +41,13 @@ def _get_git_output(args, capture_stderr=False):
 
     data = data.strip()
 
-    if six.PY2:
+    if PY2:
         return data
     return data.decode('utf8')
 
 
 def _unicode_to_str(unicode_in):
-    if six.PY2:
+    if PY2:
         return unicode_in.encode('utf8')
     return unicode_in
 
