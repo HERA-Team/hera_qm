@@ -7,7 +7,7 @@ import sys
 from hera_qm import utils
 from hera_qm import xrfi
 
-ap = utils.get_metrics_ArgumentParser('xrfi_day_threshold_run')
+ap = utils.get_metrics_ArgumentParser('day_threshold_run')
 args = ap.parse_args()
 history = ' '.join(sys.argv)
 
