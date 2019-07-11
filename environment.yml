@@ -13,6 +13,7 @@ dependencies:
   - scipy
   - pytest
   - scikit-learn # from hera_cal
+  - pytest-cov
   - pip:
     - git+https://github.com/HERA-Team/hera_cal
 
