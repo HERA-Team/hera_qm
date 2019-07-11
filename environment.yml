@@ -1,4 +1,4 @@
-name: linsolve
+name: hera_qm
 channels:
   - defaults
   - conda-forge
