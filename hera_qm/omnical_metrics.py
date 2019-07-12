@@ -6,7 +6,6 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from pyuvdata import UVCal
-import pkg_resources
 import astropy.stats as astats
 from collections import OrderedDict as odict
 from .version import hera_qm_version_str
@@ -15,7 +14,6 @@ import json
 import six
 import copy
 import os
-from scipy.signal import medfilt
 from six.moves import range
 if six.PY2:
     # python2

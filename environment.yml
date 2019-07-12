@@ -1,0 +1,20 @@
+name: hera_qm
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - nose
+  - numpy>=1.10
+  - pip
+  - astropy>=2.0
+  - h5py
+  - six
+  - pyuvdata
+  - scipy
+  - pytest
+  - scikit-learn # from hera_cal
+  - pytest-cov
+  - pip:
+    - git+https://github.com/HERA-Team/hera_cal
+
+

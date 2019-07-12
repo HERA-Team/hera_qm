@@ -18,31 +18,29 @@ be vetted by the community and require thorough unittests. However, the code bas
 will also be flexible to enable the third goal, and we welcome contributions (see below).
 
 ## Installation
-
+Preferred method of installation for users is simply `pip install .`
+(or `pip install git+https://github.com/HERA-Team/hera_qm`). This will install 
+required dependencies. See below for manual dependency management.
+ 
 ### Dependencies
-First install dependencies.
+If you are using `conda`, you may wish to install the following dependencies manually
+to avoid them being installed automatically by `pip`::
 
-* numpy >= 1.10
-* scipy
-* matplotlib
-* astropy >= 2.0
-* sklearn >= 0.18.0
-* aipy
-* h5py
-* pyuvdata (`pip install pyuvdata` or use https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git)
-* omnical (https://github.com/HERA-Team/omnical.git)
-* linsolve (https://github.com/HERA-Team/linsolve.git)
-* uvtools (https://github.com/HERA-Team/uvtools.git)
-* hera_cal (https://github.com/HERA-Team/hera_cal.git)
+    $ conda install -c conda-forge "numpy>=1.10" "astropy>=2.0" "aipy>=3.0rc2" h5py pyuvdata
+    
+### Developing
+If you are developing `hera_qm`, it is preferred that you do so in a fresh `conda`
+environment. The following commands will install all relevant development packages::
 
-For anaconda users, we suggest using conda to install astropy, numpy and scipy and conda-forge
-for aipy (```conda install -c conda-forge aipy```).
+    $ git clone https://github.com/HERA-Team/hera_qm.git
+    $ cd hera_qm
+    $ conda create -n hera_qm python=3
+    $ conda activate hera_qm
+    $ conda env update -n hera_qm -f environment.yml
+    $ pip install -e . 
 
-### Installing hera_qm
-Clone the repo using
-`git clone https://github.com/HERA-Team/hera_qm.git`
-
-Navigate into the directory and run `python setup.py install`.
+This will install extra dependencies required for testing/development as well as the 
+standard ones.
 
 ### Running Tests
 Uses the `pytest` package to execute test suite.
