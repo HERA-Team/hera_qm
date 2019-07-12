@@ -33,7 +33,7 @@ install:
   - conda install numpy scipy matplotlib astropy scikit-learn h5py coveralls aipy six pycodestyle pydocstyle pytest-cov
   - pip install git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git
   - pip install git+https://github.com/HERA-Team/linsolve.git
-  - pip install git+https://github.com/HERA-Team/uvtools.git
+  - pip install --no-dependencies git+https://github.com/HERA-Team/uvtools.git
   - pip install git+https://github.com/HERA-Team/hera_cal.git
   - conda list
 before_script:
