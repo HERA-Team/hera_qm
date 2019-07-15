@@ -1053,7 +1053,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
 
     # get list of lists of redundant baselines, assuming redunancy information is the same for all files
     hd = HERAData(fullpol_file_list[0][0], filetype=vis_format)
-    reds = get_pos_reds(hd.read()[0].antpos)
+    reds = get_pos_reds(hd.antpos)
     del hd
 
     # do the work
