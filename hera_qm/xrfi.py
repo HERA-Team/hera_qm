@@ -729,7 +729,7 @@ def _ws_flag_waterfall(data, fin, nsig=2.):
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 xp, yp = ((foutx + dx).clip(0, fout.shape[0] - 1),
                           (fouty + dy).clip(0, fout.shape[1] - 1))
-                ind = np.where(data[xp, yp] > nsig)[0]  # if our metric > sig
+                ind = np.where(np.abs(data[xp, yp]) >= nsig)[0]  # if our metric > sig
                 fout[xp[ind], yp[ind]] = 1
                 foutx, fouty = np.where(fout)
     else:
