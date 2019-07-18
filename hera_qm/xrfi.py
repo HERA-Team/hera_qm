@@ -1519,11 +1519,7 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
     uvf_total = filled_metrics[0].copy()
     uvf_total.to_flag()
     for i, uvf_m in enumerate(filled_metrics):
-        if types[i] == 'chi_sq_renormed':
-            detrend = False
-        else:
-            detrend = True
-        uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t, detrend=detrend)
+        uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t, detrend=False)
         outfile = '.'.join([basename, types[i] + '_threshold_flags.h5'])
         outpath = os.path.join(outdir, outfile)
         uvf_f.write(outpath, clobber=clobber)
