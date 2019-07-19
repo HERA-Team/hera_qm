@@ -679,39 +679,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
     return uvf
 
 
-def _ws_flag_1D(metric, fin, nsig=2.):
-    """Perform the watershed algorithm in 1D, given input metric and flags.
-
-    Parameters
-    ----------
-    metric : array
-        A 1D array. Should be in units of standard deviations.
-    fin : array
-        The input boolean flags used as the seed of the watershed. Same size as metric.
-    nsig : float, optional
-        The number of sigma to flag above for points next to flagged points. Default is 2.
-
-    Returns
-    -------
-    fout : array
-        An boolean array of fin OR the watershedded flags. Same shape as fin.
-
-    Raises
-    ------
-    ValueError:
-        If the shapes of metric and fin do not match a ValueError is raised.
-
-    """
-    if metric.shape != fin.shape:
-        raise ValueError('metric and fin must match in shape. Shapes are: ' + str(metric.shape)
-                         + ' and ' + str(fin.shape))
-    # determine which indices are next to one or more flags
-    is_neighbor_flagged = np.convolve(fin, [1, 0, 1], mode='same').astype(bool)
-    fout = fin | (is_neighbor_flagged & (np.abs(metric) >= nsig))
-    return fout
-
-
-def _ws_flag_waterfall(data, fin, nsig=2.):
+def _ws_flag_waterfall(metric, fin, nsig=2.):
     """Perform the watershed algorithm on 1D or 2D arrays of metric and input flags.
 
     This is a helper function for watershed_flag, but not usually called
@@ -719,53 +687,39 @@ def _ws_flag_waterfall(data, fin, nsig=2.):
 
     Parameters
     ----------
-    data : array
+    metric : array
         A 2D or 1D array. Should be in units of standard deviations.
     fin : array
-        The input (boolean) flags used as the seed of the watershed. Same size as data.
+        The input (boolean) flags used as the seed of the watershed. Same size as metric.
     nsig : float, optional
         The number of sigma to flag above for points near flagged points. Default is 2.
 
     Returns
     -------
     fout : array
-        A boolean array matching size of data and fin, with watershedded flags.
+        A boolean array matching size of metric and fin, with watershedded flags.
 
     Raises
     ------
     ValueError:
-        If the shapes of data and fin do not match, or if the number of dimensions is not
+        If the shapes of metric and fin do not match, or if the number of dimensions is not
         equal to 1 or 2, a ValueError is raised.
 
     """
-    if data.shape != fin.shape:
-        raise ValueError('data and fin must match in shape. Shapes are: ' + str(data.shape)
+    if metric.shape != fin.shape:
+        raise ValueError('metric and fin must match in shape. Shapes are: ' + str(metric.shape)
                          + ' and ' + str(fin.shape))
     fout = fin.copy()
-    # There may be an elegant way to combine these... for the future.
-    if data.ndim == 1:
-        prevn = 0
-        foutx = np.where(fout)[0]
-        while foutx.size != prevn:
-            prevn = foutx.size
-            for dx in [-1, 1]:
-                xp = (foutx + dx).clip(0, fout.size - 1)
-                ind = np.where(data[xp] > nsig)[0]  # if our metric > sig
-                fout[xp[ind]] = 1
-                foutx = np.where(fout)[0]
-    elif data.ndim == 2:
-        prevx, prevy = 0, 0
-        foutx, fouty = np.where(fout)
-        while foutx.size != prevx and fouty.size != prevy:
-            prevx, prevy = foutx.size, fouty.size
-            for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-                xp, yp = ((foutx + dx).clip(0, fout.shape[0] - 1),
-                          (fouty + dy).clip(0, fout.shape[1] - 1))
-                ind = np.where(np.abs(data[xp, yp]) >= nsig)[0]  # if our metric > sig
-                fout[xp[ind], yp[ind]] = 1
-                foutx, fouty = np.where(fout)
-    else:
-        raise ValueError('Data must be 1D or 2D.')
+    while True:
+        nflags = np.sum(fout)
+        try:
+            kernel = {1: [1, 0, 1], 2: [[0, 1, 0], [1, 0, 1], [0, 1, 0]]}[metric.ndim]
+        except KeyError:
+            raise ValueError('Data must be 1D or 2D.')
+        is_neighbor_flagged = np.convolve(fout, kernel, mode='same').astype(bool)
+        fout |= (is_neighbor_flagged & (metric >= nsig))
+        if np.sum(fout) == nflags:
+            break
     return fout
 
 
