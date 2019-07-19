@@ -1011,7 +1011,7 @@ def test_day_threshold_run(tmpdir):
     xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], 'Just a test',
                   kt_size=3)
 
-    xrfi.day_threshold_run(data_files, 'just a test', kt_size=3)
+    xrfi.day_threshold_run(data_files, 'just a test')
     types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
     for type in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
