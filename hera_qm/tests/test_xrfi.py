@@ -576,17 +576,6 @@ def test_watershed_flag_errors():
     pytest.raises(ValueError, xrfi.watershed_flag, uvm, uvf)
 
 
-def test_ws_flag_1D():
-    # test 1D watershed
-    metric = np.array([2., 5., 0., 2., 0., 5.])
-    fin = (metric >= 5.)
-    fout = xrfi._ws_flag_1D(metric, fin)
-    np.testing.assert_array_equal(fout, [True, True, False, False, False, True])
-
-    # catch errors
-    pytest.raises(ValueError, xrfi._ws_flag_1D, metric, fin[1:])
-
-
 def test_ws_flag_waterfall():
     # test 1d
     d = np.zeros((10,))
@@ -597,6 +586,12 @@ def test_ws_flag_waterfall():
     ans = np.zeros_like(f_out, dtype=np.bool)
     ans[:2] = True
     assert np.allclose(f_out, ans)
+
+    # another 1D test
+    metric = np.array([2., 2., 5., 0., 2., 0., 5.])
+    fin = (metric >= 5.)
+    fout = xrfi._ws_flag_waterfall(metric, fin)
+    np.testing.assert_array_equal(fout, [True, True, True, False, False, False, True])
 
     # test 2d
     d = np.zeros((10, 10))
