@@ -706,6 +706,8 @@ def _ws_flag_waterfall(metric, fin, nsig=2.):
         equal to 1 or 2, a ValueError is raised.
 
     """
+    # Delay import so scipy is not required for use of hera_qm
+    from scipy.signal import convolve
     if metric.shape != fin.shape:
         raise ValueError('metric and fin must match in shape. Shapes are: ' + str(metric.shape)
                          + ' and ' + str(fin.shape))
@@ -716,7 +718,7 @@ def _ws_flag_waterfall(metric, fin, nsig=2.):
             kernel = {1: [1, 0, 1], 2: [[0, 1, 0], [1, 0, 1], [0, 1, 0]]}[metric.ndim]
         except KeyError:
             raise ValueError('Data must be 1D or 2D.')
-        is_neighbor_flagged = np.convolve(fout, kernel, mode='same').astype(bool)
+        is_neighbor_flagged = convolve(fout, kernel, mode='same', method='direct').astype(bool)
         fout |= (is_neighbor_flagged & (metric >= nsig))
         if np.sum(fout) == nflags:
             break
