@@ -12,8 +12,7 @@ args = ap.parse_args()
 history = ' '.join(sys.argv)
 
 if args.run_if_first is None or sorted(args.data_files)[0] == args.run_if_first:
-    xrfi.day_threshold_run(args.data_files, history, kt_size=args.kt_size,
-                           kf_size=args.kf_size, nsig_f=args.nsig_f, nsig_t=args.nsig_t,
-                           clobber=args.clobber)
+    xrfi.day_threshold_run(args.data_files, history, nsig_f=args.nsig_f, nsig_t=args.nsig_t,
+                           nsig_f_adj=args.nsig_f_adj, nsig_t_adj=args.nsig_t_adj, clobber=args.clobber)
 else:
     print(sorted(args.data_files)[0], 'is not', args.run_if_first, '...skipping.')
