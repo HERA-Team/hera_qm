@@ -722,14 +722,14 @@ def _ws_flag_waterfall(data, fin, nsig=2.):
     data : array
         A 2D or 1D array. Should be in units of standard deviations.
     fin : array
-        The input (boolean) flags used as the seed of the watershed. Same size as d.
+        The input (boolean) flags used as the seed of the watershed. Same size as data.
     nsig : float, optional
         The number of sigma to flag above for points near flagged points. Default is 2.
 
     Returns
     -------
     fout : array
-        A boolean array matching size of d and fin, with watershedded flags.
+        A boolean array matching size of data and fin, with watershedded flags.
 
     Raises
     ------
