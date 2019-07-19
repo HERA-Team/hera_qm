@@ -909,9 +909,9 @@ def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3., detr
     tseries = np.ma.median(data, axis=(1, 2))
     ztseries = modzscore_1d(tseries, detrend=detrend)
     # Flag based on zscores and thresholds
-    f_flags = _ws_flag_1D(zspec, np.abs(zspec) >= nsig_f, nsig=nsig_f_adj)
+    f_flags = _ws_flag_waterfall(np.abs(zspec), np.abs(zspec) >= nsig_f, nsig=nsig_f_adj)
     uvf_f.flag_array[:, f_flags, :] = True
-    t_flags = _ws_flag_1D(ztseries, np.abs(ztseries) >= nsig_t, nsig=nsig_t_adj)
+    t_flags = _ws_flag_waterfall(np.abs(ztseries), np.abs(ztseries) >= nsig_t, nsig=nsig_t_adj)
     uvf_f.flag_array[t_flags, :, :] = True
 
     return uvf_f
