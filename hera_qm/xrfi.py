@@ -679,6 +679,38 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
     return uvf
 
 
+def _ws_flag_1D(metric, fin, nsig=2.):
+    """Perform the watershed algorithm in 1D, given input metric and flags.
+
+    Parameters
+    ----------
+    metric : array
+        A 1D array. Should be in units of standard deviations.
+    fin : array
+        The input boolean flags used as the seed of the watershed. Same size as metric.
+    nsig : float, optional
+        The number of sigma to flag above for points next to flagged points. Default is 2.
+
+    Returns
+    -------
+    fout : array
+        An boolean array of fin OR the watershedded flags. Same shape as fin.
+
+    Raises
+    ------
+    ValueError:
+        If the shapes of metric and fin do not match a ValueError is raised.
+
+    """
+    if metric.shape != fin.shape:
+            raise ValueError('metric and fin must match in shape. Shapes are: ' + str(metric.shape)
+                             + ' and ' + str(fin.shape))
+    # determine which indices are next to one or more flags
+    is_neighbor_flagged = np.convolve(fin, [1, 0, 1], mode='same').astype(bool)
+    fout = fin | (is_neighbor_flagged & (np.abs(metric) >= nsig))
+    return fout
+
+
 def _ws_flag_waterfall(data, fin, nsig=2.):
     """Perform the watershed algorithm on 1D or 2D arrays of metric and input flags.
 
