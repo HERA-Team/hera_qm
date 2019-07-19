@@ -1492,8 +1492,8 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         uvf.write(outpath, clobber=clobber)
 
 
-def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsig_t=5.0,
-                      clobber=False):
+def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
+                      nsig_f_adj=3., nsig_t_adj=3., clobber=False):
     """Apply thresholding across all times/frequencies, using a full day of data.
 
     This function will write UVFlag files for each data input (omnical gains,
@@ -1512,16 +1512,13 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         Paths to the raw data files which have been used to calibrate and rfi flag so far.
     history : str
         The history string to include in files.
-    kt_size : int, optional
-        The size of kernel in time dimension for detrend in xrfi algorithm.
-        Default is 8.
-    kf_size : int, optional
-        Size of kernel in frequency dimension for detrend in xrfi algorithm.
-        Default is 8.
     nsig_f : float, optional
-        The number of sigma above which to flag channels. Default is 5.0.
+        The number of sigma above which to flag channels. Default is 7.0.
     nsig_t : float, optional
-        The number of sigma above which to flag integrations. Default is 5.0.
+        The number of sigma above which to flag integrations. Default is 7.0.
+    nsig_f_adj : float, optional
+        The number of sigma above which to flag channels if they neighbor flagged channels.
+        Default is 3.0.
     nsig_t_adj : float, optional
         The number of sigma above which to flag integrations if they neighbor flagged integrations.
         Default is 3.0.
@@ -1563,7 +1560,8 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
     uvf_total = filled_metrics[0].copy()
     uvf_total.to_flag()
     for i, uvf_m in enumerate(filled_metrics):
-        uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t, detrend=False)
+        uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t,
+                             nsig_f_adj=nsig_f_adj, nsig_t_adj=nsig_t_adj, detrend=False)
         outfile = '.'.join([basename, types[i] + '_threshold_flags.h5'])
         outpath = os.path.join(outdir, outfile)
         uvf_f.write(outpath, clobber=clobber)
