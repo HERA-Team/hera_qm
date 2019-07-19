@@ -703,8 +703,8 @@ def _ws_flag_1D(metric, fin, nsig=2.):
 
     """
     if metric.shape != fin.shape:
-            raise ValueError('metric and fin must match in shape. Shapes are: ' + str(metric.shape)
-                             + ' and ' + str(fin.shape))
+        raise ValueError('metric and fin must match in shape. Shapes are: ' + str(metric.shape)
+                         + ' and ' + str(fin.shape))
     # determine which indices are next to one or more flags
     is_neighbor_flagged = np.convolve(fin, [1, 0, 1], mode='same').astype(bool)
     fout = fin | (is_neighbor_flagged & (np.abs(metric) >= nsig))
