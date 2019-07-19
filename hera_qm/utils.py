@@ -309,16 +309,16 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('data_files', type=str, nargs='+', help='List of paths to \
                         the raw data files which have been used to calibrate and \
                         rfi flag so far.')
-        ap.add_argument('--kt_size', default=8, type=int,
-                        help='Size of kernel in time dimension for detrend in xrfi '
-                        'algorithm. Default is 8.')
-        ap.add_argument('--kf_size', default=8, type=int,
-                        help='Size of kernel in frequency dimension for detrend in '
-                        'xrfi algorithm. Default is 8.')
-        ap.add_argument('--nsig_f', default=5.0, type=float,
-                        help='The number of sigma above which to flag channels. Default is 5.0.')
-        ap.add_argument('--nsig_t', default=5.0, type=float,
-                        help='The number of sigma above which to flag integrations. Default is 5.0.')
+        ap.add_argument('--nsig_f', default=7.0, type=float,
+                        help='The number of sigma above which to flag channels. Default is 7.0.')
+        ap.add_argument('--nsig_t', default=7.0, type=float,
+                        help='The number of sigma above which to flag integrations. Default is 7.0.')
+        ap.add_argument('--nsig_f_adj', default=3.0, type=float,
+                        help='The number of sigma above which to flag channels if they neighbor \
+                        flagged channels. Default is 3.0.')
+        ap.add_argument('--nsig_t_adj', default=3.0, type=float,
+                        help='The number of sigma above which to flag integrations if they neighbor \
+                        flagged integrations. Default is 7.0.')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='If True, overwrite existing files. Default is False.')
         ap.add_argument("--run_if_first", default=None, type=str, help='only run \
