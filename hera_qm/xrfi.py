@@ -903,10 +903,11 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     return uvf_f
 
 
-def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
+def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3., detrend=False):
     """Flag on a "waterfall" type UVFlag in "metric" mode.
 
     Use median to collapses to one dimension, thresholds, then broadcasts back to waterfall.
+    Uses the 1D watershed algorithm to look for moderate outliers adjacent to stronger outliers.
 
     Parameters
     ----------
@@ -914,11 +915,17 @@ def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
         A UVFlag object in 'metric' mode (i.e., number of sigma data is from middle),
         and type 'waterfall'.
     nsig_f : float, optional
-        The number of sigma above which to flag channels. Default is 5.0.
+        The number of sigma above which to flag channels. Default is 7.0.
     nsig_t : float, optional
-        The number of sigma above which to flag integrations. Default is 5.0.
+        The number of sigma above which to flag integrations. Default is 7.0.
+    nsig_f_adj : float, optional
+        The number of sigma above which to flag channels if they neighbor flagged channels.
+        Default is 3.0.
+    nsig_t_adj : float, optional
+        The number of sigma above which to flag integrations if they neighbor flagged integrations.
+        Default is 3.0.
     detrend : bool, optional
-        Whether to detrend the 1D data before calculating zscores. Default is True.
+        Whether to detrend the 1D data before calculating zscores. Default is False.
 
     Returns
     -------
@@ -948,8 +955,10 @@ def threshold_wf(uvf_m, nsig_f=5.0, nsig_t=5.0, detrend=True):
     tseries = np.ma.median(data, axis=(1, 2))
     ztseries = modzscore_1d(tseries, detrend=detrend)
     # Flag based on zscores and thresholds
-    uvf_f.flag_array[:, np.abs(zspec) >= nsig_f, :] = True
-    uvf_f.flag_array[np.abs(ztseries) >= nsig_t, :, :] = True
+    f_flags = _ws_flag_1D(zspec, np.abs(zspec) >= nsig_f, nsig=nsig_f_adj)
+    uvf_f.flag_array[:, f_flags, :] = True
+    t_flags = _ws_flag_1D(ztseries, np.abs(ztseries) >= nsig_t, nsig=nsig_t_adj)
+    uvf_f.flag_array[t_flags, :, :] = True
 
     return uvf_f
 
@@ -1513,6 +1522,9 @@ def day_threshold_run(data_files, history, kt_size=8, kf_size=8, nsig_f=5.0, nsi
         The number of sigma above which to flag channels. Default is 5.0.
     nsig_t : float, optional
         The number of sigma above which to flag integrations. Default is 5.0.
+    nsig_t_adj : float, optional
+        The number of sigma above which to flag integrations if they neighbor flagged integrations.
+        Default is 3.0.
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
 
