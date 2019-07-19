@@ -718,7 +718,7 @@ def _ws_flag_waterfall(metric, fin, nsig=2.):
             kernel = {1: [1, 0, 1], 2: [[0, 1, 0], [1, 0, 1], [0, 1, 0]]}[metric.ndim]
         except KeyError:
             raise ValueError('Data must be 1D or 2D.')
-        is_neighbor_flagged = convolve(fout, kernel, mode='same', method='direct').astype(bool)
+        is_neighbor_flagged = convolve(fout, kernel, mode='same').astype(bool)
         fout |= (is_neighbor_flagged & (metric >= nsig))
         if np.sum(fout) == nflags:
             break
