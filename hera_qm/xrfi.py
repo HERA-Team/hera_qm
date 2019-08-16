@@ -1735,8 +1735,6 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
 
     # Apply to abs calfits
     uvc_a = UVCal()
-    # This is a terrible hack we need to fix when we have a select method.
-    uvf_file = uvf_total.copy()
     incal_ext = 'abs'
     outcal_ext = 'flagged_abs'
     for dfile in data_files:
@@ -1744,9 +1742,9 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         abs_in = '.'.join([basename, incal_ext, 'calfits'])
         abs_out = '.'.join([basename, outcal_ext, 'calfits'])
         uvc_a.read_calfits(abs_in)
-        time_inds = np.searchsorted(uvf_total.time_array, uvc_a.time_array)
-        # select the times for this file
-        uvf_file = uvf_total.select(blt_inds=time_inds, inplace=False)
+
+        # select the times from the file we are going to flag
+        uvf_file = uvf_total.select(times=uvc_a.time_array, inplace=False)
 
         flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
                    run_check=run_check, check_extra=check_extra,
