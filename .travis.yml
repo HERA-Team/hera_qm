@@ -6,6 +6,8 @@ python:
 env:
   global:
     - COVERALLS_PARALLEL=true
+services:
+  - xvfb
 install:
   # ensure that we have the full tag information available for version.py
   - git fetch --unshallow --tags
@@ -37,9 +39,6 @@ install:
   - pip install git+https://github.com/HERA-Team/hera_cal.git
   - conda list
 before_script:
-  - "export DISPLAY=:99.0"
-  - "sh -e /etc/init.d/xvfb start"
-  - sleep 3
   - python -c "from pyuvdata import version; version.main()"
 script:
   - python -m pytest hera_qm --cov=hera_qm --cov-config=.coveragerc --cov-report xml:./coverage.xml --cov-report term
