@@ -38,7 +38,8 @@ install:
   - conda list
 before_script:
   - "export DISPLAY=:99.0"
-  - "sh -e /etc/init.d/xvfb start"
+  # - "sh -e /etc/init.d/xvfb start"
+  - xvfb-run
   - sleep 3
   - python -c "from pyuvdata import version; version.main()"
 script:
