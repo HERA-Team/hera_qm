@@ -14,9 +14,14 @@ from pyuvdata import utils as uvutils
 from .version import hera_qm_version_str
 from .metrics_io import process_ex_ants
 import warnings
-import collections
 from six.moves import range
 import glob
+import six
+
+if six.PY2:
+    from collections import Iterable
+else:
+    from collections.abc import Iterable
 
 
 #############################################################################
@@ -72,7 +77,7 @@ def flag_xants(uv, xants, inplace=True):
     if isinstance(uvo, UVFlag) and uvo.mode != 'flag':
         raise ValueError('Cannot flag antennas on UVFlag obejct in mode ' + uvo.mode)
 
-    if not isinstance(xants, collections.Iterable):
+    if not isinstance(xants, Iterable):
         xants = [xants]
     if issubclass(uvo.__class__, UVData) or (isinstance(uvo, UVFlag) and uvo.type == 'baseline'):
         all_ants = np.unique(np.append(uvo.ant_1_array, uvo.ant_2_array))
@@ -1539,8 +1544,9 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         abs_out = '.'.join([basename, outcal_ext, 'calfits'])
         uvc_a.read_calfits(abs_in)
         time_inds = np.searchsorted(uvf_total.time_array, uvc_a.time_array)
-        # Again, this needs to be fixed.
-        uvf_file.flag_array = uvf_total.flag_array[time_inds, :, :].copy()
+        # select the times for this file
+        uvf_file = uvf_total.select(blt_inds=time_inds, inplace=False)
+
         flag_apply(uvf_file, uvc_a, force_pol=True, history=history)
         uvc_a.write_calfits(abs_out, clobber=clobber)
 
