@@ -28,7 +28,8 @@ else:
 # Utility functions
 #############################################################################
 
-def flag_xants(uv, xants, inplace=True):
+def flag_xants(uv, xants, inplace=True, run_check=True,
+               check_extra=True, run_check_acceptability=True):
     """Flag visibilities containing specified antennas.
 
     Parameters
@@ -41,6 +42,14 @@ def flag_xants(uv, xants, inplace=True):
     inplace : bool, optional
         If True, apply flags to the uv object. If False, return a UVFlag object
         with only xants flaged. Default is True.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -68,7 +77,8 @@ def flag_xants(uv, xants, inplace=True):
     if not inplace:
         if isinstance(uv, UVFlag):
             uvo = uv.copy()
-            uvo.to_flag()
+            uvo.to_flag(run_check=run_check, check_extra=check_extra,
+                        run_check_acceptability=run_check_acceptability)
         else:
             uvo = UVFlag(uv, mode='flag')
     else:
@@ -563,7 +573,8 @@ algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': d
 
 
 def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method='quadmean',
-                   inplace=True):
+                   inplace=True, run_check=True, check_extra=True,
+                   run_check_acceptability=True):
     """Expand a set of flags using a watershed algorithm.
 
     This function uses a UVFlag object in 'metric' mode (i.e. how many sigma the data
@@ -590,6 +601,14 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
         Default is "quadmean".
     inplace : bool, optional
         If True, update uvf_f. If False, create a new flag object. Default is True.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -681,6 +700,10 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
             farr[:, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_t).reshape(-1, 1, 1)
     else:
         raise ValueError('Unknown UVFlag type: ' + uvf_m.type)
+
+    if run_check:
+        uvf.check(check_extra=check_extra,
+                  run_check_acceptability=run_check_acceptability)
     return uvf
 
 
@@ -772,7 +795,8 @@ def xrfi_waterfall(data, flags=None, Kt=8, Kf=8, nsig_init=6., nsig_adj=2.,
     return new_flags
 
 
-def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
+def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean',
+         run_check=True, check_extra=True, run_check_acceptability=True):
     """Create a set of flags based on a "metric" type UVFlag object.
 
     Parameters
@@ -789,6 +813,14 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     avg_method : {"mean", "absmean", "quadmean"}, optional
         Method to average metric data for frequency and time flagging. Default is
         "quadmean".
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -809,7 +841,8 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
 
     # initialize
     uvf_f = uvf_m.copy()
-    uvf_f.to_flag()
+    uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
+                  run_check_acceptability=run_check_acceptability)
 
     # Pixel flagging
     if nsig_p is not None:
@@ -864,7 +897,9 @@ def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean'):
     return uvf_f
 
 
-def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3., detrend=False):
+def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3.,
+                 detrend=False, run_check=True, check_extra=True,
+                 run_check_acceptability=True):
     """Flag on a "waterfall" type UVFlag in "metric" mode.
 
     Use median to collapses to one dimension, thresholds, then broadcasts back to waterfall.
@@ -887,6 +922,14 @@ def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3., detr
         Default is 3.0.
     detrend : bool, optional
         Whether to detrend the 1D data before calculating zscores. Default is False.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -906,7 +949,8 @@ def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3., detr
 
     # initialize
     uvf_f = uvf_m.copy()
-    uvf_f.to_flag()
+    uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
+                  run_check_acceptability=run_check_acceptability)
     # Mask invalid values. Masked medians are slow, but these are done only on waterfalls.
     data = np.ma.masked_array(uvf_m.metric_array, ~np.isfinite(uvf_m.metric_array))
     # Collapse to 1D and calculate z scores
@@ -925,7 +969,8 @@ def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3., detr
 
 
 def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
-               return_net_flags=False):
+               return_net_flags=False, run_check=True,
+               check_extra=True, run_check_acceptability=True):
     """Apply flags from UVFlag or list of UVFlag objects to UVData or UVCal.
 
     Parameters
@@ -947,6 +992,14 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
     return_net_flags : bool, optional
         If True, return a UVFlag object with net flags applied. If False, do not
         return net flags. Default is False.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -980,9 +1033,13 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
         if uvf_i.type == 'waterfall':
             uvf_i = uvf_i.copy()  # don't change the input object
             if expected_type == 'baseline':
-                uvf_i.to_baseline(uv, force_pol=force_pol)
+                uvf_i.to_baseline(uv, force_pol=force_pol, run_check=run_check,
+                                  check_extra=check_extra,
+                                  run_check_acceptability=run_check_acceptability)
             else:
-                uvf_i.to_antenna(uv, force_pol=force_pol)
+                uvf_i.to_antenna(uv, force_pol=force_pol, run_check=run_check,
+                                 check_extra=check_extra,
+                                 run_check_acceptability=run_check_acceptability)
         # Use built-in or function
         net_flags |= uvf_i
     uv.flag_array += net_flags.flag_array
@@ -996,7 +1053,8 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
 # Higher level functions that loop through data to calculate metrics
 #############################################################################
 
-def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
+def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
+                     check_extra=True, run_check_acceptability=True, **kwargs):
     """Make a UVFlag object of mode 'metric' from a UVData or UVCal object.
 
     Parameters
@@ -1009,6 +1067,14 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
     **kwargs : dict
         A dictionary of Keyword arguments that are passed to algorithm.
 
@@ -1049,7 +1115,9 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
                 uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
-            uvf.to_waterfall()
+            uvf.to_waterfall(run_check=run_check,
+                             check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
             for pi in range(uv.Njones):
                 data = np.abs(uv.total_quality_array[0, :, :, pi].T)
                 flags = np.all(uv.flag_array[:, 0, :, :, pi], axis=0).T
@@ -1068,6 +1136,9 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
                         raise ValueError('When calculating metric for UVCal object, '
                                          'cal_mode must be "gain", "chisq", or "tot_chisq".')
                     uvf.metric_array[ai, 0, :, :, pi] = alg_func(data, flags=flags, **kwargs).T
+    if run_check:
+        uvf.check(check_extra=check_extra,
+                  run_check_acceptability=run_check_acceptability)
     return uvf
 
 
@@ -1079,7 +1150,8 @@ def calculate_metric(uv, algorithm, cal_mode='gain', **kwargs):
 
 def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
                   freq_threshold=0.5, time_threshold=0.05, return_summary=False,
-                  cal_mode='gain'):
+                  cal_mode='gain', run_check=True, check_extra=True,
+                  run_check_acceptability=True):
     """Run the xrfi excision pipeline we used for H1C.
 
     This pipeline uses the detrending and watershed algorithms above.
@@ -1113,6 +1185,14 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -1124,16 +1204,24 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
         If return_summary is True, a UVFlag object with fraction of flags in uvf_f.
 
     """
-    uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, cal_mode=cal_mode)
-    uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None)
-    uvf_f = watershed_flag(uvf, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None)
+    uvf = calculate_metric(uv, 'detrend_medfilt', Kt=Kt, Kf=Kf, cal_mode=cal_mode,
+                           run_check=run_check, check_extra=check_extra,
+                           run_check_acceptability=run_check_acceptability)
+    uvf_f = flag(uvf, nsig_p=sig_init, nsig_f=None, nsig_t=None,
+                 run_check=run_check, check_extra=check_extra,
+                 run_check_acceptability=run_check_acceptability)
+    uvf_f = watershed_flag(uvf, uvf_f, nsig_p=sig_adj, nsig_f=None, nsig_t=None,
+                           run_check=run_check, check_extra=check_extra,
+                           run_check_acceptability=run_check_acceptability)
     uvf_w = uvf_f.copy()
     uvf_w.to_waterfall()
     # I realize the naming convention has flipped, which results in nsig_f=time_threshold.
     # time_threshold is defined as fraction of time flagged to flag a given channel.
     # nsig_f is defined as significance required to flag a channel.
     uvf_wf = flag(uvf_w, nsig_p=px_threshold, nsig_f=time_threshold,
-                  nsig_t=freq_threshold)
+                  nsig_t=freq_threshold, run_check=run_check,
+                  check_extra=check_extra,
+                  run_check_acceptability=run_check_acceptability)
 
     if return_summary:
         return uvf_f, uvf_wf, uvf_w
@@ -1142,7 +1230,8 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 
 
 def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
-              sig_init=6.0, sig_adj=2.0, label=''):
+              sig_init=6.0, sig_adj=2.0, label='', run_check=True,
+              check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
@@ -1171,6 +1260,14 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
     label: str, optional
         Label to be added to UVFlag objects.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -1181,10 +1278,16 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         A UVFlag object with flags after watershed.
 
     """
-    flag_xants(uv, xants)
-    uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode)
+    flag_xants(uv, xants, run_check=run_check,
+               check_extra=check_extra,
+               run_check_acceptability=run_check_acceptability)
+    uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode,
+                             run_check=run_check, check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
     uvf_m.label = label
-    uvf_m.to_waterfall(keep_pol=False)
+    uvf_m.to_waterfall(keep_pol=False, run_check=run_check,
+                       check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
     # This next line resets the weights to 1 (with data) or 0 (no data) to equally
     # combine with the other metrics.
     uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
@@ -1196,14 +1299,19 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     # Flag and watershed on each data product individually.
     # That is, on each complete file (e.g. calibration gains), not on individual
     # antennas/baselines. We don't broadcast until the very end.
-    uvf_f = flag(uvf_m, nsig_p=sig_init)
-    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
+    uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
+                 check_extra=check_extra,
+                 run_check_acceptability=run_check_acceptability)
+    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False,
+                             run_check=run_check, check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
     uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
 
 def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
-                sig_adj=2.0, label=''):
+                sig_adj=2.0, label='', run_check=True,
+                check_extra=True, run_check_acceptability=True):
     """Zero-center and normalize the full total chi squared array, flag, and watershed.
 
     Parameters
@@ -1220,6 +1328,14 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
         The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
     label: str, optional
         Label to be added to UVFlag objects.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -1230,9 +1346,13 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
         A UVFlag object with flags after watershed.
 
     """
-    uvf_m = calculate_metric(uv, alg, cal_mode='tot_chisq', modified=modified)
+    uvf_m = calculate_metric(uv, alg, cal_mode='tot_chisq', modified=modified,
+                             run_check=run_check, check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
     uvf_m.label = label
-    uvf_m.to_waterfall(keep_pol=False)
+    uvf_m.to_waterfall(keep_pol=False, run_check=run_check,
+                       check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
     # This next line resets the weights to 1 (with data) or 0 (no data) to equally
     # combine with the other metrics.
     uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
@@ -1241,8 +1361,12 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
                                            flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
     # Flag and watershed on waterfall
-    uvf_f = flag(uvf_m, nsig_p=sig_init)
-    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False)
+    uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
+                 check_extra=check_extra,
+                 run_check_acceptability=run_check_acceptability)
+    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False,
+                             run_check=run_check, check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
     uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
@@ -1255,7 +1379,8 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 
 def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
-             ex_ants=None, metrics_file=None, clobber=False):
+             ex_ants=None, metrics_file=None, clobber=False, run_check=True,
+             check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
@@ -1303,6 +1428,14 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         no antennas will be excluded).
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -1320,33 +1453,53 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
     uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Abscal gains, round 1.')
+                                label='Abscal gains, round 1.',
+                                run_check=run_check,
+                                check_extra=check_extra,
+                                run_check_acceptability=run_check_acceptability)
     uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Abscal chisq, round 1.')
+                                label='Abscal chisq, round 1.',
+                                run_check=run_check,
+                                check_extra=check_extra,
+                                run_check_acceptability=run_check_acceptability)
 
     # Calculate metric on omnical data
     uvc_o = UVCal()
     uvc_o.read_calfits(ocalfits_file)
-    flag_apply(uvf_apriori, uvc_o, keep_existing=True)
+    flag_apply(uvf_apriori, uvc_o, keep_existing=True, run_check=run_check,
+               check_extra=check_extra,
+               run_check_acceptability=run_check_acceptability)
     uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Omnical gains, round 1.')
+                                label='Omnical gains, round 1.',
+                                run_check=run_check,
+                                check_extra=check_extra,
+                                run_check_acceptability=run_check_acceptability)
     uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Omnical chisq, round 1.')
+                                label='Omnical chisq, round 1.',
+                                run_check=run_check,
+                                check_extra=check_extra,
+                                run_check_acceptability=run_check_acceptability)
 
     # Calculate metric on model vis
     uv_v = UVData()
     uv_v.read(model_file)
     uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
                               sig_init=sig_init, sig_adj=sig_adj,
-                              label='Omnical visibility solutions, round 1.')
+                              label='Omnical visibility solutions, round 1.',
+                              run_check=run_check,
+                              check_extra=check_extra,
+                              run_check_acceptability=run_check_acceptability)
 
     # Get the absolute chi-squared values
     uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
                                          sig_init=sig_init, sig_adj=sig_adj,
-                                         label='Renormalized chisq, round 1.')
+                                         label='Renormalized chisq, round 1.',
+                                         run_check=run_check,
+                                         check_extra=check_extra,
+                                         run_check_acceptability=run_check_acceptability)
 
     # Combine the metrics together
     uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax, uvf_chisq],
@@ -1358,12 +1511,18 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
                                                  Kt=kt_size, Kf=kf_size)
 
     # Flag on combined metrics
-    uvf_f = flag(uvf_metrics, nsig_p=sig_init)
-    uvf_fws = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False)
+    uvf_f = flag(uvf_metrics, nsig_p=sig_init, run_check=run_check,
+                 check_extra=check_extra,
+                 run_check_acceptability=run_check_acceptability)
+    uvf_fws = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False,
+                             run_check=run_check, check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
     uvf_fws.label = 'Flags from combined metrics, round 1.'
 
     # OR everything together for initial flags
-    uvf_apriori.to_waterfall(method='and', keep_pol=False)
+    uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                             check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
     uvf_init = (uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf
                 | uvf_chisq_f | uvf_apriori)
     uvf_init.label = 'ORd flags, round 1.'
@@ -1373,40 +1532,63 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     uv_d = UVData()
     uv_d.read(data_file)
     for uv in [uvc_o, uvc_a, uv_v, uv_d]:
-        flag_apply(uvf_init, uv, keep_existing=True, force_pol=True)
+        flag_apply(uvf_init, uv, keep_existing=True, force_pol=True,
+                   run_check=run_check, check_extra=check_extra,
+                   run_check_acceptability=run_check_acceptability)
 
     # Do next round of metrics
     # Change to meanfilt because it can mask flagged pixels
     # Calculate metric on abscal data
     uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Abscal gains, round 2.')
+                                  label='Abscal gains, round 2.',
+                                  run_check=run_check,
+                                  check_extra=check_extra,
+                                  run_check_acceptability=run_check_acceptability)
     uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Abscal chisq, round 2.')
+                                  label='Abscal chisq, round 2.',
+                                  run_check=run_check,
+                                  check_extra=check_extra,
+                                  run_check_acceptability=run_check_acceptability)
 
     # Calculate metric on omnical data
     uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Omnical gains, round 2.')
+                                  label='Omnical gains, round 2.',
+                                  run_check=run_check,
+                                  check_extra=check_extra,
+                                  run_check_acceptability=run_check_acceptability)
     uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Omnical chisq, round 2.')
+                                  label='Omnical chisq, round 2.',
+                                  run_check=run_check,
+                                  check_extra=check_extra,
+                                  run_check_acceptability=run_check_acceptability)
 
     # Calculate metric on model vis
     uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
                                 sig_init=sig_init, sig_adj=sig_adj,
-                                label='Omnical visibility solutions, round 2.')
+                                label='Omnical visibility solutions, round 2.',
+                                run_check=run_check,
+                                check_extra=check_extra,
+                                run_check_acceptability=run_check_acceptability)
 
     # Calculate metric on data file
     uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
                                 sig_init=sig_init, sig_adj=sig_adj,
-                                label='Data, round 2.')
+                                label='Data, round 2.',
+                                run_check=run_check,
+                                check_extra=check_extra,
+                                run_check_acceptability=run_check_acceptability)
 
     # Get the absolute chi-squared values
     uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
                                            sig_init=sig_init, sig_adj=sig_adj,
-                                           label='Renormalized chisq, round 2.')
+                                           label='Renormalized chisq, round 2.',
+                                           run_check=run_check,
+                                           check_extra=check_extra,
+                                           run_check_acceptability=run_check_acceptability)
 
     # Combine the metrics together
     uvf_metrics2 = uvf_d2.combine_metrics([uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2,
@@ -1419,8 +1601,13 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
                                                   Kt=kt_size, Kf=kf_size)
 
     # Flag on combined metrics
-    uvf_f2 = flag(uvf_metrics2, nsig_p=sig_init)
-    uvf_fws2 = watershed_flag(uvf_metrics2, uvf_f2, nsig_p=sig_adj, inplace=False)
+    uvf_f2 = flag(uvf_metrics2, nsig_p=sig_init, run_check=run_check,
+                  check_extra=check_extra,
+                  run_check_acceptability=run_check_acceptability)
+    uvf_fws2 = watershed_flag(uvf_metrics2, uvf_f2, nsig_p=sig_adj,
+                              inplace=False, run_check=run_check,
+                              check_extra=check_extra,
+                              run_check_acceptability=run_check_acceptability)
     uvf_fws2.label = 'Flags from combined metrics, round 2.'
     uvf_combined2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
                      | uvf_vf2 | uvf_df2 | uvf_chisq_f2 | uvf_init)
@@ -1454,7 +1641,9 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
 
 
 def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
-                      nsig_f_adj=3., nsig_t_adj=3., clobber=False):
+                      nsig_f_adj=3., nsig_t_adj=3., clobber=False,
+                      run_check=True, check_extra=True,
+                      run_check_acceptability=True):
     """Apply thresholding across all times/frequencies, using a full day of data.
 
     This function will write UVFlag files for each data input (omnical gains,
@@ -1485,6 +1674,14 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         Default is 3.0.
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -1519,10 +1716,14 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
 
     # Threshold each metric and save flag object
     uvf_total = filled_metrics[0].copy()
-    uvf_total.to_flag()
+    uvf_total.to_flag(run_check=run_check, check_extra=check_extra,
+                      run_check_acceptability=run_check_acceptability)
     for i, uvf_m in enumerate(filled_metrics):
         uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t,
-                             nsig_f_adj=nsig_f_adj, nsig_t_adj=nsig_t_adj, detrend=False)
+                             nsig_f_adj=nsig_f_adj, nsig_t_adj=nsig_t_adj,
+                             detrend=False, run_check=run_check,
+                             check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
         outfile = '.'.join([basename, types[i] + '_threshold_flags.h5'])
         outpath = os.path.join(outdir, outfile)
         uvf_f.write(outpath, clobber=clobber)
@@ -1547,7 +1748,9 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         # select the times for this file
         uvf_file = uvf_total.select(blt_inds=time_inds, inplace=False)
 
-        flag_apply(uvf_file, uvc_a, force_pol=True, history=history)
+        flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
+                   run_check=run_check, check_extra=check_extra,
+                   run_check_acceptability=run_check_acceptability)
         uvc_a.write_calfits(abs_out, clobber=clobber)
 
 
@@ -1556,7 +1759,8 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
                  model_file=None, model_file_format='uvfits',
                  calfits_file=None, kt_size=8, kf_size=8, sig_init=6.0, sig_adj=2.0,
                  px_threshold=0.2, freq_threshold=0.5, time_threshold=0.05,
-                 ex_ants=None, metrics_file=None, filename=None):
+                 ex_ants=None, metrics_file=None, filename=None, run_check=True,
+                 check_extra=True, run_check_acceptability=True):
     """Run the RFI-flagging algorithm from H1C and store results in npz files.
 
     This function runs on a single data file, and optionally calibration files, and
@@ -1620,6 +1824,14 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         visibilities formed with these antennas will be set to True.
     filename : str, optional
         The file for which to flag RFI (only one file allowed).
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -1667,11 +1879,14 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     if indata is not None:
         # Flag visibilities corresponding to specified antennas
         xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
-        flag_xants(uvd, xants)
+        flag_xants(uvd, xants, run_check=run_check, check_extra=check_extra,
+                   run_check_acceptability=run_check_acceptability)
         uvf_f, uvf_wf, uvf_w = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                              sig_adj=sig_adj, px_threshold=px_threshold,
                                              freq_threshold=freq_threshold, time_threshold=time_threshold,
-                                             return_summary=True)
+                                             return_summary=True, run_check=run_check,
+                                             check_extra=check_extra,
+                                             run_check_acceptability=run_check_acceptability)
         dirname = resolve_xrfi_path(xrfi_path, filename)
         basename = qm_utils.strip_extension(os.path.basename(filename))
         # Save watersheded flags
@@ -1702,7 +1917,10 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
                                  'the data file.')
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvm, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
-                                      freq_threshold=freq_threshold, time_threshold=time_threshold)
+                                      freq_threshold=freq_threshold, time_threshold=time_threshold,
+                                      run_check=run_check,
+                                      check_extra=check_extra,
+                                      run_check_acceptability=run_check_acceptability)
         dirname = resolve_xrfi_path(xrfi_path, model_file)
         # Only save thresholded waterfall
         basename = qm_utils.strip_extension(os.path.basename(model_file))
@@ -1724,7 +1942,10 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         # By default, runs on gains
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
-                                      freq_threshold=freq_threshold, time_threshold=time_threshold)
+                                      freq_threshold=freq_threshold, time_threshold=time_threshold,
+                                      run_check=run_check,
+                                      check_extra=check_extra,
+                                      run_check_acceptability=run_check_acceptability)
         dirname = resolve_xrfi_path(xrfi_path, calfits_file)
         basename = qm_utils.strip_extension(os.path.basename(calfits_file))
         outfile = '.'.join([basename, 'g', extension])
@@ -1735,7 +1956,9 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold,
-                                      cal_mode='chisq')
+                                      cal_mode='chisq', run_check=run_check,
+                                      check_extra=check_extra,
+                                      run_check_acceptability=run_check_acceptability)
         outfile = '.'.join([basename, 'x', extension])
         outpath = os.path.join(dirname, outfile)
         uvf_wf.history += history
@@ -1747,7 +1970,8 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
 def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
                    outfile_format='miriad', extension='R', overwrite=False,
                    flag_file=None, waterfalls=None, output_uvflag=True,
-                   output_uvflag_ext='flags.h5'):
+                   output_uvflag_ext='flags.h5', run_check=True,
+                   check_extra=True, run_check_acceptability=True):
     """Apply flags in the fashion of H1C.
 
     Read in a flag array and optionally several waterfall flags, and insert into
@@ -1780,6 +2004,14 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
         be identical to what is stored in the data.
     output_uvflag_ext : str, optional
         The extension to be appended to input file name. Default is "flags.h5".
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -1817,7 +2049,9 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
             waterfalls = waterfalls.split(',')
         full_list += waterfalls
 
-    uvf = flag_apply(full_list, uvd, force_pol=True, return_net_flags=True)
+    uvf = flag_apply(full_list, uvd, force_pol=True, return_net_flags=True,
+                     run_check=run_check, check_extra=check_extra,
+                     run_check_acceptability=run_check_acceptability)
 
     # save output when we're done
     dirname = resolve_xrfi_path(xrfi_path, filename)

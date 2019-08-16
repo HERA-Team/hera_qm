@@ -1310,6 +1310,27 @@ def test_threshold_wf_detrend(fake_waterfall):
     assert not uvf.flag_array[50].all()
 
 
+def test_threshold_wf_detrend_no_check():
+    # generate a dummy metric waterfall
+    np.random.seed(0)
+    uvm = UVFlag(test_f_file)
+    uvm.to_waterfall()
+
+    # populate with noise and add bad times / channels
+    # Note we're breaking the object here to get larger time dimension. But should be ok for test.
+    uvm.metric_array = np.random.chisquare(100, 10000).reshape((100, 100, 1)) / 100
+
+    # test with detrend
+    uvm.metric_array[50, :] += .5  # should get this
+    uvm.metric_array += .01 * np.arange(100).reshape((100, 1, 1))
+    uvf = xrfi.threshold_wf(uvm, nsig_f=5, nsig_t=5, detrend=True,
+                            run_check=False)
+    assert uvf.flag_array[50].all()
+    uvf = xrfi.threshold_wf(uvm, nsig_f=5, nsig_t=5, detrend=False,
+                            run_check=False)
+    assert not uvf.flag_array[50].all()
+
+
 def test_threshold_wf_exceptions():
     # generate a dummy metric waterfall
     np.random.seed(0)
