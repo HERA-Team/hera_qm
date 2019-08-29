@@ -973,6 +973,39 @@ class AntennaMetrics():
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
 
+def reds_from_file(filename, vis_format='miriad'):
+    """Get the redundant baseline pairs from a file.
+
+    This is a wrapper around hera_cal.redcal.get_pos_reds that doesn't read
+    the data file if it's possible to only read metadata.
+
+    Parameters
+    ----------
+    filename : str
+        The file to get reds from.
+    vis_format : {'miriad', 'uvh5', 'uvfits', 'fhd', 'ms'}, optional
+        Format of the data file. Default is 'miriad'.
+
+    Returns
+    -------
+    reds : list of lists of tuples
+        Each tuple represents antenna pairs. These are compiled in a list within
+        a redundant group, and the outer list is all the redundant groups.
+        See hera_cal.redcal.get_pos_reds.
+
+    """
+    from hera_cal.io import HERAData
+    from hera_cal.redcal import get_pos_reds
+
+    hd = HERAData(filename, filetype=vis_format)
+    if hd.antpos is None:
+        reds = get_pos_reds(hd.read()[0].antpos)
+    else:
+        reds = get_pos_reds(hd.antpos)
+    del hd
+    return reds
+
+
 def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
                     deadCut=5.0, alwaysDeadCut=10.0, metrics_path='',
                     extension='.ant_metrics.hdf5', vis_format='miriad',
@@ -1032,9 +1065,6 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
     None
 
     """
-    from hera_cal.io import HERAData
-    from hera_cal.redcal import get_pos_reds
-
     # check the user asked to run anything
     if not any([run_mean_vij, run_red_corr, run_cross_pols]):
         raise AssertionError(("No Ant Metrics have been selected to run."
@@ -1052,9 +1082,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
                              'for any files provided')
 
     # get list of lists of redundant baselines, assuming redunancy information is the same for all files
-    hd = HERAData(fullpol_file_list[0][0], filetype=vis_format)
-    reds = get_pos_reds(hd.read()[0].antpos)
-    del hd
+    reds = reds_from_file(fullpol_file_list[0][0], vis_format=vis_format)
 
     # do the work
     for jd_list in fullpol_file_list:
