@@ -530,6 +530,32 @@ def test_totally_dead_ants(antmetrics_data):
         assert am2.removalIter[(deadant, antpol)] == -1
 
 
+def test_reds_from_file_read_file():
+    from hera_cal.io import HERAData
+    from hera_cal.redcal import get_pos_reds
+
+    # Miriad file will need to be read in
+    testfile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
+    reds = ant_metrics.reds_from_file(testfile, vis_format='miriad')
+    assert len(reds) > 1
+    hd = HERAData(testfile, filetype='miriad')
+    reds_check = get_pos_reds(hd.read()[0].antpos)
+    assert reds == reds_check
+
+
+def test_reds_from_file_no_read_file():
+    from hera_cal.io import HERAData
+    from hera_cal.redcal import get_pos_reds
+
+    # uvh5 file will not need to be read in
+    testfile = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvh5')
+    reds = ant_metrics.reds_from_file(testfile, vis_format='uvh5')
+    assert len(reds) > 1
+    hd = HERAData(testfile, filetype='uvh5')
+    reds_check = get_pos_reds(hd.antpos)
+    assert reds == reds_check
+
+
 def test_run_ant_metrics_no_files():
     # get argument object
     a = utils.get_metrics_ArgumentParser('ant_metrics')
