@@ -348,7 +348,8 @@ class FirstCalMetrics(object):
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_files)
 
-        self.pols = np.array([uvutils.polnum2str(jones) for jones in self.UVC.jones_array])
+        self.pols = np.array([uvutils.polnum2str(jones, x_orientation=self.UVC.x_orientation)
+                              for jones in self.UVC.jones_array])
         self.Npols = self.pols.size
 
         # get file prefix
