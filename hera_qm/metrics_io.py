@@ -379,7 +379,7 @@ def _parse_key(key):
         return int(str(key))
     except ValueError:
         # is key an antpol tuple?
-        antpol_regex = r"(\([0-9]*?, \'[xy]\'\))"
+        antpol_regex = r"(\([0-9]*?, \'[xyne]\'\))"
         matches = re.findall(antpol_regex, key)
         try:
             # split tuple into antenna number and polarization
@@ -541,7 +541,7 @@ def _parse_dict(input_str, value_type=int):
     """
     # use regex to extract keys and values
     # assumes keys are antpols and values are numbers
-    dict_regex = r'(\([0-9]*?, \'[xy]\'\)): (.*?)[,}]'
+    dict_regex = r'(\([0-9]*?, \'[xyne]\'\)): (.*?)[,}]'
     key_vals = re.findall(dict_regex, input_str)
 
     # initialize output
@@ -606,7 +606,7 @@ def _parse_list_of_antpols(input_str):
     """
     # use regex to extract entries
     # assumes list entries are antpols
-    list_regex = r"(\([0-9]*?, \'[xy]\'\))"
+    list_regex = r"(\([0-9]*?, \'[xyne]\'\))"
     entries = re.findall(list_regex, input_str)
 
     # initialize output
