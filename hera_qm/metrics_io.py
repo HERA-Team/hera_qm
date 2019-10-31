@@ -849,11 +849,13 @@ def _recursively_validate_dict(in_dict):
             in_dict[key] = _reds_dict_to_list(in_dict[key])
 
         if key in antpair_keys and key != 'reds':
-            in_dict[key] = list(map(tuple, in_dict[key]))
+            in_dict[key] = [tuple((int(a1), int(a2)))
+                            for pair in in_dict[key]
+                            for a1, a2 in pair]
 
         if key in antpol_keys:
-            in_dict[key] = [tuple((ant, qm_utils._bytes_to_str(pol)))
-                            if isinstance(pol, bytes) else tuple((ant, (pol)))
+            in_dict[key] = [tuple((int(ant), qm_utils._bytes_to_str(pol)))
+                            if isinstance(pol, bytes) else tuple((int(ant), (pol)))
                             for ant, pol in in_dict[key]]
 
         if key in known_string_keys and isinstance(in_dict[key], bytes):
@@ -863,7 +865,7 @@ def _recursively_validate_dict(in_dict):
             in_dict[key] = [qm_utils._bytes_to_str(n) if isinstance(n, bytes)
                             else n for n in in_dict[key]]
 
-        if isinstance(in_dict[key], np.int64):
+        if isinstance(in_dict[key], (np.int64, np.int32)):
             in_dict[key] = np.int(in_dict[key])
 
         if isinstance(in_dict[key], dict):
