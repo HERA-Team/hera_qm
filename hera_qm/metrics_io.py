@@ -293,6 +293,19 @@ def write_metric_file(filename, input_dict, overwrite=False):
 
             # Create group for metrics data in file
             mgrp = outfile.create_group('Metrics')
+            if isinstance(input_dict, OrderedDict):
+                mgrp.attrs['group_is_ordered'] = False
+                if isinstance(input_dict, OrderedDict):
+                    mgrp.attrs['group_is_ordered'] = True
+
+                    # Generate additional dataset in an ordered group to save
+                    # the order of the group
+                    key_order = np.array(list(input_dict.keys())).astype('S')
+                    key_set = mgrp.create_dataset('key_order', data=key_order)
+
+                    # Add boolean attribute to determine if key is a string
+                    # Used to parse keys saved to dicts when reading
+                    key_set.attrs['key_is_string'] = True
             mgrp.attrs['key_is_string'] = True
             _recursively_save_dict_to_group(outfile, "/Metrics/", input_dict)
 
