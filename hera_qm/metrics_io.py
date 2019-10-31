@@ -293,19 +293,18 @@ def write_metric_file(filename, input_dict, overwrite=False):
 
             # Create group for metrics data in file
             mgrp = outfile.create_group('Metrics')
+            mgrp.attrs['group_is_ordered'] = False
             if isinstance(input_dict, OrderedDict):
-                mgrp.attrs['group_is_ordered'] = False
-                if isinstance(input_dict, OrderedDict):
-                    mgrp.attrs['group_is_ordered'] = True
+                mgrp.attrs['group_is_ordered'] = True
 
-                    # Generate additional dataset in an ordered group to save
-                    # the order of the group
-                    key_order = np.array(list(input_dict.keys())).astype('S')
-                    key_set = mgrp.create_dataset('key_order', data=key_order)
+                # Generate additional dataset in an ordered group to save
+                # the order of the group
+                key_order = np.array(list(input_dict.keys())).astype('S')
+                key_set = mgrp.create_dataset('key_order', data=key_order)
 
-                    # Add boolean attribute to determine if key is a string
-                    # Used to parse keys saved to dicts when reading
-                    key_set.attrs['key_is_string'] = True
+                # Add boolean attribute to determine if key is a string
+                # Used to parse keys saved to dicts when reading
+                key_set.attrs['key_is_string'] = True
             mgrp.attrs['key_is_string'] = True
             _recursively_save_dict_to_group(outfile, "/Metrics/", input_dict)
 
@@ -903,7 +902,19 @@ def load_metric_file(filename):
     else:
         with h5py.File(filename, 'r') as infile:
             metric_dict = _recursively_load_dict_to_group(infile, "/Header/")
-            metric_dict.update(_recursively_load_dict_to_group(infile, "/Metrics/"))
+            metric_item = infile["/Metrics/"]
+            if hasattr(metric_item, 'attrs'):
+                if 'group_is_ordered' in metric_item.attrs:
+                    group_is_ordered = metric_item.attrs["group_is_ordered"]
+                else:
+                    group_is_ordered = False
+            else:
+                group_is_ordered = False
+            metric_dict.update(
+                _recursively_load_dict_to_group(infile, "/Metrics/",
+                                                group_is_ordered=group_is_ordered
+                                                )
+            )
 
     _recursively_validate_dict(metric_dict)
     return metric_dict
