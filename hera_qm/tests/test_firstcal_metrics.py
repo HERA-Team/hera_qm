@@ -45,27 +45,27 @@ def test_init(firstcal_setup):
 
 def test_run_metrics(firstcal_setup):
     firstcal_setup.FC.run_metrics(std_cut=1.0)
-    assert firstcal_setup.FC.metrics['yy']['good_sol'] is True
-    assert firstcal_setup.FC.metrics['yy']['bad_ants'] == []
-    assert 9 in firstcal_setup.FC.metrics['yy']['z_scores']
-    assert 9 in firstcal_setup.FC.metrics['yy']['ant_std']
-    assert 9 in firstcal_setup.FC.metrics['yy']['ant_avg']
-    assert 9 in firstcal_setup.FC.metrics['yy']['ants']
-    assert 9 in firstcal_setup.FC.metrics['yy']['z_scores']
-    assert 9 in firstcal_setup.FC.metrics['yy']['ant_z_scores']
-    assert np.isclose(1.0, firstcal_setup.FC.metrics['yy']['std_cut'])
-    assert np.isclose(firstcal_setup.FC.metrics['yy']['agg_std'], 0.044662349588061437)
-    assert np.isclose(firstcal_setup.FC.metrics['yy']['max_std'], 0.089829821120782846)
-    assert 'yy' == firstcal_setup.FC.metrics['yy']['pol']
+    assert firstcal_setup.FC.metrics['nn']['good_sol'] is True
+    assert firstcal_setup.FC.metrics['nn']['bad_ants'] == []
+    assert 9 in firstcal_setup.FC.metrics['nn']['z_scores']
+    assert 9 in firstcal_setup.FC.metrics['nn']['ant_std']
+    assert 9 in firstcal_setup.FC.metrics['nn']['ant_avg']
+    assert 9 in firstcal_setup.FC.metrics['nn']['ants']
+    assert 9 in firstcal_setup.FC.metrics['nn']['z_scores']
+    assert 9 in firstcal_setup.FC.metrics['nn']['ant_z_scores']
+    assert np.isclose(1.0, firstcal_setup.FC.metrics['nn']['std_cut'])
+    assert np.isclose(firstcal_setup.FC.metrics['nn']['agg_std'], 0.044662349588061437)
+    assert np.isclose(firstcal_setup.FC.metrics['nn']['max_std'], 0.089829821120782846)
+    assert 'nn' == firstcal_setup.FC.metrics['nn']['pol']
 
     # Test bad ants detection
     firstcal_setup.FC.delay_fluctuations[0, :] *= 1000
     firstcal_setup.FC.run_metrics()
-    assert firstcal_setup.FC.ants[0] == firstcal_setup.FC.metrics['yy']['bad_ants']
+    assert firstcal_setup.FC.ants[0] == firstcal_setup.FC.metrics['nn']['bad_ants']
     # Test bad full solution
     firstcal_setup.FC.delay_fluctuations[1:, :] *= 1000
     firstcal_setup.FC.run_metrics()
-    assert firstcal_setup.FC.metrics['yy']['good_sol'] is False
+    assert firstcal_setup.FC.metrics['nn']['good_sol'] is False
 
 
 def test_write_error_bad_type(firstcal_setup):
@@ -217,9 +217,9 @@ def test_rotated_metrics():
     FC = firstcal_metrics.FirstCalMetrics(infile)
     FC.run_metrics(std_cut=0.5)
     # test pickup of rotant key
-    assert 'rot_ants' in FC.metrics['xx'].keys()
+    assert 'rot_ants' in FC.metrics['ee'].keys()
     # test rotants is correct
-    assert [43] == FC.metrics['xx']['rot_ants']
+    assert [43] == FC.metrics['ee']['rot_ants']
 
 
 def test_delay_smoothing():
