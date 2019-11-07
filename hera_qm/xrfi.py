@@ -1640,6 +1640,104 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         uvf.write(outpath, clobber=clobber)
 
 
+def xrfi_h3ca_rtp_run(data_file, history, xrfi_path='', kt_size=8, kf_size=8,
+                      sig_init=5.0, sig_adj=2.0, ex_ants=None, metrics_file=None,
+                      clobber=False, run_check=True, check_extra=True,
+                      run_check_acceptability=True):
+    """Run the xrfi excision pipeline used for H3CA RTP.
+
+    This pipeline uses the detrending and watershed algorithms above.
+    The algorithm is run on the raw data only (unlike, e.g. H1C IDR2.2).
+    It is run twice - first to get an initial estimate of heavily contaminated
+    data, and a second time to get better estimate. The metrics and flags from both
+    rounds are stored in the xrfi_path (which defaults to a subdirectory, see
+    xrfi_path below). Also stored are the a priori flags.
+
+    Parameters
+    ----------
+    data_file : str
+        The raw visibility data file to flag.
+    history : str
+        The history string to include in files.
+    xrfi_path : str, optional
+        Path to save xrfi files to. Default is a subdirectory "{JD}/" inside
+        the same directory as data_file.
+    kt_size : int, optional
+        The size of kernel in time dimension for detrend in xrfi algorithm.
+        Default is 8.
+    kf_size : int, optional
+        Size of kernel in frequency dimension for detrend in xrfi algorithm.
+        Default is 8.
+    sig_init : float, optional
+        The starting number of sigmas to flag on. Default is 5.0.
+    sig_adj : float, optional
+        The number of sigmas to flag on for data adjacent to a flag.
+        Default is 2.0.
+    ex_ants : str, optional
+        A comma-separated list of antennas to exclude. Flags of visibilities formed
+        with these antennas will be set to True. Default is None (i.e., no antennas
+        will be excluded).
+    metrics_file : str, optional
+        Metrics file that contains a list of excluded antennas. Flags of visibilities
+        formed with these antennas will be set to True. Default is None (i.e.,
+        no antennas will be excluded).
+    clobber : bool, optional
+        If True, overwrite existing files. Default is False.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
+
+    Returns
+    -------
+    None
+
+    """
+    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    dirname = resolve_xrfi_path(xrfi_path, data_file, jd_subdir=True)
+    xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+
+    # Initial run on data
+    # Calculate metric on raw data
+    uvd = UVData()
+    uvd.read(data_file)
+    uvf_m1, uvf_f1 = xrfi_pipe(uvd, alg='detrend_medfilt', xants=xants,
+                               Kt=kt_size, Kf=kf_size,
+                               sig_init=sig_init, sig_adj=sig_adj,
+                               label='Raw data, round 1.',
+                               run_check=run_check,
+                               check_extra=check_extra,
+                               run_check_acceptability=run_check_acceptability)
+
+    # Second round -- use init flags to mask and recalculate everything
+    flag_apply(uvf_f1, uvd, keep_existing=True, force_pol=True,
+               run_check=run_check, check_extra=check_extra,
+               run_check_acceptability=run_check_acceptability)
+
+    # Calculate metric on data file
+    uvf_m2, uvf_f2 = xrfi_pipe(uvd, alg='detrend_meanfilt', xants=[],
+                               Kt=kt_size, Kf=kf_size,
+                               sig_init=sig_init, sig_adj=sig_adj,
+                               label='Raw data, round 2.',
+                               run_check=run_check,
+                               check_extra=check_extra,
+                               run_check_acceptability=run_check_acceptability)
+
+    # Write everything out
+    uvf_dict = {'metrics_1.h5': uvf_m1, 'flags_1.h5': uvf_f1,
+                'metrics_2.h5': uvf_m1, 'flags_2.h5': uvf_f1}
+
+    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    for ext, uvf in uvf_dict.items():
+        outfile = '.'.join([basename, ext])
+        outpath = os.path.join(dirname, outfile)
+        uvf.write(outpath, clobber=clobber)
+
+
 def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
                       nsig_f_adj=3., nsig_t_adj=3., clobber=False,
                       run_check=True, check_extra=True,
