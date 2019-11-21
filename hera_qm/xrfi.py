@@ -380,7 +380,7 @@ def detrend_medminfilt(data, flags=None, Kt=8, Kf=8):
     return out
 
 
-def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
+def detrend_medfilt(data, flags=None, Kt=8, Kf=8, pad=True):
     """Detrend array using a median filter.
 
     Parameters
@@ -396,6 +396,9 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
     Kf : int, optional
         The box size in frequency (second) dimension to apply medfilt over. Default
         is 8 pixels.
+    pad : bool, optional
+        If True (default), pad the data by mirroring at the edges by the size of
+        the kernel.
 
     Returns
     -------
@@ -407,8 +410,9 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
     from scipy.signal import medfilt2d
 
     Kt, Kf = _check_convolve_dims(data, Kt, Kf)
-    data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
-    data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
+    if pad:
+        data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
+        data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(data):
         d_sm_r = medfilt2d(data.real, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
         d_sm_i = medfilt2d(data.imag, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
@@ -421,10 +425,12 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
     sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
-    return out[Kt:-Kt, Kf:-Kf]
+    if pad:
+        out = out[Kt:-Kt, Kf:-Kf]
+    return out
 
 
-def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
+def detrend_meanfilt(data, flags=None, Kt=8, Kf=8, pad=True):
     """Detrend array using a mean filter.
 
     Parameters
@@ -439,6 +445,9 @@ def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
     Kf : int, optional
         The box size in frequency (second) dimension to apply medfilt over.
         Default is 8 pixels.
+    pad : bool, optional
+        If True (default), pad the data by mirroring at the edges by the size of
+        the kernel.
 
     Returns
     -------
@@ -451,19 +460,22 @@ def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
 
     Kt, Kf = _check_convolve_dims(data, Kt, Kf)
     kernel = np.ones((2 * Kt + 1, 2 * Kf + 1))
-    # do a mirror extend, like in scipy's convolve, which astropy doesn't support
-    data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
-    data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
-    if flags is not None:
-        flags = np.concatenate([flags[Kt - 1::-1], flags, flags[:-Kt - 1:-1]], axis=0)
-        flags = np.concatenate([flags[:, Kf - 1::-1], flags, flags[:, :-Kf - 1:-1]], axis=1)
+    if pad:
+        # do a mirror extend, like in scipy's convolve, which astropy doesn't support
+        data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
+        data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
+        if flags is not None:
+            flags = np.concatenate([flags[Kt - 1::-1], flags, flags[:-Kt - 1:-1]], axis=0)
+            flags = np.concatenate([flags[:, Kf - 1::-1], flags, flags[:, :-Kf - 1:-1]], axis=1)
     d_sm = convolve(data, kernel, mask=flags, boundary='extend')
     d_rs = data - d_sm
     d_sq = np.abs(d_rs)**2
     sig = np.sqrt(convolve(d_sq, kernel, mask=flags))
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
-    return out[Kt:-Kt, Kf:-Kf]
+    if pad:
+        out = out[Kt:-Kt, Kf:-Kf]
+    return out
 
 
 def zscore_full_array(data, flags=None, modified=False):
