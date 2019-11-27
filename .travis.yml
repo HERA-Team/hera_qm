@@ -33,10 +33,10 @@ install:
 
   # create environment and install dependencies
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
+  - conda env update -n test-environment -f environment.yml
   - source activate test-environment
   # grab newest pyuvdata just in case
   - pip install git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git
-  - conda env update -n test-environment -f environment.yaml
   # install a few extras that we need for tests
   - conda install matplotlib coveralls pycodestyle pydocstyle
   - conda list
