@@ -3,7 +3,6 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - nose
   - numpy>=1.10
   - pip
   - astropy>=2.0
@@ -16,5 +15,3 @@ dependencies:
   - pytest-cov
   - pip:
     - git+https://github.com/HERA-Team/hera_cal
-
-
