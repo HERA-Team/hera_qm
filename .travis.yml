@@ -43,8 +43,8 @@ install:
 before_script:
   - python -c "from pyuvdata import version; version.main()"
 script:
-  - python -m pytest hera_qm --cov=hera_qm --cov-config=.coveragerc --cov-report xml:./coverage.xml --cov-report term
-  - pycodestyle */*.py hera_qm/tests/*.py --ignore=E501,W503
+  - pytest --cov-report xml:./coverage.xml --cov-report term
+  - pycodestyle
   - pydocstyle hera_qm/*.py --convention=numpy
 after_success:
   - coveralls
