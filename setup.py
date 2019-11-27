@@ -1,10 +1,11 @@
 from setuptools import setup
-import os, sys
+import os
+import sys
 import os.path as op
 import json
 
 sys.path.append('hera_qm')
-import version
+import version  # noqa
 
 data = [version.git_origin, version.git_hash, version.git_description, version.git_branch]
 with open(op.join('hera_qm', 'GIT_INFO'), 'w') as outfile:
