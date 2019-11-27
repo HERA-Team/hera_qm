@@ -32,13 +32,13 @@ install:
   - conda info -a
 
   # create environment and install dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION coveralls
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - source activate test-environment
-  - conda install numpy scipy matplotlib astropy scikit-learn h5py coveralls aipy six pycodestyle pydocstyle pytest-cov
+  # grab newest pyuvdata just in case
   - pip install git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git
-  - pip install git+https://github.com/HERA-Team/linsolve.git
-  - pip install git+https://github.com/HERA-Team/uvtools.git
-  - pip install git+https://github.com/HERA-Team/hera_cal.git
+  - conda env update -n test-environment -f environment.yaml
+  # install a few extras that we need for tests
+  - conda install matplotlib coveralls pycodestyle pydocstyle
   - conda list
 before_script:
   - python -c "from pyuvdata import version; version.main()"
