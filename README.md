@@ -19,15 +19,15 @@ will also be flexible to enable the third goal, and we welcome contributions (se
 
 ## Installation
 Preferred method of installation for users is simply `pip install .`
-(or `pip install git+https://github.com/HERA-Team/hera_qm`). This will install 
+(or `pip install git+https://github.com/HERA-Team/hera_qm`). This will install
 required dependencies. See below for manual dependency management.
- 
+
 ### Dependencies
 If you are using `conda`, you may wish to install the following dependencies manually
 to avoid them being installed automatically by `pip`::
 
-    $ conda install -c conda-forge "numpy>=1.10" "astropy>=2.0" "aipy>=3.0rc2" h5py pyuvdata
-    
+    $ conda install -c conda-forge "numpy>=1.10" "astropy>=2.0.16" "aipy>=3.0rc2" h5py pyuvdata
+
 ### Developing
 If you are developing `hera_qm`, it is preferred that you do so in a fresh `conda`
 environment. The following commands will install all relevant development packages::
@@ -37,9 +37,9 @@ environment. The following commands will install all relevant development packag
     $ conda create -n hera_qm python=3
     $ conda activate hera_qm
     $ conda env update -n hera_qm -f environment.yml
-    $ pip install -e . 
+    $ pip install -e .
 
-This will install extra dependencies required for testing/development as well as the 
+This will install extra dependencies required for testing/development as well as the
 standard ones.
 
 ### Running Tests
