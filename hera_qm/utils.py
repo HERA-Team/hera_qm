@@ -417,7 +417,8 @@ def generate_fullpol_file_list(files, pol_list):
         # convert the polarization array to strings and compare with the
         # expected input.
         # If anyone file is not a full-pol file then this will be false.
-        input_pols = uvutils.polnum2str(uvd.polarization_array)
+        input_pols = uvutils.polnum2str(uvd.polarization_array,
+                                        x_orientation=uvd.x_orientation)
         full_pol_check = np.array_equal(np.sort(input_pols), np.sort(pol_list))
 
         if not full_pol_check:

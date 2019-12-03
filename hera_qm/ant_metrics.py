@@ -809,8 +809,8 @@ class AntennaMetrics():
 
         if run_red_corr:
             metNames.append('redCorr')
-
-            redCorr = self.red_corr_metrics(pols=['xx', 'yy'],
+            pols = [pol for pol in self.pols if pol[0] == pol[1]]
+            redCorr = self.red_corr_metrics(pols=pols,
                                             xants=self.xants,
                                             rawMetric=True)
             metVals.append(redCorr)
