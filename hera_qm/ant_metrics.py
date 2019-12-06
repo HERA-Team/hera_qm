@@ -3,9 +3,6 @@
 # Licensed under the MIT License
 
 """Class and algorithms to compute per Antenna metrics."""
-from __future__ import print_function, division, absolute_import
-
-from six.moves import zip, range
 import numpy as np
 from copy import deepcopy
 import os

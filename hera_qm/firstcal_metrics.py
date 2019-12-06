@@ -3,7 +3,6 @@
 # Licensed under the MIT License
 
 """FirstCal metrics."""
-from __future__ import print_function, division, absolute_import
 import numpy as np
 from pyuvdata import UVCal, utils as uvutils
 import astropy.stats as astats
@@ -12,7 +11,6 @@ from .version import hera_qm_version_str
 from . import utils, metrics_io
 import copy
 import os
-from six.moves import range
 
 try:
     from sklearn import gaussian_process as gp

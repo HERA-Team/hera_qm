@@ -3,8 +3,6 @@
 # Licensed under the MIT License
 
 """init file for hera_qm."""
-from __future__ import print_function, division, absolute_import
-
 from . import xrfi
 from . import vis_metrics
 from . import ant_metrics

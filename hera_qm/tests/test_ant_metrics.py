@@ -3,7 +3,6 @@
 # Licensed under the MIT License
 """Tests for the antenna_metrics module."""
 
-from __future__ import print_function
 import pytest
 import numpy as np
 import os

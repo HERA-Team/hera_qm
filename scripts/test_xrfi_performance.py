@@ -2,21 +2,12 @@
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
-from __future__ import print_statement, division, absolute_import
 import unittest
-import nose.tools as nt
-import glob
-import os
-import shutil
 import hera_qm.xrfi as xrfi
 import numpy as np
 import pylab as plt
 import hera_qm.tests as qmtest
 from inspect import getargspec
-import pyuvdata.tests as uvtest
-from pyuvdata import UVData
-import hera_qm.utils as utils
-from hera_qm.data import DATA_PATH
 
 np.random.seed(0)
 

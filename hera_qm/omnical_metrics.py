@@ -3,24 +3,16 @@
 # Licensed under the MIT License
 """Module for computing metrics on omnical calibration solutions."""
 
-from __future__ import print_function, division, absolute_import
 import numpy as np
 from pyuvdata import UVCal
 import astropy.stats as astats
 from collections import OrderedDict as odict
 from .version import hera_qm_version_str
 from . import utils
+import pickle as pkl
 import json
-import six
 import copy
 import os
-from six.moves import range
-if six.PY2:
-    # python2
-    import cPickle as pkl
-else:
-    # python3
-    import pickle as pkl
 
 
 def get_omnical_metrics_dict():

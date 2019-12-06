@@ -3,29 +3,21 @@
 # Licensed under the MIT License
 """Module for general purpose utility functions."""
 
-from __future__ import print_function, division, absolute_import
 import re
 import os
 import warnings
 import argparse
 import numpy as np
-from pyuvdata import UVCal, UVData
+from pyuvdata import UVData
 from pyuvdata import utils as uvutils
-from six.moves import range
-import six
 
-if six.PY2:
-    def _bytes_to_str(inbyte):
-        return inbyte
 
-    def _str_to_bytes(instr):
-        return instr
-else:
-    def _bytes_to_str(inbyte):
-        return inbyte.decode('utf8')
+def _bytes_to_str(inbyte):
+    return inbyte.decode('utf8')
 
-    def _str_to_bytes(instr):
-        return instr.encode('utf8')
+
+def _str_to_bytes(instr):
+    return instr.encode('utf8')
 
 
 # argument-generating function for *_run wrapper functions

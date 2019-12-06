@@ -3,25 +3,18 @@
 # Licensed under the MIT License
 """I/O Handler for all metrics that can be stored as (nested) dictionaries."""
 
-from __future__ import print_function, division, absolute_import
-
-from six.moves import range, map
 import json
 import os
 import h5py
 import warnings
 import numpy as np
+import pickle as pkl
 import copy
-import six
 import re
 from collections import OrderedDict
 from .version import hera_qm_version_str
 from . import utils as qm_utils
 
-if six.PY2:
-    import cPickle as pkl
-else:
-    import pickle as pkl
 
 # HDF5 casts all inputs to numpy arrays.
 # Define a custom numpy dtype for tuples we wish to preserve shape
@@ -121,7 +114,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
     """
     allowed_types = (np.ndarray, np.float, np.int,
-                     bytes, six.text_type, list, bool, np.bool_)
+                     bytes, str, list, bool, np.bool_)
     compressable_types = (np.ndarray, list)
     for key in in_dict:
         key_str = str(key)
@@ -153,7 +146,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
                                     "compatible dtype. Received this error: "
                                     "{1}".format(key, err))
             else:
-                if isinstance(in_dict[key], six.text_type):
+                if isinstance(in_dict[key], str):
                     in_dict[key] = qm_utils._str_to_bytes(in_dict[key])
                 dset = h5file[path].create_dataset(key_str, data=in_dict[key])
                 # Add boolean attribute to determine if key is a string
@@ -420,7 +413,7 @@ def _recursively_parse_json(in_dict):
     """
     def _pretty_print_dict(di):
         output = '{'
-        for key, val in six.iteritems(di):
+        for key, val in di.items():
             if isinstance(val, dict):
                 tmp = _pretty_print_dict(val)
                 if key in ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']:
@@ -477,7 +470,7 @@ def _recursively_parse_json(in_dict):
             elif isinstance(in_dict[key], (list, np.ndarray)):
                 try:
                     if len(in_dict[key]) > 0:
-                        if isinstance(in_dict[key][0], (six.text_type, np.int,
+                        if isinstance(in_dict[key][0], (str, np.int,
                                                         np.float, np.complex)):
                             try:
                                 out_dict[out_key] = [float(val)
