@@ -231,7 +231,6 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         # get y data
         ant_phs_std = np.array(list(metrics['ant_phs_std'].values()))
         phs_std_cut = metrics['phs_std_cut']
-        ant_phs_std_max = metrics['ant_phs_std_max']
         ymax = np.max([ant_phs_std.max() * 1.1, phs_std_cut * 1.2])
 
         # make grid and plot points
@@ -344,8 +343,8 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
                     color='green', alpha=0.1)
     p2 = ax.axhline(yloc, color='steelblue')
     p3 = ax.axhline(ycut, color='darkred')
-    p4 = ax.axhspan(ycut, ymax, color='darkred', alpha=0.2)
-    p5 = ax.plot(chisq_ant_std, **plot_kwargs)
+    ax.axhspan(ycut, ymax, color='darkred', alpha=0.2)
+    ax.plot(chisq_ant_std, **plot_kwargs)
     ax.legend([p2, p1, p3], ["avg std", "1-sigma", "std cut"], fontsize=12)
 
     # adjust axes
@@ -1013,7 +1012,6 @@ def omnical_metrics_run(files, args, history):
 
         abspath = os.path.abspath(filename)
         dirname = os.path.dirname(abspath)
-        basename = os.path.basename(abspath)
         if args.metrics_path == '':
             # default path is same directory as file
             metrics_path = dirname

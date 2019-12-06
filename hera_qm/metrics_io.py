@@ -480,7 +480,7 @@ def _recursively_parse_json(in_dict):
                                                      for val in in_dict[key]]
                     else:
                         out_dict[out_key] = in_dict[key]
-                except (SyntaxError, NameError) as err:
+                except (SyntaxError, NameError):
                     warnings.warn("The key: {0} has a value which "
                                   "could not be parsed, added"
                                   " the value as a string: {1}"

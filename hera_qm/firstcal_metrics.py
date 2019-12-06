@@ -249,8 +249,6 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
 
     elif plot_type == 'time_avg':
         # plot
-        cmap_func = plt.get_cmap(kwargs['cmap'])
-        cmap = cmap_func(np.linspace(0, 0.95, Nants))
         ax.grid(True, zorder=0)
         ax.bar(range(len(ant_z_scores)), ant_z_scores, align='center', color='steelblue', alpha=0.75,
                zorder=3)
@@ -286,6 +284,7 @@ class FirstCalMetrics(object):
     solutions.
 
     """
+
     # sklearn import statement
     sklearn_import = sklearn_import
 
@@ -874,7 +873,6 @@ def firstcal_metrics_run(files, args, history):
 
         abspath = os.path.abspath(filename)
         dirname = os.path.dirname(abspath)
-        basename = os.path.basename(abspath)
         if args.metrics_path == '':
             # default path is same directory as file
             metrics_path = dirname
