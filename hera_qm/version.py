@@ -43,7 +43,6 @@ def _get_git_output(args, capture_stderr=False):
     return data.decode('utf8')
 
 
-
 def construct_version_info():
     """Construct hera_qm version information.
 
