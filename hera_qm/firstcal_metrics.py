@@ -284,8 +284,8 @@ class FirstCalMetrics(object):
     The FirstCalMetrics class is used for holding firstcal data, running metrics,
     and plotting delay solutions. Currently it only supports single polarization
     solutions.
-    """
 
+    """
     # sklearn import statement
     sklearn_import = sklearn_import
 
@@ -341,6 +341,7 @@ class FirstCalMetrics(object):
             The version of the hera_qm module used to generate these metrics.
         history : str
             History to append to the metrics files when writing out files.
+
         """
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
@@ -833,6 +834,7 @@ class FirstCalMetrics(object):
             Plotting keyword arguments. Default is empty dict.
         save : bool, optional
             If True, save the image to fname. Default is False.
+
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') is False:
