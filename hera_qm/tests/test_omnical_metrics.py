@@ -4,7 +4,6 @@
 
 from hera_qm import omnical_metrics
 from hera_qm.data import DATA_PATH
-import hera_qm.tests as qmtest
 import os
 from hera_qm import utils
 import sys

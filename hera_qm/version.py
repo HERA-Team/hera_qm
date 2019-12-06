@@ -6,7 +6,6 @@
 import json
 import os
 import subprocess
-import sys
 
 hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
 

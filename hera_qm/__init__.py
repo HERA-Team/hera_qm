@@ -3,12 +3,12 @@
 # Licensed under the MIT License
 
 """init file for hera_qm."""
-from . import xrfi
-from . import vis_metrics
-from . import ant_metrics
-from . import firstcal_metrics
-from . import omnical_metrics
-from . import metrics_io
-from . import version
+from . import xrfi  # noqa
+from . import vis_metrics  # noqa
+from . import ant_metrics  # noqa
+from . import firstcal_metrics  # noqa
+from . import omnical_metrics  # noqa  # noqa
+from . import metrics_io  # noqa
+from . import version  # noqa
 
 __version__ = version.version
