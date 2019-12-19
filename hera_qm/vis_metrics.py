@@ -3,11 +3,9 @@
 # Licensed under the MIT License
 """Module for computing visibility metrics."""
 
-from __future__ import print_function, division, absolute_import
 import numpy as np
 from pyuvdata import UVData
 import copy
-from six.moves import range
 from . import utils
 from . import version
 

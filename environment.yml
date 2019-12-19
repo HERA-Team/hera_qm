@@ -7,7 +7,6 @@ dependencies:
   - pip
   - astropy>=2.0.16
   - h5py
-  - six
   - pyuvdata
   - scipy
   - pytest

@@ -3,7 +3,6 @@
 # Licensed under the MIT License
 
 import numpy as np
-import pytest
 
 np.random.seed(0)
 

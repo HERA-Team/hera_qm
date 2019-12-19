@@ -3,9 +3,9 @@
 # Licensed under the MIT License
 """Module for performing RFI identification and excision."""
 
-from __future__ import print_function, division, absolute_import
 import numpy as np
 import os
+from collections.abc import Iterable
 from pyuvdata import UVData
 from pyuvdata import UVCal
 from pyuvdata import UVFlag
@@ -14,14 +14,7 @@ from pyuvdata import utils as uvutils
 from .version import hera_qm_version_str
 from .metrics_io import process_ex_ants
 import warnings
-from six.moves import range
 import glob
-import six
-
-if six.PY2:
-    from collections import Iterable
-else:
-    from collections.abc import Iterable
 
 
 #############################################################################

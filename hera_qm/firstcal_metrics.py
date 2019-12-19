@@ -3,7 +3,6 @@
 # Licensed under the MIT License
 
 """FirstCal metrics."""
-from __future__ import print_function, division, absolute_import
 import numpy as np
 from pyuvdata import UVCal, utils as uvutils
 import astropy.stats as astats
@@ -12,7 +11,6 @@ from .version import hera_qm_version_str
 from . import utils, metrics_io
 import copy
 import os
-from six.moves import range
 
 try:
     from sklearn import gaussian_process as gp
@@ -251,8 +249,6 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
 
     elif plot_type == 'time_avg':
         # plot
-        cmap_func = plt.get_cmap(kwargs['cmap'])
-        cmap = cmap_func(np.linspace(0, 0.95, Nants))
         ax.grid(True, zorder=0)
         ax.bar(range(len(ant_z_scores)), ant_z_scores, align='center', color='steelblue', alpha=0.75,
                zorder=3)
@@ -286,6 +282,7 @@ class FirstCalMetrics(object):
     The FirstCalMetrics class is used for holding firstcal data, running metrics,
     and plotting delay solutions. Currently it only supports single polarization
     solutions.
+
     """
 
     # sklearn import statement
@@ -343,6 +340,7 @@ class FirstCalMetrics(object):
             The version of the hera_qm module used to generate these metrics.
         history : str
             History to append to the metrics files when writing out files.
+
         """
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
@@ -835,6 +833,7 @@ class FirstCalMetrics(object):
             Plotting keyword arguments. Default is empty dict.
         save : bool, optional
             If True, save the image to fname. Default is False.
+
         """
         # make sure metrics has been run
         if hasattr(self, 'metrics') is False:
@@ -874,7 +873,6 @@ def firstcal_metrics_run(files, args, history):
 
         abspath = os.path.abspath(filename)
         dirname = os.path.dirname(abspath)
-        basename = os.path.basename(abspath)
         if args.metrics_path == '':
             # default path is same directory as file
             metrics_path = dirname

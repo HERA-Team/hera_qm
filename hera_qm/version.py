@@ -6,10 +6,8 @@
 import json
 import os
 import subprocess
-import sys
 
 hera_qm_dir = os.path.dirname(os.path.realpath(__file__))
-PY2 = sys.version_info < (3, 0)
 
 
 def _get_git_output(args, capture_stderr=False):
@@ -41,15 +39,7 @@ def _get_git_output(args, capture_stderr=False):
 
     data = data.strip()
 
-    if PY2:
-        return data
     return data.decode('utf8')
-
-
-def _unicode_to_str(unicode_in):
-    if PY2:
-        return unicode_in.encode('utf8')
-    return unicode_in
 
 
 def construct_version_info():
@@ -69,7 +59,7 @@ def construct_version_info():
 
     """
     version_file = os.path.join(hera_qm_dir, 'VERSION')
-    version = _unicode_to_str(open(version_file).read().strip())
+    version = open(version_file).read().strip()
 
     try:
         git_origin = _get_git_output(['config', '--get', 'remote.origin.url'], capture_stderr=True)
@@ -81,7 +71,7 @@ def construct_version_info():
             # Check if a GIT_INFO file was created when installing package
             git_file = os.path.join(hera_qm_dir, 'GIT_INFO')
             with open(git_file) as data_file:
-                data = [_unicode_to_str(x) for x in json.loads(data_file.read().strip())]
+                data = [x for x in json.loads(data_file.read().strip())]
                 git_origin = data[0]
                 git_hash = data[1]
                 git_description = data[2]
@@ -107,7 +97,7 @@ git_branch = version_info['git_branch']
 
 # String to add to history of any files written with this version of pyuvdata
 hera_qm_version_str = ('hera_qm version: ' + version + '.')
-if git_hash is not '':
+if git_hash != '':
     hera_qm_version_str += ('  Git origin: ' + git_origin
                             + '.  Git hash: ' + git_hash
                             + '.  Git branch: ' + git_branch

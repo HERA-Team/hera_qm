@@ -3,9 +3,6 @@
 # Licensed under the MIT License
 
 """Class and algorithms to compute per Antenna metrics."""
-from __future__ import print_function, division, absolute_import
-
-from six.moves import zip, range
 import numpy as np
 from copy import deepcopy
 import os
@@ -26,6 +23,7 @@ def get_ant_metrics_dict():
     -------
     metrics_dict : dict
         Dictionary with metric names as keys and descriptions as values.
+
     """
     metrics_dict = {'ant_metrics_meanVij': 'Mean of the absolute value of all '
                                            'visibilities associated with an '
@@ -612,7 +610,7 @@ class AntennaMetrics():
         self.version_str = hera_qm_version_str
         self.history = ''
 
-        if len(self.antpols) is not 2 or len(self.pols) is not 4:
+        if len(self.antpols) != 2 or len(self.pols) != 4:
             raise ValueError('Missing polarization information. pols ='
                              + str(self.pols) + ' and antpols = '
                              + str(self.antpols))
