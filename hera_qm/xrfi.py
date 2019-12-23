@@ -26,6 +26,7 @@ else:
 # Utility functions
 #############################################################################
 
+
 def flag_xants(uv, xants, inplace=True, run_check=True,
                check_extra=True, run_check_acceptability=True):
     """Flag visibilities containing specified antennas.
