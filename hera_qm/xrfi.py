@@ -5,7 +5,6 @@
 
 import numpy as np
 import os
-from collections.abc import Iterable
 from pyuvdata import UVData
 from pyuvdata import UVCal
 from pyuvdata import UVFlag
@@ -16,6 +15,11 @@ from .metrics_io import process_ex_ants
 import warnings
 import glob
 
+import sys
+if sys.version_info.major < 3:
+    from collections import Iterable
+else:
+    from collections.abc import Iterable
 
 #############################################################################
 # Utility functions
