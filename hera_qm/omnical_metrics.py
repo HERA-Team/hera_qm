@@ -2,6 +2,7 @@
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """Module for computing metrics on omnical calibration solutions."""
+from __future__ import print_function
 
 import numpy as np
 from pyuvdata import UVCal

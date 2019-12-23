@@ -2,6 +2,7 @@
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """Generate version information for hera_qm."""
+from __future__ import print_function
 
 import json
 import os

@@ -3,6 +3,8 @@
 # Licensed under the MIT License
 
 """FirstCal metrics."""
+from __future__ import print_function
+
 import numpy as np
 from pyuvdata import UVCal, utils as uvutils
 import astropy.stats as astats
