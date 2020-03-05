@@ -926,13 +926,9 @@ class AntennaMetrics():
                     crossMetrics = self.allModzScores[last_iter]['meanVijXPol'].copy()
                 elif run_red_corr:
                     crossMetrics = self.allModzScores[last_iter]['redCorrXPol'].copy()
-                try:
-                    worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
-                    worstCrossCutRatio = (np.abs(crossMetrics[worstCrossAnt])
-                                          / crossCut)
-                except NameError:
-                    # mean_vij and red_corr were turned off
-                    pass
+                worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
+                worstCrossCutRatio = (np.abs(crossMetrics[worstCrossAnt])
+                                      / crossCut)
 
             # Find the single worst antenna, remove it, log it, and run again
             if (worstCrossCutRatio >= worstDeadCutRatio
