@@ -1089,7 +1089,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
 
     """
     # check the user asked to run anything
-    if not any([run_mean_vij, run_red_corr, run_cross_pols]):
+    if not any([run_mean_vij, run_red_corr]):
         raise AssertionError(("No Ant Metrics have been selected to run."
                               "Please set the correct keywords to run "
                               "the desired metrics."))
