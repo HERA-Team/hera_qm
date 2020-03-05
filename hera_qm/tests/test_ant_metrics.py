@@ -802,9 +802,7 @@ def test_ant_metrics_run_only_cross_pols():
                                                    'test_output'))
     arg5 = "--vis_format=miriad"
     arg6 = "--alwaysDeadCut=10"
-    arg7 = "--skip_mean_vij"
-    arg8 = "--skip_red_corr"
-    arg9 = "--run_cross_pols"
+    arg9 = "--run_cross_pols_only"
     arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
                           arg7, arg8, arg9])
 
