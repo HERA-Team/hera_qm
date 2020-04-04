@@ -796,8 +796,8 @@ class AntennaMetrics():
             are executed. Default is True. Individual rules are inherited from
             run_mean_vij and run_red_corr.
         run_cross_pols_only : bool, optional
-            Define if cross pol metrics are the *only* metrics to be run. Default
-            is False.
+            Define if cross pol metrics are the *only* metrics to be run.
+            Default is False.
 
         """
         # Compute all raw metrics
