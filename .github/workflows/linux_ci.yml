@@ -47,7 +47,6 @@ jobs:
         pytest --cov-report xml:./coverage.xml --cov-report term
         pycodestyle
         pydocstyle hera_qm/*.py --convention=numpy
-        coveralls
 
     - name: Coverall Parallel
       uses: coverallsapp/github-action@master
