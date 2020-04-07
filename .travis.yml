@@ -37,7 +37,7 @@ install:
   - conda install matplotlib coveralls pycodestyle pydocstyle
   - conda list
 before_script:
-  - python -c "from pyuvdata import version; version.main()"
+  - python -c "from pyuvdata import __version__; print(f'pyuvdata version is {__version__}')"
 script:
   - pytest --cov-report xml:./coverage.xml --cov-report term
   - pycodestyle

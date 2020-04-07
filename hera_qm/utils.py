@@ -98,6 +98,11 @@ def get_metrics_ArgumentParser(method_name):
                               'red_corr_cross_pol_metrics are run. '
                               'Default: True'))
         ap.set_defaults(run_cross_pols=True)
+
+        ap.add_argument('--run_cross_pols_only', action='store_true',
+                        dest='run_cross_pols_only', default=False,
+                        help=('Define if cross pol metrics are the *only* '
+                              'metrics to be run. Default is False.'))
     elif method_name == 'firstcal_metrics':
         ap.prog = 'firstcal_metrics.py'
         ap.add_argument('--std_cut', default=0.5, type=float,

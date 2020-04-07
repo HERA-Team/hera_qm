@@ -802,11 +802,85 @@ def test_ant_metrics_run_only_cross_pols():
                                                    'test_output'))
     arg5 = "--vis_format=miriad"
     arg6 = "--alwaysDeadCut=10"
-    arg7 = "--skip_mean_vij"
+    arg7 = "--run_cross_pols_only"
+    arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+
+    xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+    dest_file = os.path.join(DATA_PATH, 'test_output',
+                             'zen.2458002.47754.HH.ant_metrics.hdf5')
+    if os.path.exists(dest_file):
+        os.remove(dest_file)
+    cmd = ' '.join([arguments, xx_file])
+    args = a.parse_args(cmd.split())
+    history = cmd
+    pols = list(args.pol.split(','))
+    if os.path.exists(dest_file):
+        os.remove(dest_file)
+    ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
+                                args.deadCut, args.alwaysDeadCut,
+                                args.metrics_path,
+                                args.extension, args.vis_format,
+                                args.verbose, history=history,
+                                run_cross_pols_only=args.run_cross_pols_only)
+    assert os.path.exists(dest_file)
+    os.remove(dest_file)
+
+
+def test_ant_metrics_run_cross_pols_mean_vij_only():
+    # get arguments
+    a = utils.get_metrics_ArgumentParser('ant_metrics')
+    if DATA_PATH not in sys.path:
+        sys.path.append(DATA_PATH)
+    arg0 = "-p xx,yy,xy,yx"
+    arg1 = "--crossCut=5"
+    arg2 = "--deadCut=5"
+    arg3 = "--extension=.ant_metrics.hdf5"
+    arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+                                                   'test_output'))
+    arg5 = "--vis_format=miriad"
+    arg6 = "--alwaysDeadCut=10"
+    arg7 = "--run_cross_pols_only"
     arg8 = "--skip_red_corr"
-    arg9 = "--run_cross_pols"
-    arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6,
-                          arg7, arg8, arg9])
+    arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8])
+
+    xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+    dest_file = os.path.join(DATA_PATH, 'test_output',
+                             'zen.2458002.47754.HH.ant_metrics.hdf5')
+    if os.path.exists(dest_file):
+        os.remove(dest_file)
+    cmd = ' '.join([arguments, xx_file])
+    args = a.parse_args(cmd.split())
+    history = cmd
+    pols = list(args.pol.split(','))
+    if os.path.exists(dest_file):
+        os.remove(dest_file)
+    ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
+                                args.deadCut, args.alwaysDeadCut,
+                                args.metrics_path,
+                                args.extension, args.vis_format,
+                                args.verbose, history=history,
+                                run_red_corr=args.run_red_corr,
+                                run_cross_pols_only=args.run_cross_pols_only)
+    assert os.path.exists(dest_file)
+    os.remove(dest_file)
+
+
+def test_ant_metrics_run_cross_pols_red_corr_only():
+    # get arguments
+    a = utils.get_metrics_ArgumentParser('ant_metrics')
+    if DATA_PATH not in sys.path:
+        sys.path.append(DATA_PATH)
+    arg0 = "-p xx,yy,xy,yx"
+    arg1 = "--crossCut=5"
+    arg2 = "--deadCut=5"
+    arg3 = "--extension=.ant_metrics.hdf5"
+    arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+                                                   'test_output'))
+    arg5 = "--vis_format=miriad"
+    arg6 = "--alwaysDeadCut=10"
+    arg7 = "--run_cross_pols_only"
+    arg8 = "--skip_mean_vij"
+    arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8])
 
     xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
     dest_file = os.path.join(DATA_PATH, 'test_output',
@@ -825,7 +899,6 @@ def test_ant_metrics_run_only_cross_pols():
                                 args.extension, args.vis_format,
                                 args.verbose, history=history,
                                 run_mean_vij=args.run_mean_vij,
-                                run_red_corr=args.run_red_corr,
-                                run_cross_pols=args.run_cross_pols)
+                                run_cross_pols_only=args.run_cross_pols_only)
     assert os.path.exists(dest_file)
     os.remove(dest_file)
