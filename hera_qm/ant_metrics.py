@@ -1133,7 +1133,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
         else:
             metrics_path = metrics_path
         metrics_basename = utils.strip_extension(nopol_filename) + extension
-        metrics_filename = os.path.join(metrics_path, metrics_basename)
-        am.save_antenna_metrics(metrics_filename)
+        metrics_fname = os.path.join(metrics_path, metrics_basename)
+        am.save_antenna_metrics(metrics_fname)
 
     return
