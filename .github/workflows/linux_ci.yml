@@ -9,7 +9,7 @@ jobs:
     name: Ubuntu Tests
     env:
       ENV_NAME: hera_qm_tests
-      PYTON: ${{ matrix.python-version }}
+      PYTHON: ${{ matrix.python-version }}
       OS: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
