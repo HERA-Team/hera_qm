@@ -780,32 +780,38 @@ class AntennaMetrics():
                 self.removalIter[key] = -1
 
     def _run_all_metrics(self, run_mean_vij=True, run_red_corr=True,
-                         run_cross_pols=True):
+                         run_cross_pols=True, run_cross_pols_only=False):
         """Local call for all metrics as part of iterative flagging method.
 
         Parameters
         ----------
         run_mean_vij : bool, optional
-            Define if mean_Vij_metrics is executed. Default is True.
+            Define if mean_Vij_metrics or mean_Vij_cross_pol_metrics are executed.
+            Default is True.
         run_red_corr : bool, optional
-            Define if red_corr_metrics is executed. Default is True.
+            Define if red_corr_metrics or red_corr_cross_pol_metrics are executed.
+            Default is True.
         run_cross_pols : bool, optional
             Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics
-            are executed. Default is True
+            are executed. Default is True. Individual rules are inherited from
+            run_mean_vij and run_red_corr.
+        run_cross_pols_only : bool, optional
+            Define if cross pol metrics are the *only* metrics to be run.
+            Default is False.
 
         """
         # Compute all raw metrics
         metNames = []
         metVals = []
 
-        if run_mean_vij:
+        if run_mean_vij and not run_cross_pols_only:
             metNames.append('meanVij')
             meanVij = self.mean_Vij_metrics(pols=self.pols,
                                             xants=self.xants,
                                             rawMetric=True)
             metVals.append(meanVij)
 
-        if run_red_corr:
+        if run_red_corr and not run_cross_pols_only:
             metNames.append('redCorr')
             pols = [pol for pol in self.pols if pol[0] == pol[1]]
             redCorr = self.red_corr_metrics(pols=pols,
@@ -814,15 +820,16 @@ class AntennaMetrics():
             metVals.append(redCorr)
 
         if run_cross_pols:
-            metNames.append('meanVijXPol')
-            metNames.append('redCorrXPol')
-
-            meanVijXPol = self.mean_Vij_cross_pol_metrics(xants=self.xants,
-                                                          rawMetric=True)
-            redCorrXPol = self.red_corr_cross_pol_metrics(xants=self.xants,
-                                                          rawMetric=True)
-            metVals.append(meanVijXPol)
-            metVals.append(redCorrXPol)
+            if run_mean_vij:
+                metNames.append('meanVijXPol')
+                meanVijXPol = self.mean_Vij_cross_pol_metrics(xants=self.xants,
+                                                              rawMetric=True)
+                metVals.append(meanVijXPol)
+            if run_red_corr:
+                metNames.append('redCorrXPol')
+                redCorrXPol = self.red_corr_cross_pol_metrics(xants=self.xants,
+                                                              rawMetric=True)
+                metVals.append(redCorrXPol)
 
         # Save all metrics and zscores
         metrics, modzScores = {}, {}
@@ -845,7 +852,8 @@ class AntennaMetrics():
                                                verbose=False,
                                                run_mean_vij=True,
                                                run_red_corr=True,
-                                               run_cross_pols=True):
+                                               run_cross_pols=True,
+                                               run_cross_pols_only=False):
         """Run all four antenna metrics and stores results in self.
 
         Runs all four metrics: two for dead antennas, two for cross-polarized antennas.
@@ -862,12 +870,18 @@ class AntennaMetrics():
             These are all thrown away at once without waiting to iteratively throw away
             only the worst offender.
         run_mean_vij : bool, optional
-            Define if mean_Vij_metrics is executed. Default is True.
-        run_red_corr : bool, optional
-            Define if red_corr_metrics is executed. Default is True.
-        run_cross_pols : bool, optional
-            Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
+            Define if mean_Vij_metrics or mean_Vij_cross_pol_metrics are executed.
             Default is True.
+        run_red_corr : bool, optional
+            Define if red_corr_metrics or red_corr_cross_pol_metrics are executed.
+            Default is True.
+        run_cross_pols : bool, optional
+            Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics
+            are executed. Default is True. Individual rules are inherited from
+            run_mean_vij and run_red_corr.
+        run_cross_pols_only : bool, optional
+            Define if cross pol metrics are the *only* metrics to be run. Default
+            is False.
 
         """
         self.reset_summary_stats()
@@ -880,33 +894,38 @@ class AntennaMetrics():
             self.iter = iter
             self._run_all_metrics(run_mean_vij=run_mean_vij,
                                   run_red_corr=run_red_corr,
-                                  run_cross_pols=run_cross_pols)
+                                  run_cross_pols=run_cross_pols,
+                                  run_cross_pols_only=run_cross_pols_only)
 
             # Mostly likely dead antenna
             last_iter = list(self.allModzScores)[-1]
             worstDeadCutRatio = -1
             worstCrossCutRatio = -1
 
-            if run_mean_vij and run_red_corr:
+            if run_mean_vij and run_red_corr and not run_cross_pols_only:
                 deadMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVij'],
                                                   self.allModzScores[last_iter]['redCorr'])
+            else:
+                if run_mean_vij and not run_cross_pols_only:
+                    deadMetrics = self.allModzScores[last_iter]['meanVij'].copy()
+                elif run_red_corr and not run_cross_pols_only:
+                    deadMetrics = self.allModzScores[last_iter]['redCorr'].copy()
+            try:
                 worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
                 worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt]) / deadCut
-            else:
-                if run_mean_vij:
-                    deadMetrics = self.allModzScores[last_iter]['meanVij'].copy()
-                    worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
-                    worstDeadCutRatio = (np.abs(deadMetrics[worstDeadAnt])
-                                         / deadCut)
-                elif run_red_corr:
-                    deadMetrics = self.allModzScores[last_iter]['redCorr'].copy()
-                    worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
-                    worstDeadCutRatio = (np.abs(deadMetrics[worstDeadAnt])
-                                         / deadCut)
+            except NameError:
+                # Dead metrics weren't run, but that's fine.
+                pass
+
             if run_cross_pols:
                 # Most likely cross-polarized antenna
-                crossMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVijXPol'],
-                                                   self.allModzScores[last_iter]['redCorrXPol'])
+                if run_mean_vij and run_red_corr:
+                    crossMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVijXPol'],
+                                                       self.allModzScores[last_iter]['redCorrXPol'])
+                elif run_mean_vij:
+                    crossMetrics = self.allModzScores[last_iter]['meanVijXPol'].copy()
+                elif run_red_corr:
+                    crossMetrics = self.allModzScores[last_iter]['redCorrXPol'].copy()
                 worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
                 worstCrossCutRatio = (np.abs(crossMetrics[worstCrossAnt])
                                       / crossCut)
@@ -1009,7 +1028,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
                     extension='.ant_metrics.hdf5', vis_format='miriad',
                     verbose=True, history='',
                     run_mean_vij=True, run_red_corr=True,
-                    run_cross_pols=True):
+                    run_cross_pols=True, run_cross_pols_only=False):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
@@ -1051,12 +1070,18 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
     history : str, optional
         The history the add to metrics. Default is nothing (empty string).
     run_mean_vij : bool, optional
-        Define if mean_Vij_metrics is executed. Default is True.
+        Define if mean_Vij_metrics or mean_Vij_cross_pol_metrics are executed.
+        Default is True.
     run_red_corr : bool, optional
-        Define if red_corr_metrics is executed. Default is True.
+        Define if red_corr_metrics or red_corr_cross_pol_metrics are executed.
+        Default is True.
     run_cross_pols : bool, optional
-        Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics are executed.
-        Default is True
+        Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics
+        are executed. Default is True. Individual rules are inherited from
+        run_mean_vij and run_red_corr.
+    run_cross_pols_only : bool, optional
+        Define if cross pol metrics are the *only* metrics to be run. Default
+        is False.
 
     Returns
     -------
@@ -1064,7 +1089,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
 
     """
     # check the user asked to run anything
-    if not any([run_mean_vij, run_red_corr, run_cross_pols]):
+    if not any([run_mean_vij, run_red_corr]):
         raise AssertionError(("No Ant Metrics have been selected to run."
                               "Please set the correct keywords to run "
                               "the desired metrics."))
@@ -1091,7 +1116,8 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
                                                   verbose=verbose,
                                                   run_mean_vij=run_mean_vij,
                                                   run_red_corr=run_red_corr,
-                                                  run_cross_pols=run_cross_pols)
+                                                  run_cross_pols=run_cross_pols,
+                                                  run_cross_pols_only=run_cross_pols_only)
 
         # add history
         am.history = am.history + history
@@ -1107,7 +1133,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
         else:
             metrics_path = metrics_path
         metrics_basename = utils.strip_extension(nopol_filename) + extension
-        metrics_filename = os.path.join(metrics_path, metrics_basename)
-        am.save_antenna_metrics(metrics_filename)
+        metrics_fname = os.path.join(metrics_path, metrics_basename)
+        am.save_antenna_metrics(metrics_fname)
 
     return
