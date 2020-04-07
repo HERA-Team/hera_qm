@@ -1223,8 +1223,8 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 
 
 def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
-              sig_init=6.0, sig_adj=2.0, label='', run_check=True,
-              check_extra=True, run_check_acceptability=True):
+              wf_method='quadmean', sig_init=6.0, sig_adj=2.0, label='',
+              run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
@@ -1247,6 +1247,8 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
+    wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
+        How to collapse the dimension(s) to form a single waterfall.
     sig_init : float, optional
         The starting number of sigmas to flag on. Default is 6.0.
     sig_adj : float, optional
@@ -1278,8 +1280,8 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
                              run_check=run_check, check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
     uvf_m.label = label
-    uvf_m.to_waterfall(keep_pol=False, run_check=run_check,
-                       check_extra=check_extra,
+    uvf_m.to_waterfall(method=wf_method, keep_pol=False,
+                       run_check=run_check, check_extra=check_extra,
                        run_check_acceptability=run_check_acceptability)
     # This next line resets the weights to 1 (with data) or 0 (no data) to equally
     # combine with the other metrics.
