@@ -11,6 +11,7 @@ jobs:
       ENV_NAME: hera_qm_tests
       PYTHON: ${{ matrix.python-version }}
       OS: ${{ matrix.os }}
+      COVERALLS_REPO_TOKEN: ${{ secrets.GITHB_TOKEN }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -47,6 +48,7 @@ jobs:
         pytest --cov-report xml:./coverage.xml --cov-report term
         pycodestyle
         pydocstyle hera_qm/*.py --convention=numpy
+        coveralls
 
     - name: Coverall Parallel
       uses: coverallsapp/github-action@master
