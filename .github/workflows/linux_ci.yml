@@ -11,7 +11,7 @@ jobs:
       ENV_NAME: hera_qm_tests
       PYTHON: ${{ matrix.python-version }}
       OS: ${{ matrix.os }}
-      COVERALLS_REPO_TOKEN: ${{ secrets.GITHB_TOKEN }}
+      COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
