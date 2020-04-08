@@ -11,7 +11,6 @@ jobs:
       ENV_NAME: hera_qm_tests
       PYTHON: ${{ matrix.python-version }}
       OS: ${{ matrix.os }}
-      COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -45,20 +44,11 @@ jobs:
       run: |
         export PATH="$HOME/miniconda/bin:$PATH"
         source activate $ENV_NAME
-        pytest --cov-report xml:./coverage.xml --cov-report term
+        pytest --cov-report xml:./coverage.xml
         pycodestyle
         pydocstyle hera_qm/*.py --convention=numpy
-        coveralls
 
-    - name: Coverall Parallel
-      uses: coverallsapp/github-action@master
+    - name: Upload Coverage (Ubuntu)
       if: matrix.os == 'ubuntu-latest' && success()
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        parallel: true
-
-    - name: Coveralls Finished
-      uses: coverallsapp/github-action@master
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        parallel-finished: true
+      run: |
+        bash <(curl -s https://codecov.io/bash) -t ${{ secrets.CODECOV_TOKEN }}
