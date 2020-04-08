@@ -1,7 +1,7 @@
 # HERA Quality Metrics
 
-[![Build Status](https://travis-ci.org/HERA-Team/hera_qm.svg?branch=master)](https://travis-ci.org/HERA-Team/hera_qm)
-[![Coverage Status](https://coveralls.io/repos/github/HERA-Team/hera_qm/badge.svg?branch=master)](https://coveralls.io/github/HERA-Team/hera_qm?branch=master)
+[![](https://github.com/HERA-Team/hera_qm/workflows/Run%20Tests/badge.svg?branch=master)](https://github.com/HERA-Team/hera_qm/actions)
+[![codecov](https://codecov.io/gh/HERA-Team/hera_qm/branch/master/graph/badge.svg)](https://codecov.io/gh/HERA-Team/hera_qm)
 
 `hera_qm` is a python package for calculating quality metrics of HERA data.
 It is integrated in the Real-Time Pipeline (RTP), automatically generating metrics
