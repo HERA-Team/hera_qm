@@ -7,7 +7,6 @@ dependencies:
   - pip
   - astropy>=3.2.3
   - h5py
-  - pyuvdata
   - scipy
   - pytest
   - scikit-learn # from hera_cal
