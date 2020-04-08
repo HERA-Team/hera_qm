@@ -50,8 +50,6 @@ jobs:
         export PATH="$HOME/miniconda/bin:$PATH"
         source activate $ENV_NAME
         pytest --cov-report xml:./coverage.xml
-        pycodestyle
-        pydocstyle hera_qm/*.py --convention=numpy
 
     - name: Upload Coverage (Ubuntu)
       if: matrix.os == 'ubuntu-latest' && success()
