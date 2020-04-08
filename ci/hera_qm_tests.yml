@@ -14,8 +14,6 @@ dependencies:
   - pytest-cov
   - matplotlib
   - coveralls
-  - pycodestyle
-  - pydocstyle
   - pip:
     - git+https://github.com/HERA-Team/hera_cal
     - git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git
