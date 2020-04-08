@@ -1,4 +1,4 @@
-name: hera_qm
+name: hera_qm_tests
 channels:
   - defaults
   - conda-forge
@@ -7,10 +7,12 @@ dependencies:
   - pip
   - astropy>=3.2.3
   - h5py
-  - pyuvdata
   - scipy
   - pytest
   - scikit-learn # from hera_cal
   - pytest-cov
+  - matplotlib
+  - coveralls
   - pip:
     - git+https://github.com/HERA-Team/hera_cal
+    - git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git

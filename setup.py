@@ -44,7 +44,7 @@ setup_args = {
     'package_data': {'hera_qm': data_files},
     'setup_requires': ['pytest-runner'],
     'install_requires': [
-        'astropy>=2.0.16',
+        'astropy>=3.2.3',
         'h5py',
         'numpy>=1.10',
         'pyuvdata',
