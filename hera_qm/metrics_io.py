@@ -3,25 +3,18 @@
 # Licensed under the MIT License
 """I/O Handler for all metrics that can be stored as (nested) dictionaries."""
 
-from __future__ import print_function, division, absolute_import
-
-from six.moves import range, map
 import json
 import os
 import h5py
 import warnings
 import numpy as np
+import pickle as pkl
 import copy
-import six
 import re
 from collections import OrderedDict
 from .version import hera_qm_version_str
 from . import utils as qm_utils
 
-if six.PY2:
-    import cPickle as pkl
-else:
-    import pickle as pkl
 
 # HDF5 casts all inputs to numpy arrays.
 # Define a custom numpy dtype for tuples we wish to preserve shape
@@ -121,7 +114,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
     """
     allowed_types = (np.ndarray, np.float, np.int,
-                     bytes, six.text_type, list, bool, np.bool_)
+                     bytes, str, list, bool, np.bool_)
     compressable_types = (np.ndarray, list)
     for key in in_dict:
         key_str = str(key)
@@ -153,7 +146,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
                                     "compatible dtype. Received this error: "
                                     "{1}".format(key, err))
             else:
-                if isinstance(in_dict[key], six.text_type):
+                if isinstance(in_dict[key], str):
                     in_dict[key] = qm_utils._str_to_bytes(in_dict[key])
                 dset = h5file[path].create_dataset(key_str, data=in_dict[key])
                 # Add boolean attribute to determine if key is a string
@@ -293,6 +286,18 @@ def write_metric_file(filename, input_dict, overwrite=False):
 
             # Create group for metrics data in file
             mgrp = outfile.create_group('Metrics')
+            mgrp.attrs['group_is_ordered'] = False
+            if isinstance(input_dict, OrderedDict):
+                mgrp.attrs['group_is_ordered'] = True
+
+                # Generate additional dataset in an ordered group to save
+                # the order of the group
+                key_order = np.array(list(input_dict.keys())).astype('S')
+                key_set = mgrp.create_dataset('key_order', data=key_order)
+
+                # Add boolean attribute to determine if key is a string
+                # Used to parse keys saved to dicts when reading
+                key_set.attrs['key_is_string'] = True
             mgrp.attrs['key_is_string'] = True
             _recursively_save_dict_to_group(outfile, "/Metrics/", input_dict)
 
@@ -379,7 +384,7 @@ def _parse_key(key):
         return int(str(key))
     except ValueError:
         # is key an antpol tuple?
-        antpol_regex = r"(\([0-9]*?, \'[xy]\'\))"
+        antpol_regex = r"(\([0-9]*?, \'[xyne]\'\))"
         matches = re.findall(antpol_regex, key)
         try:
             # split tuple into antenna number and polarization
@@ -408,7 +413,7 @@ def _recursively_parse_json(in_dict):
     """
     def _pretty_print_dict(di):
         output = '{'
-        for key, val in six.iteritems(di):
+        for key, val in di.items():
             if isinstance(val, dict):
                 tmp = _pretty_print_dict(val)
                 if key in ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']:
@@ -465,7 +470,7 @@ def _recursively_parse_json(in_dict):
             elif isinstance(in_dict[key], (list, np.ndarray)):
                 try:
                     if len(in_dict[key]) > 0:
-                        if isinstance(in_dict[key][0], (six.text_type, np.int,
+                        if isinstance(in_dict[key][0], (str, np.int,
                                                         np.float, np.complex)):
                             try:
                                 out_dict[out_key] = [float(val)
@@ -475,7 +480,7 @@ def _recursively_parse_json(in_dict):
                                                      for val in in_dict[key]]
                     else:
                         out_dict[out_key] = in_dict[key]
-                except (SyntaxError, NameError) as err:
+                except (SyntaxError, NameError):
                     warnings.warn("The key: {0} has a value which "
                                   "could not be parsed, added"
                                   " the value as a string: {1}"
@@ -541,7 +546,7 @@ def _parse_dict(input_str, value_type=int):
     """
     # use regex to extract keys and values
     # assumes keys are antpols and values are numbers
-    dict_regex = r'(\([0-9]*?, \'[xy]\'\)): (.*?)[,}]'
+    dict_regex = r'(\([0-9]*?, \'[xyne]\'\)): (.*?)[,}]'
     key_vals = re.findall(dict_regex, input_str)
 
     # initialize output
@@ -606,7 +611,7 @@ def _parse_list_of_antpols(input_str):
     """
     # use regex to extract entries
     # assumes list entries are antpols
-    list_regex = r"(\([0-9]*?, \'[xy]\'\))"
+    list_regex = r"(\([0-9]*?, \'[xyne]\'\))"
     entries = re.findall(list_regex, input_str)
 
     # initialize output
@@ -837,11 +842,13 @@ def _recursively_validate_dict(in_dict):
             in_dict[key] = _reds_dict_to_list(in_dict[key])
 
         if key in antpair_keys and key != 'reds':
-            in_dict[key] = list(map(tuple, in_dict[key]))
+            in_dict[key] = [tuple((int(a1), int(a2)))
+                            for pair in in_dict[key]
+                            for a1, a2 in pair]
 
         if key in antpol_keys:
-            in_dict[key] = [tuple((ant, qm_utils._bytes_to_str(pol)))
-                            if isinstance(pol, bytes) else tuple((ant, (pol)))
+            in_dict[key] = [tuple((int(ant), qm_utils._bytes_to_str(pol)))
+                            if isinstance(pol, bytes) else tuple((int(ant), (pol)))
                             for ant, pol in in_dict[key]]
 
         if key in known_string_keys and isinstance(in_dict[key], bytes):
@@ -851,7 +858,7 @@ def _recursively_validate_dict(in_dict):
             in_dict[key] = [qm_utils._bytes_to_str(n) if isinstance(n, bytes)
                             else n for n in in_dict[key]]
 
-        if isinstance(in_dict[key], np.int64):
+        if isinstance(in_dict[key], (np.int64, np.int32)):
             in_dict[key] = np.int(in_dict[key])
 
         if isinstance(in_dict[key], dict):
@@ -890,7 +897,19 @@ def load_metric_file(filename):
     else:
         with h5py.File(filename, 'r') as infile:
             metric_dict = _recursively_load_dict_to_group(infile, "/Header/")
-            metric_dict.update(_recursively_load_dict_to_group(infile, "/Metrics/"))
+            metric_item = infile["/Metrics/"]
+            if hasattr(metric_item, 'attrs'):
+                if 'group_is_ordered' in metric_item.attrs:
+                    group_is_ordered = metric_item.attrs["group_is_ordered"]
+                else:
+                    group_is_ordered = False
+            else:
+                group_is_ordered = False
+            metric_dict.update(
+                _recursively_load_dict_to_group(infile, "/Metrics/",
+                                                group_is_ordered=group_is_ordered
+                                                )
+            )
 
     _recursively_validate_dict(metric_dict)
     return metric_dict

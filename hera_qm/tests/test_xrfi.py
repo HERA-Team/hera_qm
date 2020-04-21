@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
-from __future__ import print_function, division, absolute_import
-
 import pytest
 import os
 import shutil
@@ -934,11 +932,9 @@ def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
     mess1 = ['This object is already a waterfall']
-    mess2 = ['It seems that the latitude']
-    messages = 2 * mess1 + mess2 + mess1 + mess2 + 3 * mess1
+    messages = 6 * mess1
     cat1 = [UserWarning]
-    cat2 = [DeprecationWarning]
-    categories = 2 * cat1 + cat2 + cat1 + cat2 + 3 * cat1
+    categories = 6 * cat1
     # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
     tmp_path = tmpdir.strpath
     fake_obs = 'zen.2457698.40355.HH'
@@ -952,7 +948,7 @@ def test_xrfi_run(tmpdir):
     shutil.copyfile(test_uvh5_file, model_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
                                          raw_dfile, 'Just a test'], {'kt_size': 3},
-                         nwarnings=8, message=messages, category=categories)
+                         nwarnings=len(messages), message=messages, category=categories)
     # remove spoofed files
     for fname in [ocal_file, acal_file, model_file, raw_dfile]:
         os.remove(fname)
@@ -1003,11 +999,9 @@ def test_day_threshold_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
     mess1 = ['This object is already a waterfall']
-    mess2 = ['It seems that the latitude']
-    messages = 2 * mess1 + mess2 + mess1 + mess2 + 3 * mess1
+    messages = 6 * mess1
     cat1 = [UserWarning]
-    cat2 = [DeprecationWarning]
-    categories = 2 * cat1 + cat2 + cat1 + cat2 + 3 * cat1
+    categories = 6 * cat1
     # Spoof the files - run xrfi_run twice on spoofed files.
     tmp_path = tmpdir.strpath
     fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
@@ -1023,7 +1017,7 @@ def test_day_threshold_run(tmpdir):
     shutil.copyfile(test_uvh5_file, model_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
                                          raw_dfile, 'Just a test'], {'kt_size': 3},
-                         nwarnings=8, message=messages, category=categories)
+                         nwarnings=len(messages), message=messages, category=categories)
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
@@ -1042,11 +1036,9 @@ def test_day_threshold_run(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
-    # uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-    #                                      data_files[1], 'Just a test'], {'kt_size': 3},
-    #                      nwarnings=8, message=messages, category=categories)
-    xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], 'Just a test',
-                  kt_size=3)
+    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+                                         data_files[1], 'Just a test'], {'kt_size': 3},
+                         nwarnings=len(messages), message=messages, category=categories)
 
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']

@@ -3,29 +3,21 @@
 # Licensed under the MIT License
 """Module for general purpose utility functions."""
 
-from __future__ import print_function, division, absolute_import
 import re
 import os
 import warnings
 import argparse
 import numpy as np
-from pyuvdata import UVCal, UVData
+from pyuvdata import UVData
 from pyuvdata import utils as uvutils
-from six.moves import range
-import six
 
-if six.PY2:
-    def _bytes_to_str(inbyte):
-        return inbyte
 
-    def _str_to_bytes(instr):
-        return instr
-else:
-    def _bytes_to_str(inbyte):
-        return inbyte.decode('utf8')
+def _bytes_to_str(inbyte):
+    return inbyte.decode('utf8')
 
-    def _str_to_bytes(instr):
-        return instr.encode('utf8')
+
+def _str_to_bytes(instr):
+    return instr.encode('utf8')
 
 
 # argument-generating function for *_run wrapper functions
@@ -42,6 +34,7 @@ def get_metrics_ArgumentParser(method_name):
     -------
     ap : argparse.ArgumentParser
         An argparse.ArgumentParser instance with the relevant options for the selected method
+
     """
     methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_h1c_run",
                "delay_xrfi_h1c_idr2_1_run", "xrfi_run", "xrfi_apply", "day_threshold_run"]
@@ -105,6 +98,11 @@ def get_metrics_ArgumentParser(method_name):
                               'red_corr_cross_pol_metrics are run. '
                               'Default: True'))
         ap.set_defaults(run_cross_pols=True)
+
+        ap.add_argument('--run_cross_pols_only', action='store_true',
+                        dest='run_cross_pols_only', default=False,
+                        help=('Define if cross pol metrics are the *only* '
+                              'metrics to be run. Default is False.'))
     elif method_name == 'firstcal_metrics':
         ap.prog = 'firstcal_metrics.py'
         ap.add_argument('--std_cut', default=0.5, type=float,
@@ -375,6 +373,7 @@ def get_pol(fname):
     -------
     polarization : str
         The polarization label contained in the filename, e.g., "xx"
+
     """
     fn = re.findall(r'zen\.\d{7}\.\d{5}\..*', fname)[0]
     return fn.split('.')[3]
@@ -417,7 +416,8 @@ def generate_fullpol_file_list(files, pol_list):
         # convert the polarization array to strings and compare with the
         # expected input.
         # If anyone file is not a full-pol file then this will be false.
-        input_pols = uvutils.polnum2str(uvd.polarization_array)
+        input_pols = uvutils.polnum2str(uvd.polarization_array,
+                                        x_orientation=uvd.x_orientation)
         full_pol_check = np.array_equal(np.sort(input_pols), np.sort(pol_list))
 
         if not full_pol_check:
@@ -679,6 +679,7 @@ def strip_extension(path, return_ext=False):
         The input path without its extension.
     ext : str, optional
         The extension of the input path (without the leading ".").
+
     """
     if return_ext:
         root, ext = os.path.splitext(path)

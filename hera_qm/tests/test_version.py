@@ -4,11 +4,7 @@
 
 """Tests for version.py."""
 import sys
-try:
-    # python 2
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 import subprocess
 import hera_qm
 
@@ -25,7 +21,6 @@ def test_construct_version_info():
     git_description = subprocess.check_output(['git', 'describe', '--dirty', '--tags', '--always']).strip().decode()
     git_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
                                          stderr=subprocess.STDOUT).strip().decode()
-    git_version = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0']).strip().decode()
 
     test_version_info = {'version': hera_qm.__version__, 'git_origin': git_origin,
                          'git_hash': git_hash, 'git_description': git_description,
