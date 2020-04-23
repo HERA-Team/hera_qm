@@ -14,5 +14,5 @@ history = ' '.join(sys.argv)
 xrfi.xrfi_run(args.ocalfits_file, args.acalfits_file, args.model_file, args.data_file,
               history, xrfi_path=args.xrfi_path,
               kt_size=args.kt_size, kf_size=args.kf_size, sig_init=args.sig_init,
-              sig_adj=args.sig_adj, ex_ants=args.ex_ants,
+              sig_adj=args.sig_adj, ex_ants=args.ex_ants, exclude_autos=args.exclude_autos,
               metrics_file=args.metrics_file, clobber=args.clobber)
