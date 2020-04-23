@@ -297,6 +297,8 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
+        ap.add_argument('--exclude_autos', default=False, action="store_true",
+                        help='Flag on raw visibilities using only cross-correlations.')
         ap.add_argument('--metrics_file', default=None, type=str,
                         help='Metrics file that contains a list of excluded antennas. Flags of '
                         'visibilities formed with these antennas will be set to True.')
