@@ -1374,8 +1374,8 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 
 def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
-             ex_ants=None, metrics_file=None, clobber=False, run_check=True,
-             check_extra=True, run_check_acceptability=True):
+             ex_ants=None, exclude_autos=False, metrics_file=None, clobber=False,
+             run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
@@ -1417,6 +1417,8 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         A comma-separated list of antennas to exclude. Flags of visibilities formed
         with these antennas will be set to True. Default is None (i.e., no antennas
         will be excluded).
+    exclude_autos : bool, optional
+        If True, flagging on raw visibilities will use only cross-correlations.
     metrics_file : str, optional
         Metrics file that contains a list of excluded antennas. Flags of visibilities
         formed with these antennas will be set to True. Default is None (i.e.,
@@ -1526,6 +1528,8 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
     # Read in data file
     uv_d = UVData()
     uv_d.read(data_file)
+    if exclude_autos:
+        uv_d.select(ant_str='cross')
     for uv in [uvc_o, uvc_a, uv_v, uv_d]:
         flag_apply(uvf_init, uv, keep_existing=True, force_pol=True,
                    run_check=run_check, check_extra=check_extra,
