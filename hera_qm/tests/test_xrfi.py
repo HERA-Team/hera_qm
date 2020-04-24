@@ -905,7 +905,7 @@ def test_xrfi_run(tmpdir):
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile, 'Just a test'], {'kt_size': 3},
+                                         raw_dfile, 'Just a test'], {'kt_size': 3, 'ant_str': 'cross'},
                          nwarnings=len(messages), message=messages, category=categories)
     # remove spoofed files
     for fname in [ocal_file, acal_file, model_file, raw_dfile]:
