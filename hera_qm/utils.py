@@ -302,6 +302,36 @@ def get_metrics_ArgumentParser(method_name):
                         'visibilities formed with these antennas will be set to True.')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing files (default False)')
+    elif method_name == 'xrfi_h3c_idr2_1_run':
+        ap.prog = 'xrfi_h3c_idr2_1_run.py'
+        ap.add_argument('--ocalfits_files', nargs='+', type=str, help='Omnical '
+                        'calfits files to use to flag on gains and chisquared values.')
+        ap.add_argument('--acalfits_files', nargs='+', type=str, help='Abscal '
+                        'calfits files to use to flag on gains and chisquared values.')
+        ap.add_argument('--model_files', nargs='+', type=str, help='Model visibility '
+                        'files to flag on.')
+        ap.add_argument('--data_files', nargs='+', type=str, help='Raw visibility '
+                        'data files to flag on.')
+        ap.add_argument('--xrfi_path', default='', type=str,
+                        help='Path to save flag files to. Default is same directory as input file.')
+        ap.add_argument('--kt_size', default=8, type=int,
+                        help='Size of kernel in time dimension for detrend in xrfi '
+                        'algorithm. Default is 8.')
+        ap.add_argument('--kf_size', default=8, type=int,
+                        help='Size of kernel in frequency dimension for detrend in '
+                        'xrfi algorithm. Default is 8.')
+        ap.add_argument('--sig_init', default=6.0, type=float,
+                        help='Starting number of sigmas to flag on. Default is 6.0.')
+        ap.add_argument('--sig_adj', default=2.0, type=float,
+                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.0.')
+        ap.add_argument('--ex_ants', default=None, type=str,
+                        help='Comma-separated list of antennas to exclude. Flags of visibilities '
+                        'formed with these antennas will be set to True.')
+        ap.add_argument('--metrics_file', default=None, type=str,
+                        help='Metrics file that contains a list of excluded antennas. Flags of '
+                        'visibilities formed with these antennas will be set to True.')
+        ap.add_argument("--clobber", default=False, action="store_true",
+                        help='overwrites existing files (default False)')
     elif method_name == 'day_threshold_run':
         ap.prog = 'xrfi_day_threshold_run.py'
         ap.add_argument('data_files', type=str, nargs='+', help='List of paths to \
