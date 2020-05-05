@@ -1934,17 +1934,21 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
         # Last job, store the late edge.
         end_ind = nintegrations
 
+    all_times = np.unique(uvf.time_array)
     for ind in range(start_ind, end_ind):
         dirname = resolve_xrfi_path(xrfi_path, data_files[ind], jd_subdir=True)
         basename = qm_utils.strip_extension(os.path.basename(data_files[ind]))
         for ext, uvf in uvf_dict.items():
+            t_ind = ind * uvtemp.Ntimes
+            uvf_out = uvf.select(times=all_times[t_ind:(t_ind + uvtemp.Ntimes)],
+                                 inplace=False)
             if (ext == 'flags2.h5') and ((ind <= ndrop) or (ind >= nintegration - ndrop)):
                 # Edge file, flag it completely.
-                uvf.flag_array = np.ones_like(uvf.flag_array)
+                uvf_out.flag_array = np.ones_like(uvf_out.flag_array)
             outfile = '.'.join([basename, ext])
             outpath = os.path.join(dirname, outfile)
-            uvf.history += history
-            uvf.write(outpath, clobber=clobber)
+            uvf_out.history += history
+            uvf_out.write(outpath, clobber=clobber)
 
 
 def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
