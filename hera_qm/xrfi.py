@@ -1926,9 +1926,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     end_ind = nintegrations - ndrop
     # If we're the first or last job, store all flags for the edge
     datadir = os.path.dirname(os.path.abspath(data_files[0]))
-    ### THIS IS SUPER HACKY AND SHOULD GET FIXED BEFORE MERGING ###
-    alldifffiles = sorted(glob.glob(os.path.join(datadir, '*diff.uvh5')))
-    all_files = [difffile.replace('.diff', '') for difffile in alldifffiles]
+    all_files = sorted(glob.glob(os.path.join(datadir, '*sum.uvh5')))
     if data_files[0] == all_files[0]:
         # This is the first job, store the early edge.
         start_ind = 0
