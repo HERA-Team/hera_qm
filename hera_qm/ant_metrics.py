@@ -629,44 +629,10 @@ class AntennaMetrics():
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
 
-def reds_from_file(filename, vis_format='miriad'):
-    """Get the redundant baseline pairs from a file.
-
-    This is a wrapper around hera_cal.redcal.get_pos_reds that doesn't read
-    the data file if it's possible to only read metadata.
-
-    Parameters
-    ----------
-    filename : str
-        The file to get reds from.
-    vis_format : {'miriad', 'uvh5', 'uvfits', 'fhd', 'ms'}, optional
-        Format of the data file. Default is 'miriad'.
-
-    Returns
-    -------
-    reds : list of lists of tuples
-        Each tuple represents antenna pairs. These are compiled in a list within
-        a redundant group, and the outer list is all the redundant groups.
-        See hera_cal.redcal.get_pos_reds.
-
-    """
-    from hera_cal.io import HERAData
-    from hera_cal.redcal import get_pos_reds
-
-    hd = HERAData(filename, filetype=vis_format)
-    if hd.antpos is None:
-        reds = get_pos_reds(hd.read()[0].antpos)
-    else:
-        reds = get_pos_reds(hd.antpos)
-    del hd
-    return reds
-
-
 def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
                     deadCut=5.0, alwaysDeadCut=10.0, metrics_path='',
                     extension='.ant_metrics.hdf5', vis_format='miriad',
                     verbose=True, history='',
-                    run_mean_vij=True, run_red_corr=True,
                     run_cross_pols=True, run_cross_pols_only=False):
     """
     Run a series of ant_metrics tests on a given set of input files.
@@ -708,31 +674,17 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
         If True, print out statements during iterative flagging. Default is True.
     history : str, optional
         The history the add to metrics. Default is nothing (empty string).
-    run_mean_vij : bool, optional
-        Define if mean_Vij_metrics or mean_Vij_cross_pol_metrics are executed.
-        Default is True.
-    run_red_corr : bool, optional
-        Define if red_corr_metrics or red_corr_cross_pol_metrics are executed.
-        Default is True.
     run_cross_pols : bool, optional
-        Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics
-        are executed. Default is True. Individual rules are inherited from
-        run_mean_vij and run_red_corr.
+        Define if mean_Vij_cross_pol_metrics is executed. Default is True.
     run_cross_pols_only : bool, optional
-        Define if cross pol metrics are the *only* metrics to be run. Default
-        is False.
+        Define if mean_Vij_cross_pol_metrics is the *only* metric to be run.
+        Default is False.
 
     Returns
     -------
     None
 
     """
-    # check the user asked to run anything
-    if not any([run_mean_vij, run_red_corr]):
-        raise AssertionError(("No Ant Metrics have been selected to run."
-                              "Please set the correct keywords to run "
-                              "the desired metrics."))
-
     # check that we were given some files to process
     if len(files) == 0:
         raise AssertionError('Please provide a list of visibility files')
@@ -743,18 +695,13 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
         raise AssertionError('Could not find all 4 polarizations '
                              'for any files provided')
 
-    # get list of lists of redundant baselines, assuming redunancy information is the same for all files
-    reds = reds_from_file(fullpol_file_list[0][0], vis_format=vis_format)
-
     # do the work
     for jd_list in fullpol_file_list:
-        am = AntennaMetrics(jd_list, reds, fileformat=vis_format)
+        am = AntennaMetrics(jd_list, fileformat=vis_format)
         am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
                                                   deadCut=deadCut,
                                                   alwaysDeadCut=alwaysDeadCut,
                                                   verbose=verbose,
-                                                  run_mean_vij=run_mean_vij,
-                                                  run_red_corr=run_red_corr,
                                                   run_cross_pols=run_cross_pols,
                                                   run_cross_pols_only=run_cross_pols_only)
 
