@@ -451,7 +451,7 @@ class AntennaMetrics():
         metrics or zscores. Their removal iteration is -1 (i.e. before iterative
         flagging).
         """
-        autoPowers = {bl: np.median(np.mean(np.abs(self.data[bl])**2, axis=0)) 
+        autoPowers = {bl: np.median(np.mean(np.abs(self.data[bl])**2, axis=0))
                       for bl in self.data.keys()}
         power_list_by_ant = {(ant, antpol): []
                              for ant in self.ants
@@ -554,7 +554,7 @@ class AntennaMetrics():
             worstCrossCutRatio = -1
 
             if not run_cross_pols_only:
-                deadMetrics = {ant: np.abs(metric) for ant, metric 
+                deadMetrics = {ant: np.abs(metric) for ant, metric
                                in self.allModzScores[last_iter]['meanVij'].items()}
             try:
                 worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
@@ -565,7 +565,7 @@ class AntennaMetrics():
 
             if run_cross_pols:
                 # Most likely cross-polarized antenna
-                crossMetrics = {ant: np.abs(metric) for ant, metric 
+                crossMetrics = {ant: np.abs(metric) for ant, metric
                                 in self.allModzScores[last_iter]['meanVijXPol'].items()}
                 worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
                 worstCrossCutRatio = (np.abs(crossMetrics[worstCrossAnt]) / crossCut)

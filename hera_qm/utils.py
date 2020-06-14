@@ -267,7 +267,7 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
-        ap.add_argument('--ant_str', default=None, type=str, 
+        ap.add_argument('--ant_str', default=None, type=str,
                         help='option to pass into UVData.read() setting which baselines are used for raw visibility flags')
         ap.add_argument('--metrics_file', default=None, type=str,
                         help='Metrics file that contains a list of excluded antennas. Flags of '
