@@ -1419,7 +1419,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         will be excluded).
     ant_str : str, optional
         ant_str to pass into UVData.read() to set which baselines are used in the
-        flagging on raw visibilities. Default None is all baselines. Useful 
+        flagging on raw visibilities. Default None is all baselines. Useful
         alternatives include 'cross' and 'auto'. See UVData.read() for details.
     metrics_file : str, optional
         Metrics file that contains a list of excluded antennas. Flags of visibilities
