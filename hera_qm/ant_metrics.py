@@ -320,7 +320,7 @@ class AntennaMetrics():
 
     """
 
-    def __init__(self, dataFileList, reds, fileformat='miriad'):
+    def __init__(self, dataFileList, fileformat='miriad'):
         """Initilize an AntennaMetrics object.
 
         Parameters
@@ -328,8 +328,6 @@ class AntennaMetrics():
         dataFileList : list of str
             List of data filenames of the four different visibility polarizations
             for the same observation.
-        reds : list of tuples of ints
-            List of lists of tuples of antenna numbers that make up redundant baseline groups.
         format : str, optional
             File type of data. Must be one of: 'miriad', 'uvh5', 'uvfits', 'fhd',
             'ms' (see pyuvdata docs). Default is 'miriad'.
@@ -353,8 +351,6 @@ class AntennaMetrics():
         dataFileList : list of str
             List of data filenames of the four different visibility polarizations
             for the same observation.
-        reds : list of tuples of ints
-            List of lists of tuples of antenna numbers that make up redundant baseline groups.
         version_str : str
             The version of the hera_qm module used to generate these metrics.
         history : str
@@ -371,7 +367,6 @@ class AntennaMetrics():
         self.antpols = [antpol.lower() for antpol in self.hd.get_feedpols()]
         self.bls = self.hd.get_antpairs()
         self.dataFileList = dataFileList
-        self.reds = reds
         self.version_str = hera_qm_version_str
         self.history = ''
 
@@ -411,46 +406,6 @@ class AntennaMetrics():
                                 self.ants, self.bls, xants=xants,
                                 rawMetric=rawMetric)
 
-    def red_corr_metrics(self, pols=None, xants=[], rawMetric=False,
-                         crossPol=False):
-        """Calculate modified Z-Score over all redundant groups for each antenna.
-
-        This method is a local wrapper for red_corr_metrics. It calculates the extent
-        to which baselines involving an antenna do not correlate with others they are
-        nominmally redundant with.
-
-        Parameters
-        ----------
-        data : array or HERAData
-            Data for all polarizations, stored in a format that supports indexing
-            as data[i,j,pol].
-        pols : list of str, optional
-            List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-            Default is self.pols.
-        xants : list of tuples, optional
-            List of antenna-polarization tuples that should be ignored. The
-            expected format is (ant, antpol). Default is empty list.
-        rawMetric : bool, optional
-            If True, return the raw power correlations instead of the modified z-score.
-            Default is False.
-        crossPol : bool, optional
-            If True, return results only when the two visibility polarizations differ
-            by a single flip. Default is False.
-
-        Returns
-        -------
-        powerRedMetric : dict
-            Dictionary indexed by (ant,antpol) keys. Contains the modified z-scores
-            of the mean power correlations inside redundant baseline groups associated
-            with each antenna. Very small numbers are probably bad antennas.
-
-        """
-        if pols is None:
-            pols = self.pols
-        return red_corr_metrics(self.data, pols, self.antpols,
-                                self.ants, self.reds, xants=xants,
-                                rawMetric=rawMetric, crossPol=crossPol)
-
     def mean_Vij_cross_pol_metrics(self, xants=[], rawMetric=False):
         """Calculate the ratio of cross-pol visibilities to same-pol visibilities.
 
@@ -481,36 +436,6 @@ class AntennaMetrics():
                                           self.bls, xants=xants,
                                           rawMetric=rawMetric)
 
-    def red_corr_cross_pol_metrics(self, xants=[], rawMetric=False):
-        """Calculate modified Z-Score over redundant groups; assume cross-polarized.
-
-        This method is a local wrapper for red_corr_cross_pol_metrics. It finds
-        which antennas are part of visibilities that are significantly better
-        correlated with polarization-flipped visibilities in a redundant group.
-        It returns the modified z-score.
-
-        Parameters
-        ----------
-        xants : list of tuples, optional
-            List of antenna-polarization tuples that should be ignored. The
-            expected format is (ant, antpol). Default is empty list.
-        rawMetric : bool, optional
-            If True, return the raw power correlations instead of the modified z-score.
-            Default is False.
-
-        Returns
-        -------
-        redCorrCrossPolMetrics : dict
-            Dictionary indexed by (ant,antpol) keys. Contains the modified z-scores
-            of the mean correlation ratio between redundant visibilities and singly-
-            polarization flipped ones. Very large values are probably cross-polarized.
-
-        """
-        return red_corr_cross_pol_metrics(self.data, self.pols,
-                                          self.antpols, self.ants,
-                                          self.reds, xants=xants,
-                                          rawMetric=rawMetric)
-
     def reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
         self.xants, self.crossedAntsRemoved, self.deadAntsRemoved = [], [], []
@@ -526,9 +451,8 @@ class AntennaMetrics():
         metrics or zscores. Their removal iteration is -1 (i.e. before iterative
         flagging).
         """
-        autoPowers = compute_median_auto_power_dict(self.data,
-                                                    self.pols,
-                                                    self.reds)
+        autoPowers = {bl: np.median(np.mean(np.abs(self.data[bl])**2, axis=0)) 
+                      for bl in self.data.keys()}
         power_list_by_ant = {(ant, antpol): []
                              for ant in self.ants
                              for antpol in self.antpols
@@ -544,24 +468,15 @@ class AntennaMetrics():
                 self.deadAntsRemoved.append(key)
                 self.removalIter[key] = -1
 
-    def _run_all_metrics(self, run_mean_vij=True, run_red_corr=True,
-                         run_cross_pols=True, run_cross_pols_only=False):
+    def _run_all_metrics(self, run_cross_pols=True, run_cross_pols_only=False):
         """Local call for all metrics as part of iterative flagging method.
 
         Parameters
         ----------
-        run_mean_vij : bool, optional
-            Define if mean_Vij_metrics or mean_Vij_cross_pol_metrics are executed.
-            Default is True.
-        run_red_corr : bool, optional
-            Define if red_corr_metrics or red_corr_cross_pol_metrics are executed.
-            Default is True.
         run_cross_pols : bool, optional
-            Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics
-            are executed. Default is True. Individual rules are inherited from
-            run_mean_vij and run_red_corr.
+            Define if mean_Vij_cross_pol_metrics is executed. Default is True.
         run_cross_pols_only : bool, optional
-            Define if cross pol metrics are the *only* metrics to be run.
+            Define if mean_Vij_cross_pol_metrics is the *only* metric to be run.
             Default is False.
 
         """
@@ -569,32 +484,18 @@ class AntennaMetrics():
         metNames = []
         metVals = []
 
-        if run_mean_vij and not run_cross_pols_only:
+        if not run_cross_pols_only:
             metNames.append('meanVij')
             meanVij = self.mean_Vij_metrics(pols=self.pols,
                                             xants=self.xants,
                                             rawMetric=True)
             metVals.append(meanVij)
 
-        if run_red_corr and not run_cross_pols_only:
-            metNames.append('redCorr')
-            pols = [pol for pol in self.pols if pol[0] == pol[1]]
-            redCorr = self.red_corr_metrics(pols=pols,
-                                            xants=self.xants,
-                                            rawMetric=True)
-            metVals.append(redCorr)
-
         if run_cross_pols:
-            if run_mean_vij:
-                metNames.append('meanVijXPol')
-                meanVijXPol = self.mean_Vij_cross_pol_metrics(xants=self.xants,
-                                                              rawMetric=True)
-                metVals.append(meanVijXPol)
-            if run_red_corr:
-                metNames.append('redCorrXPol')
-                redCorrXPol = self.red_corr_cross_pol_metrics(xants=self.xants,
-                                                              rawMetric=True)
-                metVals.append(redCorrXPol)
+            metNames.append('meanVijXPol')
+            meanVijXPol = self.mean_Vij_cross_pol_metrics(xants=self.xants,
+                                                          rawMetric=True)
+            metVals.append(meanVijXPol)
 
         # Save all metrics and zscores
         metrics, modzScores = {}, {}
@@ -615,14 +516,9 @@ class AntennaMetrics():
     def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
                                                alwaysDeadCut=10,
                                                verbose=False,
-                                               run_mean_vij=True,
-                                               run_red_corr=True,
                                                run_cross_pols=True,
                                                run_cross_pols_only=False):
-        """Run all four antenna metrics and stores results in self.
-
-        Runs all four metrics: two for dead antennas, two for cross-polarized antennas.
-        Saves the results internally to this this antenna metrics object.
+        """Run both Mean Vij and Mean Vij crosspol metrics and stores results in self.
 
         Parameters
         ----------
@@ -634,19 +530,11 @@ class AntennaMetrics():
             Modified z-score cut for definitely dead antennas. Default is 10 "sigmas".
             These are all thrown away at once without waiting to iteratively throw away
             only the worst offender.
-        run_mean_vij : bool, optional
-            Define if mean_Vij_metrics or mean_Vij_cross_pol_metrics are executed.
-            Default is True.
-        run_red_corr : bool, optional
-            Define if red_corr_metrics or red_corr_cross_pol_metrics are executed.
-            Default is True.
         run_cross_pols : bool, optional
-            Define if mean_Vij_cross_pol_metrics and red_corr_cross_pol_metrics
-            are executed. Default is True. Individual rules are inherited from
-            run_mean_vij and run_red_corr.
+            Define if mean_Vij_cross_pol_metrics is executed. Default is True.
         run_cross_pols_only : bool, optional
-            Define if cross pol metrics are the *only* metrics to be run. Default
-            is False.
+            Define if mean_Vij_cross_pol_metrics is the *only* metric to be run.
+            Default is False.
 
         """
         self.reset_summary_stats()
@@ -657,9 +545,7 @@ class AntennaMetrics():
         # Loop over
         for iter in range(len(self.antpols) * len(self.ants)):
             self.iter = iter
-            self._run_all_metrics(run_mean_vij=run_mean_vij,
-                                  run_red_corr=run_red_corr,
-                                  run_cross_pols=run_cross_pols,
+            self._run_all_metrics(run_cross_pols=run_cross_pols,
                                   run_cross_pols_only=run_cross_pols_only)
 
             # Mostly likely dead antenna
@@ -667,14 +553,9 @@ class AntennaMetrics():
             worstDeadCutRatio = -1
             worstCrossCutRatio = -1
 
-            if run_mean_vij and run_red_corr and not run_cross_pols_only:
-                deadMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVij'],
-                                                  self.allModzScores[last_iter]['redCorr'])
-            else:
-                if run_mean_vij and not run_cross_pols_only:
-                    deadMetrics = self.allModzScores[last_iter]['meanVij'].copy()
-                elif run_red_corr and not run_cross_pols_only:
-                    deadMetrics = self.allModzScores[last_iter]['redCorr'].copy()
+            if not run_cross_pols_only:
+                deadMetrics = {ant: np.abs(metric) for ant, metric 
+                               in self.allModzScores[last_iter]['meanVij'].items()}
             try:
                 worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
                 worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt]) / deadCut
@@ -684,16 +565,10 @@ class AntennaMetrics():
 
             if run_cross_pols:
                 # Most likely cross-polarized antenna
-                if run_mean_vij and run_red_corr:
-                    crossMetrics = average_abs_metrics(self.allModzScores[last_iter]['meanVijXPol'],
-                                                       self.allModzScores[last_iter]['redCorrXPol'])
-                elif run_mean_vij:
-                    crossMetrics = self.allModzScores[last_iter]['meanVijXPol'].copy()
-                elif run_red_corr:
-                    crossMetrics = self.allModzScores[last_iter]['redCorrXPol'].copy()
+                crossMetrics = {ant: np.abs(metric) for ant, metric 
+                                in self.allModzScores[last_iter]['meanVijXPol'].items()}
                 worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
-                worstCrossCutRatio = (np.abs(crossMetrics[worstCrossAnt])
-                                      / crossCut)
+                worstCrossCutRatio = (np.abs(crossMetrics[worstCrossAnt]) / crossCut)
 
             # Find the single worst antenna, remove it, log it, and run again
             if (worstCrossCutRatio >= worstDeadCutRatio
@@ -750,7 +625,6 @@ class AntennaMetrics():
         out_dict['dead_ant_z_cut'] = self.deadCut
         out_dict['always_dead_ant_z_cut'] = self.alwaysDeadCut
         out_dict['datafile_list'] = self.dataFileList
-        out_dict['reds'] = self.reds
 
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
