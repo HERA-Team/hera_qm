@@ -23,4 +23,5 @@ ant_metrics.ant_metrics_run(args.files, pols=args.pol, crossCut=args.crossCut,
                             verbose=args.verbose, history=history,
                             run_mean_vij=args.run_mean_vij,
                             run_red_corr=args.run_red_corr,
-                            run_cross_pols=args.run_cross_pols)
+                            run_cross_pols=args.run_cross_pols,
+                            run_cross_pols_only=args.run_cross_pols_only)
