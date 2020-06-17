@@ -471,7 +471,7 @@ def detrend_meanfilt(data, flags=None, Kt=8, Kf=8, pad=True):
     return out
 
 
-def zscore_full_array(data, flags=None, modified=False):
+def zscore_full_array(data, flags=None, modified=False, pad=False):
     """Calculate the z-score for full array, rather than a defined kernel size.
 
     This is a special case of
@@ -489,6 +489,8 @@ def zscore_full_array(data, flags=None, modified=False):
         zscore (not modified).
     modified : bool, optional
         Whether to calculate the modified z-scores. Default is False.
+    pad : bool, optional
+        NOT USED. keyword for symmetry with other algorithm functions.
 
     Returns
     -------
