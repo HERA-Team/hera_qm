@@ -1319,7 +1319,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
 
 
 def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
-                sig_adj=2.0, label='', run_check=True,
+                sig_adj=2.0, label='', pad=False, run_check=True,
                 check_extra=True, run_check_acceptability=True):
     """Zero-center and normalize the full total chi squared array, flag, and watershed.
 
@@ -1337,6 +1337,8 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
         The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
     label: str, optional
         Label to be added to UVFlag objects.
+    pad: bool, optional
+        Whether to pad the array in the detrending algorithm. Default is False.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1356,7 +1358,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 
     """
     uvf_m = calculate_metric(uv, alg, cal_mode='tot_chisq', modified=modified,
-                             run_check=run_check, check_extra=check_extra,
+                             pad=pad, run_check=run_check, check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
     uvf_m.label = label
     uvf_m.to_waterfall(keep_pol=False, run_check=run_check,
@@ -1368,7 +1370,8 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     alg_func = algorithm_dict[alg]
     # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
     uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
-                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
+                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
+                                           pad=pad)
     # Flag and watershed on waterfall
     uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
                  check_extra=check_extra,
