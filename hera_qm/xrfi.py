@@ -1939,7 +1939,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
         # Last job, store the late edge.
         end_ind = nintegrations
 
-    all_times = np.unique(uvf.time_array)
+    all_times = np.unique(uvf_f2.time_array)
     for ind in range(start_ind, end_ind):
         dirname = resolve_xrfi_path(xrfi_path, data_files[ind], jd_subdir=True)
         basename = qm_utils.strip_extension(os.path.basename(data_files[ind]))
