@@ -1927,8 +1927,8 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvtemp.read(data_files[0], read_data=False)
     nintegrations = len(data_files) * uvtemp.Ntimes
     ndrop = int(np.ceil(kt_size / uvtemp.Ntimes))
-    start_ind = ndrop + 1
-    end_ind = nintegrations - ndrop
+    start_ind = ndrop
+    end_ind = len(data_files) - ndrop
     # If we're the first or last job, store all flags for the edge
     datadir = os.path.dirname(os.path.abspath(data_files[0]))
     all_files = sorted(glob.glob(os.path.join(datadir, '*sum.uvh5')))
@@ -1937,17 +1937,19 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
         start_ind = 0
     if data_files[-1] == all_files[-1]:
         # Last job, store the late edge.
-        end_ind = nintegrations
+        end_ind = len(data_files)
 
-    all_times = np.unique(uvf_f2.time_array)
     for ind in range(start_ind, end_ind):
         dirname = resolve_xrfi_path(xrfi_path, data_files[ind], jd_subdir=True)
         basename = qm_utils.strip_extension(os.path.basename(data_files[ind]))
         for ext, uvf in uvf_dict.items():
+            # This is calculated separately for each uvf because machine
+            # precision error was leading to times not found in object.
+            this_times = np.unique(uvf.time_array)
             t_ind = ind * uvtemp.Ntimes
-            uvf_out = uvf.select(times=all_times[t_ind:(t_ind + uvtemp.Ntimes)],
+            uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
                                  inplace=False)
-            if (ext == 'flags2.h5') and ((ind <= ndrop) or (ind >= nintegration - ndrop)):
+            if (ext == 'flags2.h5') and ((ind <= ndrop) or (ind >= nintegrations - ndrop)):
                 # Edge file, flag it completely.
                 uvf_out.flag_array = np.ones_like(uvf_out.flag_array)
             outfile = '.'.join([basename, ext])
