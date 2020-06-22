@@ -1932,10 +1932,10 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     # If we're the first or last job, store all flags for the edge
     datadir = os.path.dirname(os.path.abspath(data_files[0]))
     all_files = sorted(glob.glob(os.path.join(datadir, '*sum.uvh5')))
-    if data_files[0] == all_files[0]:
+    if os.path.basename(data_files[0]) == os.path.basename(all_files[0]):
         # This is the first job, store the early edge.
         start_ind = 0
-    if data_files[-1] == all_files[-1]:
+    if os.path.basename(data_files[-1]) == os.path.basename(all_files[-1]):
         # Last job, store the late edge.
         end_ind = len(data_files)
 
