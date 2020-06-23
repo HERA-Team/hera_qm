@@ -66,41 +66,11 @@ def get_metrics_ArgumentParser(method_name):
                         help='Silence feedback to the command line.')
         ap.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                         help='*.uv files for which to calculate ant_metrics.')
-
-        ap.add_argument('--run_mean_vij', action='store_true',
-                        dest='run_mean_vij',
-                        help=('Sets boolean flag to True. Flag determines if '
-                              'mean_vij_metrics is run. Default: True'))
-        ap.add_argument('--skip_mean_vij', action='store_false',
-                        dest='run_mean_vij',
-                        help=('Sets boolean flag to False. Flag determines if '
-                              'mean_vij_metrics is run. Default: True'))
-        ap.set_defaults(run_mean_vij=True)
-
-        ap.add_argument('--run_red_corr', action='store_true',
-                        dest='run_red_corr',
-                        help=('Sets boolean flag to True. Flag determines if '
-                              'red_corr_metrics is run. Default: True'))
-        ap.add_argument('--skip_red_corr', action='store_false',
-                        dest='run_red_corr',
-                        help=('Sets boolean flag to False. Flag determines if '
-                              'red_corr_metrics is run. Default: True'))
-        ap.set_defaults(run_red_corr=True)
-
-        ap.add_argument('--run_cross_pols', action='store_true',
-                        dest='run_cross_pols',
-                        help=('Sets boolean flag to True. Flag determines if '
-                              'mean_Vij_cross_pol_metrics and '
-                              'red_corr_cross_pol_metrics are run. '
-                              'Default: True'))
         ap.add_argument('--skip_cross_pols', action='store_false',
-                        dest='run_cross_pols',
+                        dest='run_cross_pols', default=True,
                         help=('Sets boolean flag to False. Flag determines if '
-                              'mean_Vij_cross_pol_metrics and '
-                              'red_corr_cross_pol_metrics are run. '
+                              'mean_Vij_cross_pol_metrics is run. '
                               'Default: True'))
-        ap.set_defaults(run_cross_pols=True)
-
         ap.add_argument('--run_cross_pols_only', action='store_true',
                         dest='run_cross_pols_only', default=False,
                         help=('Define if cross pol metrics are the *only* '
@@ -299,6 +269,8 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
+        ap.add_argument('--ant_str', default=None, type=str,
+                        help='option to pass into UVData.read() setting which baselines are used for raw visibility flags')
         ap.add_argument('--metrics_file', default=None, type=str,
                         help='Metrics file that contains a list of excluded antennas. Flags of '
                         'visibilities formed with these antennas will be set to True.')
