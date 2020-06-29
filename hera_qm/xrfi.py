@@ -1754,7 +1754,7 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     # Generate Separable Flags.
     if separable_flags:
         broadcast_flags = np.zeros(uvf_total.flag_array.shape).astype(bool)
-        for pol in range(len(uvf_total.flag_array.shape[2])):
+        for pol in range(uvf_total.flag_array.shape[2]):
             fa = uvf_total.flag_array[:, :, pol]
             # First, flag all frequencies above threshold.
             for m in range(fa.shape[1]):
@@ -1764,7 +1764,7 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
                 if np.count_nonzero(~fa[m]) / fa.shape[1] >= time_threshold:
                     broadcast_flags[m, :, pol] = True
     # replace flag array with broadcast flags.
-    uvf_total.flag_array = broadcast_flags
+        uvf_total.flag_array = broadcast_flags
 
     # Apply to abs calfits
     uvc_a = UVCal()
