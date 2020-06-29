@@ -1335,3 +1335,118 @@ def test_threshold_wf_exceptions():
     uvf.to_flag()
     pytest.raises(ValueError, xrfi.threshold_wf, uvf)  # UVFlag object but not a metric
     pytest.raises(ValueError, xrfi.threshold_wf, 'foo')  # not a UVFlag object
+
+
+@pytest.mark.filterwarnings("ignore:This object is already a waterfall")
+def test_xrfi_h3c_idr2_1_run(tmp_path):
+
+    dec_jds = ['40355', '41101', '41847', '42593', '43339', '44085', '44831']
+    fake_obses = [f'zen.2457698.{dec_jd}' for dec_jd in dec_jds]
+
+    ocalfits_files = [tmp_path / f'{fake_obs}.omni.calfits' for fake_obs in fake_obses]
+    acalfits_files = [tmp_path / f'{fake_obs}.abs.calfits' for fake_obs in fake_obses]
+    model_files = [tmp_path / f'{fake_obs}.omni_vis.uvh5' for fake_obs in fake_obses]
+    data_files = [tmp_path / f'{fake_obs}.uvh5' for fake_obs in fake_obses]
+
+    for obsi in range(len(fake_obses)):
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+        uvc.time_array += obsi * dt
+        uvc.write_calfits(ocalfits_files[obsi])
+        uvc.write_calfits(acalfits_files[obsi])
+
+        uv = UVData()
+        uv.read(test_uvh5_file)
+        uv.time_array += obsi * dt
+        uv.set_lsts_from_time_array()
+        uv.write_uvh5(model_files[obsi])
+        uv.write_uvh5(data_files[obsi])
+
+    ext_labels = {'ag_flags1': 'Abscal gains, round 1. Flags.',
+                  'ag_flags2': 'Abscal gains, round 2. Flags.',
+                  'ag_metrics1': 'Abscal gains, round 1.',
+                  'ag_metrics2': 'Abscal gains, round 2.',
+                  'apriori_flags': 'A priori flags.',
+                  'ax_flags1': 'Abscal chisq, round 1. Flags.',
+                  'ax_flags2': 'Abscal chisq, round 2. Flags.',
+                  'ax_metrics1': 'Abscal chisq, round 1.',
+                  'ax_metrics2': 'Abscal chisq, round 2.',
+                  'chi_sq_flags1': 'Renormalized chisq, round 1. Flags.',
+                  'chi_sq_flags2': 'Renormalized chisq, round 2. Flags.',
+                  'chi_sq_renormed1': 'Renormalized chisq, round 1.',
+                  'chi_sq_renormed2': 'Renormalized chisq, round 2.',
+                  'combined_flags1': 'Flags from combined metrics, round 1.',
+                  'combined_flags2': 'Flags from combined metrics, round 2.',
+                  'combined_metrics1': 'Combined metrics, round 1.',
+                  'combined_metrics2': 'Combined metrics, round 2.',
+                  'data_flags2': 'Data, round 2. Flags.',
+                  'data_metrics2': 'Data, round 2.',
+                  'flags1': 'ORd flags, round 1.',
+                  'flags2': 'ORd flags, round 2.',
+                  'og_flags1': 'Omnical gains, round 1. Flags.',
+                  'og_flags2': 'Omnical gains, round 2. Flags.',
+                  'og_metrics1': 'Omnical gains, round 1.',
+                  'og_metrics2': 'Omnical gains, round 2.',
+                  'ox_flags1': 'Omnical chisq, round 1. Flags.',
+                  'ox_flags2': 'Omnical chisq, round 2. Flags.',
+                  'ox_metrics1': 'Omnical chisq, round 1.',
+                  'ox_metrics2': 'Omnical chisq, round 2.',
+                  'v_flags1': 'Omnical visibility solutions, round 1. Flags.',
+                  'v_flags2': 'Omnical visibility solutions, round 2. Flags.',
+                  'v_metrics1': 'Omnical visibility solutions, round 1.',
+                  'v_metrics2': 'Omnical visibility solutions, round 2.'}
+
+    # Run with first few obses, should create output for first two
+    xrfi.xrfi_h3c_idr2_1_run(ocalfits_files[0:3], acalfits_files[0:3],
+                             model_files[0:3], data_files[0:3], 'Just a test',
+                             kt_size=3)
+
+    for obsi, obs in enumerate(fake_obses):
+        outdir = tmp_path / (obs + '.xrfi')
+        if obsi not in [0, 1]:
+            # Should not exist
+            assert not os.path.exists(outdir)
+        else:
+            for ext, label in ext_labels.items():
+                out = outdir / '.'.join([obs, ext, 'h5'])
+                assert os.path.exists(out)
+                uvf = UVFlag(str(out))
+                assert uvf.label == label
+            shutil.rmtree(outdir)  # cleanup
+
+    # Run for three middle obses. Should create output for just the middle.
+    xrfi.xrfi_h3c_idr2_1_run(ocalfits_files[2:5], acalfits_files[2:5],
+                             model_files[2:5], data_files[2:5], 'Just a test',
+                             kt_size=3)
+
+    for obsi, obs in enumerate(fake_obses):
+        outdir = tmp_path / (obs + '.xrfi')
+        if obsi not in [3]:
+            # Should not exist
+            assert not os.path.exists(outdir)
+        else:
+            for ext, label in ext_labels.items():
+                out = outdir / '.'.join([obs, ext, 'h5'])
+                assert os.path.exists(out)
+                uvf = UVFlag(str(out))
+                assert uvf.label == label
+            shutil.rmtree(outdir)  # cleanup
+
+    # Run for end few, should create output for last two
+    xrfi.xrfi_h3c_idr2_1_run(ocalfits_files[4:], acalfits_files[4:],
+                             model_files[4:], data_files[4:], 'Just a test',
+                             kt_size=3)
+
+    for obsi, obs in enumerate(fake_obses):
+        outdir = tmp_path / (obs + '.xrfi')
+        if obsi not in [5, 6]:
+            # Should not exist
+            assert not os.path.exists(outdir)
+        else:
+            for ext, label in ext_labels.items():
+                out = outdir / '.'.join([obs, ext, 'h5'])
+                assert os.path.exists(out)
+                uvf = UVFlag(str(out))
+                assert uvf.label == label
+            shutil.rmtree(outdir)  # cleanup

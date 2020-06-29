@@ -1924,7 +1924,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     bname = os.path.basename(data_files[0])
     # Because we don't necessarily know the filename structure, search for
     # files that are the same except different numbers (JDs)
-    search_str = os.path.join(data_dir, re.sub('[0-9]', '?', bname))
+    search_str = os.path.join(datadir, re.sub('[0-9]', '?', bname))
     all_files = sorted(glob.glob(search_str))
     if os.path.basename(data_files[0]) == os.path.basename(all_files[0]):
         # This is the first job, store the early edge.
