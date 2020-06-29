@@ -1640,8 +1640,8 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
 
 
 def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
-                        history, xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0,
-                        sig_adj=2.0, ex_ants=None, metrics_file=None,
+                        flag_command, xrfi_path='', kt_size=8, kf_size=8,
+                        sig_init=5.0, sig_adj=2.0, ex_ants=None, metrics_file=None,
                         clobber=False, run_check=True, check_extra=True,
                         run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H3C IDR2.1.
@@ -1674,8 +1674,9 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
         THe model visibility files to flag on.
     data_files : str
         The raw visibility data files to flag.
-    history : str
-        The history string to include in files.
+    flag_command : str
+        The flagging command used to call this function. Usually determined
+        in the script that invokes this function.
     xrfi_path : str, optional
         Path to save xrfi files to. Default is a subdirectory "{JD}/" inside
         the same directory as data_file.
@@ -1714,7 +1715,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     None
 
     """
-    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    history = 'Flagging command: "' + flag_command + '", Using ' + hera_qm_version_str
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
     # Make sure input files are sorted
