@@ -1642,7 +1642,8 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
 def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
                       nsig_f_adj=3., nsig_t_adj=3., clobber=False,
                       run_check=True, check_extra=True,
-                      run_check_acceptability=True):
+                      run_check_acceptability=True, separable_flags=False,
+                      time_threshold=0.15, freq_threshold=0.01):
     """Apply thresholding across all times/frequencies, using a full day of data.
 
     This function will write UVFlag files for each data input (omnical gains,
@@ -1681,6 +1682,24 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     run_check_acceptability : bool
         Option to check acceptable range of the values of parameters
         on UVFlag Object.
+    separable_flags : bool, optional
+        If set to True, then force the flags to be separable by performing
+        a final thresholding for each channel and time by flagging times /
+        channels if fraction of flags in each time is above time_threshold
+        and if fraction of flags in each frequency is above freq_threshold.
+        This feature is being added because xtalk and delay filtering don't
+        commute unless flags are separable and freq filtering adds time structure
+        and time filtering adds frequency structure. Default is False.
+    time_threshold : float, optional
+        times with flags above this threshold are completely flagged.
+        default is 0.15.
+    freq_threshold : float, optional.
+        frequency channels with flagging fractions above this threshold are
+        completely flagged. channels below this threshold are completely unflagged.
+        time thresholding is run after frequency thresholding and may restore flags
+        in channel that is completely unflagged. Default is 0.01 (1% of times).
+
+
 
     Returns
     -------
@@ -1731,6 +1750,21 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     # Read non thresholded flags and combine
     files = [glob.glob(d + '/*.flags2.h5')[0] for d in xrfi_dirs]
     uvf_total |= UVFlag(files)
+
+    # Generate Separable Flags.
+    if separable_flags:
+        broadcast_flags = np.zeros(uvf_total.flag_array.shape).astype(bool)
+        for pol in range(len(uvf_total.flag_array.shape[2])):
+            fa = uvf_total.flag_array[:, :, pol]
+            # First, flag all frequencies above threshold.
+            for m in range(fa.shape[1]):
+                if np.count_nonzero(~fa[:, m]) / fa.shape[0] >= freq_threshold:
+                    broadcast_flags[:, m, pol] = True
+            for m in range(fa.shape[0]):
+                if np.count_nonzero(~fa[m]) / fa.shape[1] >= time_threshold:
+                    broadcast_flags[m, :, pol] = True
+    # replace flag array with broadcast flags.
+    uvf_total.flag_array = broadcast_flags
 
     # Apply to abs calfits
     uvc_a = UVCal()
