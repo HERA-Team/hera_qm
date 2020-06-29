@@ -1648,7 +1648,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
 
     This pipeline uses the detrending and watershed algorithms above.
     Several files are concatenated together to perform the detrending,
-    and the flags from the inner files are stored.
+    and the flags from the inner files are stored*.
     The algorithm is run on several data products: omnical gains, omnical chisq,
     abscal gains, abscal chisq, omnical visibility solutions, renormalized chisq,
     and the raw data. All of these, except the data, are run twice - first to
@@ -1656,6 +1656,13 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     to get better estimate. The metrics and flags from each data product and both
     rounds are stored in the xrfi_path (which defaults to a subdirectory, see
     xrfi_path below). Also stored are the a priori flags and combined metrics/flags.
+
+    * For a given chunk of files, we do not store output files for the edges,
+    determined by the size of the time kernel (kt_size) and the number of
+    integrations per file. The exception is the very start and end of a day,
+    which are stored because they will never not be at the edge.
+    It is up to the user to run overlapping chunks to ensure output is created
+    for every input file.
 
     Parameters
     ----------
