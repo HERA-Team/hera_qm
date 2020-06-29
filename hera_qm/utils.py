@@ -294,6 +294,12 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument("--run_if_first", default=None, type=str, help='only run \
                         day_threshold_run if the first item in the sorted data_files \
                         list matches run_if_first (default None means always run)')
+        ap.add_argument("--separable_flags", default=False, action="store_true", type=bool,
+                        help="Generate separable flags by thresholding in time and frequency." )
+        ap.add_argument("--time_threshold", default=0.15, type=float,
+                        help="Fully flag times with flagging fraction over this threshold. Default is 0.15.")
+        ap.add_argument("--freq_threshold", default=0.02, type=float,
+                        help="Fully flag frequencies with flagging fraction over this threshold. Default is 0.02.")
     elif method_name == 'xrfi_apply':
         ap.prog = 'xrfi_apply.py'
         ap.add_argument('--infile_format', default='miriad', type=str,
