@@ -414,8 +414,7 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
     sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
-    out = out[Kt:-Kt, Kf:-Kf]
-    return out
+    return out[Kt:-Kt, Kf:-Kf]
 
 
 def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
@@ -457,8 +456,7 @@ def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
     sig = np.sqrt(convolve(d_sq, kernel, mask=flags))
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
-    out = out[Kt:-Kt, Kf:-Kf]
-    return out
+    return out[Kt:-Kt, Kf:-Kf]
 
 
 def zscore_full_array(data, flags=None, modified=False):
@@ -1307,8 +1305,8 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
 
 
 def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
-                sig_adj=2.0, label='', run_check=True, check_extra=True,
-                run_check_acceptability=True):
+                sig_adj=2.0, label='', run_check=True,
+                check_extra=True, run_check_acceptability=True):
     """Zero-center and normalize the full total chi squared array, flag, and watershed.
 
     Parameters
