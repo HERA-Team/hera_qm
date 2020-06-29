@@ -1012,7 +1012,7 @@ def test_day_threshold_run(tmpdir):
     # test seperable flags mode.
     # catch warnings
     with pytest.warns(UserWarning):
-        xrfi.day_threshold_run(data_files, 'just a test', separable_flags=True, clobber=True)
+        xrfi.day_threshold_run(data_files, 'just a test', broadcast_flags=True, clobber=True)
     types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
     for type in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'

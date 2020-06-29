@@ -1639,11 +1639,46 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         uvf.write(outpath, clobber=clobber)
 
 
+def broadcast_flag_waterfall(flag_waterfall, time_threshold=0.15, freq_threshold=0.02):
+    """Broadcast flags across an axis.
+
+    A utility function that broadcasts flags across time or frequency.
+    This makes the flags across the broadcast axis constant
+    (except for channels on the broadcast axis that are fully flagged).
+
+
+    Parameters
+    ----------
+    flag_waterfall : boolean 2d array
+        2d waterfall of booleans denoting flags.
+    time_threshold : float, optional
+        for each channel along the freq axis
+        if fraction of flags in this channel is greater then
+        threshold, then flag that channel.
+        Default is 0.15.
+    freq_threshold : float, optional
+        for each channel along the freq axis
+        if fraction of flags in this channel is greater then
+        threshold, then flag that channel.
+        Default is 0.02.
+    """
+    fa = np.zeros_like(flag_waterfall).astype(bool)
+    # add flags for times that are entirely flagged.
+    for m in range(fa.shape[0]):
+        if np.count_nonzero(flag_waterfall[m, :]) / flag_waterfall.shape[0] >= time_threshold:
+            fa[m, :] = True
+    for m in range(fa.shape[1]):
+        if np.count_nonzero(flag_waterfall[:, m]) / flag_waterfall.shape[1] >= freq_threshold:
+            fa[:, m] = True
+    return fa
+
+
 def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
-                      nsig_f_adj=3., nsig_t_adj=3., clobber=False,
+                      nsig_f_adj=3., nsig_t_adj=3.,
+                      broadcast_flags=False, time_threshold=0.15,
+                      freq_threshold=0.02, clobber=False,
                       run_check=True, check_extra=True,
-                      run_check_acceptability=True, separable_flags=False,
-                      time_threshold=0.15, freq_threshold=0.02):
+                      run_check_acceptability=True):
     """Apply thresholding across all times/frequencies, using a full day of data.
 
     This function will write UVFlag files for each data input (omnical gains,
@@ -1672,17 +1707,7 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     nsig_t_adj : float, optional
         The number of sigma above which to flag integrations if they neighbor flagged integrations.
         Default is 3.0.
-    clobber : bool, optional
-        If True, overwrite existing files. Default is False.
-    run_check : bool
-        Option to check for the existence and proper shapes of parameters
-        on UVFlag Object.
-    check_extra : bool
-        Option to check optional parameters as well as required ones.
-    run_check_acceptability : bool
-        Option to check acceptable range of the values of parameters
-        on UVFlag Object.
-    separable_flags : bool, optional
+    broadcast_flags : bool, optional
         !!! WARNING -- THIS FEATURE IS EXPERIMENTAL AND DEFAULTS ARE NOT !!!
         !!! CALIBRATED TO PRODUCE ANY SORT OF REASONABLE RESULT !!!
         If set to True, then force the flags to be separable by performing
@@ -1697,15 +1722,21 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         !!! CALIBRATED TO PRODUCE ANY SORT OF REASONABLE RESULT !!!
         times with flags above this threshold are completely flagged.
         default is 0.15.
-    freq_threshold : float, optional.
+    freq_threshold : float, optional
         !!! WARNING -- THIS FEATURE IS EXPERIMENTAL AND DEFAULTS ARE NOT !!!
         !!! CALIBRATED TO PRODUCE ANY SORT OF REASONABLE RESULT !!!
-        frequency channels with flagging fractions above this threshold are
-        completely flagged. channels below this threshold are completely unflagged.
-        time thresholding is run after frequency thresholding and may restore flags
-        in channel that is completely unflagged. Default is 0.01 (1% of times).
-
-
+        frequencies with flags above this threshold are completely flagged.
+        default is 0.02.
+    clobber : bool, optional
+        If True, overwrite existing files. Default is False.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     Returns
     -------
@@ -1758,21 +1789,16 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     uvf_total |= UVFlag(files)
 
     # Generate Separable Flags.
-    if separable_flags:
-        warnings.warn("Separable flags is an experimental feature"
+    if broadcast_flags:
+        bflags = np.zeros_like(uvf_total.flag_array).astype(bool)
+        warnings.warn("broadcasting flags is an experimental feature"
                       "whose defaults may not produce reasonable results!")
-        broadcast_flags = np.zeros(uvf_total.flag_array.shape).astype(bool)
-        for pol in range(uvf_total.flag_array.shape[2]):
-            fa = uvf_total.flag_array[:, :, pol]
-            # First, flag all frequencies above threshold.
-            for m in range(fa.shape[1]):
-                if np.count_nonzero(fa[:, m]) / fa.shape[0] >= freq_threshold:
-                    broadcast_flags[:, m, pol] = True
-            for m in range(fa.shape[0]):
-                if np.count_nonzero(fa[m]) / fa.shape[1] >= time_threshold:
-                    broadcast_flags[m, :, pol] = True
+        for pol in range(uvf_total.flag_array.shape[-1]):
+            bflags[:, :, pol] = broadcast_flag_waterfall(uvf_total.flag_array[:, :, pol],
+                                                        time_threshold=time_threshold,
+                                                        freq_threshold=freq_threshold)
     # replace flag array with broadcast flags.
-        uvf_total.flag_array = broadcast_flags
+        uvf_total.flag_array = bflags
 
     # Apply to abs calfits
     uvc_a = UVCal()

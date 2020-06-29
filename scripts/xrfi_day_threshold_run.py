@@ -13,7 +13,7 @@ history = ' '.join(sys.argv)
 
 if args.run_if_first is None or sorted(args.data_files)[0] == args.run_if_first:
     xrfi.day_threshold_run(args.data_files, history, nsig_f=args.nsig_f, nsig_t=args.nsig_t,
-                           separable_flags=args.separable_flags, time_threshold=args.time_threshold,
+                           broadcast_flags=args.broadcast_flags, time_threshold=args.time_threshold,
                            freq_threshold=args.freq_threshold,
                            nsig_f_adj=args.nsig_f_adj, nsig_t_adj=args.nsig_t_adj, clobber=args.clobber)
 else:
