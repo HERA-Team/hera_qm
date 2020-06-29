@@ -1643,7 +1643,7 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
                       nsig_f_adj=3., nsig_t_adj=3., clobber=False,
                       run_check=True, check_extra=True,
                       run_check_acceptability=True, separable_flags=False,
-                      time_threshold=0.15, freq_threshold=0.01):
+                      time_threshold=0.15, freq_threshold=0.02):
     """Apply thresholding across all times/frequencies, using a full day of data.
 
     This function will write UVFlag files for each data input (omnical gains,
@@ -1758,10 +1758,10 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
             fa = uvf_total.flag_array[:, :, pol]
             # First, flag all frequencies above threshold.
             for m in range(fa.shape[1]):
-                if np.count_nonzero(~fa[:, m]) / fa.shape[0] >= freq_threshold:
+                if np.count_nonzero(fa[:, m]) / fa.shape[0] >= freq_threshold:
                     broadcast_flags[:, m, pol] = True
             for m in range(fa.shape[0]):
-                if np.count_nonzero(~fa[m]) / fa.shape[1] >= time_threshold:
+                if np.count_nonzero(fa[m]) / fa.shape[1] >= time_threshold:
                     broadcast_flags[m, :, pol] = True
     # replace flag array with broadcast flags.
         uvf_total.flag_array = broadcast_flags
