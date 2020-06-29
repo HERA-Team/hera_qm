@@ -1759,7 +1759,7 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
 
     # Generate Separable Flags.
     if separable_flags:
-        warnigs.warng("Separable flags is an experimental feature"
+        warnings.warn("Separable flags is an experimental feature"
                       "whose defaults may not produce reasonable results!")
         broadcast_flags = np.zeros(uvf_total.flag_array.shape).astype(bool)
         for pol in range(uvf_total.flag_array.shape[2]):
