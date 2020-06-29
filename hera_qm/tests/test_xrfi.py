@@ -1010,16 +1010,8 @@ def test_day_threshold_run(tmpdir):
         assert os.path.exists(calfile)
 
     # test seperable flags mode.
-    xrfi.day_threshold_run(data_files, 'just a test', separable_flags=True, clobber=True)
-    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
-    for type in types:
-        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
-        outfile = os.path.join(tmp_path, basename)
-        assert os.path.exists(outfile)
-
-    for fake_obs in fake_obses:
-        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
-        assert os.path.exists(calfile)
+    # catch warnings
+    uvtest.checkWarnings(xrfi.day_threshold_run, data_files, 'just a test', separable_flags=True, clobber=True)
 
 def test_xrfi_h1c_run():
     # run with bad antennas specified

@@ -1683,6 +1683,8 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         Option to check acceptable range of the values of parameters
         on UVFlag Object.
     separable_flags : bool, optional
+        !!! WARNING -- THIS FEATURE IS EXPERIMENTAL AND DEFAULTS ARE NOT !!!
+        !!! CALIBRATED TO PRODUCE ANY SORT OF REASONABLE RESULT !!!
         If set to True, then force the flags to be separable by performing
         a final thresholding for each channel and time by flagging times /
         channels if fraction of flags in each time is above time_threshold
@@ -1691,9 +1693,13 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         commute unless flags are separable and freq filtering adds time structure
         and time filtering adds frequency structure. Default is False.
     time_threshold : float, optional
+        !!! WARNING -- THIS FEATURE IS EXPERIMENTAL AND DEFAULTS ARE NOT !!!
+        !!! CALIBRATED TO PRODUCE ANY SORT OF REASONABLE RESULT !!!
         times with flags above this threshold are completely flagged.
         default is 0.15.
     freq_threshold : float, optional.
+        !!! WARNING -- THIS FEATURE IS EXPERIMENTAL AND DEFAULTS ARE NOT !!!
+        !!! CALIBRATED TO PRODUCE ANY SORT OF REASONABLE RESULT !!!
         frequency channels with flagging fractions above this threshold are
         completely flagged. channels below this threshold are completely unflagged.
         time thresholding is run after frequency thresholding and may restore flags
@@ -1753,6 +1759,8 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
 
     # Generate Separable Flags.
     if separable_flags:
+        warnigs.warng("Separable flags is an experimental feature"
+                      "whose defaults may not produce reasonable results!")
         broadcast_flags = np.zeros(uvf_total.flag_array.shape).astype(bool)
         for pol in range(uvf_total.flag_array.shape[2]):
             fa = uvf_total.flag_array[:, :, pol]
