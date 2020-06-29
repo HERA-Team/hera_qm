@@ -1660,7 +1660,8 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     * For a given chunk of files, we do not store output files for the edges,
     determined by the size of the time kernel (kt_size) and the number of
     integrations per file. The exception is the very start and end of a day,
-    which are stored because they will never not be at the edge.
+    which are stored, but completely flagged because they will never not be at
+    the edge.
     It is up to the user to run overlapping chunks to ensure output is created
     for every input file.
 
