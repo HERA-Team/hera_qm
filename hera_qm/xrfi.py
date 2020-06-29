@@ -1905,10 +1905,18 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                 'flags2.h5': uvf_combined2}
 
     # Determine the actual files to store
+    # We will drop kt_size / (integrations per file) files at the start and
+    # end to avoid edge effects from the convolution kernel.
+    # If this chunk includes the start or end of the night, we will write
+    # output files for those, but flag everything.
+
+    # Read metadata from first file to get integrations per file.
     uvtemp = UVData()
     uvtemp.read(data_files[0], read_data=False)
     nintegrations = len(data_files) * uvtemp.Ntimes
+    # Calculate number of files to drop on edges, rounding up.
     ndrop = int(np.ceil(kt_size / uvtemp.Ntimes))
+    # start_ind and end_ind are the indices in the file list to include
     start_ind = ndrop
     end_ind = len(data_files) - ndrop
     # If we're the first or last job, store all flags for the edge
@@ -1925,6 +1933,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
         # Last job, store the late edge.
         end_ind = len(data_files)
 
+    # Loop through the files to output, storing all the different data products.
     for ind in range(start_ind, end_ind):
         dirname = resolve_xrfi_path(xrfi_path, data_files[ind], jd_subdir=True)
         basename = qm_utils.strip_extension(os.path.basename(data_files[ind]))
