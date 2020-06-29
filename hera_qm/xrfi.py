@@ -373,7 +373,7 @@ def detrend_medminfilt(data, flags=None, Kt=8, Kf=8):
     return out
 
 
-def detrend_medfilt(data, flags=None, Kt=8, Kf=8, pad=True):
+def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
     """Detrend array using a median filter.
 
     Parameters
@@ -389,9 +389,6 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8, pad=True):
     Kf : int, optional
         The box size in frequency (second) dimension to apply medfilt over. Default
         is 8 pixels.
-    pad : bool, optional
-        If True (default), pad the data by mirroring at the edges by the size of
-        the kernel.
 
     Returns
     -------
@@ -403,9 +400,8 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8, pad=True):
     from scipy.signal import medfilt2d
 
     Kt, Kf = _check_convolve_dims(data, Kt, Kf)
-    if pad:
-        data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
-        data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
+    data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
+    data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(data):
         d_sm_r = medfilt2d(data.real, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
         d_sm_i = medfilt2d(data.imag, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
@@ -418,12 +414,11 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8, pad=True):
     sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
-    if pad:
-        out = out[Kt:-Kt, Kf:-Kf]
+    out = out[Kt:-Kt, Kf:-Kf]
     return out
 
 
-def detrend_meanfilt(data, flags=None, Kt=8, Kf=8, pad=True):
+def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
     """Detrend array using a mean filter.
 
     Parameters
@@ -438,9 +433,6 @@ def detrend_meanfilt(data, flags=None, Kt=8, Kf=8, pad=True):
     Kf : int, optional
         The box size in frequency (second) dimension to apply medfilt over.
         Default is 8 pixels.
-    pad : bool, optional
-        If True (default), pad the data by mirroring at the edges by the size of
-        the kernel.
 
     Returns
     -------
@@ -453,25 +445,23 @@ def detrend_meanfilt(data, flags=None, Kt=8, Kf=8, pad=True):
 
     Kt, Kf = _check_convolve_dims(data, Kt, Kf)
     kernel = np.ones((2 * Kt + 1, 2 * Kf + 1))
-    if pad:
-        # do a mirror extend, like in scipy's convolve, which astropy doesn't support
-        data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
-        data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
-        if flags is not None:
-            flags = np.concatenate([flags[Kt - 1::-1], flags, flags[:-Kt - 1:-1]], axis=0)
-            flags = np.concatenate([flags[:, Kf - 1::-1], flags, flags[:, :-Kf - 1:-1]], axis=1)
+    # do a mirror extend, like in scipy's convolve, which astropy doesn't support
+    data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
+    data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
+    if flags is not None:
+        flags = np.concatenate([flags[Kt - 1::-1], flags, flags[:-Kt - 1:-1]], axis=0)
+        flags = np.concatenate([flags[:, Kf - 1::-1], flags, flags[:, :-Kf - 1:-1]], axis=1)
     d_sm = convolve(data, kernel, mask=flags, boundary='extend')
     d_rs = data - d_sm
     d_sq = np.abs(d_rs)**2
     sig = np.sqrt(convolve(d_sq, kernel, mask=flags))
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
-    if pad:
-        out = out[Kt:-Kt, Kf:-Kf]
+    out = out[Kt:-Kt, Kf:-Kf]
     return out
 
 
-def zscore_full_array(data, flags=None, modified=False, pad=False):
+def zscore_full_array(data, flags=None, modified=False):
     """Calculate the z-score for full array, rather than a defined kernel size.
 
     This is a special case of
@@ -489,8 +479,6 @@ def zscore_full_array(data, flags=None, modified=False, pad=False):
         zscore (not modified).
     modified : bool, optional
         Whether to calculate the modified z-scores. Default is False.
-    pad : bool, optional
-        NOT USED. keyword for symmetry with other algorithm functions.
 
     Returns
     -------
@@ -1237,7 +1225,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 
 
 def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
-              wf_method='quadmean', sig_init=6.0, sig_adj=2.0, label='', pad=True,
+              wf_method='quadmean', sig_init=6.0, sig_adj=2.0, label='',
               run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
@@ -1269,8 +1257,6 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
     label: str, optional
         Label to be added to UVFlag objects.
-    pad: bool, optional
-        Whether to pad the array in the detrending algorithm. Default is True.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1292,7 +1278,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     flag_xants(uv, xants, run_check=run_check,
                check_extra=check_extra,
                run_check_acceptability=run_check_acceptability)
-    uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode, pad=pad,
+    uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode,
                              run_check=run_check, check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
     uvf_m.label = label
@@ -1306,7 +1292,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
     uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
                                            flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
-                                           Kt=Kt, Kf=Kf, pad=pad)
+                                           Kt=Kt, Kf=Kf)
     # Flag and watershed on each data product individually.
     # That is, on each complete file (e.g. calibration gains), not on individual
     # antennas/baselines. We don't broadcast until the very end.
@@ -1321,8 +1307,8 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
 
 
 def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
-                sig_adj=2.0, label='', pad=False, run_check=True,
-                check_extra=True, run_check_acceptability=True):
+                sig_adj=2.0, label='', run_check=True, check_extra=True,
+                run_check_acceptability=True):
     """Zero-center and normalize the full total chi squared array, flag, and watershed.
 
     Parameters
@@ -1339,8 +1325,6 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
         The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
     label: str, optional
         Label to be added to UVFlag objects.
-    pad: bool, optional
-        Whether to pad the array in the detrending algorithm. Default is False.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1360,7 +1344,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 
     """
     uvf_m = calculate_metric(uv, alg, cal_mode='tot_chisq', modified=modified,
-                             pad=pad, run_check=run_check, check_extra=check_extra,
+                             run_check=run_check, check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
     uvf_m.label = label
     uvf_m.to_waterfall(keep_pol=False, run_check=run_check,
@@ -1372,8 +1356,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     alg_func = algorithm_dict[alg]
     # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
     uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
-                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
-                                           pad=pad)
+                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
     # Flag and watershed on waterfall
     uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
                  check_extra=check_extra,
@@ -1742,14 +1725,12 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
     uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Abscal gains, round 1.', pad=False,
-                                run_check=run_check,
+                                label='Abscal gains, round 1.', run_check=run_check,
                                 check_extra=check_extra,
                                 run_check_acceptability=run_check_acceptability)
     uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Abscal chisq, round 1.', pad=False,
-                                run_check=run_check,
+                                label='Abscal chisq, round 1.', run_check=run_check,
                                 check_extra=check_extra,
                                 run_check_acceptability=run_check_acceptability)
 
@@ -1761,14 +1742,12 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                run_check_acceptability=run_check_acceptability)
     uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Omnical gains, round 1.', pad=False,
-                                run_check=run_check,
+                                label='Omnical gains, round 1.', run_check=run_check,
                                 check_extra=check_extra,
                                 run_check_acceptability=run_check_acceptability)
     uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Omnical chisq, round 1.', pad=False,
-                                run_check=run_check,
+                                label='Omnical chisq, round 1.', run_check=run_check,
                                 check_extra=check_extra,
                                 run_check_acceptability=run_check_acceptability)
 
@@ -1778,7 +1757,6 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
                               sig_init=sig_init, sig_adj=sig_adj,
                               label='Omnical visibility solutions, round 1.',
-                              pad=False,
                               run_check=run_check,
                               check_extra=check_extra,
                               run_check_acceptability=run_check_acceptability)
@@ -1787,7 +1765,6 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
                                          sig_init=sig_init, sig_adj=sig_adj,
                                          label='Renormalized chisq, round 1.',
-                                         pad=False,
                                          run_check=run_check,
                                          check_extra=check_extra,
                                          run_check_acceptability=run_check_acceptability)
@@ -1832,28 +1809,24 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     # Calculate metric on abscal data
     uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Abscal gains, round 2.', pad=False,
-                                  run_check=run_check,
+                                  label='Abscal gains, round 2.', run_check=run_check,
                                   check_extra=check_extra,
                                   run_check_acceptability=run_check_acceptability)
     uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Abscal chisq, round 2.', pad=False,
-                                  run_check=run_check,
+                                  label='Abscal chisq, round 2.', run_check=run_check,
                                   check_extra=check_extra,
                                   run_check_acceptability=run_check_acceptability)
 
     # Calculate metric on omnical data
     uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Omnical gains, round 2.', pad=False,
-                                  run_check=run_check,
+                                  label='Omnical gains, round 2.', run_check=run_check,
                                   check_extra=check_extra,
                                   run_check_acceptability=run_check_acceptability)
     uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Omnical chisq, round 2.', pad=False,
-                                  run_check=run_check,
+                                  label='Omnical chisq, round 2.', run_check=run_check,
                                   check_extra=check_extra,
                                   run_check_acceptability=run_check_acceptability)
 
@@ -1861,7 +1834,6 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
                                 sig_init=sig_init, sig_adj=sig_adj,
                                 label='Omnical visibility solutions, round 2.',
-                                pad=False,
                                 run_check=run_check,
                                 check_extra=check_extra,
                                 run_check_acceptability=run_check_acceptability)
@@ -1869,8 +1841,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     # Calculate metric on data file
     uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
                                 sig_init=sig_init, sig_adj=sig_adj,
-                                label='Data, round 2.', pad=False,
-                                run_check=run_check,
+                                label='Data, round 2.', run_check=run_check,
                                 check_extra=check_extra,
                                 run_check_acceptability=run_check_acceptability)
 
@@ -1878,7 +1849,6 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
                                            sig_init=sig_init, sig_adj=sig_adj,
                                            label='Renormalized chisq, round 2.',
-                                           pad=False,
                                            run_check=run_check,
                                            check_extra=check_extra,
                                            run_check_acceptability=run_check_acceptability)

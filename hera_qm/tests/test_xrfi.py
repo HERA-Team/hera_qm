@@ -303,27 +303,6 @@ def test_detrend_medfilt_3d_error():
     pytest.raises(ValueError, xrfi.detrend_medfilt, np.ones((5, 4, 3)))
 
 
-def test_detrend_medfilt_no_pad(fake_data):
-    # Make fake data
-    fake_data = np.zeros(fake_data.shape, dtype=np.complex)
-    for i in range(fake_data.shape[1]):
-        fake_data[:, i] = (np.sin(i) * np.ones_like(fake_data[:, i], dtype=np.float)
-                           + 1j * np.cos(i) * np.ones_like(fake_data[:, i], dtype=np.float))
-    # run detrend_medfilt
-    Kt = 8
-    Kf = 8
-    dm = xrfi.detrend_medfilt(fake_data, Kt=Kt, Kf=Kf, pad=False)
-    assert dm.shape == (100, 100)
-
-    # read in "answer" array
-    # this is output that corresponds to .size=100, Kt=58, Kf=58
-    ans_fn = os.path.join(DATA_PATH, 'test_detrend_medfilt_complex_ans.txt')
-    ans = np.genfromtxt(ans_fn, dtype=np.complex)
-    # should only match for the inner bits
-    assert np.allclose(ans[2 * Kt:-2 * Kt, 2 * Kf:-2 * Kf],
-                       dm[2 * Kt:-2 * Kt, 2 * Kf:-2 * Kf])
-
-
 def test_detrend_meanfilt(fake_data):
     # make fake data
     for i in range(fake_data.shape[1]):
@@ -358,25 +337,6 @@ def test_detrend_meanfilt_flags(fake_data):
     dm2 = xrfi.detrend_meanfilt(fake_data, flags=flags, Kt=Kt, Kf=Kf)
     dm2[ind, :] = dm1[ind, :]  # These don't have valid values, so don't compare them.
     assert np.allclose(dm1, dm2)
-
-
-def test_detrend_meanfilt_no_pad(fake_data):
-    # make fake data
-    for i in range(fake_data.shape[1]):
-        fake_data[:, i] = i**2 * np.ones_like(fake_data[:, i])
-    # run detrend medfilt
-    Kt = 8
-    Kf = 8
-    dm = xrfi.detrend_meanfilt(fake_data, Kt=Kt, Kf=Kf, pad=False)
-    assert dm.shape == (100, 100)
-
-    # read in "answer" array
-    # this is output that corresponds to .size==100, Kt==8, Kf==8
-    ans_fn = os.path.join(DATA_PATH, 'test_detrend_meanfilt_ans.txt')
-    ans = np.loadtxt(ans_fn)
-    # Should only match up to Kt/Kf size
-    assert np.allclose(ans[2 * Kt:-2 * Kt, 2 * Kf:-2 * Kf],
-                       dm[2 * Kt:-2 * Kt, 2 * Kf:-2 * Kf])
 
 
 def test_zscore_full_array(fake_data):
