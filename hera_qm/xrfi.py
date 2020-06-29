@@ -1767,7 +1767,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                               check_extra=check_extra,
                               run_check_acceptability=run_check_acceptability)
 
-    # Get the absolute chi-squared values
+    # Get the non-detrended total chi-squared values, normalized across the full waterfall.
     uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
                                          sig_init=sig_init, sig_adj=sig_adj,
                                          label='Renormalized chisq, round 1.',
@@ -1851,7 +1851,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                                 check_extra=check_extra,
                                 run_check_acceptability=run_check_acceptability)
 
-    # Get the absolute chi-squared values
+    # Get the non-detrended total chi-squared values, normalized across the full waterfall.
     uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
                                            sig_init=sig_init, sig_adj=sig_adj,
                                            label='Renormalized chisq, round 2.',
