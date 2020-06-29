@@ -1726,6 +1726,10 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     model_files = sorted(model_files)
     data_files = sorted(data_files)
 
+    # Make keyword dict to save some space on repeated options
+    check_kwargs = {'run_check': run_check, 'check_extra': check_extra,
+                    'run_check_acceptability': run_check_acceptability}
+
     # Initial run on cal data products
     # Calculate metric on abscal data
     uvc_a = UVCal()
@@ -1733,14 +1737,10 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
     uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Abscal gains, round 1.', run_check=run_check,
-                                check_extra=check_extra,
-                                run_check_acceptability=run_check_acceptability)
+                                label='Abscal gains, round 1.', **check_kwargs)
     uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Abscal chisq, round 1.', run_check=run_check,
-                                check_extra=check_extra,
-                                run_check_acceptability=run_check_acceptability)
+                                label='Abscal chisq, round 1.', **check_kwargs)
 
     # Calculate metric on omnical data
     uvc_o = UVCal()
@@ -1750,14 +1750,10 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                run_check_acceptability=run_check_acceptability)
     uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Omnical gains, round 1.', run_check=run_check,
-                                check_extra=check_extra,
-                                run_check_acceptability=run_check_acceptability)
+                                label='Omnical gains, round 1.', **check_kwargs)
     uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                label='Omnical chisq, round 1.', run_check=run_check,
-                                check_extra=check_extra,
-                                run_check_acceptability=run_check_acceptability)
+                                label='Omnical chisq, round 1.', **check_kwargs)
 
     # Calculate metric on model vis
     uv_v = UVData()
@@ -1765,17 +1761,13 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
                               sig_init=sig_init, sig_adj=sig_adj,
                               label='Omnical visibility solutions, round 1.',
-                              run_check=run_check,
-                              check_extra=check_extra,
-                              run_check_acceptability=run_check_acceptability)
+                              **check_kwargs)
 
     # Get the non-detrended total chi-squared values, normalized across the full waterfall.
     uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
                                          sig_init=sig_init, sig_adj=sig_adj,
                                          label='Renormalized chisq, round 1.',
-                                         run_check=run_check,
-                                         check_extra=check_extra,
-                                         run_check_acceptability=run_check_acceptability)
+                                         **check_kwargs)
 
     # Combine the metrics together
     uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax, uvf_chisq],
@@ -1791,14 +1783,11 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                  check_extra=check_extra,
                  run_check_acceptability=run_check_acceptability)
     uvf_fws = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False,
-                             run_check=run_check, check_extra=check_extra,
-                             run_check_acceptability=run_check_acceptability)
+                             **check_kwargs)
     uvf_fws.label = 'Flags from combined metrics, round 1.'
 
     # OR everything together for initial flags
-    uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
-                             check_extra=check_extra,
-                             run_check_acceptability=run_check_acceptability)
+    uvf_apriori.to_waterfall(method='and', keep_pol=False, **check_kwargs)
     uvf_init = (uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf
                 | uvf_chisq_f | uvf_apriori)
     uvf_init.label = 'ORd flags, round 1.'
@@ -1809,57 +1798,42 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uv_d.read(data_files, axis='blt')
     for uv in [uvc_o, uvc_a, uv_v, uv_d]:
         flag_apply(uvf_init, uv, keep_existing=True, force_pol=True,
-                   run_check=run_check, check_extra=check_extra,
-                   run_check_acceptability=run_check_acceptability)
+                   **check_kwargs)
 
     # Do next round of metrics
     # Change to meanfilt because it can mask flagged pixels
     # Calculate metric on abscal data
     uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Abscal gains, round 2.', run_check=run_check,
-                                  check_extra=check_extra,
-                                  run_check_acceptability=run_check_acceptability)
+                                  label='Abscal gains, round 2.', **check_kwargs)
     uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Abscal chisq, round 2.', run_check=run_check,
-                                  check_extra=check_extra,
-                                  run_check_acceptability=run_check_acceptability)
+                                  label='Abscal chisq, round 2.', **check_kwargs)
 
     # Calculate metric on omnical data
     uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Omnical gains, round 2.', run_check=run_check,
-                                  check_extra=check_extra,
-                                  run_check_acceptability=run_check_acceptability)
+                                  label='Omnical gains, round 2.', **check_kwargs)
     uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                   cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Omnical chisq, round 2.', run_check=run_check,
-                                  check_extra=check_extra,
-                                  run_check_acceptability=run_check_acceptability)
+                                  label='Omnical chisq, round 2.', **check_kwargs)
 
     # Calculate metric on model vis
     uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
                                 sig_init=sig_init, sig_adj=sig_adj,
                                 label='Omnical visibility solutions, round 2.',
-                                run_check=run_check,
-                                check_extra=check_extra,
-                                run_check_acceptability=run_check_acceptability)
+                                **check_kwargs)
 
     # Calculate metric on data file
     uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
                                 sig_init=sig_init, sig_adj=sig_adj,
-                                label='Data, round 2.', run_check=run_check,
-                                check_extra=check_extra,
-                                run_check_acceptability=run_check_acceptability)
+                                label='Data, round 2.', **check_kwargs)
 
     # Get the non-detrended total chi-squared values, normalized across the full waterfall.
     uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
                                            sig_init=sig_init, sig_adj=sig_adj,
                                            label='Renormalized chisq, round 2.',
-                                           run_check=run_check,
-                                           check_extra=check_extra,
-                                           run_check_acceptability=run_check_acceptability)
+                                           **check_kwargs)
 
     # Combine the metrics together
     uvf_metrics2 = uvf_d2.combine_metrics([uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2,
@@ -1872,13 +1846,9 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                                                   Kt=kt_size, Kf=kf_size)
 
     # Flag on combined metrics
-    uvf_f2 = flag(uvf_metrics2, nsig_p=sig_init, run_check=run_check,
-                  check_extra=check_extra,
-                  run_check_acceptability=run_check_acceptability)
+    uvf_f2 = flag(uvf_metrics2, nsig_p=sig_init, **check_kwargs)
     uvf_fws2 = watershed_flag(uvf_metrics2, uvf_f2, nsig_p=sig_adj,
-                              inplace=False, run_check=run_check,
-                              check_extra=check_extra,
-                              run_check_acceptability=run_check_acceptability)
+                              inplace=False, **check_kwargs)
     uvf_fws2.label = 'Flags from combined metrics, round 2.'
     uvf_combined2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
                      | uvf_vf2 | uvf_df2 | uvf_chisq_f2 | uvf_init)
