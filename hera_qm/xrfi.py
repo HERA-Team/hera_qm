@@ -1665,10 +1665,10 @@ def broadcast_flag_waterfall(flag_waterfall, time_threshold=0.15, freq_threshold
     fa = np.zeros_like(flag_waterfall).astype(bool)
     # add flags for times that are entirely flagged.
     for m in range(fa.shape[0]):
-        if np.count_nonzero(flag_waterfall[m, :]) / flag_waterfall.shape[0] >= time_threshold:
+        if np.count_nonzero(flag_waterfall[m, :]) / flag_waterfall.shape[1] >= time_threshold:
             fa[m, :] = True
     for m in range(fa.shape[1]):
-        if np.count_nonzero(flag_waterfall[:, m]) / flag_waterfall.shape[1] >= freq_threshold:
+        if np.count_nonzero(flag_waterfall[:, m]) / flag_waterfall.shape[0] >= freq_threshold:
             fa[:, m] = True
     return fa
 
