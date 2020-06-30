@@ -15,6 +15,7 @@ from .version import hera_qm_version_str
 from .metrics_io import process_ex_ants
 import warnings
 import glob
+import re
 
 
 #############################################################################
@@ -1637,6 +1638,289 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         outfile = '.'.join([basename, ext])
         outpath = os.path.join(dirname, outfile)
         uvf.write(outpath, clobber=clobber)
+
+
+def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
+                        flag_command, xrfi_path='', kt_size=8, kf_size=8,
+                        sig_init=5.0, sig_adj=2.0, ex_ants=None, metrics_file=None,
+                        clobber=False, run_check=True, check_extra=True,
+                        run_check_acceptability=True):
+    """Run the xrfi excision pipeline used for H3C IDR2.1.
+
+    This pipeline uses the detrending and watershed algorithms above.
+    Several files are concatenated together to perform the detrending,
+    and the flags from the inner files are stored*.
+    The algorithm is run on several data products: omnical gains, omnical chisq,
+    abscal gains, abscal chisq, omnical visibility solutions, renormalized chisq,
+    and the raw data. All of these, except the data, are run twice - first to
+    get an initial estimate of heavily contaminated data, and a second time
+    to get better estimate. The metrics and flags from each data product and both
+    rounds are stored in the xrfi_path (which defaults to a subdirectory, see
+    xrfi_path below). Also stored are the a priori flags and combined metrics/flags.
+
+    * For a given chunk of files, we do not store output files for the edges,
+    determined by the size of the time kernel (kt_size) and the number of
+    integrations per file. The exception is the very start and end of a day,
+    which are stored, but completely flagged because they will never not be at
+    the edge.
+    It is up to the user to run overlapping chunks to ensure output is created
+    for every input file.
+
+    Parameters
+    ----------
+    ocalfits_files : str
+        The omnical calfits files to use to flag on gains and chisquared values.
+    acalfits_files : str
+        The abscal calfits files to use to flag on gains and chisquared values.
+    model_files : str
+        THe model visibility files to flag on.
+    data_files : str
+        The raw visibility data files to flag.
+    flag_command : str
+        The flagging command used to call this function. Usually determined
+        in the script that invokes this function.
+    xrfi_path : str, optional
+        Path to save xrfi files to. Default is a subdirectory "{JD}/" inside
+        the same directory as data_file.
+    kt_size : int, optional
+        The size of kernel in time dimension for detrend in xrfi algorithm.
+        Default is 8.
+    kf_size : int, optional
+        Size of kernel in frequency dimension for detrend in xrfi algorithm.
+        Default is 8.
+    sig_init : float, optional
+        The starting number of sigmas to flag on. Default is 5.0.
+    sig_adj : float, optional
+        The number of sigmas to flag on for data adjacent to a flag.
+        Default is 2.0.
+    ex_ants : str, optional
+        A comma-separated list of antennas to exclude. Flags of visibilities formed
+        with these antennas will be set to True. Default is None (i.e., no antennas
+        will be excluded).
+    metrics_file : str, optional
+        Metrics file that contains a list of excluded antennas. Flags of visibilities
+        formed with these antennas will be set to True. Default is None (i.e.,
+        no antennas will be excluded).
+    clobber : bool, optional
+        If True, overwrite existing files. Default is False.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
+
+    Returns
+    -------
+    None
+
+    """
+    history = 'Flagging command: "' + flag_command + '", Using ' + hera_qm_version_str
+    xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+
+    # Make sure input files are sorted
+    ocalfits_files = sorted(ocalfits_files)
+    acalfits_files = sorted(acalfits_files)
+    model_files = sorted(model_files)
+    data_files = sorted(data_files)
+
+    # Make keyword dict to save some space on repeated options
+    check_kwargs = {'run_check': run_check, 'check_extra': check_extra,
+                    'run_check_acceptability': run_check_acceptability}
+
+    # Initial run on cal data products
+    # Calculate metric on abscal data
+    uvc_a = UVCal()
+    uvc_a.read_calfits(acalfits_files)
+    uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
+    uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Abscal gains, round 1.', **check_kwargs)
+    uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Abscal chisq, round 1.', **check_kwargs)
+
+    # Calculate metric on omnical data
+    uvc_o = UVCal()
+    uvc_o.read_calfits(ocalfits_files)
+    flag_apply(uvf_apriori, uvc_o, keep_existing=True, run_check=run_check,
+               check_extra=check_extra,
+               run_check_acceptability=run_check_acceptability)
+    uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Omnical gains, round 1.', **check_kwargs)
+    uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                label='Omnical chisq, round 1.', **check_kwargs)
+
+    # Calculate metric on model vis
+    uv_v = UVData()
+    uv_v.read(model_files, axis='blt')
+    uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
+                              sig_init=sig_init, sig_adj=sig_adj,
+                              label='Omnical visibility solutions, round 1.',
+                              **check_kwargs)
+
+    # Get the non-detrended total chi-squared values, normalized across the full waterfall.
+    uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
+                                         sig_init=sig_init, sig_adj=sig_adj,
+                                         label='Renormalized chisq, round 1.',
+                                         **check_kwargs)
+
+    # Combine the metrics together
+    uvf_metrics = uvf_v.combine_metrics([uvf_og, uvf_ox, uvf_ag, uvf_ax, uvf_chisq],
+                                        method='quadmean', inplace=False)
+    uvf_metrics.label = 'Combined metrics, round 1.'
+    alg_func = algorithm_dict['detrend_medfilt']
+    uvf_metrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0],
+                                                 flags=~uvf_metrics.weights_array[:, :, 0].astype(np.bool),
+                                                 Kt=kt_size, Kf=kf_size)
+
+    # Flag on combined metrics
+    uvf_f = flag(uvf_metrics, nsig_p=sig_init, run_check=run_check,
+                 check_extra=check_extra,
+                 run_check_acceptability=run_check_acceptability)
+    uvf_fws = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False,
+                             **check_kwargs)
+    uvf_fws.label = 'Flags from combined metrics, round 1.'
+
+    # OR everything together for initial flags
+    uvf_apriori.to_waterfall(method='and', keep_pol=False, **check_kwargs)
+    uvf_init = (uvf_fws | uvf_ogf | uvf_oxf | uvf_agf | uvf_axf | uvf_vf
+                | uvf_chisq_f | uvf_apriori)
+    uvf_init.label = 'ORd flags, round 1.'
+
+    # Second round -- use init flags to mask and recalculate everything
+    # Read in data file
+    uv_d = UVData()
+    uv_d.read(data_files, axis='blt')
+    for uv in [uvc_o, uvc_a, uv_v, uv_d]:
+        flag_apply(uvf_init, uv, keep_existing=True, force_pol=True,
+                   **check_kwargs)
+
+    # Do next round of metrics
+    # Change to meanfilt because it can mask flagged pixels
+    # Calculate metric on abscal data
+    uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Abscal gains, round 2.', **check_kwargs)
+    uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Abscal chisq, round 2.', **check_kwargs)
+
+    # Calculate metric on omnical data
+    uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                  cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Omnical gains, round 2.', **check_kwargs)
+    uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                  cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                  label='Omnical chisq, round 2.', **check_kwargs)
+
+    # Calculate metric on model vis
+    uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
+                                sig_init=sig_init, sig_adj=sig_adj,
+                                label='Omnical visibility solutions, round 2.',
+                                **check_kwargs)
+
+    # Calculate metric on data file
+    uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
+                                sig_init=sig_init, sig_adj=sig_adj,
+                                label='Data, round 2.', **check_kwargs)
+
+    # Get the non-detrended total chi-squared values, normalized across the full waterfall.
+    uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
+                                           sig_init=sig_init, sig_adj=sig_adj,
+                                           label='Renormalized chisq, round 2.',
+                                           **check_kwargs)
+
+    # Combine the metrics together
+    uvf_metrics2 = uvf_d2.combine_metrics([uvf_og2, uvf_ox2, uvf_ag2, uvf_ax2,
+                                           uvf_v2, uvf_d2, uvf_chisq2],
+                                          method='quadmean', inplace=False)
+    uvf_metrics2.label = 'Combined metrics, round 2.'
+    alg_func = algorithm_dict['detrend_meanfilt']
+    uvf_metrics2.metric_array[:, :, 0] = alg_func(uvf_metrics2.metric_array[:, :, 0],
+                                                  flags=uvf_init.flag_array[:, :, 0],
+                                                  Kt=kt_size, Kf=kf_size)
+
+    # Flag on combined metrics
+    uvf_f2 = flag(uvf_metrics2, nsig_p=sig_init, **check_kwargs)
+    uvf_fws2 = watershed_flag(uvf_metrics2, uvf_f2, nsig_p=sig_adj,
+                              inplace=False, **check_kwargs)
+    uvf_fws2.label = 'Flags from combined metrics, round 2.'
+    uvf_combined2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
+                     | uvf_vf2 | uvf_df2 | uvf_chisq_f2 | uvf_init)
+    uvf_combined2.label = 'ORd flags, round 2.'
+
+    # Write everything out
+    uvf_dict = {'apriori_flags.h5': uvf_apriori,
+                'v_metrics1.h5': uvf_v, 'v_flags1.h5': uvf_vf,
+                'og_metrics1.h5': uvf_og, 'og_flags1.h5': uvf_ogf,
+                'ox_metrics1.h5': uvf_ox, 'ox_flags1.h5': uvf_oxf,
+                'ag_metrics1.h5': uvf_ag, 'ag_flags1.h5': uvf_agf,
+                'ax_metrics1.h5': uvf_ax, 'ax_flags1.h5': uvf_axf,
+                'chi_sq_renormed1.h5': uvf_chisq, 'chi_sq_flags1.h5': uvf_chisq_f,
+                'combined_metrics1.h5': uvf_metrics, 'combined_flags1.h5': uvf_fws,
+                'flags1.h5': uvf_init,
+                'v_metrics2.h5': uvf_v2, 'v_flags2.h5': uvf_vf2,
+                'og_metrics2.h5': uvf_og2, 'og_flags2.h5': uvf_ogf2,
+                'ox_metrics2.h5': uvf_ox2, 'ox_flags2.h5': uvf_oxf2,
+                'ag_metrics2.h5': uvf_ag2, 'ag_flags2.h5': uvf_agf2,
+                'ax_metrics2.h5': uvf_ax2, 'ax_flags2.h5': uvf_axf2,
+                'data_metrics2.h5': uvf_d2, 'data_flags2.h5': uvf_df2,
+                'chi_sq_renormed2.h5': uvf_chisq2, 'chi_sq_flags2.h5': uvf_chisq_f2,
+                'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
+                'flags2.h5': uvf_combined2}
+
+    # Determine the actual files to store
+    # We will drop kt_size / (integrations per file) files at the start and
+    # end to avoid edge effects from the convolution kernel.
+    # If this chunk includes the start or end of the night, we will write
+    # output files for those, but flag everything.
+
+    # Read metadata from first file to get integrations per file.
+    uvtemp = UVData()
+    uvtemp.read(data_files[0], read_data=False)
+    nintegrations = len(data_files) * uvtemp.Ntimes
+    # Calculate number of files to drop on edges, rounding up.
+    ndrop = int(np.ceil(kt_size / uvtemp.Ntimes))
+    # start_ind and end_ind are the indices in the file list to include
+    start_ind = ndrop
+    end_ind = len(data_files) - ndrop
+    # If we're the first or last job, store all flags for the edge
+    datadir = os.path.dirname(os.path.abspath(data_files[0]))
+    bname = os.path.basename(data_files[0])
+    # Because we don't necessarily know the filename structure, search for
+    # files that are the same except different numbers (JDs)
+    search_str = os.path.join(datadir, re.sub('[0-9]', '?', bname))
+    all_files = sorted(glob.glob(search_str))
+    if os.path.basename(data_files[0]) == os.path.basename(all_files[0]):
+        # This is the first job, store the early edge.
+        start_ind = 0
+    if os.path.basename(data_files[-1]) == os.path.basename(all_files[-1]):
+        # Last job, store the late edge.
+        end_ind = len(data_files)
+
+    # Loop through the files to output, storing all the different data products.
+    for ind in range(start_ind, end_ind):
+        dirname = resolve_xrfi_path(xrfi_path, data_files[ind], jd_subdir=True)
+        basename = qm_utils.strip_extension(os.path.basename(data_files[ind]))
+        for ext, uvf in uvf_dict.items():
+            # This is calculated separately for each uvf because machine
+            # precision error was leading to times not found in object.
+            this_times = np.unique(uvf.time_array)
+            t_ind = ind * uvtemp.Ntimes
+            uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
+                                 inplace=False)
+            if (ext == 'flags2.h5') and ((ind <= ndrop) or (ind >= nintegrations - ndrop)):
+                # Edge file, flag it completely.
+                uvf_out.flag_array = np.ones_like(uvf_out.flag_array)
+            outfile = '.'.join([basename, ext])
+            outpath = os.path.join(dirname, outfile)
+            uvf_out.history += history
+            uvf_out.write(outpath, clobber=clobber)
 
 
 def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
