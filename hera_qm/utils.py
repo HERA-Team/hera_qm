@@ -294,6 +294,8 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument("--run_if_first", default=None, type=str, help='only run \
                         day_threshold_run if the first item in the sorted data_files \
                         list matches run_if_first (default None means always run)')
+        ap.add_argument("--separable_flags", action="store_true", default=False,
+                        help="Do not OR thresholded flags with previous flags.")
         ap.add_argument("--broadcast_flags", action="store_true", default=False,
                         help="Broadcast final day-thresholded flags in time and frequency." )
         ap.add_argument("--time_threshold", default=0.15, type=float,

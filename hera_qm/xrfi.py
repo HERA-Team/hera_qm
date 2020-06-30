@@ -1674,7 +1674,7 @@ def broadcast_flag_waterfall(flag_waterfall, time_threshold=0.15, freq_threshold
 
 
 def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
-                      nsig_f_adj=3., nsig_t_adj=3.,
+                      nsig_f_adj=3., nsig_t_adj=3., separable_flags=False,
                       broadcast_flags=False, time_threshold=0.15,
                       freq_threshold=0.02, clobber=False,
                       run_check=True, check_extra=True,
@@ -1707,6 +1707,8 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     nsig_t_adj : float, optional
         The number of sigma above which to flag integrations if they neighbor flagged integrations.
         Default is 3.0.
+    separable_flags : bool, optional
+        If true, do not OR the threshold flags with the previous data products.
     broadcast_flags : bool, optional
         !!! WARNING -- THIS FEATURE IS EXPERIMENTAL AND DEFAULTS ARE NOT !!!
         !!! CALIBRATED TO PRODUCE ANY SORT OF REASONABLE RESULT !!!
@@ -1784,9 +1786,10 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         uvf_f.write(outpath, clobber=clobber)
         uvf_total |= uvf_f
 
-    # Read non thresholded flags and combine
-    files = [glob.glob(d + '/*.flags2.h5')[0] for d in xrfi_dirs]
-    uvf_total |= UVFlag(files)
+    if not separable_flags:
+        # Read non thresholded flags and combine
+        files = [glob.glob(d + '/*.flags2.h5')[0] for d in xrfi_dirs]
+        uvf_total |= UVFlag(files)
 
     # Write combined thresholded flags.
     outfile = '.'.join([basename, 'combined_thresholded_flags.h5'])
