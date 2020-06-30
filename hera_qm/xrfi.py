@@ -1788,6 +1788,10 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     files = [glob.glob(d + '/*.flags2.h5')[0] for d in xrfi_dirs]
     uvf_total |= UVFlag(files)
 
+    # Write combined thresholded flags.
+    outfile = '.'.join([basename, 'combined_thresholded_flags.h5'])
+    outpath = os.path.join(outdir, outfile)
+    uvf_total.write(outpath, clobber=clobber)
     # Generate Separable Flags.
     if broadcast_flags:
         bflags = np.zeros_like(uvf_total.flag_array).astype(bool)
@@ -1797,9 +1801,11 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
             bflags[:, :, pol] = broadcast_flag_waterfall(uvf_total.flag_array[:, :, pol],
                                                         time_threshold=time_threshold,
                                                         freq_threshold=freq_threshold)
-    # replace flag array with broadcast flags.
+        # replace flag array with broadcast flags.
         uvf_total.flag_array = bflags
-
+        outfile = '.'.join([basename, 'broadcast_flags.h5'])
+        outpath = os.path.join(outdir, outfile)
+        uvf_total.write(outpath, clobber=clobber)
     # Apply to abs calfits
     uvc_a = UVCal()
     incal_ext = 'abs'
