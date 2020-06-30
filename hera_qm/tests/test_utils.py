@@ -192,6 +192,19 @@ def test_get_metrics_ArgumentParser_error():
     pytest.raises(AssertionError, utils.get_metrics_ArgumentParser, 'fake_method')
 
 
+def test_get_metrics_ArgumentParser_xrfi_h3c_idr2_1_run():
+    a = utils.get_metrics_ArgumentParser('xrfi_h3c_idr2_1_run')
+    # First try defaults - test a few of them
+    args = a.parse_args('')
+    assert args.kt_size == 8
+    assert args.sig_init == 6.0
+    assert args.ex_ants is None
+    # try to set something
+    args = a.parse_args(['--sig_adj', '3.0', '--ocalfits_files', 'foo', 'boo'])
+    assert args.sig_adj == 3.0
+    assert len(args.ocalfits_files) == 2
+
+
 def test_metrics2mc():
     # test ant metrics
     filename = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
