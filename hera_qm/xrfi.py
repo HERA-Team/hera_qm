@@ -1503,8 +1503,9 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                  run_check_acceptability=run_check_acceptability)
         flags += [uvf_apriori]
     else:
-        uvc_o = None
-        uvc_a = None
+        uvc_o = None; uvc_a = None
+        uvf_ag = None; uvf_agf = None; uvf_ax = None; uvf_axf = None
+        uvf_og = None; uvf_ogf = None; uvf_ox = None; uvf_oxf = None
     # Calculate metric on model vis
     if not model_file is not None:
         uv_v = UVData()
@@ -1519,6 +1520,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         flags += [uvf_vf]
     else:
         uv_v = None
+        uvf_v = None; uvf_vf = None
     # Get the absolute chi-squared values
     if uv_o is not None:
         uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
@@ -1529,6 +1531,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                              run_check_acceptability=run_check_acceptability)
         metrics += [uvf_chisq]
         flags += [uvf_chisq_f]
+        uvf_chisq = None; uvf_chisq_f = None
 
     if len(metrics) > 0:
     # Combine the metrics together
@@ -1561,6 +1564,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         uvf_init.label = 'ORd flags, round 1.'
     else:
         uvf_init = None
+        uvf_fws = None; uvf_f = None; uvf_metrics = None
 
     if not data_file is None:
     # Second round -- use init flags to mask and recalculate everything
@@ -1580,7 +1584,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     # Calculate metric on abscal data
     metrics = []
     flags = []
-    if uvc_a is not None and uvc_o is not Not:
+    if uvc_a is not None and uvc_o is not None:
         uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                       cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
                                       label='Abscal gains, round 2.',
@@ -1610,6 +1614,10 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                       run_check_acceptability=run_check_acceptability)
         metrics += [uvf_og2, uvf_ox2]
         flags += [uvf_oxf2, uvf_ogf2]
+    else:
+        uvf_ag2 = None; uvf_agf2 = None; uvf_ax2 = None; uvf_axf2 = None
+        uvf_og2 = None; uvf_ogf2 = None; uvf_ox2 = None; uvf_oxf2 = None
+
     # Calculate metric on model vis
     if uv_v is not None:
         uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
@@ -1620,6 +1628,8 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                     run_check_acceptability=run_check_acceptability)
         metrics += [uvf_v2]
         flags += [uvf_vf2]
+    else:
+        uvf_v2 = None; uvf_vf2 = None
     # Calculate metric on data file
     if uv_d is not None:
         uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
@@ -1630,6 +1640,8 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                     run_check_acceptability=run_check_acceptability)
         metrics += [uvf_d2]
         flags += [uvf_df2]
+    else:
+        uvf_d2 = None; uvf_df2 = None
     # Get the absolute chi-squared values
     if uv_o is not None:
         uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
@@ -1660,11 +1672,13 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                               inplace=False, run_check=run_check,
                               check_extra=check_extra,
                               run_check_acceptability=run_check_acceptability)
+    flags += [uvf_fws2]
     uvf_fws2.label = 'Flags from combined metrics, round 2.'
-    uvf_combined2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
-                     | uvf_vf2 | uvf_df2 | uvf_chisq_f2 | uvf_init)
+    uvf_combined2 = flags[0]
+    if len(flags) > 1:
+        for flag in flags[1:]:
+            uvf_combined2 |= flag
     uvf_combined2.label = 'ORd flags, round 2.'
-
     # Write everything out
     uvf_dict = {'apriori_flags.h5': uvf_apriori,
                 'v_metrics1.h5': uvf_v, 'v_flags1.h5': uvf_vf,
@@ -1687,9 +1701,10 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
 
     basename = qm_utils.strip_extension(os.path.basename(data_file))
     for ext, uvf in uvf_dict.items():
-        outfile = '.'.join([basename, ext])
-        outpath = os.path.join(dirname, outfile)
-        uvf.write(outpath, clobber=clobber)
+        if uvf is not None:
+            outfile = '.'.join([basename, ext])
+            outpath = os.path.join(dirname, outfile)
+            uvf.write(outpath, clobber=clobber)
 
 
 def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
@@ -2035,34 +2050,39 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     # Read in the metrics objects
     filled_metrics = []
     for ext in mexts:
+        # this will just read in what exists.
         if ext != 'data_metrics':
             # Fill in 2nd metrics with 1st metrics where 2nd are not available.
             files1 = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
             files2 = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
-            uvf1 = UVFlag(files1)
-            uvf2 = UVFlag(files2)
-            uvf2.metric_array = np.where(np.isinf(uvf2.metric_array), uvf1.metric_array,
-                                         uvf2.metric_array)
+            if len(files1) > 0 and len(files2) > 0:
+                uvf1 = UVFlag(files1)
+                uvf2 = UVFlag(files2)
+                uvf2.metric_array = np.where(np.isinf(uvf2.metric_array), uvf1.metric_array,
+                                             uvf2.metric_array)
+            else:
+                uvf2 = None
             filled_metrics.append(uvf2)
         else:
             # Data was only run in second iteration
             files = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
             filled_metrics.append(UVFlag(files))
-
+    filled_metrics_that_exist = [f for f in filled_metrics if f is not None]
     # Threshold each metric and save flag object
-    uvf_total = filled_metrics[0].copy()
+    uvf_total = filled_metrics_that_exist[0].copy()
     uvf_total.to_flag(run_check=run_check, check_extra=check_extra,
                       run_check_acceptability=run_check_acceptability)
     for i, uvf_m in enumerate(filled_metrics):
-        uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t,
-                             nsig_f_adj=nsig_f_adj, nsig_t_adj=nsig_t_adj,
-                             detrend=False, run_check=run_check,
-                             check_extra=check_extra,
-                             run_check_acceptability=run_check_acceptability)
-        outfile = '.'.join([basename, types[i] + '_threshold_flags.h5'])
-        outpath = os.path.join(outdir, outfile)
-        uvf_f.write(outpath, clobber=clobber)
-        uvf_total |= uvf_f
+        if uvf_m is not None:
+            uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t,
+                                 nsig_f_adj=nsig_f_adj, nsig_t_adj=nsig_t_adj,
+                                 detrend=False, run_check=run_check,
+                                 check_extra=check_extra,
+                                 run_check_acceptability=run_check_acceptability)
+            outfile = '.'.join([basename, types[i] + '_threshold_flags.h5'])
+            outpath = os.path.join(outdir, outfile)
+            uvf_f.write(outpath, clobber=clobber)
+            uvf_total |= uvf_f
 
     # Read non thresholded flags and combine
     files = [glob.glob(d + '/*.flags2.h5')[0] for d in xrfi_dirs]
