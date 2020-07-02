@@ -1373,7 +1373,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 #############################################################################
 
 
-def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=None, history,
+def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=None, history=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
              ex_ants=None, ant_str=None, metrics_file=None, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
@@ -1448,8 +1448,10 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     if ocalfits_file is None and acalfits_file is None and model_file is None and data_file is None:
         raise ValueError("Must provide at least one of the following; ocalfits_file, acalfits_file, model_file, data_file")
     # if ocalfits_file is supplied so too must acalfits_file
-    if not(ocalfits_file is not None and acalfits_file is None) or (ocalfits_file is None and acalfits_file is not None):
+    if (ocalfits_file is not None and acalfits_file is None) or (ocalfits_file is None and acalfits_file is not None):
         raise ValueError("Both an abscal and omnical file must be supplied or none at all.")
+    if history is None:
+        raise ValueError("Must provide a non-empty history string.")
 
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
     dirname = resolve_xrfi_path(xrfi_path, data_file, jd_subdir=True)
@@ -1522,7 +1524,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         uv_v = None
         uvf_v = None; uvf_vf = None
     # Get the absolute chi-squared values
-    if uv_o is not None:
+    if uvc_o is not None:
         uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
                                              sig_init=sig_init, sig_adj=sig_adj,
                                              label='Renormalized chisq, round 1.',
@@ -1548,8 +1550,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
 
         # Flag on combined metrics
         uvf_f = flag(uvf_metrics, nsig_p=sig_init, run_check=run_check,
-                     check_extra=check_extra,
-                     run_check_acceptability=run_check_acceptability)
+                     check_extra=check_extra, run_check_acceptability=run_check_acceptability)
         uvf_fws = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False,
                                  run_check=run_check, check_extra=check_extra,
                                  run_check_acceptability=run_check_acceptability)

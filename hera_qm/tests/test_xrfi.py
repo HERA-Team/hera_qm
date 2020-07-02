@@ -909,9 +909,6 @@ def test_xrfi_run(tmpdir):
     uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
                                          raw_dfile, 'Just a test'], {'kt_size': 3, 'ant_str': 'cross'},
                          nwarnings=len(messages), message=messages, category=categories)
-    # remove spoofed files
-    for fname in [ocal_file, acal_file, model_file, raw_dfile]:
-        os.remove(fname)
 
     outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
     ext_labels = {'ag_flags1': 'Abscal gains, round 1. Flags.',
@@ -953,6 +950,65 @@ def test_xrfi_run(tmpdir):
         uvf = UVFlag(out)
         assert uvf.label == label
     shutil.rmtree(outdir)  # cleanup
+    # text_xrfi_run errors when no history string provided
+    pytest.raises(ValueError, xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+                                         raw_dfile])
+    # test error when no flag inputs provided.
+    pytest.raises(ValueError, xrfi.xrfi_run, {'history': 'fail'})
+    # test error when ocal provided but no acal.
+    pytest.raises(ValueError, xrfi.xrfi_run, {'ocal_file': ocal_file, 'history':'fail'})
+    # test error when acal provided but no ocal.
+    pytest.raises(ValueError, xrfi.xrfi_run, {'acal_file': acal_file, 'history':'fail'})
+    # test run with only ocal and acal files.
+    xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, history='calibration only flags.')
+    for ext, label in ext_labels.items():
+        if 'data' not in ext and 'v_' not in ext:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    shutil.rmtree(outdir)  # cleanup
+    # test run with only data files
+    xrfi.xrfi_run(data_file=raw_dfile, history='data only flags.')
+    for ext, label in ext_labels.items():
+        if 'data' in ext or 'combined' in ext:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    shutil.rmtree(outdir)  # cleanup
+    # test run with only omnivis files
+    xrfi.xrfi_run(model_file=model_file, history='omnivis only flags.')
+    for ext, label in ext_labels.items():
+        if 'v_' in ext or 'combined' in ext:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    shutil.rmtree(outdir)  # cleanup
+    # test run with data and omnivis files
+    xrfi.xrfi_run(data_file=raw_dfile, model_file=model_file, history='omnivis and data flags.')
+    for ext, label in ext_labels.items():
+        if 'v_' in ext or 'combined' in ext or 'data' in ext:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    shutil.rmtree(outdir)  # cleanup
+    # test data with omnical
+    xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file,
+                  data=raw_dfile, history='data and omni/abs cal.')
+    for ext, label in ext_labels.items():
+        if 'v_' in ext or 'combined' in ext or 'data' in ext:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    shutil.rmtree(outdir)  # cleanup
+    # test omnivis with omnical
+    # remove spoofed files
+    for fname in [ocal_file, acal_file, model_file, raw_dfile]:
+        os.remove(fname)
 
 
 def test_day_threshold_run(tmpdir):
