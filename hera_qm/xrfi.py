@@ -16,7 +16,7 @@ from .metrics_io import process_ex_ants
 import warnings
 import glob
 import re
-
+import copy
 
 #############################################################################
 # Utility functions
@@ -1375,7 +1375,8 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 
 def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=None, history=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
-             ex_ants=None, ant_str=None, metrics_file=None, clobber=False,
+             ex_ants=None, ant_str=None, metrics_file=None,
+             output_prefix=None, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
@@ -1429,6 +1430,8 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         Metrics file that contains a list of excluded antennas. Flags of visibilities
         formed with these antennas will be set to True. Default is None (i.e.,
         no antennas will be excluded).
+    output_prefix : str, optional
+        Optional output prefix. If none is provided, use data-file.
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
     run_check : bool
@@ -1452,9 +1455,14 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         raise ValueError("Both an abscal and omnical file must be supplied or none at all.")
     if history is None:
         raise ValueError("Must provide a non-empty history string.")
-
+    # user must provide an optional output prefix if no data file is provided.
+    if output_prefix is None:
+        if data_file is not None:
+            output_prefix = data_file
+        else:
+            raise ValueError("Must provide either output_prefix or data_file!")
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
-    dirname = resolve_xrfi_path(xrfi_path, data_file, jd_subdir=True)
+    dirname = resolve_xrfi_path(xrfi_path, output_prefix, jd_subdir=True)
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
     # Initial run on cal data products
@@ -1504,12 +1512,22 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                  check_extra=check_extra,
                                  run_check_acceptability=run_check_acceptability)
         flags += [uvf_apriori]
+        # Get the absolute chi-squared values
+        uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
+                                             sig_init=sig_init, sig_adj=sig_adj,
+                                             label='Renormalized chisq, round 1.',
+                                             run_check=run_check,
+                                             check_extra=check_extra,
+                                             run_check_acceptability=run_check_acceptability)
+        metrics += [uvf_chisq]
+        flags += [uvf_chisq_f]
     else:
         uvc_o = None; uvc_a = None
         uvf_ag = None; uvf_agf = None; uvf_ax = None; uvf_axf = None
         uvf_og = None; uvf_ogf = None; uvf_ox = None; uvf_oxf = None
+        uvf_chisq = None; uvf_chisq_f = None; uvf_apriori = None
     # Calculate metric on model vis
-    if not model_file is not None:
+    if model_file is not None:
         uv_v = UVData()
         uv_v.read(model_file)
         uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
@@ -1523,17 +1541,6 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     else:
         uv_v = None
         uvf_v = None; uvf_vf = None
-    # Get the absolute chi-squared values
-    if uvc_o is not None:
-        uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
-                                             sig_init=sig_init, sig_adj=sig_adj,
-                                             label='Renormalized chisq, round 1.',
-                                             run_check=run_check,
-                                             check_extra=check_extra,
-                                             run_check_acceptability=run_check_acceptability)
-        metrics += [uvf_chisq]
-        flags += [uvf_chisq_f]
-        uvf_chisq = None; uvf_chisq_f = None
 
     if len(metrics) > 0:
     # Combine the metrics together
@@ -1558,10 +1565,10 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
 
         flags += [uvf_fws]
         # OR everything together for initial flags
-        uvf_init = flags[0]
+        uvf_init = copy.deepcopy(flags[0])
         if len(flags) > 1:
-            for flag in flags[1:]:
-                uvf_init |= flag
+            for flg in flags[1:]:
+                uvf_init |= flg
         uvf_init.label = 'ORd flags, round 1.'
     else:
         uvf_init = None
@@ -1644,7 +1651,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     else:
         uvf_d2 = None; uvf_df2 = None
     # Get the absolute chi-squared values
-    if uv_o is not None:
+    if uvc_o is not None:
         uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
                                                sig_init=sig_init, sig_adj=sig_adj,
                                                label='Renormalized chisq, round 2.',
@@ -1653,18 +1660,27 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                                run_check_acceptability=run_check_acceptability)
         metrics += [uvf_chisq2]
         flags += [uvf_chisq_f2]
+    else:
+        uvf_chisq2 = None; uvf_chisq_f2 = None
     # Combine the metrics together
     if len(metrics) > 1:
         uvf_metrics2 = metrics[-1].combine_metrics(metrics[:-1],
                                               method='quadmean', inplace=False)
     else:
         uvf_metrics2 = copy.deepcopy(metrics[-1])
+    if uvf_init is None:
+        spoof_init = True
+        uvf_init = copy.deepcopy(uvf_metrics2)
+        uvf_init.to_flag(run_check=run_check, check_extra=check_extra,
+                         run_check_acceptability=run_check_acceptability)
+        uvf_init.flag_array[:] = False
+    else:
+        spoof_init = False
     uvf_metrics2.label = 'Combined metrics, round 2.'
     alg_func = algorithm_dict['detrend_meanfilt']
     uvf_metrics2.metric_array[:, :, 0] = alg_func(uvf_metrics2.metric_array[:, :, 0],
                                                   flags=uvf_init.flag_array[:, :, 0],
                                                   Kt=kt_size, Kf=kf_size)
-
     # Flag on combined metrics
     uvf_f2 = flag(uvf_metrics2, nsig_p=sig_init, run_check=run_check,
                   check_extra=check_extra,
@@ -1675,12 +1691,14 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                               run_check_acceptability=run_check_acceptability)
     flags += [uvf_fws2]
     uvf_fws2.label = 'Flags from combined metrics, round 2.'
-    uvf_combined2 = flags[0]
+    uvf_combined2 = copy.deepcopy(flags[0])
     if len(flags) > 1:
-        for flag in flags[1:]:
-            uvf_combined2 |= flag
+        for flg in flags[1:]:
+            uvf_combined2 |= flg
     uvf_combined2.label = 'ORd flags, round 2.'
     # Write everything out
+    if spoof_init:
+        uvf_init = None
     uvf_dict = {'apriori_flags.h5': uvf_apriori,
                 'v_metrics1.h5': uvf_v, 'v_flags1.h5': uvf_vf,
                 'og_metrics1.h5': uvf_og, 'og_flags1.h5': uvf_ogf,
@@ -1699,14 +1717,13 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                 'chi_sq_renormed2.h5': uvf_chisq2, 'chi_sq_flags2.h5': uvf_chisq_f2,
                 'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
                 'flags2.h5': uvf_combined2}
-
-    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    basename = qm_utils.strip_extension(os.path.basename(output_prefix))
     for ext, uvf in uvf_dict.items():
         if uvf is not None:
             outfile = '.'.join([basename, ext])
             outpath = os.path.join(dirname, outfile)
             uvf.write(outpath, clobber=clobber)
-
+            
 
 def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                         flag_command, xrfi_path='', kt_size=8, kf_size=8,
