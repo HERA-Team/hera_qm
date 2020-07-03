@@ -629,10 +629,9 @@ class AntennaMetrics():
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
 
-def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
-                    deadCut=5.0, alwaysDeadCut=10.0, metrics_path='',
-                    extension='.ant_metrics.hdf5', vis_format='miriad',
-                    verbose=True, history='',
+def ant_metrics_run(files, crossCut=5.0, deadCut=5.0, alwaysDeadCut=10.0,
+                    metrics_path='', extension='.ant_metrics.hdf5',
+                    vis_format='uvh5', verbose=True, history='',
                     run_cross_pols=True, run_cross_pols_only=False):
     """
     Run a series of ant_metrics tests on a given set of input files.
@@ -641,19 +640,13 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
     ----
     The funciton will take in a list of files and options. It will run the
     series of ant metrics tests, and produce an HDF5 file containing the
-    relevant information. The file list need only contain one polarization
-    type for a given JD, because the function will look for the other
-    polarizations in the same folder. If not all four polarizations are found,
-    a warning is generated, because the code assumes all four polarizations are
-    present.
+    relevant information.
 
     Parameters
     ----------
     files : list of str
-        List of files to run ant metrics on. Can be any of the 4 polarizations.
-    pols : list of str, optional
-        List of polarizations to perform metrics over. Allowed polarizations: 'xx',
-        'yy', 'xy', 'yx'. Default is ['xx', 'yy', 'xy', 'yx'].
+        List of files to run ant metrics on, one at a time. Each must include
+        all both polarizations (or all 4 if run_cross_pols is True).
     crossCut : float, optional
         Modified Z-Score limit to cut cross-polarized antennas. Default is 5.0.
     deadCut : float, optional
@@ -669,7 +662,7 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
         File extension to add to output files. Default is ant_metrics.hdf5.
     vis_format : str, optional
         File format of input visibility data. Must be one of: 'miriad', 'uvh5',
-        'uvfits', 'fhd', 'ms' (see pyuvdata docs). Default is 'miriad'.
+        'uvfits', 'fhd', 'ms' (see pyuvdata docs). Default is 'uvh5'.
     verbose : bool, optional
         If True, print out statements during iterative flagging. Default is True.
     history : str, optional
@@ -685,41 +678,18 @@ def ant_metrics_run(files, pols=['xx', 'yy', 'xy', 'yx'], crossCut=5.0,
     None
 
     """
-    # check that we were given some files to process
-    if len(files) == 0:
-        raise AssertionError('Please provide a list of visibility files')
-
-    # generate a list of all files to be read in
-    fullpol_file_list = utils.generate_fullpol_file_list(files, pols)
-    if len(fullpol_file_list) == 0:
-        raise AssertionError('Could not find all 4 polarizations '
-                             'for any files provided')
-
-    # do the work
-    for jd_list in fullpol_file_list:
-        am = AntennaMetrics(jd_list, fileformat=vis_format)
+    for file in files:
+        am = AntennaMetrics(file, fileformat=vis_format)
         am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
                                                   deadCut=deadCut,
                                                   alwaysDeadCut=alwaysDeadCut,
                                                   verbose=verbose,
                                                   run_cross_pols=run_cross_pols,
                                                   run_cross_pols_only=run_cross_pols_only)
-
-        # add history
         am.history = am.history + history
 
-        base_filename = jd_list[0]
-        abspath = os.path.abspath(base_filename)
-        dirname = os.path.dirname(abspath)
-        basename = os.path.basename(base_filename)
-        nopol_filename = re.sub(r'\.{}\.'.format(pols[0]), '.', basename)
+        metrics_basename = utils.strip_extension(os.path.basename(file)) + extension
         if metrics_path == '':
             # default path is same directory as file
-            metrics_path = dirname
-        else:
-            metrics_path = metrics_path
-        metrics_basename = utils.strip_extension(nopol_filename) + extension
-        metrics_fname = os.path.join(metrics_path, metrics_basename)
-        am.save_antenna_metrics(metrics_fname)
-
-    return
+            metrics_path = os.path.dirname(os.path.abspath(file))
+        am.save_antenna_metrics(os.path.join(metrics_path, metrics_basename))
