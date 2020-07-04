@@ -1723,7 +1723,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
             outfile = '.'.join([basename, ext])
             outpath = os.path.join(dirname, outfile)
             uvf.write(outpath, clobber=clobber)
-            
+
 
 def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                         flag_command, xrfi_path='', kt_size=8, kf_size=8,
@@ -2068,23 +2068,24 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     # Read in the metrics objects
     filled_metrics = []
     for ext in mexts:
-        # this will just read in what exists.
-        if ext != 'data_metrics':
-            # Fill in 2nd metrics with 1st metrics where 2nd are not available.
+        # Fill in 2nd metrics with 1st metrics where 2nd are not available.
+        files1_all = [glob.glob(d + '/*' + ext + '1.h5') for d in xrfi_dirs]
+        files2_all = [glob.glob(d + '/*' + ext + '2.h5') for d in xrfi_dirs]
+        # only consider flagging products that exist in all observations for thresholding.
+        if np.all([len(f) > 0 for f in files1_all]) and np.all([len(f) > 0 for f in files2_all]):
             files1 = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
             files2 = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
-            if len(files1) > 0 and len(files2) > 0:
-                uvf1 = UVFlag(files1)
-                uvf2 = UVFlag(files2)
-                uvf2.metric_array = np.where(np.isinf(uvf2.metric_array), uvf1.metric_array,
-                                             uvf2.metric_array)
-            else:
-                uvf2 = None
+            uvf1 = UVFlag(files1)
+            uvf2 = UVFlag(files2)
+            uvf2.metric_array = np.where(np.isinf(uvf2.metric_array), uvf1.metric_array,
+                                         uvf2.metric_array)
             filled_metrics.append(uvf2)
-        else:
-            # Data was only run in second iteration
+        elif np.all([len(f) > 0 for f in files2_all]):
+            # some flags only exist in round2 (data for example).
             files = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
             filled_metrics.append(UVFlag(files))
+        else:
+            filled_metrics.append(None)
     filled_metrics_that_exist = [f for f in filled_metrics if f is not None]
     # Threshold each metric and save flag object
     uvf_total = filled_metrics_that_exist[0].copy()

@@ -955,16 +955,20 @@ def test_xrfi_run(tmpdir):
         if os.path.exists(out):
             os.remove(out)
     # text_xrfi_run errors when no history string provided
-    pytest.raises(ValueError, xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile])
+    pytest.raises(ValueError, xrfi.xrfi_run, {'ocalfits_file': ocal_file,
+                                              'acalfits_file': acal_file,
+                                              'model_file': model_file,
+                                              'data_file': raw_dfile})
     # test error when no flag inputs provided.
-    pytest.raises(ValueError, xrfi.xrfi_run, {'history': 'fail'})
+    pytest.raises(ValueError, xrfi.xrfi_run, {'history': 'fail', 'output_prefix': 'fail'})
     # test error when ocal provided but no acal.
-    pytest.raises(ValueError, xrfi.xrfi_run, {'ocalfits_file': ocal_file, 'history':'fail'})
+    pytest.raises(ValueError, xrfi.xrfi_run, {'ocalfits_file': ocal_file, 'history':'fail', 'output_prefix': 'fail'})
     # test error when acal provided but no ocal.
-    pytest.raises(ValueError, xrfi.xrfi_run, {'acalfits_file': acal_file, 'history':'fail'})
+    pytest.raises(ValueError, xrfi.xrfi_run, {'acalfits_file': acal_file, 'history':'fail', 'output_prefix': 'fail'})
     # test error when no data file or output prefix provided.
     pytest.raises(ValueError, xrfi.xrfi_run, {'acalfits_file': acal_file, 'ocalfits_file': ocal_file, 'history': 'fail'})
+    # test error when no history provided.
+    pytest.raises(ValueError, xrfi.xrfi_run, {'acalfits_file': acal_file, 'ocalfits_file': ocal_file, 'output_prefix': 'fail'})
     # test run with only ocal and acal files.
     xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, history='calibration only flags.',
                   output_prefix=raw_dfile)
@@ -1108,6 +1112,169 @@ def test_day_threshold_run(tmpdir):
         calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
         assert os.path.exists(calfile)
 
+def test_day_threshold_run_data_only(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    messages = 6 * mess1
+    cat1 = [UserWarning]
+    categories = 6 * cat1
+    # Spoof the files - run xrfi_run twice on spoofed files.
+    tmp_path = tmpdir.strpath
+    fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    ocal_file = os.path.join(tmp_path, fake_obses[0] + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[0] + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obses[0] + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    data_files = [raw_dfile]
+    model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    xrfi.xrfi_run(None, None, None, raw_dfile, 'Just a test', kt_size=3)
+    # Need to adjust time arrays when duplicating files
+    uvd = UVData()
+    uvd.read_uvh5(data_files[0])
+    dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
+    uvd.time_array += dt
+    uvd.set_lsts_from_time_array()
+    data_files += [os.path.join(tmp_path, fake_obses[1] + '.uvh5')]
+    uvd.write_uvh5(data_files[1])
+    model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
+    uvd.write_uvh5(model_file)
+    uvc = UVCal()
+    uvc.read_calfits(ocal_file)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.time_array += dt
+    ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
+    uvc.write_calfits(ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
+    uvc.write_calfits(acal_file)
+    xrfi.xrfi_run(None, None, None, data_files[1], 'Just a test', kt_size=3)
+
+    xrfi.day_threshold_run(data_files, 'just a test')
+    types = ['data', 'combined']
+    for type in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
+        outfile = os.path.join(tmp_path, basename)
+        assert os.path.exists(outfile)
+
+    for fake_obs in fake_obses:
+        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
+        assert os.path.exists(calfile)
+
+def test_day_threshold_run_cal_only(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    messages = 6 * mess1
+    cat1 = [UserWarning]
+    categories = 6 * cat1
+    # Spoof the files - run xrfi_run twice on spoofed files.
+    tmp_path = tmpdir.strpath
+    fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    ocal_file = os.path.join(tmp_path, fake_obses[0] + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[0] + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obses[0] + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    data_files = [raw_dfile]
+    model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
+                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': raw_dfile},
+                         nwarnings=len(messages), message=messages, category=categories)
+    # Need to adjust time arrays when duplicating files
+    uvd = UVData()
+    uvd.read_uvh5(data_files[0])
+    dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
+    uvd.time_array += dt
+    uvd.set_lsts_from_time_array()
+    data_files += [os.path.join(tmp_path, fake_obses[1] + '.uvh5')]
+    uvd.write_uvh5(data_files[1])
+    model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
+    uvd.write_uvh5(model_file)
+    uvc = UVCal()
+    uvc.read_calfits(ocal_file)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.time_array += dt
+    ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
+    uvc.write_calfits(ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
+    uvc.write_calfits(acal_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
+                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': data_files[1]},
+                         nwarnings=len(messages), message=messages, category=categories)
+
+    xrfi.day_threshold_run(data_files, 'just a test')
+    types = ['ox', 'og', 'ax', 'ag', 'chi_sq_renormed', 'combined']
+    for type in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
+        outfile = os.path.join(tmp_path, basename)
+        assert os.path.exists(outfile)
+
+    for fake_obs in fake_obses:
+        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
+        assert os.path.exists(calfile)
+
+def test_day_threshold_run_omnivis_only(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    messages = 6 * mess1
+    cat1 = [UserWarning]
+    categories = 6 * cat1
+    # Spoof the files - run xrfi_run twice on spoofed files.
+    tmp_path = tmpdir.strpath
+    fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    ocal_file = os.path.join(tmp_path, fake_obses[0] + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[0] + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obses[0] + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    data_files = [raw_dfile]
+    model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
+                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': raw_dfile},
+                         nwarnings=len(messages), message=messages, category=categories)
+    # Need to adjust time arrays when duplicating files
+    uvd = UVData()
+    uvd.read_uvh5(data_files[0])
+    dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
+    uvd.time_array += dt
+    uvd.set_lsts_from_time_array()
+    data_files += [os.path.join(tmp_path, fake_obses[1] + '.uvh5')]
+    uvd.write_uvh5(data_files[1])
+    model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
+    uvd.write_uvh5(model_file)
+    uvc = UVCal()
+    uvc.read_calfits(ocal_file)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.time_array += dt
+    ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
+    uvc.write_calfits(ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
+    uvc.write_calfits(acal_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
+                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': data_files[1]},
+                         nwarnings=len(messages), message=messages, category=categories)
+
+    xrfi.day_threshold_run(data_files, 'just a test')
+    types = ['v', 'combined']
+    for type in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
+        outfile = os.path.join(tmp_path, basename)
+        assert os.path.exists(outfile)
+
+    for fake_obs in fake_obses:
+        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
+        assert os.path.exists(calfile)
 
 def test_xrfi_h1c_run():
     # run with bad antennas specified
