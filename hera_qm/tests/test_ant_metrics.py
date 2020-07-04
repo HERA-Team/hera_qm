@@ -121,13 +121,6 @@ def test_per_antenna_modified_z_scores():
     np.testing.assert_almost_equal(zscores[2, 'x'], 0.6745, 10)
 
 
-def test_exclude_partially_excluded_ants():
-    before_xants = [(0, 'x'), (0, 'y'), (1, 'x'), (2, 'y')]
-    after_xants = ant_metrics.exclude_partially_excluded_ants(['x', 'y'], before_xants)
-    after_xants_truth = [(0, 'x'), (0, 'y'), (1, 'x'), (1, 'y'), (2, 'x'), (2, 'y')]
-    assert set(after_xants) == set(after_xants_truth)
-
-
 def test_antpol_metric_sum_ratio():
     crossMetrics = {(0, 'x'): 1.0, (0, 'y'): 1.0, (1, 'x'): 1.0}
     sameMetrics = {(0, 'x'): 2.0, (0, 'y'): 2.0}

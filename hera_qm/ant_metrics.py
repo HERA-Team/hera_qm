@@ -158,31 +158,6 @@ def mean_Vij_metrics(data, pols, antpols, ants, bls,
         return per_antenna_modified_z_scores(timeFreqMeans)
 
 
-def exclude_partially_excluded_ants(antpols, xants):
-    """Create list of excluded antenna polarizations.
-
-    Parameters
-    ----------
-    antpols : list of str
-        List of Single antenna polarizations to add to excluded Antennas.
-        Should be one of ['x','y'], ['x'], or ['y'].
-    xants : list of tuples
-        List of antenna-polarization tuples that should be ignored. The
-        expected format is (ant, antpol).
-
-    Retruns
-    -------
-    xantSet : list of tuples
-        List of all antenna-polarization combinations to exclude.
-
-    """
-    xantSet = set(xants)
-    for xant in xants:
-        for antpol in antpols:
-            xantSet.add((xant[0], antpol))
-    return list(xantSet)
-
-
 def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics,
                             xants=[]):
     """Compute ratio of two metrics summed over polarizations.
