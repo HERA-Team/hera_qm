@@ -1240,9 +1240,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     data_files = [raw_dfile]
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
-                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': raw_dfile},
-                         nwarnings=len(messages), message=messages, category=categories)
+    xrfi.xrfi_run(None, None, model_file, None, 'Just a test', kt_size=3, output_prefix=raw_dfile)
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
@@ -1261,10 +1259,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
-    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
-                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': data_files[1]},
-                         nwarnings=len(messages), message=messages, category=categories)
-
+    xrfi.xrfi_run(None, None, model_file, None, 'Just a test', kt_size=3, output_prefix=data_files[1])
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['v', 'combined']
     for type in types:
