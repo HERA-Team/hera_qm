@@ -954,21 +954,22 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
+    # test xrfi_run errors when providing no data inputs
+    with pytest.raises(ValueError):
+         xrfi.xrfi_run(None, None, None, None, None)
     # text_xrfi_run errors when no history string provided
-    pytest.raises(ValueError, xrfi.xrfi_run, {'ocalfits_file': ocal_file,
-                                              'acalfits_file': acal_file,
-                                              'model_file': model_file,
-                                              'data_file': raw_dfile})
-    # test error when no flag inputs provided.
-    pytest.raises(ValueError, xrfi.xrfi_run, {'history': 'fail', 'output_prefix': 'fail'})
+    with pytest.raises(ValueError):
+        xrfi.xrfi_run(ocalfits_file=ocal_file, acalfits_file=acal_file, model_file=model_file,
+                      data_file=raw_dfile, history=None)
     # test error when ocal provided but no acal.
-    pytest.raises(ValueError, xrfi.xrfi_run, {'ocalfits_file': ocal_file, 'history':'fail', 'output_prefix': 'fail'})
+    with pytest.raises(ValueError):
+        xrfi.xrfi_run(ocalfits_file=ocal_file, history='fail', output_prefix='fail')
     # test error when acal provided but no ocal.
-    pytest.raises(ValueError, xrfi.xrfi_run, {'acalfits_file': acal_file, 'history':'fail', 'output_prefix': 'fail'})
+    with pytest.raises(ValueError):
+        xrfi.xrfi_run(acalfits_file=acal_file, history='fail', output_prefix='fail')
     # test error when no data file or output prefix provided.
-    pytest.raises(ValueError, xrfi.xrfi_run, {'acalfits_file': acal_file, 'ocalfits_file': ocal_file, 'history': 'fail'})
-    # test error when no history provided.
-    pytest.raises(ValueError, xrfi.xrfi_run, {'acalfits_file': acal_file, 'ocalfits_file': ocal_file, 'output_prefix': 'fail'})
+    with pytest.raises(ValueError):
+        xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, history='fail', output_prefix=None)
     # test run with only ocal and acal files.
     xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, history='calibration only flags.',
                   output_prefix=raw_dfile)
