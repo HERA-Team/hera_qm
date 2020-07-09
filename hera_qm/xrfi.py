@@ -100,6 +100,66 @@ def flag_xants(uv, xants, inplace=True, run_check=True,
         return uvo
 
 
+def flag_lsts_frequencies(uv, lst_intervals=None, frequency_intervals=None, inplace=True, run_check=True,
+                          check_extra=True, run_check_acceptability=True):
+    """Flag lsts and frequencies
+
+    Parameters
+    ----------
+    uv : UVData or UVCal or UVFlag
+        Object containing data to be flagged. Should be a UVData, UVCal, or
+        UVFlag object.
+    lst_intervals : list
+        List of float 2-tuples containing upper and lower LSTs to flag (hours).
+    frequency_intervals : list
+        List of float 2-tuples containing upper and lower frequencies to flag (Hz).
+    inplace : bool, optional
+        If True, apply flags to the uv object. If False, return a UVFlag object
+        with only xants flaged. Default is True.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
+
+    """
+     # check that we got an appropriate object
+    if not issubclass(uv.__class__, (UVData, UVCal, UVFlag)):
+         raise ValueError('First argument to flag_xants must be a UVData, UVCal, '
+                          ' or UVFlag object.')
+    if not inplace:
+        if isinstance(uv, UVFlag):
+            uvo = uv.copy()
+            uvo.to_flag(run_check=run_check, check_extra=check_extra,
+                        run_check_acceptability=run_check_acceptability)
+        else:
+            uvo = UVFlag(uv, mode='flag')
+    else:
+        uvo = uv
+
+    if isinstance(uvo, UVFlag) and uvo.mode != 'flag':
+        raise ValueError('Cannot flag antennas on UVFlag obejct in mode ' + uvo.mode)
+
+    freqs = uv.freq_array
+    lsts = np.unique(uv.lst_array) * 12 / np.pi
+    # flag Frequency
+    if frequency_intervals is not None:
+        for spw in range(uv.Nspws):
+            for interval in frequency_intervals:
+                to_flag = (freqs[spw] >= np.min(interval)) & (freqs[spw] <= np.max(interval))
+                uvo.flag_array[:, spw, to_flag, :] = True
+    # flag LST
+    if lst_intervals is not None and isinstance(uv, UVData)
+        for interval in lst_intervals:
+            to_flag = (lsts >= np.min(interval) & (lsts <= np.max(interval)))
+            uvo.flag_array[to_flag, :, :, :] = True
+    if not inplace:
+        return uvo
+
+
 def resolve_xrfi_path(xrfi_path, fname, jd_subdir=False):
     """Determine xrfi_path based on given directory or default to dirname of given file.
 
@@ -372,6 +432,35 @@ def detrend_medminfilt(data, flags=None, Kt=8, Kf=8):
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
     return out
+
+
+def detrend_foreground_filter(data, flags=None,  **filter_kwargs):
+    """Detrend array using a delay filter from uvtools.dspec
+
+    Parameters
+    ----------
+    data : array
+        2D data array to detrend.
+    flags : array, optional
+        2D flag array to be interpreted as a mask for delay filter.
+    **filter_kwargs : dict
+        all other filtering arguments.
+        see uvtools.dspec.fourier_filter for more information.
+
+    Returns
+    -------
+    out : array
+        An array containing the outlier significance metric. Same type and size as data.
+
+    """
+    try:
+        import uvtools.dspec as dspec
+    except ImportError:
+        raise ImportError("uvtools must be installed to use this detrend_foreground_filter!")
+
+    _, d_rs, _ = dspec.fourier_filter(data=data, wgts=(~flags).astype(float), **filter_kwargs)
+    # Just return the absolute value of the residual.
+    return np.abs(d_rs)
 
 
 def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
@@ -787,6 +876,84 @@ def xrfi_waterfall(data, flags=None, Kt=8, Kf=8, nsig_init=6., nsig_adj=2.,
         init_flags |= flags
     new_flags = _ws_flag_waterfall(metrics, init_flags, nsig=nsig_adj)
     return new_flags
+
+def roto_flag(uvf_m, uvf_f, wf_method='quadmean',
+             time_thresholds=None, freq_thresholds=None,
+             run_check=True, check_extra=True, run_check_acceptability=True):
+     """Iterative determine separable time-frequency flags.
+
+
+     Starts out with a waterfall metric and waterfall flags.
+     For each iteration, perform a max across time and flag some small percentile
+     of the channel maxes. Then take a max across frequency and flag a small percentile
+     of the time maxes. Iterate for as may times as the user specifies.
+
+
+     Parameters
+     ----------
+     uvf_m : UVFlag object
+         A UVFlag object in 'metric' mode.
+     uvf_f : UVFlag object
+         A UVFlag object in 'flag' mode.
+    wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
+        If uvf_m and uvf_f are not already collapsed, they will be collapsed
+        using this method. Default is 'quadmean'
+    time_thresholds : list, optional
+        A list of floats specifying what percentile of max values to flag time integrations
+        with each iteration. Example : [97, 99] will eliminate the 97th percentiel of max stat
+        time interagions on the first iteration and the 99th percentile of remaining integrations
+        on the second iteration.
+        Default is [99, 99, 99]
+    freq_thresholds : list, optional
+        A list of floats specifying what percentile of max values to flag frequency channels
+        with each iteration. Example : [97, 99] will eliminate the 97th percentile of max stat
+        channels on the first iteration and the 99th percentile of remaining channels on the
+        second iteration.
+        Default is [99, 99, 99]
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
+     """
+     if time_thresholds is None:
+        time_thresholds = [99 for m in range(3)]
+     if freq_thresholds is None:
+        freq_thresholds = [99 for m in range(3)]
+    if not uvf_m.waterfall:
+        uvf_mi = uvf_m.to_waterfall(method=wf_method, keep_pol=False, in_place=False,
+                                   run_check=run_check, check_extra=check_extra,
+                                   run_check_acceptability=run_check_acceptability)
+    else:
+        uvf_mi = copy.deepcopy(uvf_m)
+    if not uvf_f.waterfall:
+        uvf_fi = uvf_f.to_waterfall(keep_pol=False, in_place=False,
+                                    run_check=run_check, check_extra=check_extra,
+                                    run_check_acceptability=run_check_acceptability)
+    else:
+        uvf_fi = copy.deepcopy(uvf_f)
+    # roto-flag
+    if not len(time_thresholds) == len(freq_thresholds):
+        raise ValueError("Number of time thresholds must equal number of frequency thresholds.")
+    t_flags = [np.all(uvf_fi.flag_array.squeeze(), axis=1)]
+    f_flags = [np.all(uvf_fi.flag_array.squeeze(), axis=0)]
+    metric_array = uvf_mi.metric_array.squeeze()
+    for step, t_thresh f_thresh in zip(range(len(time_thresholds)), freq_thresholds):
+        stat_t = np.array([np.max(np.abs(wt[~f_flags[step-1]])) for wt in metric_array])
+        flagged_times = (stat_t > np.percentile(stat_t[~t_flags[step-1]], t_thresh)) | t_flags[step-1]
+        t_flags.append(flagged_times)
+        stat_f = np.array([np.max(np.abs(wt[~t_flags[step]])) for wt in metric_array.T])
+        flagged_channels = (stat_f > np.percentile(stat_f[~f_flags[step-1]])) | f_flags[step-1]
+    # construct flag array from final time and frequency flags.
+    uvf_fi.flag_array[:,:,:,0] = ~np.outer(~t_flags[-1], ~f_flags[-1])
+    uvf_fi.history += 'Roto-flagged.'
+    return uvf_fi
+
+
+
 
 
 def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean',
@@ -1366,6 +1533,96 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
+
+def metric_baseline_list(datafile_list, baseline_list,
+                         alg='detrend_medfilt', wf_method='quadmean',
+                         correlations='cross',
+                         kt_size=8, kf_size=8,
+                         preflagged_frequencies=None,
+                         preflagged_lsts=None,
+                         ex_ants=None,
+                         blank_flags=True,
+                         clobber=False,
+                         run_check=True, check_extra=True,
+                         run_check_acceptability=True):
+    """Generate metrics across a large time range over a small number of baselines
+
+    This function generates metrics for large numbers of data files (large time ranges)
+    for a small number of baselines. It is intended to be used as part of baseline
+    chunked metric calculations.
+
+
+    Parameters
+    ----------
+    uv, uvdata object
+    baseline_list : list of antpairpol tuples
+        list of antpairpols to have metrics computed in this particular chunk.
+    alg : str, optional
+        The algorithm for calculating the metric. Default is "detrend_medfilt".
+    wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
+        How to collapse the dimension(s) to form a single waterfall.
+    correlations : str, optional
+        If 'cross', only use baselines with different ant numbers
+        If 'auto', only use baselines with same ant numbers
+        If 'both', use both auto and cross baselines.
+    kt_size : int, optional
+        The size of kernel in time dimension for detrend in xrfi algorithm.
+        Default is 8.
+    kf_size : int, optional
+        Size of kernel in frequency dimension for detrend in xrfi algorithm.
+        Default is 8.
+    preflagged_frequencies : list, optional
+        list of 2-tuples containing upper and lower frequency ranges to pre-flag
+        in units of Hz.
+    preflagged_lsts : list, optional
+        list of 2-tuples containing upper and lower lst ranges to pre-flag
+        in units of Hours.
+    ex_ants : str, optional
+        A comma-separated list of antennas to exclude. Flags of visibilities formed
+        with these antennas will be set to True. Default is None (i.e., no antennas
+        will be excluded).
+    blank_flags : bool, optional
+        If true, set all flag values in uv object to False before proceeding with flagging.
+        Default is True.
+    clobber : bool, optional
+        If True, overwrite existing files. Default is False.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
+    """
+    if correlations == 'auto':
+        baseline_list = [bl for bl in baseline_list if bl[0] == bl[1]]
+    elif correlations == 'cross':
+        baseline_list = [bl for bl in baseline_list if bl[0] != bl[1]]
+    # read in data.
+    uv = UVData()
+    uv.read(datafile_list, bls=baseline_list)
+    if blank_flags:
+        uv.flag_array[:] = False
+    # pre-flag antennas and frequencies.
+    flag_xants(uv, xants, run_check=run_check,
+               check_extra=check_extra,
+               run_check_acceptability=run_check_acceptability)
+    flag_lsts_frequencies(uv, lst_intervals, preflagged_frequencies, run_check=run_check,
+                     check_extra=check_extra,
+                     run_check_acceptability=run_check_acceptability)
+    # generate metrics.
+    uvf_m = calculate_metric(uv, alg, Kt=kt_size, Kf=kf_size,
+                             run_check=run_check, check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
+    # weights should be the number of non-inf samples going
+    # into each int/chan
+    uvf_m.to_waterfall(method=wf_method, keep_pol=False,
+                       run_check=run_check, check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
+    return uvf_m
+
+
 #############################################################################
 # Wrappers -- Interact with input and output files
 #   Note: "current" wrappers should have simple names, but when replaced,
@@ -1640,6 +1897,110 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         uvf.write(outpath, clobber=clobber)
 
 
+def xrfi_metric_mutifile_run(datafile, datafile_list,
+                             alg='detrend_medfilt',
+                             wf_method='quadmean',
+                             correlations='cross',
+                             xrfi_path='',
+                             kt_size=8, kf_size=8,
+                             freqflagfile=None,
+                             lstflagfile=None,
+                             ex_ants=None, clobber=False,
+                             run_check=True, check_extra=True,
+                             run_check_acceptability=True):
+    """Run muti-file, baseline-subset computation of xrfi metrics.
+
+    This function computes metrics across the times in the files in datafile_list
+    for a subset of the baselines which are specified by the position of datafile
+    in that list.
+
+    Parameters
+    ----------
+    datafile : str
+        name of the datafile to use for determining baselines to process.
+    datafile_list : str
+        list of data files to process.
+    alg : str, optional
+        The algorithm for calculating the metric. Default is "detrend_medfilt".
+    wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
+        How to collapse the dimension(s) to form a single waterfall.
+    correlations : str, optional
+        Determines which correlation products to process. 'cross' will only process
+        cross correlations. 'auto' will only process auto-correlations. 'both' will
+        include both.
+    xrfi_path : str, optional
+        Path to save xrfi files to. Default is a subdirectory "{JD}/" inside
+        the same directory as data_file.
+    kt_size : int, optional
+        The size of kernel in time dimension for detrend in xrfi algorithm.
+        Default is 8.
+    kf_size : int, optional
+        Size of kernel in frequency dimension for detrend in xrfi algorithm.
+        Default is 8.
+    freqflagfile : str, optional
+        name of file containing frequencies to pre-flag
+    lstflagfile : str, optional
+        name of file containing LSTs to pre-flag
+    ex_ants : str, optional
+        A comma-separated list of antennas to exclude. Flags of visibilities formed
+        with these antennas will be set to True. Default is None (i.e., no antennas
+        will be excluded).
+    clobber : bool, optional
+        If True, overwrite existing files. Default is False.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
+
+    Returns
+    -------
+    None
+    """
+    # determine baseline list from data file and list of datafiles.
+    baselines = utils.baselines_from_filelist_position(datafile, datafile_list)
+    # load in pre-flagged frequencies.
+    if freqflagfile is not None:
+        frequency_intervals = utils.parse_apriori_flag_intervals(freqflagfile)
+    else:
+        frequency_intervals = []
+    if lstflagfile is not None:
+        lst_intervals = utils.parse_apriori_flag_intervals(lstflagfile)
+    else:
+        lst_intervals = []
+    # calculate metrics
+    uvf_m = metric_baseline_list(datafile_list, baselines, alg=alg, wf_method=wf_method,
+                                 correlations=correlations, wf_method=wf_method,
+                                 kt_size=kt_size, kf_size=kf_size,
+                                 preflagged_frequencies=frequency_intervals,
+                                 preflagged_lsts=lst_intervals,
+                                 ex_ants=ex_ants, run_check=run_check,
+                                 check_extra=check_extra,
+                                 run_check_acceptability=run_check_acceptability)
+    # write out metric
+    dirname = resolve_xrfi_path(xrfi_path, datafile, jd_subdir=True)
+    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    outfile = '.'.join([basename, ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_m.write(outpath, clobber=clobber)
+
+
+def delay_metric_run(datafile, dayflags, avg_method='quadmean', ):
+
+
+
+def multfile_metric_flag_max_run(datafile, datafile_list, avg_method='quadmean'):
+    """Compute.
+
+    Combine per-baseline-chunk waterfalls into a single waterfall and compute a max
+    across time and determine frequency flags based on a percentile cut.
+
+    Compute channel flags across entire day from this.
+    """
+
 def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                         flag_command, xrfi_path='', kt_size=8, kf_size=8,
                         sig_init=5.0, sig_adj=2.0, ex_ants=None, metrics_file=None,
@@ -1673,7 +2034,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     acalfits_files : str
         The abscal calfits files to use to flag on gains and chisquared values.
     model_files : str
-        THe model visibility files to flag on.
+        The model visibility files to flag on.
     data_files : str
         The raw visibility data files to flag.
     flag_command : str

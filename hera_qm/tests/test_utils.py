@@ -294,3 +294,27 @@ def test_strip_extension_return_ext_extension():
     path = 'goo/foo.boo/hoo/woo.two'
     root, ext = utils.strip_extension(path, return_ext=True)
     assert ext == path[-3:]
+
+
+def test_baselines_from_filelist_position(tmpdir):
+    filelist = [str(tmp_path /  "test_input/zen.2458101.46106.xx.HH.OCR_53x_54x_only.first.uvh5"),
+                str(tmp_path / "test_input/zen.2458101.46106.xx.HH.OCR_53x_54x_only.second.uvh5")]
+    # below, we test whether for each file we get a chunk of baselines whose length is either greater then 0
+    # or less then then 3 (the number of total baselines in this dataset)
+    for pollist in [['ee'], None]:
+        baselines = []
+        for file in filelist:
+            baseline_chunk = io.baselines_from_filelist_position(file, filelist, pollist)
+            assert len(baseline_chunk) > 0 and len(baseline_chunk) < 3
+            baselines += baseline_chunk
+        # Next, we check whether the total number of chunked baselines equals the original number of baselines
+        assert len(baselines) == 3
+        # sort baselines by the sum of antenna number
+        ant_sum = [bl[0] + bl[1] for bl in baselines]
+        sum_indices = np.argsort(ant_sum)
+        baselines_sorted = [baselines[m] for m in sum_indices]
+        # check that the sorted baselines are all of the original baselines.
+        assert baselines_sorted == [(53, 53, 'ee'), (53, 54, 'ee'), (54, 54, 'ee')]
+        # check that providing an invalid polarization will raise an exception.
+        with pytest.raises(ValueError):
+            io.baselines_from_filelist_position(file, filelist, 'lasdf')

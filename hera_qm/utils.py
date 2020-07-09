@@ -326,6 +326,11 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument("--run_if_first", default=None, type=str, help='only run \
                         day_threshold_run if the first item in the sorted data_files \
                         list matches run_if_first (default None means always run)')
+    elif method_name == 'xrfi_metric_mutifile_run':
+        ap.prog = 'xrfi_metric_mutifile_run'
+        ap.add_argument('datafile', type=str, help='name of datafile whose index will be used to determine baselinse to process.')
+        ap.add_argument('--datafile_list', type=str, nargs='+', help='list of data files in waterfall, including datafile whose index will be used to determine baselines.')
+        app.add_argument()
     elif method_name == 'xrfi_apply':
         ap.prog = 'xrfi_apply.py'
         ap.add_argument('--infile_format', default='miriad', type=str,
@@ -690,3 +695,77 @@ def strip_extension(path, return_ext=False):
         return (root, ext[1:])
     else:
         return os.path.splitext(path)[0]
+
+
+def baselines_from_filelist_position(filename, filelist, polarizations=None):
+    """Determine indices of baselines to process.
+
+
+    This function determines baselines to process given the position of a filename
+    in a list of files.
+
+
+    Parameters
+    ----------
+    filename : string
+        name of the file being processed.
+    filelist : list of strings
+        name of all files over which computations are being parallelized.
+    polarizations : list of strings, optional
+        polarizations to include in baseline parallelization.
+    Returns
+    -------
+    list
+        list of baselines to process based on the position of the filename in the list of files.
+    """
+    if polarizations is None:
+        polarizations = ['ee', 'nn', 'en', 'ne']
+    # sanitize polarizations
+    for pol in polarizations:
+        if pol.lower() not in POL_STR2NUM_DICT and pol.lower() not in ['ee', 'en', 'ne', 'nn']:
+            raise ValueError("invalid polarization %s provided!" % pol)
+    # The reason this function is not in utils is that it needs to use HERAData
+    hd = HERAData(filename)
+    bls = [bl for bl in hd.bls if bl[-1] in polarizations]
+    file_index = filelist.index(filename)
+    nfiles = len(filelist)
+    # Determine chunk size
+    nbls = len(bls)
+    chunk_size = nbls // nfiles + 1
+    lower_index = file_index * chunk_size
+    upper_index = np.min([(file_index + 1) * chunk_size, nbls])
+    return bls[lower_index:upper_index]
+
+
+def parse_apriori_flag_intervals(intervalfile):
+    """read in apriori frequency or lst flags.
+
+    utility function for parsing frequency / LST flag text files. These files should
+    have the format where each comment line starts with '#' and non-comment lines
+    include two comma separated floats (scientific notation permitted) that give
+    the starting and ending frequency /LST  apriori flag regions in Hz or Hours
+    example:
+
+    # some flags
+    136e6, 137000000
+    85000000, 108e6
+
+    Parameters
+    ----------
+    intervalfile : str
+        filepath to text file containing apriori flags.
+    """
+    intervals = []
+    with open(freqflagfile, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        if not line[0] == '#':
+            # eliminate white space.
+            tokens = line.split(',')
+            try:
+                lower = float(token[0])
+                upper = float(token[1])
+            except ValueError:
+                print("%s is not comma separated floats!"%(line))
+            intervals += [(lower, upper)]
+    return intervals
