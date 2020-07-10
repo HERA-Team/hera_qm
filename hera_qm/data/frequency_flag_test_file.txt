@@ -1,0 +1,5 @@
+# This is a file to test frequency flagging.
+136e6, 138e6
+174e6, 400e6
+85e6, 110e6
+

@@ -1,0 +1,4 @@
+# This is a file to test lst flagging.
+# list flag intervals in units of hours.
+17, 18
+

@@ -888,6 +888,29 @@ def test_xrfi_h1c_idr2_2_pipe():
     assert uvf_m.weights_array.max() == 1.
 
 
+def test_prefilter_flagging_pipe(tmpdir):
+    # This method tests the prefiltering pipeline
+    # which contains three different functions.
+    # xrfi_metric_mutifile_run
+    # multifile_metric_max_flag_run
+    # delay_metric_run
+    # and roto_flag
+    files = [os.path.join(DATA_PATH, 'zen.2458101.46106.xx.HH.OCR_53x_54x_only.first.uvh5'),
+             os.path.join(DATA_PATH, 'zen.2458101.46106.xx.HH.OCR_53x_54x_only.second.uvh5')]
+    # first, perform xrfi_metric_mutifile_run.
+    fffile = os.path.join(DATA_PATH, 'frequency_flag_test_file.txt')
+    lffile = os.path.join(DATA_PATH, 'lst_flag_test_file.txt')
+    for file in files:
+        xrfi_metric_mutifile_run(file, files, freqflagfile=fffile, lstflagfile=lfffile,
+                                 ex_ants='53', clobber=True, xrfi_path=str(tmp_path))
+    # check that two different files have been generated and that they have the correct
+    # number of times.
+    written_flags = glob.glob(str(tmp_path / '*data_metrics.h5')
+    written_metrics = glob.glob(str(tmp_path / '*apriori_data_flags.h5'))
+    assert len(written_flags) == 2
+    assert len(written_metrics) == 2
+
+
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
