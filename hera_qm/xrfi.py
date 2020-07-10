@@ -101,7 +101,7 @@ def flag_xants(uv, xants, inplace=True, run_check=True,
 
 
 def flag_lsts_frequencies(uv, lst_intervals=None, frequency_intervals=None, inplace=True, run_check=True,
-                          check_extra=True, run_check_acceptability=True):
+                          check_extra=True, run_check_acceptability=True, lst_array=None):
     """Flag lsts and frequencies
 
     Parameters
@@ -124,7 +124,8 @@ def flag_lsts_frequencies(uv, lst_intervals=None, frequency_intervals=None, inpl
     run_check_acceptability : bool
         Option to check acceptable range of the values of parameters
         on UVFlag Object.
-
+    lst_array : array, optional if uv is UVData subclass. Mandatory otherwise.
+        list of lsts values for each time integration in uv in units of hours.
     """
      # check that we got an appropriate object
     if not issubclass(uv.__class__, (UVData, UVCal, UVFlag)):
@@ -144,18 +145,32 @@ def flag_lsts_frequencies(uv, lst_intervals=None, frequency_intervals=None, inpl
         raise ValueError('Cannot flag antennas on UVFlag obejct in mode ' + uvo.mode)
 
     freqs = uv.freq_array
-    lsts = np.unique(uv.lst_array) * 12 / np.pi
+    # Do the following for uvcal and uvflags.
+    if issubclass(uvo.__class__, UVData) or (isinstance(uvo, UVFlag) and uvo.type == 'baseline'):
+        baseline_mode = 'baseline'
+    elif issubclass(uvo.__class__, UVCal) or (isinstance(uvo, UVFlag) and uvo.type == 'antenna'):
+        baseline_mode = 'antenna'
     # flag Frequency
     if frequency_intervals is not None:
         for spw in range(uv.Nspws):
             for interval in frequency_intervals:
                 to_flag = (freqs[spw] >= np.min(interval)) & (freqs[spw] <= np.max(interval))
-                uvo.flag_array[:, spw, to_flag, :] = True
+                if baseline_mode == 'antenna':
+                    uvo.flag_array[:, spw, to_flag, :, :] = True
+                else:
+                    uvo.flag_array[:, spw, to_flag, :] = True
     # flag LST
-    if lst_intervals is not None and isinstance(uv, UVData)
+    if lst_intervals is not None and lst_array is not None:
+        lsts = lst_array
         for interval in lst_intervals:
             to_flag = (lsts >= np.min(interval) & (lsts <= np.max(interval)))
-            uvo.flag_array[to_flag, :, :, :] = True
+            if baseline_mode == 'antenna':
+                uvo.flag_array[:, :, :, to_flag, :] = True
+            else:
+                uvo.flag_array[to_flag, :, :, :, :] = True
+    else:
+        raise ValueError("No lst_array provided!")
+
     if not inplace:
         return uvo
 
@@ -434,7 +449,8 @@ def detrend_medminfilt(data, flags=None, Kt=8, Kf=8):
     return out
 
 
-def detrend_foreground_filter(data, flags=None,  **filter_kwargs):
+def detrend_delay_filter(data, flags, uv, blind, horizon=1.0, offset=200,
+                         flags=None, **kwargs):
     """Detrend array using a delay filter from uvtools.dspec
 
     Parameters
@@ -443,6 +459,12 @@ def detrend_foreground_filter(data, flags=None,  **filter_kwargs):
         2D data array to detrend.
     flags : array, optional
         2D flag array to be interpreted as a mask for delay filter.
+    uv : UVData (or subclass)
+        uvdata object that data was obtained from.
+        Used to determine frequencies and baseline length.
+    blind : baseline key
+        antpair tuple or baseline tuple of baseline corresponding to data.
+        Used to determine baseline length.
     **filter_kwargs : dict
         all other filtering arguments.
         see uvtools.dspec.fourier_filter for more information.
@@ -457,8 +479,12 @@ def detrend_foreground_filter(data, flags=None,  **filter_kwargs):
         import uvtools.dspec as dspec
     except ImportError:
         raise ImportError("uvtools must be installed to use this detrend_foreground_filter!")
-
-    _, d_rs, _ = dspec.fourier_filter(data=data, wgts=(~flags).astype(float), **filter_kwargs)
+    bl_len = np.linalg.norm(uv.uvw_array[blind])
+    delay = offset / 1e9 + bl_len * horizon / 3e8
+    freqs = uv.freq_array[0]
+    _, d_rs, _ = dspec.fourier_filter(x=freqs, data=data, wgts=(~flags).astype(float),
+                                      filter_centers=[0.], filter_half_width=[delay],
+                                      **kwargs)
     # Just return the absolute value of the residual.
     return np.abs(d_rs)
 
@@ -648,7 +674,7 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
 algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': detrend_deriv,
                   'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt,
                   'detrend_meanfilt': detrend_meanfilt, 'zscore_full_array': zscore_full_array,
-                  'modzscore_1d': modzscore_1d}
+                  'modzscore_1d': modzscore_1d, 'delay_filter': detrend_delay_filter}
 
 #############################################################################
 # RFI flagging algorithms
@@ -1273,7 +1299,10 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
                 if len(ind) == 0:
                     continue
                 flags = uv.flag_array[ind, 0, :, ipol]
-                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
+                if algorithm not in ['delay_filter']:
+                    uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
+                elif algorithm == 'delay_filter':
+                    uvf.metric_array[ind, 0, :, ipol] = alg_func(data, flags=flags, uv, key, **kwargs)
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
             uvf.to_waterfall(run_check=run_check,
@@ -1541,7 +1570,7 @@ def metric_baseline_list(datafile_list, baseline_list,
                          preflagged_frequencies=None,
                          preflagged_lsts=None,
                          ex_ants=None,
-                         blank_flags=True,
+                         keep_existing_flags=True,
                          clobber=False,
                          run_check=True, check_extra=True,
                          run_check_acceptability=True):
@@ -1594,6 +1623,13 @@ def metric_baseline_list(datafile_list, baseline_list,
     run_check_acceptability : bool
         Option to check acceptable range of the values of parameters
         on UVFlag Object.
+
+    Returns
+    -------
+    uvf_m, UVFlag
+        contains waterfalled metrics.
+    uvf_f, UVFlag
+        contains apriori flags.
     """
     if correlations == 'auto':
         baseline_list = [bl for bl in baseline_list if bl[0] == bl[1]]
@@ -1608,7 +1644,7 @@ def metric_baseline_list(datafile_list, baseline_list,
     flag_xants(uv, xants, run_check=run_check,
                check_extra=check_extra,
                run_check_acceptability=run_check_acceptability)
-    flag_lsts_frequencies(uv, lst_intervals, preflagged_frequencies, run_check=run_check,
+    flag_lsts_frequencies(uv, preflagged_lsts, preflagged_frequencies, run_check=run_check,
                      check_extra=check_extra,
                      run_check_acceptability=run_check_acceptability)
     # generate metrics.
@@ -1620,7 +1656,15 @@ def metric_baseline_list(datafile_list, baseline_list,
     uvf_m.to_waterfall(method=wf_method, keep_pol=False,
                        run_check=run_check, check_extra=check_extra,
                        run_check_acceptability=run_check_acceptability)
-    return uvf_m
+    # package up apriori flags.
+    ufv_f = copy.deepcopy(uvf_m)
+    uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
+                      run_check_acceptability=run_check_acceptability)
+    uvf_f.flag_array[:] = False
+    flag_lsts_frequencies(uvf_f, preflagged_lsts, preflagged_frequencies, run_check=run_check,
+                          check_extra=check_extra, in_place=True,
+                          run_check_acceptability=run_check_acceptability)
+    return uvf_m, uvf_f
 
 
 #############################################################################
@@ -1955,7 +1999,6 @@ def xrfi_metric_mutifile_run(datafile, datafile_list,
     run_check_acceptability : bool
         Option to check acceptable range of the values of parameters
         on UVFlag Object.
-
     Returns
     -------
     None
@@ -1972,34 +2015,177 @@ def xrfi_metric_mutifile_run(datafile, datafile_list,
     else:
         lst_intervals = []
     # calculate metrics
-    uvf_m = metric_baseline_list(datafile_list, baselines, alg=alg, wf_method=wf_method,
-                                 correlations=correlations, wf_method=wf_method,
-                                 kt_size=kt_size, kf_size=kf_size,
-                                 preflagged_frequencies=frequency_intervals,
-                                 preflagged_lsts=lst_intervals,
-                                 ex_ants=ex_ants, run_check=run_check,
-                                 check_extra=check_extra,
-                                 run_check_acceptability=run_check_acceptability)
+    uvf_m, uvf_f = metric_baseline_list(datafile_list, baselines, alg=alg, wf_method=wf_method,
+                                        correlations=correlations, wf_method=wf_method,
+                                        kt_size=kt_size, kf_size=kf_size,
+                                        preflagged_frequencies=frequency_intervals,
+                                        preflagged_lsts=lst_intervals,
+                                        ex_ants=ex_ants, run_check=run_check,
+                                        check_extra=check_extra,
+                                        run_check_acceptability=run_check_acceptability)
     # write out metric
+    ext = 'data_metrics.h5'
     dirname = resolve_xrfi_path(xrfi_path, datafile, jd_subdir=True)
     basename = qm_utils.strip_extension(os.path.basename(data_file))
     outfile = '.'.join([basename, ext])
     outpath = os.path.join(dirname, outfile)
     uvf_m.write(outpath, clobber=clobber)
+    # write out apriori flags
+    ext = 'apriori_data_flags.h5'
+    dirname = resolve_xrfi_path(xrfi_path, datafile, jd_subdir=True)
+    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    outfile = '.'.join([basename, ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf_f.write(outpath, clobber=clobber)
 
 
-def delay_metric_run(datafile, dayflags, avg_method='quadmean', ):
+def delay_metric_run(data_file, day_flags, xrfi_path='', wf_method='quadmean',
+                     ext='delay_metric.h5', clobber=False,
+                     run_check=True, check_extra=True, run_check_acceptability=True):
+    """Generate waterfall metrics from delay-filtering.
+
+    Generate metrics that are the absolute value of the delay-filtered residual
+    of the data.
+
+    Parameters
+    ----------
+    data_file : str
+        Path to the data file to compute delay-filter residuals for.
+    day_flags : str
+        Path to the uvflag file containing flags to apply.
+    xrfi_path : str, optional
+        Path to save xrfi files to. Default is a subdirectory "{JD}/" inside
+        the same directory as data_file.
+    wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
+        How to collapse the dimension(s) to form a single waterfall.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
+    Returns
+    -------
+    None
+    """
+    # read in data file.
+    uv = UVData()
+    uv.read(data_file)
+    # read in day flags.
+    uvf = UVFlag(day_flags)
+    # apply day flags
+    uvf.Ntimes=uv.Ntimes
+    # uvf includes more times then uv so select the times that overlap with uv.
+    time_select=np.asarray([t if t in np.round(uv.time_array, decimals=6) for t in np.round(uvf.time_array, decimals=6)])
+    uvf.select(times=time_select)
+    flag_apply(uvf, uv, keep_existing=False), run_check=run_check, check_extra=check_extra,
+               run_check_acceptability=run_check_acceptability)
+    # compute delay-filter residuals
+    uvm_resid = calculate_metric(uv, algorithm='delay_filter', run_check=run_check,
+                                 check_extra=check_extra, run_check_acceptability=run_check_acceptability,
+                                 mode='dpss_leastsq')
+    # waterfall it.
+    uvm_resid.to_waterfall(method=wf_method, keep_pol=False,
+                           run_check=run_check, check_extra=check_extra,
+                           run_check_acceptability=run_check_acceptability)
+    # save it.
+    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    dirname = resolve_xrfi_path(xrfi_path, data_file, jd_subdir=True)
+    outfile = '.'.join([basename, ext])
+    outpath = os.path.join(dirname, outfile)
+    uvf.write(outpath, clobber=clobber)
 
 
 
-def multfile_metric_flag_max_run(datafile, datafile_list, avg_method='quadmean'):
-    """Compute.
+def multfile_metric_max_flag_run(data_file, datafile_list, avg_method='quadmean',
+                                 ext_input_metrics='data_metrics.h5',
+                                 ext_input_flags='apriori_data_flags.h5',
+                                 ext='channel_max_flags.h5',
+                                 flag_threshold=95):
+    """Identify channels to flag based on a full-night max percentile cut.
 
     Combine per-baseline-chunk waterfalls into a single waterfall and compute a max
     across time and determine frequency flags based on a percentile cut.
 
-    Compute channel flags across entire day from this.
+    Compute channel flags across entire day from this. This function will only run
+    fully if datafile is the first datafile in datafile_list.
+
+    Parameters
+    ----------
+    datafile : str
+        name of the datafile used for naming of xrfi directories.
+    datafile_list : str
+        list of names of datafiles spanning the entire night for xrfi dirs.
+    xrfi_path : str, optional
+        Path to save xrfi files to. Default is a subdirectory "{JD}/" inside
+        the same directory as data_file.
+    avg_method : str, optional
+        method for averaging together waterfalls from different metrics.
+        options : 'quadmean', 'mean', 'absmean'
+        Default is 'quadmean'.
+    ext_input_metrics : str, optional
+        extension of metric files to use. Default is 'data_metrics.h5'.
+    ext_input_flags : str, optional
+        extension of apriori flag fils to us. Default is 'apriori_data_flags.h5'
+    flag_threshold : float, optional
+        the percentile of channel maxes to flag. Default is 95. (95the percentile)
+    Returns
+    -------
+    None
+
     """
+    # if the data-file is not the first in the list, then don't do anything.
+    if datafile_list.index(data_file) == 0:
+        # get xrfi paths
+        dirnames = [resolve_xrfi_path(xrfi_path, df, jd_subdir=True) for df in datafile_list]
+        # get list of metric files for all waterfall chunks.
+        uvfs = [UVFlag(glob.glob(dirname + '/*' + ext_input_metrics))[0] for dirname in dirnames]
+        uvf_fs = [[UVFlag(glob.glob(dirname + '/*' + ext_input_flags))[0] for dirname in dirnames]]
+        # average the metric files together
+        uvf_avg = copy.deepcopy(uvfs[0])
+        uvf_avg_f = copy.deepcopy(uvf_fs[0])
+        # Make sure that that spws, antenna/bls, and pols have already been collapsed.
+        if uvf_avg.metric_array.shape[1] != 1:
+            raise ValueError("Maxing not supported for uvflags with multiple spws!")
+        if uvf_avg.metric_array.shape[-1] != 1:
+            raise ValueError("Maxing not supported for uvflags with multiple pols!")
+        if uvf_avg.metric_array.shape[0] != 1:
+            raise ValueError("Maxing not supported for uvflags with multiple antennas / baselines!")
+        uvf_avg.weights_array = np.sum([uvf.weights_array for uvf in uvfs], axis=0)
+        if avg_method == 'quadmean':
+            uvf_avg.metric_array = np.sum([uvf.weights_array * np.abs(uvf.metric_array) ** 2. for uvf in uvfs], axis=0)
+        elif avg_method == 'mean':
+            uvf_avg.metric_array = np.sum([uvf.weights_array * uvf.metric_array for uvf in uvfs], axis=0)
+        elif avg_method == 'absmean':
+            uvf_avg.metric_array = np.sum([uvf.weights_array * np.abs(uvf.metric_array) for uvf in uvfs], axis=0)
+        else:
+            raise ValueError("Invalid averaging method provided.")
+        uvf_avg.metric_array /= uvf_avg.weights_array
+        if 'quad' in avg_method:
+            uvf_avg.metric_array = np.sqrt(uvf_avg.metric_array)
+        # write out averaged metrics.
+        basename = qm_utils.strip_extension(os.path.basename(data_file))
+        outfile = '.'.join([basename, ext])
+        outpath = os.path.join(dirname, outfile)
+        uvf_avg.write(outpath, clobber=clobber)
+        # perform max cut in time
+        apriori_flags = uvf_avg_f.flag_array[0, 0, :, :, 0].squeeze().T
+        max_array = np.asarray([np.max(uvf_m.metric_array[0, 0, :, ~flgs, 0].squeeze(), axis=-1)\
+                                if not np.all(flgs) else np.inf for flgs in apriori_flags])
+        thresh = np.percentile(max_array[np.isfinite(max_array)], flag_threshold)
+        flagged_channels = (max_array >= thresh)
+        flags = np.asarray([flagged_channels for m in uvf_avg.Ntimes]) | apriori_flags
+        uvf_avg_f.flag_array[0, 0, :, :, 0] = flags.T
+        # write new flags to disk
+        basename = qm_utils.strip_extension(os.path.basename(data_file))
+        outdir = resolve_xrfi_path('', data_files[0])
+        outfile = '.'.join([basename, ext])
+        outpath = os.path.join(outdir, outfile)
+        uvf_avg_f.write(outpath, clobber=clobber)
+
+
 
 def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                         flag_command, xrfi_path='', kt_size=8, kf_size=8,
