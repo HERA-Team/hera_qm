@@ -1047,7 +1047,7 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
 # Higher level functions that loop through data to calculate metrics
 #############################################################################
 
-def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
+def calculate_metric(uv, algorithm, cal_mode='gain', correlations='both', run_check=True,
                      check_extra=True, run_check_acceptability=True, **kwargs):
     """Make a UVFlag object of mode 'metric' from a UVData or UVCal object.
 
@@ -1061,6 +1061,8 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
+    correlations : {"cross", "auto", "both"}, optional
+        The correlations to use when computing metrics for visibility data sets.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1105,8 +1107,13 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
-                flags = uv.flag_array[ind, 0, :, ipol]
-                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
+                if correlations == 'both' or (correlations == 'auto' and ind[0] == ind[1])\
+                                          or (correlations == 'cross' and ind[0] != ind[1]):
+                    flags = uv.flag_array[ind, 0, :, ipol]
+                    uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
+                else:
+                    uvf.metric_array[ind] = 0.
+                    uvf.weights_array[ind] = 0.
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
             uvf.to_waterfall(run_check=run_check,
@@ -1373,7 +1380,12 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 #############################################################################
 
 
-def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=None, history=None,
+def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=None,
+             acal_chisq=True, ocal_chisq=True, ocal_median_filter=True, ocal_mean_filter=True,
+             acal_median_filter=True, acal_mean_filter=True,
+             omnivis_median_filter=True, omnivis_mean_filter=True,
+             data_median_filter=False, data_mean_filter=True
+             correlations='both', history=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
              ex_ants=None, ant_str=None, metrics_file=None,
              output_prefix=None, clobber=False,
@@ -1398,10 +1410,22 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         The omnical calfits file to use to flag on gains and chisquared values.
     acalfits_file : str, optional
         The abscal calfits file to use to flag on gains and chisquared values.
+    medfilt : bool, optional
+        Determine whether to run a round of median filtering
     model_file : str, optional
         THe model visibility file to flag on.
     data_file : str, optional
         The raw visibility data file to flag.
+    acal_chisq : bool, optional
+        If True, flag on chisquares from abscal.
+        Default is True.
+    ocal_chisq : bool, optional
+        If True, flag on chisquares from omnical.
+        Default is True.
+    correlations : str, optional
+        specify which components of the visibilities to use
+        Options are "both", "cross", "auto".
+        Default is "both".
     history : str
         The history string to include in files.
     xrfi_path : str, optional
@@ -1452,8 +1476,6 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         raise ValueError("Must provide at least one of the following; ocalfits_file, acalfits_file, model_file, data_file")
     # if ocalfits_file is supplied so too must acalfits_file
     if (ocalfits_file is not None and acalfits_file is None) or (ocalfits_file is None and acalfits_file is not None):
-        raise ValueError("Both an abscal and omnical file must be supplied or none at all.")
-    if history is None:
         raise ValueError("Must provide a non-empty history string.")
     # user must provide an optional output prefix if no data file is provided.
     if output_prefix is None:
@@ -1469,10 +1491,74 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     # Calculate metric on abscal data
     metrics = []
     flags = []
-    if acalfits_file is not None and ocalfits_file is not None:
+    if ocalfits_file is not None:
+        uvc_o = UVCal()
+        uvc_o.read_calfits(ocalfits_file)
+        # Get the absolute chi-squared values
+        # from omnical if they are available.
+        uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
+                                             sig_init=sig_init, sig_adj=sig_adj,
+                                             label='Renormalized chisq, round 1.',
+                                             run_check=run_check,
+                                             check_extra=check_extra,
+                                             run_check_acceptability=run_check_acceptability)
+        metrics += [uvf_chisq]
+        flags += [uvf_chisq_f]
+    else:
+        uvf_chisq = None; uvf_chisq_f = None
+
+    if ocalfits_file is not None and ocal_median_filter:
+        # Calculate metric on omnical data
+        uvc_o = UVCal()
+        uvc_o.read_calfits(ocalfits_file)
+        uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                    cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                    label='Omnical gains, round 1.',
+                                    run_check=run_check,
+                                    check_extra=check_extra,
+                                    run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_og]
+            flags += [uvf_ogf]
+        if ocal_chisq:
+            uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                        cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                        label='Omnical chisq, round 1.',
+                                        run_check=run_check,
+                                        check_extra=check_extra,
+                                        run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_ox]
+            flags += [uvf_oxf]
+
+        uvf_apriori = UVFlag(uvc_o, mode='flag', copy_flags=True, label='A priori flags.')
+        flags += [uvf_apriori]
+    else:
+        uvc_o = None
+        uvf_og = None; uvf_ogf = None; uvf_ox = None; uvf_oxf = None
+        uvf_apriori = None
+
+    # if we don't yet have a chi-sq flag and we have acalfits files,
+    # get chisq total from abscal files.
+    if uvf_chisq is None and acalfits_file is not None:
         uvc_a = UVCal()
         uvc_a.read_calfits(acalfits_file)
-        uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
+        uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_a, alg='zscore_full_array', modified=True,
+                                             sig_init=sig_init, sig_adj=sig_adj,
+                                             label='Renormalized chisq, round 1.',
+                                             run_check=run_check,
+                                             check_extra=check_extra,
+                                             run_check_acceptability=run_check_acceptability)
+        flags += [uvf_chisq_f]
+        metrics += [uvf_chisq]
+
+    if acalfits_file is not None and acal_median_filter:
+        if uvf_apriori is None:
+            uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
+        else:
+            flag_apply(uvf_apriori, uvc_a, keep_existing=True, run_check=run_check,
+                       check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
+        uvc_a = UVCal()
+        uvc_a.read_calfits(acalfits_file)
         uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                     cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
                                     label='Abscal gains, round 1.',
@@ -1487,47 +1573,28 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                     run_check_acceptability=run_check_acceptability)
         metrics += [uvf_ag, uvf_ax]
         flags += [uvf_agf, uvf_axf, uvf_apriori]
-
-        # Calculate metric on omnical data
-        uvc_o = UVCal()
-        uvc_o.read_calfits(ocalfits_file)
-        flag_apply(uvf_apriori, uvc_o, keep_existing=True, run_check=run_check,
-                   check_extra=check_extra,
-                   run_check_acceptability=run_check_acceptability)
-        uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                    cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                    label='Omnical gains, round 1.',
-                                    run_check=run_check,
-                                    check_extra=check_extra,
-                                    run_check_acceptability=run_check_acceptability)
-        uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                    cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                    label='Omnical chisq, round 1.',
-                                    run_check=run_check,
-                                    check_extra=check_extra,
-                                    run_check_acceptability=run_check_acceptability)
-        metrics += [uvf_og, uvf_ox]
-        flags += [uvf_ogf, uvf_oxf]
-        uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
-                                 check_extra=check_extra,
-                                 run_check_acceptability=run_check_acceptability)
-        flags += [uvf_apriori]
-        # Get the absolute chi-squared values
-        uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
-                                             sig_init=sig_init, sig_adj=sig_adj,
-                                             label='Renormalized chisq, round 1.',
-                                             run_check=run_check,
-                                             check_extra=check_extra,
-                                             run_check_acceptability=run_check_acceptability)
-        metrics += [uvf_chisq]
-        flags += [uvf_chisq_f]
     else:
-        uvc_o = None; uvc_a = None
+        uvc_a = None
         uvf_ag = None; uvf_agf = None; uvf_ax = None; uvf_axf = None
-        uvf_og = None; uvf_ogf = None; uvf_ox = None; uvf_oxf = None
-        uvf_chisq = None; uvf_chisq_f = None; uvf_apriori = None
+        uvf_apriori = None
+
     # Calculate metric on model vis
-    if model_file is not None:
+    if model_file is not None and omnivis_median_filter:
+        if uvf_apriori is None:
+            uvf_apriori = UVFlag(uvc_v, mode='flag', copy_flags=True, label='A priori flags.')
+        else:
+            flag_apply(uvf_apriori, uvc_v, keep_existing=True, run_check=run_check,
+                       check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
+        if uvf_chisq is None:
+            uvf_chisq, uvf_chisq_f = chi_sq_pipe(uv_v, alg='zscore_full_array', modified=True,
+                                                 sig_init=sig_init, sig_adj=sig_adj,
+                                                 label='Renormalized chisq, round 1.',
+                                                 run_check=run_check,
+                                                 check_extra=check_extra,
+                                                 run_check_acceptability=run_check_acceptability)
+            flags += [uvf_chisq_f]
+            metrics += [uvf_chisq]
         uv_v = UVData()
         uv_v.read(model_file)
         uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
@@ -1542,6 +1609,11 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         uv_v = None
         uvf_v = None; uvf_vf = None
 
+
+    if uvf_apriori not is None:
+        uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                                 check_extra=check_extra,
+                                 run_check_acceptability=run_check_acceptability)
     if len(metrics) > 0:
     # Combine the metrics together
         if len(metrics) > 1:
@@ -1592,21 +1664,26 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     # Calculate metric on abscal data
     metrics = []
     flags = []
-    if uvc_a is not None and uvc_o is not None:
+    if uvc_a is not None:
         uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                       cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
                                       label='Abscal gains, round 2.',
                                       run_check=run_check,
                                       check_extra=check_extra,
                                       run_check_acceptability=run_check_acceptability)
-        uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                      cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                      label='Abscal chisq, round 2.',
-                                      run_check=run_check,
-                                      check_extra=check_extra,
-                                      run_check_acceptability=run_check_acceptability)
+        if acal_chisq:
+            uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                          cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                          label='Abscal chisq, round 2.',
+                                          run_check=run_check,
+                                          check_extra=check_extra,
+                                          run_check_acceptability=run_check_acceptability)
         metrics += [uvf_ag2, uvf_ax2]
         flags += [uvf_agf2, uvf_axf2]
+    else:
+        uvf_ag2 = None; uvf_agf2 = None; uvf_ax2 = None; uvf_axf2 = None
+
+    if uvc_o is not None:
     # Calculate metric on omnical data
         uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                       cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
@@ -1614,17 +1691,21 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                       run_check=run_check,
                                       check_extra=check_extra,
                                       run_check_acceptability=run_check_acceptability)
-        uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                      cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                      label='Omnical chisq, round 2.',
-                                      run_check=run_check,
-                                      check_extra=check_extra,
-                                      run_check_acceptability=run_check_acceptability)
+        if ocal_chisq:
+            uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                          cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                          label='Omnical chisq, round 2.',
+                                          run_check=run_check,
+                                          check_extra=check_extra,
+                                          run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_ox2]
+            flags += [uvf_oxf2]
+        else:
+            uvf_ox2 = None; uvf_oxf2 = None
         metrics += [uvf_og2, uvf_ox2]
         flags += [uvf_oxf2, uvf_ogf2]
     else:
-        uvf_ag2 = None; uvf_agf2 = None; uvf_ax2 = None; uvf_axf2 = None
-        uvf_og2 = None; uvf_ogf2 = None; uvf_ox2 = None; uvf_oxf2 = None
+        uvf_og2 = None; uvf_ogf2 = None;
 
     # Calculate metric on model vis
     if uv_v is not None:
