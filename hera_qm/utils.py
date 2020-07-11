@@ -700,10 +700,8 @@ def strip_extension(path, return_ext=False):
 def baselines_from_filelist_position(filename, filelist, polarizations=None):
     """Determine indices of baselines to process.
 
-
     This function determines baselines to process given the position of a filename
     in a list of files.
-
 
     Parameters
     ----------
@@ -711,22 +709,17 @@ def baselines_from_filelist_position(filename, filelist, polarizations=None):
         name of the file being processed.
     filelist : list of strings
         name of all files over which computations are being parallelized.
-    polarizations : list of strings, optional
-        polarizations to include in baseline parallelization.
     Returns
     -------
     list
         list of baselines to process based on the position of the filename in the list of files.
     """
-    if polarizations is None:
-        polarizations = ['ee', 'nn', 'en', 'ne']
-    # sanitize polarizations
-    for pol in polarizations:
-        if pol.lower() not in POL_STR2NUM_DICT and pol.lower() not in ['ee', 'en', 'ne', 'nn']:
-            raise ValueError("invalid polarization %s provided!" % pol)
-    # The reason this function is not in utils is that it needs to use HERAData
+    try:
+        from hera_cal.io import HERAData
+    except ImportError:
+        raise ImportError("hera_cal must be installed to for baselines_from_filelist_position.")
     hd = HERAData(filename)
-    bls = [bl for bl in hd.bls if bl[-1] in polarizations]
+    bls = hd.bls
     file_index = filelist.index(filename)
     nfiles = len(filelist)
     # Determine chunk size
@@ -737,7 +730,7 @@ def baselines_from_filelist_position(filename, filelist, polarizations=None):
     return bls[lower_index:upper_index]
 
 
-def parse_apriori_flag_intervals(intervalfile):
+def parse_apriori_flag_intervals(interval_file):
     """read in apriori frequency or lst flags.
 
     utility function for parsing frequency / LST flag text files. These files should
@@ -752,19 +745,19 @@ def parse_apriori_flag_intervals(intervalfile):
 
     Parameters
     ----------
-    intervalfile : str
+    interval_file : str
         filepath to text file containing apriori flags.
     """
     intervals = []
-    with open(freqflagfile, 'r') as f:
+    with open(interval_file, 'r') as f:
         lines = f.readlines()
     for line in lines:
         if not line[0] == '#':
             # eliminate white space.
             tokens = line.split(',')
             try:
-                lower = float(token[0])
-                upper = float(token[1])
+                lower = float(tokens[0])
+                upper = float(tokens[1])
             except ValueError:
                 print("%s is not comma separated floats!"%(line))
             intervals += [(lower, upper)]

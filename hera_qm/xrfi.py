@@ -15,7 +15,7 @@ from .version import hera_qm_version_str
 from .metrics_io import process_ex_ants
 import warnings
 import glob
-import re
+import copy
 
 
 #############################################################################
@@ -100,7 +100,7 @@ def flag_xants(uv, xants, inplace=True, run_check=True,
         return uvo
 
 
-def flag_lsts_frequencies(uv, lst_intervals=None, frequency_intervals=None, inplace=True, run_check=True,
+def flag_lsts_frequencies(uv, lst_intervals=None, frequency_intervals=None, in_place=True, run_check=True,
                           check_extra=True, run_check_acceptability=True, lst_array=None):
     """Flag lsts and frequencies
 
@@ -113,7 +113,7 @@ def flag_lsts_frequencies(uv, lst_intervals=None, frequency_intervals=None, inpl
         List of float 2-tuples containing upper and lower LSTs to flag (hours).
     frequency_intervals : list
         List of float 2-tuples containing upper and lower frequencies to flag (Hz).
-    inplace : bool, optional
+    in_place : bool, optional
         If True, apply flags to the uv object. If False, return a UVFlag object
         with only xants flaged. Default is True.
     run_check : bool
@@ -131,7 +131,7 @@ def flag_lsts_frequencies(uv, lst_intervals=None, frequency_intervals=None, inpl
     if not issubclass(uv.__class__, (UVData, UVCal, UVFlag)):
          raise ValueError('First argument to flag_xants must be a UVData, UVCal, '
                           ' or UVFlag object.')
-    if not inplace:
+    if not in_place:
         if isinstance(uv, UVFlag):
             uvo = uv.copy()
             uvo.to_flag(run_check=run_check, check_extra=check_extra,
@@ -147,31 +147,43 @@ def flag_lsts_frequencies(uv, lst_intervals=None, frequency_intervals=None, inpl
     freqs = uv.freq_array
     # Do the following for uvcal and uvflags.
     if issubclass(uvo.__class__, UVData) or (isinstance(uvo, UVFlag) and uvo.type == 'baseline'):
-        baseline_mode = 'baseline'
+        indexing = 'baseline'
     elif issubclass(uvo.__class__, UVCal) or (isinstance(uvo, UVFlag) and uvo.type == 'antenna'):
-        baseline_mode = 'antenna'
+        indexing = 'antenna'
+    elif issubclass(uvo.__class__, UVFlag) and uvo.type == 'waterfall':
+        indexing = 'waterfall'
     # flag Frequency
     if frequency_intervals is not None:
+        if uv.Nspws is None:
+            uv.Nspws = 1
         for spw in range(uv.Nspws):
             for interval in frequency_intervals:
                 to_flag = (freqs[spw] >= np.min(interval)) & (freqs[spw] <= np.max(interval))
-                if baseline_mode == 'antenna':
+                if indexing == 'antenna':
                     uvo.flag_array[:, spw, to_flag, :, :] = True
-                else:
+                elif indexing == 'baseline':
                     uvo.flag_array[:, spw, to_flag, :] = True
+                elif indexing == 'waterfall':
+                    uvo.flag_array[:, to_flag] = True
     # flag LST
-    if lst_intervals is not None and lst_array is not None:
-        lsts = lst_array
+    if lst_intervals is not None:
+        if issubclass(uvo.__class__, UVData):
+            lsts = uvo.lst_array * 12. / np.pi
+        elif lst_array is not None:
+            lsts = lst_array
+        else:
+            raise ValueError("No lst_array provided!")
         for interval in lst_intervals:
-            to_flag = (lsts >= np.min(interval) & (lsts <= np.max(interval)))
-            if baseline_mode == 'antenna':
+            to_flag = (lsts >= np.min(interval)) & (lsts <= np.max(interval))
+            if indexing == 'antenna':
                 uvo.flag_array[:, :, :, to_flag, :] = True
-            else:
-                uvo.flag_array[to_flag, :, :, :, :] = True
-    else:
-        raise ValueError("No lst_array provided!")
+            elif indexing == 'baseline':
+                uvo.flag_array[to_flag, :, :, :] = True
+            elif indexing == 'waterfall':
+                uvo.flag_array[to_flag, :] = True
 
-    if not inplace:
+
+    if not in_place:
         return uvo
 
 
@@ -449,15 +461,14 @@ def detrend_medminfilt(data, flags=None, Kt=8, Kf=8):
     return out
 
 
-def detrend_delay_filter(data, flags, uv, blind, horizon=1.0, offset=200,
-                         flags=None, **kwargs):
+def detrend_delay_filter(data, flags, uv, blind, horizon=1.0, offset=200, **kwargs):
     """Detrend array using a delay filter from uvtools.dspec
 
     Parameters
     ----------
     data : array
         2D data array to detrend.
-    flags : array, optional
+    flags : array
         2D flag array to be interpreted as a mask for delay filter.
     uv : UVData (or subclass)
         uvdata object that data was obtained from.
@@ -949,34 +960,35 @@ def roto_flag(uvf_m, uvf_f, wf_method='quadmean',
         time_thresholds = [99 for m in range(3)]
      if freq_thresholds is None:
         freq_thresholds = [99 for m in range(3)]
-    if not uvf_m.waterfall:
-        uvf_mi = uvf_m.to_waterfall(method=wf_method, keep_pol=False, in_place=False,
-                                   run_check=run_check, check_extra=check_extra,
-                                   run_check_acceptability=run_check_acceptability)
-    else:
-        uvf_mi = copy.deepcopy(uvf_m)
-    if not uvf_f.waterfall:
-        uvf_fi = uvf_f.to_waterfall(keep_pol=False, in_place=False,
+     if not uvf_m.waterfall:
+         uvf_mi = uvf_m.to_waterfall(method=wf_method, keep_pol=False, in_place=False,
                                     run_check=run_check, check_extra=check_extra,
                                     run_check_acceptability=run_check_acceptability)
-    else:
-        uvf_fi = copy.deepcopy(uvf_f)
+     else:
+         uvf_mi = copy.deepcopy(uvf_m)
+     if not uvf_f.waterfall:
+         uvf_fi = uvf_f.to_waterfall(keep_pol=False, in_place=False,
+                                     run_check=run_check, check_extra=check_extra,
+                                     run_check_acceptability=run_check_acceptability)
+     else:
+         uvf_fi = copy.deepcopy(uvf_f)
     # roto-flag
-    if not len(time_thresholds) == len(freq_thresholds):
-        raise ValueError("Number of time thresholds must equal number of frequency thresholds.")
-    t_flags = [np.all(uvf_fi.flag_array.squeeze(), axis=1)]
-    f_flags = [np.all(uvf_fi.flag_array.squeeze(), axis=0)]
-    metric_array = uvf_mi.metric_array.squeeze()
-    for step, t_thresh f_thresh in zip(range(len(time_thresholds)), freq_thresholds):
-        stat_t = np.array([np.max(np.abs(wt[~f_flags[step-1]])) for wt in metric_array])
-        flagged_times = (stat_t > np.percentile(stat_t[~t_flags[step-1]], t_thresh)) | t_flags[step-1]
-        t_flags.append(flagged_times)
-        stat_f = np.array([np.max(np.abs(wt[~t_flags[step]])) for wt in metric_array.T])
-        flagged_channels = (stat_f > np.percentile(stat_f[~f_flags[step-1]])) | f_flags[step-1]
+     if not len(time_thresholds) == len(freq_thresholds):
+         raise ValueError("Number of time thresholds must equal number of frequency thresholds.")
+     t_flags = [np.all(uvf_fi.flag_array.squeeze(), axis=1)]
+     f_flags = [np.all(uvf_fi.flag_array.squeeze(), axis=0)]
+     metric_array = uvf_mi.metric_array.squeeze()
+     for step, t_thresh, f_thresh in zip(range(len(time_thresholds)),
+                                         time_thresholds, freq_thresholds):
+         stat_t = np.array([np.max(np.abs(wt[~f_flags[step-1]])) for wt in metric_array])
+         flagged_times = (stat_t > np.percentile(stat_t[~t_flags[step-1]], t_thresh)) | t_flags[step-1]
+         t_flags.append(flagged_times)
+         stat_f = np.array([np.max(np.abs(wt[~t_flags[step]])) for wt in metric_array.T])
+         flagged_channels = (stat_f > np.percentile(stat_f[~f_flags[step-1]])) | f_flags[step-1]
     # construct flag array from final time and frequency flags.
-    uvf_fi.flag_array[:,:,:,0] = ~np.outer(~t_flags[-1], ~f_flags[-1])
-    uvf_fi.history += 'Roto-flagged.'
-    return uvf_fi
+     uvf_fi.flag_array[:,:,:,0] = ~np.outer(~t_flags[-1], ~f_flags[-1])
+     uvf_fi.history += 'Roto-flagged.'
+     return uvf_fi
 
 
 
@@ -1240,7 +1252,7 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
 # Higher level functions that loop through data to calculate metrics
 #############################################################################
 
-def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
+def calculate_metric(uv, algorithm, cal_mode='gain', correlations='cross', run_check=True,
                      check_extra=True, run_check_acceptability=True, **kwargs):
     """Make a UVFlag object of mode 'metric' from a UVData or UVCal object.
 
@@ -1254,6 +1266,9 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
+    correlations : {"auto", "cross", "both"}
+        Determine whether to use autocorrs, cross-corrs, or both when computing
+        metrics for uvdata.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1298,11 +1313,16 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
-                flags = uv.flag_array[ind, 0, :, ipol]
-                if algorithm not in ['delay_filter']:
-                    uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
-                elif algorithm == 'delay_filter':
-                    uvf.metric_array[ind, 0, :, ipol] = alg_func(data, flags=flags, uv, key, **kwargs)
+                if correlations == 'both' or (correlations == 'cross' and ind[0] != ind[1])\
+                                          or (correlations == 'auto' and ind[0] == ind[1]):
+                    flags = uv.flag_array[ind, 0, :, ipol]
+                    if algorithm not in ['delay_filter']:
+                        uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
+                    elif algorithm == 'delay_filter':
+                        uvf.metric_array[ind, 0, :, ipol] = alg_func(data, flags=flags, uv=uv, blind=key[:2], **kwargs)
+                else:
+                    uvf.weights_array[ind][:] = 0. # set all weights to zero for excluded autos and crosses.
+                    uvf.metric_array[ind] = 0. # set all metrics to zero too. 
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
             uvf.to_waterfall(run_check=run_check,
@@ -1569,7 +1589,7 @@ def metric_baseline_list(datafile_list, baseline_list,
                          kt_size=8, kf_size=8,
                          preflagged_frequencies=None,
                          preflagged_lsts=None,
-                         ex_ants=None,
+                         ex_ants=None, blank_flags=True,
                          keep_existing_flags=True,
                          clobber=False,
                          run_check=True, check_extra=True,
@@ -1631,24 +1651,26 @@ def metric_baseline_list(datafile_list, baseline_list,
     uvf_f, UVFlag
         contains apriori flags.
     """
-    if correlations == 'auto':
-        baseline_list = [bl for bl in baseline_list if bl[0] == bl[1]]
-    elif correlations == 'cross':
-        baseline_list = [bl for bl in baseline_list if bl[0] != bl[1]]
+    #if correlations == 'auto':
+    #    baselines_load = [bl for bl in baseline_list if bl[0] == bl[1]]
+    #elif correlations == 'cross':
+    # baselines_load = [bl for bl in baseline_list if bl[0] != bl[1]]
+    #elif correlations == 'both':
+    #    baselines_load = [bl for bl in baseline_list]
     # read in data.
     uv = UVData()
     uv.read(datafile_list, bls=baseline_list)
     if blank_flags:
         uv.flag_array[:] = False
     # pre-flag antennas and frequencies.
-    flag_xants(uv, xants, run_check=run_check,
+    flag_xants(uv, ex_ants, run_check=run_check,
                check_extra=check_extra,
                run_check_acceptability=run_check_acceptability)
     flag_lsts_frequencies(uv, preflagged_lsts, preflagged_frequencies, run_check=run_check,
                      check_extra=check_extra,
                      run_check_acceptability=run_check_acceptability)
     # generate metrics.
-    uvf_m = calculate_metric(uv, alg, Kt=kt_size, Kf=kf_size,
+    uvf_m = calculate_metric(uv, alg, Kt=kt_size, Kf=kf_size, correlations=correlations,
                              run_check=run_check, check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
     # weights should be the number of non-inf samples going
@@ -1657,12 +1679,12 @@ def metric_baseline_list(datafile_list, baseline_list,
                        run_check=run_check, check_extra=check_extra,
                        run_check_acceptability=run_check_acceptability)
     # package up apriori flags.
-    ufv_f = copy.deepcopy(uvf_m)
+    uvf_f = copy.deepcopy(uvf_m)
     uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
                       run_check_acceptability=run_check_acceptability)
     uvf_f.flag_array[:] = False
     flag_lsts_frequencies(uvf_f, preflagged_lsts, preflagged_frequencies, run_check=run_check,
-                          check_extra=check_extra, in_place=True,
+                          check_extra=check_extra, in_place=True, lst_array=np.unique(uv.lst_array) * 12. / np.pi,
                           run_check_acceptability=run_check_acceptability)
     return uvf_m, uvf_f
 
@@ -2004,18 +2026,18 @@ def xrfi_metric_mutifile_run(datafile, datafile_list,
     None
     """
     # determine baseline list from data file and list of datafiles.
-    baselines = utils.baselines_from_filelist_position(datafile, datafile_list)
+    baselines = qm_utils.baselines_from_filelist_position(datafile, datafile_list)
     # load in pre-flagged frequencies.
     if freqflagfile is not None:
-        frequency_intervals = utils.parse_apriori_flag_intervals(freqflagfile)
+        frequency_intervals = qm_utils.parse_apriori_flag_intervals(freqflagfile)
     else:
         frequency_intervals = []
     if lstflagfile is not None:
-        lst_intervals = utils.parse_apriori_flag_intervals(lstflagfile)
+        lst_intervals = qm_utils.parse_apriori_flag_intervals(lstflagfile)
     else:
         lst_intervals = []
     # calculate metrics
-    uvf_m, uvf_f = metric_baseline_list(datafile_list, baselines, alg=alg, wf_method=wf_method,
+    uvf_m, uvf_f = metric_baseline_list(datafile_list, baselines, alg=alg,
                                         correlations=correlations, wf_method=wf_method,
                                         kt_size=kt_size, kf_size=kf_size,
                                         preflagged_frequencies=frequency_intervals,
@@ -2026,14 +2048,14 @@ def xrfi_metric_mutifile_run(datafile, datafile_list,
     # write out metric
     ext = 'data_metrics.h5'
     dirname = resolve_xrfi_path(xrfi_path, datafile, jd_subdir=True)
-    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    basename = qm_utils.strip_extension(os.path.basename(datafile))
     outfile = '.'.join([basename, ext])
     outpath = os.path.join(dirname, outfile)
     uvf_m.write(outpath, clobber=clobber)
     # write out apriori flags
     ext = 'apriori_data_flags.h5'
     dirname = resolve_xrfi_path(xrfi_path, datafile, jd_subdir=True)
-    basename = qm_utils.strip_extension(os.path.basename(data_file))
+    basename = qm_utils.strip_extension(os.path.basename(datafile))
     outfile = '.'.join([basename, ext])
     outpath = os.path.join(dirname, outfile)
     uvf_f.write(outpath, clobber=clobber)
@@ -2078,9 +2100,9 @@ def delay_metric_run(data_file, day_flags, xrfi_path='', wf_method='quadmean',
     # apply day flags
     uvf.Ntimes=uv.Ntimes
     # uvf includes more times then uv so select the times that overlap with uv.
-    time_select=np.asarray([t if t in np.round(uv.time_array, decimals=6) for t in np.round(uvf.time_array, decimals=6)])
+    time_select=np.asarray([t for t in np.round(uvf.time_array, decimals=6) if t in np.round(uv.time_array, decimals=6)])
     uvf.select(times=time_select)
-    flag_apply(uvf, uv, keep_existing=False), run_check=run_check, check_extra=check_extra,
+    flag_apply(uvf, uv, keep_existing=False, run_check=run_check, check_extra=check_extra,
                run_check_acceptability=run_check_acceptability)
     # compute delay-filter residuals
     uvm_resid = calculate_metric(uv, algorithm='delay_filter', run_check=run_check,

@@ -12,7 +12,7 @@ from pyuvdata import UVCal
 import hera_qm.utils as utils
 from hera_qm.data import DATA_PATH
 from pyuvdata import UVFlag
-
+import glob
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
 test_uvfits_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.uvfits')
@@ -895,20 +895,24 @@ def test_prefilter_flagging_pipe(tmpdir):
     # multifile_metric_max_flag_run
     # delay_metric_run
     # and roto_flag
+    tmp_path = tmpdir.strpath
     files = [os.path.join(DATA_PATH, 'zen.2458101.46106.xx.HH.OCR_53x_54x_only.first.uvh5'),
              os.path.join(DATA_PATH, 'zen.2458101.46106.xx.HH.OCR_53x_54x_only.second.uvh5')]
     # first, perform xrfi_metric_mutifile_run.
     fffile = os.path.join(DATA_PATH, 'frequency_flag_test_file.txt')
     lffile = os.path.join(DATA_PATH, 'lst_flag_test_file.txt')
     for file in files:
-        xrfi_metric_mutifile_run(file, files, freqflagfile=fffile, lstflagfile=lfffile,
-                                 ex_ants='53', clobber=True, xrfi_path=str(tmp_path))
+        xrfi.xrfi_metric_mutifile_run(file, files, freqflagfile=fffile, lstflagfile=lffile,
+                                      ex_ants=[53], clobber=True, xrfi_path=tmp_path)
     # check that two different files have been generated and that they have the correct
     # number of times.
-    written_flags = glob.glob(str(tmp_path / '*data_metrics.h5')
-    written_metrics = glob.glob(str(tmp_path / '*apriori_data_flags.h5'))
+    written_flags = glob.glob(tmp_path + '/*data_metrics.h5')
+    written_metrics = glob.glob(tmp_path + '/*apriori_data_flags.h5')
+    # test that the correct number of metric and flag files have been written.
     assert len(written_flags) == 2
     assert len(written_metrics) == 2
+    # next, 
+
 
 
 def test_xrfi_run(tmpdir):
