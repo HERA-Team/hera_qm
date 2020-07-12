@@ -2248,8 +2248,8 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'omnical_chi_sq_renormed',
              'abscal_chi_sq_renormed', 'combined']
     mexts = ['og_metrics', 'ox_metrics', 'ag_metrics', 'ax_metrics',
-             'v_metrics', 'data_metrics', 'omnical_chi_sq_renormed',
-             'abscal_chi_sq_renormed', 'combined_metrics']
+             'v_metrics', 'data_metrics', 'omnical_chi_sq_renormed_metrics',
+             'abscal_chi_sq_renormed_metrics', 'combined_metrics']
     # Read in the metrics objects
     filled_metrics = []
     for ext in mexts:
@@ -2268,6 +2268,10 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         elif np.all([len(f) > 0 for f in files2_all]):
             # some flags only exist in round2 (data for example).
             files = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
+            filled_metrics.append(UVFlag(files))
+        elif np.all([len(f) > 0 for f in files1_all]):
+            # some flags only exist in round1 (if we chose median filtering only for example).
+            files = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
             filled_metrics.append(UVFlag(files))
         else:
             filled_metrics.append(None)
@@ -2289,7 +2293,8 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
             uvf_total |= uvf_f
 
     # Read non thresholded flags and combine
-    files = [glob.glob(d + '/*.flags2.h5')[0] for d in xrfi_dirs]
+    # Include round 1 and 2 flags for potential medain filter only.
+    files = [glob.glob(d + '/*.flags*.h5')[0] for d in xrfi_dirs]
     uvf_total |= UVFlag(files)
 
     # Apply to abs calfits
