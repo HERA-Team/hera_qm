@@ -907,43 +907,50 @@ def test_xrfi_run(tmpdir):
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile, 'Just a test'], {'kt_size': 3, 'ant_str': 'cross'},
+                                         raw_dfile, 'Just a test'], {'kt_size': 3, 'ant_str': 'cross',
+                                         'data_median_filter':True},
                          nwarnings=len(messages), message=messages, category=categories)
 
     outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
-    ext_labels = {'ag_flags1': 'Abscal gains, round 1. Flags.',
-                  'ag_flags2': 'Abscal gains, round 2. Flags.',
-                  'ag_metrics1': 'Abscal gains, round 1.',
-                  'ag_metrics2': 'Abscal gains, round 2.',
+    ext_labels = {'ag_flags1': 'Abscal gains, median filter. Flags.',
+                  'ag_flags2': 'Abscal gains, mean filter. Flags.',
+                  'ag_metrics1': 'Abscal gains, median filter.',
+                  'ag_metrics2': 'Abscal gains, mean filter.',
                   'apriori_flags': 'A priori flags.',
-                  'ax_flags1': 'Abscal chisq, round 1. Flags.',
-                  'ax_flags2': 'Abscal chisq, round 2. Flags.',
-                  'ax_metrics1': 'Abscal chisq, round 1.',
-                  'ax_metrics2': 'Abscal chisq, round 2.',
-                  'chi_sq_flags1': 'Renormalized chisq, round 1. Flags.',
-                  'chi_sq_flags2': 'Renormalized chisq, round 2. Flags.',
-                  'chi_sq_renormed1': 'Renormalized chisq, round 1.',
-                  'chi_sq_renormed2': 'Renormalized chisq, round 2.',
+                  'ax_flags1': 'Abscal chisq, median filter. Flags.',
+                  'ax_flags2': 'Abscal chisq, mean filter. Flags.',
+                  'ax_metrics1': 'Abscal chisq, median filter.',
+                  'ax_metrics2': 'Abscal chisq, mean filter.',
+                  'omnical_chi_sq_flags1': 'Renormalized chisq, round 1. Flags.',
+                  'omnical_chi_sq_flags2': 'Renormalized chisq, round 2. Flags.',
+                  'omnical_chi_sq_renormed1': 'Omnical Renormalized chisq, median filter.',
+                  'omnical_chi_sq_renormed2': 'Omnical Renormalized chisq, median filter, round 2.',
+                  'abscal_chi_sq_flags1': 'Abscal Renormalized chisq, median filter. Flags.',
+                  'abscal_chi_sq_flags2': 'Abscal Renormalized chisq, median filter, round 2. Flags.',
+                  'abscal_chi_sq_renormed1': 'Abscal Renormalized chisq, median filter.',
+                  'abscal_chi_sq_renormed2': 'Abscal Renormalized chisq, median filter, round 2.',
                   'combined_flags1': 'Flags from combined metrics, round 1.',
                   'combined_flags2': 'Flags from combined metrics, round 2.',
                   'combined_metrics1': 'Combined metrics, round 1.',
                   'combined_metrics2': 'Combined metrics, round 2.',
-                  'data_flags2': 'Data, round 2. Flags.',
-                  'data_metrics2': 'Data, round 2.',
+                  'data_flags1': 'Data, median filter. Flags.',
+                  'data_flags2': 'Data, mean filter. Flags.',
+                  'data_metrics2': 'Data, mean filter.',
+                  'data_metrics1': 'Data, median filter.',
                   'flags1': 'ORd flags, round 1.',
                   'flags2': 'ORd flags, round 2.',
-                  'og_flags1': 'Omnical gains, round 1. Flags.',
-                  'og_flags2': 'Omnical gains, round 2. Flags.',
-                  'og_metrics1': 'Omnical gains, round 1.',
-                  'og_metrics2': 'Omnical gains, round 2.',
-                  'ox_flags1': 'Omnical chisq, round 1. Flags.',
-                  'ox_flags2': 'Omnical chisq, round 2. Flags.',
-                  'ox_metrics1': 'Omnical chisq, round 1.',
-                  'ox_metrics2': 'Omnical chisq, round 2.',
-                  'v_flags1': 'Omnical visibility solutions, round 1. Flags.',
-                  'v_flags2': 'Omnical visibility solutions, round 2. Flags.',
-                  'v_metrics1': 'Omnical visibility solutions, round 1.',
-                  'v_metrics2': 'Omnical visibility solutions, round 2.'}
+                  'og_flags1': 'Omnical gains, median filter. Flags.',
+                  'og_flags2': 'Omnical gains, mean filter. Flags.',
+                  'og_metrics1': 'Omnical gains, median filter.',
+                  'og_metrics2': 'Omnical gains, mean filter.',
+                  'ox_flags1': 'Omnical chisq, median filter. Flags.',
+                  'ox_flags2': 'Omnical chisq, mean filter. Flags.',
+                  'ox_metrics1': 'Omnical chisq, median filter.',
+                  'ox_metrics2': 'Omnical chisq, mean filter.',
+                  'v_flags1': 'Omnical visibility solutions, median filter. Flags.',
+                  'v_flags2': 'Omnical visibility solutions, mean filter. Flags.',
+                  'v_metrics1': 'Omnical visibility solutions, median filter.',
+                  'v_metrics2': 'Omnical visibility solutions, mean filter.'}
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
@@ -961,12 +968,6 @@ def test_xrfi_run(tmpdir):
     with pytest.raises(ValueError):
         xrfi.xrfi_run(ocalfits_file=ocal_file, acalfits_file=acal_file, model_file=model_file,
                       data_file=raw_dfile, history=None)
-    # test error when ocal provided but no acal.
-    with pytest.raises(ValueError):
-        xrfi.xrfi_run(ocalfits_file=ocal_file, history='fail', output_prefix='fail')
-    # test error when acal provided but no ocal.
-    with pytest.raises(ValueError):
-        xrfi.xrfi_run(acalfits_file=acal_file, history='fail', output_prefix='fail')
     # test error when no data file or output prefix provided.
     with pytest.raises(ValueError):
         xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, history='fail', output_prefix=None)

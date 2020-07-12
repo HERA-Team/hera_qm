@@ -1381,10 +1381,13 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 
 
 def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=None,
-             acal_chisq=True, ocal_chisq=True, ocal_median_filter=True, ocal_mean_filter=True,
-             acal_median_filter=True, acal_mean_filter=True,
-             omnivis_median_filter=True, omnivis_mean_filter=True,
-             data_median_filter=False, data_mean_filter=True
+             omnical_median_filter=True, abscal_median_filter=True,
+             omnical_chi2_median_filter=True, abscal_chi2_median_filter=True,
+             omnical_mean_filter=True, abscal_mean_filter=True,
+             omnical_chi2_mean_filter=True, abscal_chi2_mean_filter=True,
+             omnical_zscore_filter=True, abscal_zscore_filter=True,
+             omnivis_median_filter=True, data_median_filter=False,
+             omnivis_mean_filter=True, data_mean_filter=True,
              correlations='both', history=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
              ex_ants=None, ant_str=None, metrics_file=None,
@@ -1416,11 +1419,59 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         THe model visibility file to flag on.
     data_file : str, optional
         The raw visibility data file to flag.
-    acal_chisq : bool, optional
-        If True, flag on chisquares from abscal.
+    omnical_median_filter : bool, optional
+        If true, run a median filter on omnical gains.
+        Mean filters are run after median filters.
         Default is True.
-    ocal_chisq : bool, optional
-        If True, flag on chisquares from omnical.
+    abscal_median_filter : bool, optional
+        If true, run a median filter on abscal gains.
+        Mean filters are run after median filters.
+        Default is True.
+    omnical_chi2_median_filter : bool, optional
+        If True, run a median filter on omnical chisquare statistics.
+        Mean filters are run after median filters.
+        Default is True.
+    abscal_chi2_median_filter : bool, optional
+        If True, run a median filter on abscal chisquare statistics.
+        Mean filters are run after median filters.
+        Default is True.
+    omnical_mean_filter : bool, optional
+        If True, run a mean filter on omnical gain solutions.
+        Mean filters are run after median filters.
+        Default is True.
+    abscal_mean_filter : bool, optional
+        If True, run mean filter on abscal gain solutions.
+        Mean filters are run after median filters.
+        Default is True.
+    omnical_chi2_mean_filter : bool, optional
+        If True, run mean filter on abscal chisquare statistics.
+        Mean filters are run after median filters.
+        Default is True.
+    abscal_chi2_mean_filter : bool, optional
+        If True, run mean filter on abscal chisquare statistics.
+        Mean filters are run after median filters.
+        Default is True.
+    omnical_zscore : bool, optional
+        If True, flag on omnical total z-score statistic.
+        Default is True.
+    abscal_zscore : bool, optional
+        If True, flag on abscal total z-score statistic.
+        Default is True.
+    omnivis_median_filter : bool, optional
+        If True, flag on omnivis median filter statistic.
+        Mean filters are run after median filters.
+        Default is True.
+    data_median_filter : bool, optional
+        If True, flag on data median filter statistic.
+        Mean filters are run after median filters.
+        Default is True.
+    omnivis_mean_filter : bool, optional
+        If True, flag on omnivis mean filter statistic.
+        Mean filters are run after median filters.
+        Default is True.
+    data_mean_filter : bool, optional
+        If True, flag on data mean filter statistic.
+        Mean filters are run after median filters.
         Default is True.
     correlations : str, optional
         specify which components of the visibilities to use
@@ -1493,127 +1544,158 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     flags = []
     if ocalfits_file is not None:
         uvc_o = UVCal()
-        uvc_o.read_calfits(ocalfits_file)
-        # Get the absolute chi-squared values
-        # from omnical if they are available.
-        uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
-                                             sig_init=sig_init, sig_adj=sig_adj,
-                                             label='Renormalized chisq, round 1.',
-                                             run_check=run_check,
-                                             check_extra=check_extra,
-                                             run_check_acceptability=run_check_acceptability)
-        metrics += [uvf_chisq]
-        flags += [uvf_chisq_f]
-    else:
-        uvf_chisq = None; uvf_chisq_f = None
+        uvc_o.read_calfits(acalfits_file)
+        uvf_apriori = UVFlag(uvc_o, mode='flag', copy_flags=True, label='A priori flags.')
+        flags += [uvf_apriori]
 
-    if ocalfits_file is not None and ocal_median_filter:
-        # Calculate metric on omnical data
-        uvc_o = UVCal()
-        uvc_o.read_calfits(ocalfits_file)
-        uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                    cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                    label='Omnical gains, round 1.',
-                                    run_check=run_check,
-                                    check_extra=check_extra,
-                                    run_check_acceptability=run_check_acceptability)
+        if omnical_median_filter:
+            uvf_og, uvf_ogf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                        cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                        label='Omnical gains, median filter.',
+                                        run_check=run_check,
+                                        check_extra=check_extra,
+                                        run_check_acceptability=run_check_acceptability)
             metrics += [uvf_og]
             flags += [uvf_ogf]
-        if ocal_chisq:
-            uvf_ox, uvf_oxf = xrfi_pipe(uvc_o, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+        else:
+            uvf_og = None
+            uvf_ogf = None
+        if omnical_chi2_median_filter:
+            uvf_ox, uvf_oxf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                         cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                        label='Omnical chisq, round 1.',
+                                        label='Omnical chisq, median filter.',
                                         run_check=run_check,
                                         check_extra=check_extra,
                                         run_check_acceptability=run_check_acceptability)
             metrics += [uvf_ox]
             flags += [uvf_oxf]
-
-        uvf_apriori = UVFlag(uvc_o, mode='flag', copy_flags=True, label='A priori flags.')
-        flags += [uvf_apriori]
+        else:
+            uvf_ox = None
+            uvf_oxf = None
+        if omnical_zscore_filter:
+            uvf_oz, uvf_oz_f = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
+                                                   sig_init=sig_init, sig_adj=sig_adj,
+                                                   label='Omnical Renormalized chisq, median filter.',
+                                                   run_check=run_check,
+                                                   check_extra=check_extra,
+                                                   run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_oz]
+            flags += [uvf_ozf]
+        else:
+            uvf_oz = None
+            uvf_ozf = None
     else:
         uvc_o = None
-        uvf_og = None; uvf_ogf = None; uvf_ox = None; uvf_oxf = None
-        uvf_apriori = None
+        uvf_og = None; uvf_ox = None; uvf_oz = None
+        uvf_ogf = None; uvf_oxf = None; uvf_ozf = None
 
-    # if we don't yet have a chi-sq flag and we have acalfits files,
-    # get chisq total from abscal files.
-    if uvf_chisq is None and acalfits_file is not None:
+    if acalfits_file is not None:
         uvc_a = UVCal()
         uvc_a.read_calfits(acalfits_file)
-        uvf_chisq, uvf_chisq_f = chi_sq_pipe(uvc_a, alg='zscore_full_array', modified=True,
-                                             sig_init=sig_init, sig_adj=sig_adj,
-                                             label='Renormalized chisq, round 1.',
-                                             run_check=run_check,
-                                             check_extra=check_extra,
-                                             run_check_acceptability=run_check_acceptability)
-        flags += [uvf_chisq_f]
-        metrics += [uvf_chisq]
-
-    if acalfits_file is not None and acal_median_filter:
         if uvf_apriori is None:
             uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
+            flags += [uvf_apriori]
         else:
             flag_apply(uvf_apriori, uvc_a, keep_existing=True, run_check=run_check,
                        check_extra=check_extra,
                        run_check_acceptability=run_check_acceptability)
-        uvc_a = UVCal()
-        uvc_a.read_calfits(acalfits_file)
-        uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                    cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                    label='Abscal gains, round 1.',
-                                    run_check=run_check,
-                                    check_extra=check_extra,
-                                    run_check_acceptability=run_check_acceptability)
-        uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                    cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                    label='Abscal chisq, round 1.',
-                                    run_check=run_check,
-                                    check_extra=check_extra,
-                                    run_check_acceptability=run_check_acceptability)
-        metrics += [uvf_ag, uvf_ax]
-        flags += [uvf_agf, uvf_axf, uvf_apriori]
+        if abscal_median_filter:
+            uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                        cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                        label='Abscal gains, median filter.',
+                                        run_check=run_check,
+                                        check_extra=check_extra,
+                                        run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_ag]
+            flags += [uvf_agf]
+        else:
+            uvf_ag = None
+            uvf_agf = None
+        if abascal_chi2_median_filter:
+            uvf_ax, uvf_axf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                        cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                        label='Abscal chisq, median filter.',
+                                        run_check=run_check,
+                                        check_extra=check_extra,
+                                        run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_ax]
+            flags += [uvf_axf]
+        else:
+            uvf_ax = None
+            uvf_axf = None
+        if abscal_zscore_filter:
+            uvf_az, uvf_az_f = chi_sq_pipe(uvc_a, alg='Abscale zscore_full_array', modified=True,
+                                                   sig_init=sig_init, sig_adj=sig_adj,
+                                                   label='Abscal Renormalized chisq, median filter.',
+                                                   run_check=run_check,
+                                                   check_extra=check_extra,
+                                                   run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_az]
+            flags += [uvf_azf]
+        else:
+            uvf_az = None
+            uvf_azf = None
     else:
         uvc_a = None
-        uvf_ag = None; uvf_agf = None; uvf_ax = None; uvf_axf = None
-        uvf_apriori = None
+        uvf_ag = None; uvf_ax = None; uvf_az = None
+        uvf_agf = None; uvf_axf = None; uvf_azf = None
 
-    # Calculate metric on model vis
-    if model_file is not None and omnivis_median_filter:
-        if uvf_apriori is None:
-            uvf_apriori = UVFlag(uvc_v, mode='flag', copy_flags=True, label='A priori flags.')
-        else:
-            flag_apply(uvf_apriori, uvc_v, keep_existing=True, run_check=run_check,
-                       check_extra=check_extra,
-                       run_check_acceptability=run_check_acceptability)
-        if uvf_chisq is None:
-            uvf_chisq, uvf_chisq_f = chi_sq_pipe(uv_v, alg='zscore_full_array', modified=True,
-                                                 sig_init=sig_init, sig_adj=sig_adj,
-                                                 label='Renormalized chisq, round 1.',
-                                                 run_check=run_check,
-                                                 check_extra=check_extra,
-                                                 run_check_acceptability=run_check_acceptability)
-            flags += [uvf_chisq_f]
-            metrics += [uvf_chisq]
+
+    if model_file is not None:
         uv_v = UVData()
         uv_v.read(model_file)
-        uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
-                                  sig_init=sig_init, sig_adj=sig_adj,
-                                  label='Omnical visibility solutions, round 1.',
-                                  run_check=run_check,
-                                  check_extra=check_extra,
-                                  run_check_acceptability=run_check_acceptability)
-        metrics += [uvf_v]
-        flags += [uvf_vf]
+        if uvf_apriori is None:
+            uvf_apriori = UVFlag(uv_v, mode='flag', copy_flags=True, label='A priori flags.')
+        else:
+            flag_apply(uvf_apriori, uv_v, keep_existing=True, run_check=run_check,
+                       check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
+        if omnivis_median_filter:
+            uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=xants, Kt=kt_size, Kf=kf_size,
+                                      sig_init=sig_init, sig_adj=sig_adj,
+                                      label='Omnical visibility solutions, median filter.',
+                                      run_check=run_check,
+                                      check_extra=check_extra,
+                                      run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_v]
+            flags += [uvf_vf]
+        else:
+            uvf_v = None; uvf_vf = None
     else:
         uv_v = None
         uvf_v = None; uvf_vf = None
 
+    # compute data median filter.
+    if data_file is not None:
+        uv_d = UVData()
+        uv_d.read(data_file)
+        if uvf_apriori is None:
+            uvf_apriori = UVFlag(uv_d, mode='flag', copy_flags=True, label='A priori flags.')
+        else:
+            flag_apply(uvf_apriori, uv_d, keep_existing=True, run_check=run_check,
+                       check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
+        if data_median_filter:
+            uvf_d, uvf_df = xrfi_pipe(uv_d, alg='detrend_medfilt', xants=xants, Kt=kt_size, Kf=kf_size,
+                                      sig_init=sig_init, sig_adj=sig_adj,
+                                      label='Data, median filter.',
+                                      run_check=run_check,
+                                      check_extra=check_extra,
+                                      run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_d]
+            flags += [uvf_df]
+        else:
+            uvf_d = None; uvf_df = None
+    else:
+        uv_d = None
+        uvf_d = None; uvf_df = None
 
-    if uvf_apriori not is None:
-        uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
-                                 check_extra=check_extra,
-                                 run_check_acceptability=run_check_acceptability)
+
+    uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                             check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
+
+    # It is possible to have no median filters run so metrics could have len 0.
     if len(metrics) > 0:
     # Combine the metrics together
         if len(metrics) > 1:
@@ -1646,55 +1728,72 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         uvf_init = None
         uvf_fws = None; uvf_f = None; uvf_metrics = None
 
-    if not data_file is None:
-    # Second round -- use init flags to mask and recalculate everything
-    # Read in data file
-        uv_d = UVData()
-        uv_d.read(data_file, ant_str=ant_str)
-    else:
-        uv_d = None
+    # apply initial flags.
     for uv in [uvc_o, uvc_a, uv_v, uv_d]:
         if uv is not None and uvf_init is not None:
             flag_apply(uvf_init, uv, keep_existing=True, force_pol=True,
                        run_check=run_check, check_extra=check_extra,
                        run_check_acceptability=run_check_acceptability)
 
-    # Do next round of metrics
-    # Change to meanfilt because it can mask flagged pixels
-    # Calculate metric on abscal data
+    # Mean filtering for abscal solutions.
     metrics = []
     flags = []
     if uvc_a is not None:
-        uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                      cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                      label='Abscal gains, round 2.',
-                                      run_check=run_check,
-                                      check_extra=check_extra,
-                                      run_check_acceptability=run_check_acceptability)
-        if acal_chisq:
-            uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                          cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                          label='Abscal chisq, round 2.',
+        if abscal_mean_filter
+            uvf_ag2, uvf_agf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                          cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                          label='Abscal gains, mean filter.',
                                           run_check=run_check,
                                           check_extra=check_extra,
                                           run_check_acceptability=run_check_acceptability)
-        metrics += [uvf_ag2, uvf_ax2]
-        flags += [uvf_agf2, uvf_axf2]
+            metrics += [uvf_ag2]
+            flags += [uvf_agf2]
+        else:
+            uvf_ag2 = None; uvf_agf2 = None
+
+        if abscal_chi2_mean_filter:
+            uvf_ax2, uvf_axf2 = xrfi_pipe(uvc_a, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                          cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
+                                          label='Abscal chisq, mean filter.',
+                                          run_check=run_check,
+                                          check_extra=check_extra,
+                                          run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_ax2]
+            flags += [uvf_axf2]
+        if abscal_zscore_filter:
+            uvf_az2, uvf_az_f2 = chi_sq_pipe(uvc_a, alg='zscore_full_array', modified=True,
+                                                   sig_init=sig_init, sig_adj=sig_adj,
+                                                   label='Abscal Renormalized chisq, median filter, round 2.',
+                                                   run_check=run_check,
+                                                   check_extra=check_extra,
+                                                   run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_az2]
+            flags += [uvf_azf2]
+        else:
+            uvf_az2 = None; uvf_azf2 = None
     else:
-        uvf_ag2 = None; uvf_agf2 = None; uvf_ax2 = None; uvf_axf2 = None
+        uvf_ax2 = None; uvf_ax2f = None
+        uvf_ag2 = None; uvf_agf2 = None
+        uvf_az2 = None; uvf_agf2 = None
 
     if uvc_o is not None:
-    # Calculate metric on omnical data
-        uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
-                                      cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-                                      label='Omnical gains, round 2.',
-                                      run_check=run_check,
-                                      check_extra=check_extra,
-                                      run_check_acceptability=run_check_acceptability)
-        if ocal_chisq:
+        # Mean filtering for omnical solutions.
+        if omnical_mean_filter:
+            uvf_og2, uvf_ogf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
+                                          cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+                                          label='Omnical gains, mean filter.',
+                                          run_check=run_check,
+                                          check_extra=check_extra,
+                                          run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_og2]
+            flags += [uvf_ogf2]
+        else:
+            uvf_og2 = None; uvf_ogf2 = None;
+
+        if omnical_chi2_mean_filter:
             uvf_ox2, uvf_oxf2 = xrfi_pipe(uvc_o, alg='detrend_meanfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                           cal_mode='tot_chisq', sig_init=sig_init, sig_adj=sig_adj,
-                                          label='Omnical chisq, round 2.',
+                                          label='Omnical chisq, mean filter.',
                                           run_check=run_check,
                                           check_extra=check_extra,
                                           run_check_acceptability=run_check_acceptability)
@@ -1702,28 +1801,40 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
             flags += [uvf_oxf2]
         else:
             uvf_ox2 = None; uvf_oxf2 = None
-        metrics += [uvf_og2, uvf_ox2]
-        flags += [uvf_oxf2, uvf_ogf2]
+        if omnical_zscore_filter:
+            uvf_oz2, uvf_oz_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
+                                                   sig_init=sig_init, sig_adj=sig_adj,
+                                                   label='Omnical Renormalized chisq, median filter, round 2.',
+                                                   run_check=run_check,
+                                                   check_extra=check_extra,
+                                                   run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_oz2]
+            flags += [uvf_ozf2]
+        else:
+            uvf_oz2 = None; uvf_ozf2 = None
     else:
-        uvf_og2 = None; uvf_ogf2 = None;
+        uvf_og2 = None; uvf_ogf2 = None
+        uvf_ox2 = None; uvf_oxf2 = None
+        uvf_oz2 = None; uvf_ozf2 = None
 
-    # Calculate metric on model vis
-    if uv_v is not None:
-        uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
-                                    sig_init=sig_init, sig_adj=sig_adj,
-                                    label='Omnical visibility solutions, round 2.',
-                                    run_check=run_check,
-                                    check_extra=check_extra,
-                                    run_check_acceptability=run_check_acceptability)
-        metrics += [uvf_v2]
-        flags += [uvf_vf2]
-    else:
-        uvf_v2 = None; uvf_vf2 = None
-    # Calculate metric on data file
-    if uv_d is not None:
+    # mean filter omnivis
+    if uv_v is not None and omnivis_mean_filter:
+            uvf_v2, uvf_vf2 = xrfi_pipe(uv_v, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
+                                        sig_init=sig_init, sig_adj=sig_adj,
+                                        label='Omnical visibility solutions, mean filter.',
+                                        run_check=run_check,
+                                        check_extra=check_extra,
+                                        run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_v2]
+            flags += [uvf_vf2]
+        else:
+            uvf_v2 = None; uvf_vf2 = None
+
+    # Mean filter data.
+    if uv_d is not None and data_mean_filter:
         uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
                                     sig_init=sig_init, sig_adj=sig_adj,
-                                    label='Data, round 2.',
+                                    label='Data, mean filter.',
                                     run_check=run_check,
                                     check_extra=check_extra,
                                     run_check_acceptability=run_check_acceptability)
@@ -1731,18 +1842,6 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         flags += [uvf_df2]
     else:
         uvf_d2 = None; uvf_df2 = None
-    # Get the absolute chi-squared values
-    if uvc_o is not None:
-        uvf_chisq2, uvf_chisq_f2 = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=False,
-                                               sig_init=sig_init, sig_adj=sig_adj,
-                                               label='Renormalized chisq, round 2.',
-                                               run_check=run_check,
-                                               check_extra=check_extra,
-                                               run_check_acceptability=run_check_acceptability)
-        metrics += [uvf_chisq2]
-        flags += [uvf_chisq_f2]
-    else:
-        uvf_chisq2 = None; uvf_chisq_f2 = None
     # Combine the metrics together
     if len(metrics) > 1:
         uvf_metrics2 = metrics[-1].combine_metrics(metrics[:-1],
@@ -1757,7 +1856,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         uvf_init.flag_array[:] = False
     else:
         spoof_init = False
-    uvf_metrics2.label = 'Combined metrics, round 2.'
+    uvf_metrics2.label = 'Combined metrics, mean filter.'
     alg_func = algorithm_dict['detrend_meanfilt']
     uvf_metrics2.metric_array[:, :, 0] = alg_func(uvf_metrics2.metric_array[:, :, 0],
                                                   flags=uvf_init.flag_array[:, :, 0],
@@ -1786,7 +1885,9 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                 'ox_metrics1.h5': uvf_ox, 'ox_flags1.h5': uvf_oxf,
                 'ag_metrics1.h5': uvf_ag, 'ag_flags1.h5': uvf_agf,
                 'ax_metrics1.h5': uvf_ax, 'ax_flags1.h5': uvf_axf,
-                'chi_sq_renormed1.h5': uvf_chisq, 'chi_sq_flags1.h5': uvf_chisq_f,
+                'data_metrics1.h5': uvf_d, 'data_flags1.h5': uvf_df,
+                'omnical_chi_sq_renormed1.h5': uvf_oz, 'omnical_chi_sq_flags1.h5': uvf_ozf,
+                'abscal_chi_sq_renormed1.h5': uvf_az, 'abscal_chi_sq_flags1.h5': uvf_azf,
                 'combined_metrics1.h5': uvf_metrics, 'combined_flags1.h5': uvf_fws,
                 'flags1.h5': uvf_init,
                 'v_metrics2.h5': uvf_v2, 'v_flags2.h5': uvf_vf2,
@@ -1795,7 +1896,8 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                 'ag_metrics2.h5': uvf_ag2, 'ag_flags2.h5': uvf_agf2,
                 'ax_metrics2.h5': uvf_ax2, 'ax_flags2.h5': uvf_axf2,
                 'data_metrics2.h5': uvf_d2, 'data_flags2.h5': uvf_df2,
-                'chi_sq_renormed2.h5': uvf_chisq2, 'chi_sq_flags2.h5': uvf_chisq_f2,
+                'omnical_chi_sq_renormed2.h5': uvf_oz2, 'omnical_chi_sq_flags2.h5': uvf_ozf2,
+                'abscal_chi_sq_renormed2.h5': uvf_az2, 'abscal_chi_sq_flags2.h5': uvf_azf2,
                 'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
                 'flags2.h5': uvf_combined2}
     basename = qm_utils.strip_extension(os.path.basename(output_prefix))
@@ -2143,9 +2245,11 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
     outdir = resolve_xrfi_path('', data_files[0])
     # Set up extensions to find the many files
-    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'omnical_chi_sq_renormed',
+             'abscal_chi_sq_renormed', 'combined']
     mexts = ['og_metrics', 'ox_metrics', 'ag_metrics', 'ax_metrics',
-             'v_metrics', 'data_metrics', 'chi_sq_renormed', 'combined_metrics']
+             'v_metrics', 'data_metrics', 'omnical_chi_sq_renormed',
+             'abscal_chi_sq_renormed', 'combined_metrics']
     # Read in the metrics objects
     filled_metrics = []
     for ext in mexts:
