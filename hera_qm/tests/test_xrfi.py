@@ -892,9 +892,9 @@ def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
     mess1 = ['This object is already a waterfall']
-    messages = 6 * mess1
+    messages = 8 * mess1
     cat1 = [UserWarning]
-    categories = 6 * cat1
+    categories = 8 * cat1
     # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
     tmp_path = tmpdir.strpath
     fake_obs = 'zen.2457698.40355.HH'
@@ -907,7 +907,7 @@ def test_xrfi_run(tmpdir):
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile, 'Just a test'], {'kt_size': 3, 'ant_str': 'cross',
+                                         raw_dfile], {'history': 'Just a test', 'kt_size': 3, 'ant_str': 'cross',
                                          'data_median_filter':True},
                          nwarnings=len(messages), message=messages, category=categories)
 
@@ -921,8 +921,8 @@ def test_xrfi_run(tmpdir):
                   'ax_flags2': 'Abscal chisq, mean filter. Flags.',
                   'ax_metrics1': 'Abscal chisq, median filter.',
                   'ax_metrics2': 'Abscal chisq, mean filter.',
-                  'omnical_chi_sq_flags1': 'Renormalized chisq, round 1. Flags.',
-                  'omnical_chi_sq_flags2': 'Renormalized chisq, round 2. Flags.',
+                  'omnical_chi_sq_flags1': 'Omnical Renormalized chisq, median filter. Flags.',
+                  'omnical_chi_sq_flags2': 'Omnical Renormalized chisq, median filter, round 2. Flags.',
                   'omnical_chi_sq_renormed1': 'Omnical Renormalized chisq, median filter.',
                   'omnical_chi_sq_renormed2': 'Omnical Renormalized chisq, median filter, round 2.',
                   'abscal_chi_sq_flags1': 'Abscal Renormalized chisq, median filter. Flags.',
@@ -964,10 +964,6 @@ def test_xrfi_run(tmpdir):
     # test xrfi_run errors when providing no data inputs
     with pytest.raises(ValueError):
          xrfi.xrfi_run(None, None, None, None, None)
-    # text_xrfi_run errors when no history string provided
-    with pytest.raises(ValueError):
-        xrfi.xrfi_run(ocalfits_file=ocal_file, acalfits_file=acal_file, model_file=model_file,
-                      data_file=raw_dfile, history=None)
     # test error when no data file or output prefix provided.
     with pytest.raises(ValueError):
         xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, history='fail', output_prefix=None)
