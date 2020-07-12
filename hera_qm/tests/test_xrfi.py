@@ -923,12 +923,12 @@ def test_xrfi_run(tmpdir):
                   'ax_metrics2': 'Abscal chisq, mean filter.',
                   'omnical_chi_sq_flags1': 'Omnical Renormalized chisq, median filter. Flags.',
                   'omnical_chi_sq_flags2': 'Omnical Renormalized chisq, median filter, round 2. Flags.',
-                  'omnical_chi_sq_renormed1': 'Omnical Renormalized chisq, median filter.',
-                  'omnical_chi_sq_renormed2': 'Omnical Renormalized chisq, median filter, round 2.',
+                  'omnical_chi_sq_renormed_metrics1': 'Omnical Renormalized chisq, median filter.',
+                  'omnical_chi_sq_renormed_metrics2': 'Omnical Renormalized chisq, median filter, round 2.',
                   'abscal_chi_sq_flags1': 'Abscal Renormalized chisq, median filter. Flags.',
                   'abscal_chi_sq_flags2': 'Abscal Renormalized chisq, median filter, round 2. Flags.',
-                  'abscal_chi_sq_renormed1': 'Abscal Renormalized chisq, median filter.',
-                  'abscal_chi_sq_renormed2': 'Abscal Renormalized chisq, median filter, round 2.',
+                  'abscal_chi_sq_renormed_metrics1': 'Abscal Renormalized chisq, median filter.',
+                  'abscal_chi_sq_renormed_metrics2': 'Abscal Renormalized chisq, median filter, round 2.',
                   'combined_flags1': 'Flags from combined metrics, round 1.',
                   'combined_flags2': 'Flags from combined metrics, round 2.',
                   'combined_metrics1': 'Combined metrics, round 1.',
@@ -961,6 +961,34 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
+    # test cross correlations.
+    xrfi.xrfi_run(history='data cross corrs.', data_file=raw_dfile, model_file=model_file,
+                  correlations='cross', data_median_filter=True)
+    for ext, label in ext_labels.items():
+      out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+      if 'data' in ext or 'combined' in ext:
+          assert os.path.exists(out)
+          uvf = UVFlag(out)
+          assert uvf.label == label
+      # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+          os.remove(out)
+    # test auto correlations.
+    xrfi.xrfi_run(history='data autocorrs.', data_file=raw_dfile, model_file=model_file,
+                  correlations='auto', data_median_filter=True)
+    for ext, label in ext_labels.items():
+      out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+      if 'data' in ext or 'combined' in ext and '1' not in ext:
+          assert os.path.exists(out)
+          uvf = UVFlag(out)
+          assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+      out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+      if os.path.exists(out):
+          os.remove(out)
     # test xrfi_run errors when providing no data inputs
     with pytest.raises(ValueError):
          xrfi.xrfi_run(None, None, None, None, None)
@@ -982,7 +1010,7 @@ def test_xrfi_run(tmpdir):
         if os.path.exists(out):
             os.remove(out)
     # test run with only data files
-    xrfi.xrfi_run(data_file=raw_dfile, history='data only flags.')
+    xrfi.xrfi_run(data_file=raw_dfile, history='data only flags.', data_median_filter=True)
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if 'data' in ext or 'combined' in ext and '1' not in ext:
@@ -1008,7 +1036,7 @@ def test_xrfi_run(tmpdir):
         if os.path.exists(out):
             os.remove(out)
     # test run with data and omnivis files
-    xrfi.xrfi_run(data_file=raw_dfile, model_file=model_file, history='omnivis and data flags.')
+    xrfi.xrfi_run(data_file=raw_dfile, model_file=model_file, history='omnivis and data flags.', data_median_filter=True)
     for ext, label in ext_labels.items():
         if 'v_' in ext or 'combined' in ext or 'data' in ext:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
@@ -1022,7 +1050,7 @@ def test_xrfi_run(tmpdir):
             os.remove(out)
     # test data with data and omnical
     xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file,
-                  data_file=raw_dfile, history='data and omni/abs cal.')
+                  data_file=raw_dfile, history='data and omni/abs cal.', data_median_filter=True)
     for ext, label in ext_labels.items():
         if not 'v_' in ext:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
@@ -1058,9 +1086,9 @@ def test_day_threshold_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
     mess1 = ['This object is already a waterfall']
-    messages = 6 * mess1
+    messages = 8 * mess1
     cat1 = [UserWarning]
-    categories = 6 * cat1
+    categories = 8 * cat1
     # Spoof the files - run xrfi_run twice on spoofed files.
     tmp_path = tmpdir.strpath
     fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
@@ -1100,7 +1128,7 @@ def test_day_threshold_run(tmpdir):
                          nwarnings=len(messages), message=messages, category=categories)
 
     xrfi.day_threshold_run(data_files, 'just a test')
-    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed', 'combined']
     for type in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)

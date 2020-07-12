@@ -1589,7 +1589,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
             uvf_oz = None
             uvf_ozf = None
     else:
-        uvc_o = None
+        uvc_o = None; uvf_apriori = None
         uvf_og = None; uvf_ox = None; uvf_oz = None
         uvf_ogf = None; uvf_oxf = None; uvf_ozf = None
 
@@ -1780,9 +1780,9 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         else:
             uvf_az2 = None; uvf_azf2 = None
     else:
-        uvf_ax2 = None; uvf_ax2f = None
+        uvf_ax2 = None; uvf_axf2 = None
         uvf_ag2 = None; uvf_agf2 = None
-        uvf_az2 = None; uvf_agf2 = None
+        uvf_az2 = None; uvf_azf2 = None
 
     if uvc_o is not None:
         # Mean filtering for omnical solutions.
@@ -1894,8 +1894,8 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                 'ag_metrics1.h5': uvf_ag, 'ag_flags1.h5': uvf_agf,
                 'ax_metrics1.h5': uvf_ax, 'ax_flags1.h5': uvf_axf,
                 'data_metrics1.h5': uvf_d, 'data_flags1.h5': uvf_df,
-                'omnical_chi_sq_renormed1.h5': uvf_oz, 'omnical_chi_sq_flags1.h5': uvf_ozf,
-                'abscal_chi_sq_renormed1.h5': uvf_az, 'abscal_chi_sq_flags1.h5': uvf_azf,
+                'omnical_chi_sq_renormed_metrics1.h5': uvf_oz, 'omnical_chi_sq_flags1.h5': uvf_ozf,
+                'abscal_chi_sq_renormed_metrics1.h5': uvf_az, 'abscal_chi_sq_flags1.h5': uvf_azf,
                 'combined_metrics1.h5': uvf_metrics, 'combined_flags1.h5': uvf_fws,
                 'flags1.h5': uvf_init,
                 'v_metrics2.h5': uvf_v2, 'v_flags2.h5': uvf_vf2,
@@ -1904,8 +1904,8 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                 'ag_metrics2.h5': uvf_ag2, 'ag_flags2.h5': uvf_agf2,
                 'ax_metrics2.h5': uvf_ax2, 'ax_flags2.h5': uvf_axf2,
                 'data_metrics2.h5': uvf_d2, 'data_flags2.h5': uvf_df2,
-                'omnical_chi_sq_renormed2.h5': uvf_oz2, 'omnical_chi_sq_flags2.h5': uvf_ozf2,
-                'abscal_chi_sq_renormed2.h5': uvf_az2, 'abscal_chi_sq_flags2.h5': uvf_azf2,
+                'omnical_chi_sq_renormed_metrics2.h5': uvf_oz2, 'omnical_chi_sq_flags2.h5': uvf_ozf2,
+                'abscal_chi_sq_renormed_metrics2.h5': uvf_az2, 'abscal_chi_sq_flags2.h5': uvf_azf2,
                 'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
                 'flags2.h5': uvf_combined2}
     basename = qm_utils.strip_extension(os.path.basename(output_prefix))
