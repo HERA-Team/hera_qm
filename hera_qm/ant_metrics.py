@@ -100,8 +100,6 @@ def per_antenna_modified_z_scores(metric):
     return zscores
 
 
-def mean_Vij_metrics(data, pols, antpols, ants, bls,
-                     xants=[], rawMetric=False):
 def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
     """Summarize visibility magnitudes as a single number for quick comparison to others.
 
@@ -143,24 +141,21 @@ def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np
             else:
                 abs_vis_stats[bl] = time_alg(freq_alg(np.abs(data_here), axis=1))
     return abs_vis_stats
+
+
+def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
     """Calculate how an antennas's average |Vij| deviates from others.
 
     Parameters
     ----------
-    data : array
-        Data for all polarizations, stored in a format that supports
-        indexing via data[ant1, ant2, pol].
-    pols : list of str
-        List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols : list of str
-        List of antenna polarizations (e.g. ['x', 'y']).
-    ants : list of ints
-        List of all antenna indices.
-    bls : list of tuples of ints
-        List of tuples of antenna pairs.
-    xants : list of tuples, optional
-        List of antenna-polarization tuples that should be ignored. The
-        expected format is (ant, antpol). Default is empty list.
+    abs_vis_stats : dictionary
+        Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to 
+        mean absolute value of visibilites over time and frequency.
+    xants : list of ints or tuples, optional
+        Antenna numbers or tuples e.g. (1, 'Jee') to exclude from metrics
+    pols : list of str, optional
+        List of visibility polarizations (e.g. ['ee','en','ne','nn']).
+        Default None means all visibility polarizations are used.
     rawMetric : bool, optional
         If True, return the raw mean Vij metric instead of the modified z-score.
         Default is False.
@@ -173,30 +168,33 @@ def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np
         Very small or very large numbers are probably bad antennas.
 
     """
-    absVijMean = {(ant, antpol): 0.0 for ant in ants for antpol in antpols if
-                  (ant, antpol) not in xants}
-    visCounts = deepcopy(absVijMean)
-    for (ant1, ant2) in bls:
-        if ant1 == ant2:
-            continue
-        for pol in pols:
-            ants = list(zip((ant1, ant2), pol))
-            if all([ant in xants for ant in ants]):
-                continue
-            bl_data = data[ant1, ant2, pol]
-            dsum = np.nansum(np.abs(bl_data))
-            for ant, antpol in ants:
-                if (ant, antpol) in xants:
-                    continue
-                absVijMean[(ant, antpol)] += dsum
-                visCounts[(ant, antpol)] += np.isfinite(bl_data).sum()
-    timeFreqMeans = {key: absVijMean[key] / visCounts[key]
-                     for key in absVijMean}
+    from hera_cal.utils import split_pol, split_bl
+    
+    # figure out which antennas match pols and and are not in xants
+    if pols is not None:
+        antpols = set([ap for bl in abs_vis_stats for ap in split_pol(bl[2])])
+    ants = set()
+    for bl in abs_vis_stats:
+        for ant in split_bl(bl):
+            if (ant not in xants) and (ant[0] not in xants):
+                if (pols is None) or (ant[1] in antpols):
+                    ants.add(ant)
+    
+    # assign visibility means to each antenna in the baseline 
+    per_ant_means = {ant: [] for ant in ants}
+    for bl, vis_mean in abs_vis_stats.items():
+        if bl[0] == bl[1]:
+            continue # ignore autocorrelations
+        if (pols is None) or (bl[2] in pols):
+            for ant in split_bl(bl):
+                if ant in ants:
+                    per_ant_means[ant].append(vis_mean)
+    per_ant_means = {ant: np.nanmean(per_ant_means[ant]) for ant in ants}
 
     if rawMetric:
-        return timeFreqMeans
+        return per_ant_means
     else:
-        return per_antenna_modified_z_scores(timeFreqMeans)
+        return per_antenna_modified_z_scores(per_ant_means)
 
 
 def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics,
