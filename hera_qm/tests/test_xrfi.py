@@ -887,7 +887,6 @@ def test_xrfi_h1c_idr2_2_pipe():
     assert len(uvf_m.polarization_array) == 1
     assert uvf_m.weights_array.max() == 1.
 
-
 def test_prefilter_flagging_pipe(tmpdir):
     # This method tests the prefiltering pipeline
     # which contains three different functions.
@@ -896,22 +895,34 @@ def test_prefilter_flagging_pipe(tmpdir):
     # delay_metric_run
     # and roto_flag
     tmp_path = tmpdir.strpath
-    files = [os.path.join(DATA_PATH, 'zen.2458101.46106.xx.HH.OCR_53x_54x_only.first.uvh5'),
-             os.path.join(DATA_PATH, 'zen.2458101.46106.xx.HH.OCR_53x_54x_only.second.uvh5')]
+    basefiles = ['zen.2458101.46106.xx.HH.OCR_53x_54x_only.uvh5',
+                 'zen.2458101.46486.xx.HH.OCR_53x_54x_only.uvh5']
+    files = []
+    for file in basefiles:
+            shutil.copyfile(os.path.join(DATA_PATH, file), os.path.join(tmp_path, file))
+            files.append(os.path.join(tmp_path, file))
     # first, perform xrfi_metric_mutifile_run.
     fffile = os.path.join(DATA_PATH, 'frequency_flag_test_file.txt')
     lffile = os.path.join(DATA_PATH, 'lst_flag_test_file.txt')
     for file in files:
-        xrfi.xrfi_metric_mutifile_run(file, files, freqflagfile=fffile, lstflagfile=lffile,
-                                      ex_ants=[53], clobber=True, xrfi_path=tmp_path)
+        xrfi.xrfi_metric_multifile_run(file, files, freqflagfile=fffile, lstflagfile=lffile,
+                                      ex_ants=[], clobber=True)
     # check that two different files have been generated and that they have the correct
     # number of times.
-    written_flags = glob.glob(tmp_path + '/*data_metrics.h5')
-    written_metrics = glob.glob(tmp_path + '/*apriori_data_flags.h5')
+    written_flags = glob.glob(tmp_path + '/*/*data_metrics.h5')
+    written_metrics = glob.glob(tmp_path + '/*/*apriori_data_flags.h5')
     # test that the correct number of metric and flag files have been written.
     assert len(written_flags) == 2
     assert len(written_metrics) == 2
-    # next, 
+    # next, perform a day-max.
+    for file in files:
+        xrfi.multfile_metric_max_flag_run(file, files, xrfi_path='')
+    # now check that the max_flags have been written.
+    max_flags = glob.glob(tmp_path + '/*channel_max_flags.h5')
+    assert(len(max_flags)) == 1
+    # now run delay-filtering flags.
+
+
 
 
 

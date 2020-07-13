@@ -758,7 +758,7 @@ def parse_apriori_flag_intervals(interval_file):
             try:
                 lower = float(tokens[0])
                 upper = float(tokens[1])
+                intervals += [(lower, upper)]
             except ValueError:
                 print("%s is not comma separated floats!"%(line))
-            intervals += [(lower, upper)]
     return intervals

@@ -1322,7 +1322,7 @@ def calculate_metric(uv, algorithm, cal_mode='gain', correlations='cross', run_c
                         uvf.metric_array[ind, 0, :, ipol] = alg_func(data, flags=flags, uv=uv, blind=key[:2], **kwargs)
                 else:
                     uvf.weights_array[ind][:] = 0. # set all weights to zero for excluded autos and crosses.
-                    uvf.metric_array[ind] = 0. # set all metrics to zero too. 
+                    uvf.metric_array[ind] = 0. # set all metrics to zero too.
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
             uvf.to_waterfall(run_check=run_check,
@@ -1583,7 +1583,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     return uvf_m, uvf_fws
 
 
-def metric_baseline_list(datafile_list, baseline_list,
+def metric_baseline_list(data_files, baseline_list,
                          alg='detrend_medfilt', wf_method='quadmean',
                          correlations='cross',
                          kt_size=8, kf_size=8,
@@ -1659,7 +1659,7 @@ def metric_baseline_list(datafile_list, baseline_list,
     #    baselines_load = [bl for bl in baseline_list]
     # read in data.
     uv = UVData()
-    uv.read(datafile_list, bls=baseline_list)
+    uv.read(data_files, bls=baseline_list)
     if blank_flags:
         uv.flag_array[:] = False
     # pre-flag antennas and frequencies.
@@ -1673,6 +1673,9 @@ def metric_baseline_list(datafile_list, baseline_list,
     uvf_m = calculate_metric(uv, alg, Kt=kt_size, Kf=kf_size, correlations=correlations,
                              run_check=run_check, check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
+    # set weights that are infinite to zero and discount their weights.
+    uvf_m.weights_array[~np.isfinite(uvf_m.metric_array)] = 0.
+    uvf_m.metric_array[~np.isfinite(uvf_m.metric_array)] = 0.
     # weights should be the number of non-inf samples going
     # into each int/chan
     uvf_m.to_waterfall(method=wf_method, keep_pol=False,
@@ -1963,7 +1966,7 @@ def xrfi_run(ocalfits_file, acalfits_file, model_file, data_file, history,
         uvf.write(outpath, clobber=clobber)
 
 
-def xrfi_metric_mutifile_run(datafile, datafile_list,
+def xrfi_metric_multifile_run(datafile, data_files,
                              alg='detrend_medfilt',
                              wf_method='quadmean',
                              correlations='cross',
@@ -1976,7 +1979,7 @@ def xrfi_metric_mutifile_run(datafile, datafile_list,
                              run_check_acceptability=True):
     """Run muti-file, baseline-subset computation of xrfi metrics.
 
-    This function computes metrics across the times in the files in datafile_list
+    This function computes metrics across the times in the files in data_files
     for a subset of the baselines which are specified by the position of datafile
     in that list.
 
@@ -1984,7 +1987,7 @@ def xrfi_metric_mutifile_run(datafile, datafile_list,
     ----------
     datafile : str
         name of the datafile to use for determining baselines to process.
-    datafile_list : str
+    data_files : str
         list of data files to process.
     alg : str, optional
         The algorithm for calculating the metric. Default is "detrend_medfilt".
@@ -2026,7 +2029,7 @@ def xrfi_metric_mutifile_run(datafile, datafile_list,
     None
     """
     # determine baseline list from data file and list of datafiles.
-    baselines = qm_utils.baselines_from_filelist_position(datafile, datafile_list)
+    baselines = qm_utils.baselines_from_filelist_position(datafile, data_files)
     # load in pre-flagged frequencies.
     if freqflagfile is not None:
         frequency_intervals = qm_utils.parse_apriori_flag_intervals(freqflagfile)
@@ -2037,7 +2040,7 @@ def xrfi_metric_mutifile_run(datafile, datafile_list,
     else:
         lst_intervals = []
     # calculate metrics
-    uvf_m, uvf_f = metric_baseline_list(datafile_list, baselines, alg=alg,
+    uvf_m, uvf_f = metric_baseline_list(data_files, baselines, alg=alg,
                                         correlations=correlations, wf_method=wf_method,
                                         kt_size=kt_size, kf_size=kf_size,
                                         preflagged_frequencies=frequency_intervals,
@@ -2121,10 +2124,11 @@ def delay_metric_run(data_file, day_flags, xrfi_path='', wf_method='quadmean',
 
 
 
-def multfile_metric_max_flag_run(data_file, datafile_list, avg_method='quadmean',
+def multfile_metric_max_flag_run(data_file, data_files, avg_method='quadmean',
                                  ext_input_metrics='data_metrics.h5',
                                  ext_input_flags='apriori_data_flags.h5',
-                                 ext='channel_max_flags.h5',
+                                 ext='channel_max',
+                                 xrfi_path='', clobber=False,
                                  flag_threshold=95):
     """Identify channels to flag based on a full-night max percentile cut.
 
@@ -2132,13 +2136,13 @@ def multfile_metric_max_flag_run(data_file, datafile_list, avg_method='quadmean'
     across time and determine frequency flags based on a percentile cut.
 
     Compute channel flags across entire day from this. This function will only run
-    fully if datafile is the first datafile in datafile_list.
+    fully if datafile is the first datafile in data_files.
 
     Parameters
     ----------
     datafile : str
         name of the datafile used for naming of xrfi directories.
-    datafile_list : str
+    data_files : str
         list of names of datafiles spanning the entire night for xrfi dirs.
     xrfi_path : str, optional
         Path to save xrfi files to. Default is a subdirectory "{JD}/" inside
@@ -2159,23 +2163,30 @@ def multfile_metric_max_flag_run(data_file, datafile_list, avg_method='quadmean'
 
     """
     # if the data-file is not the first in the list, then don't do anything.
-    if datafile_list.index(data_file) == 0:
+    if data_files.index(data_file) == 0:
         # get xrfi paths
-        dirnames = [resolve_xrfi_path(xrfi_path, df, jd_subdir=True) for df in datafile_list]
+        dirnames = [resolve_xrfi_path(xrfi_path, df, jd_subdir=True) for df in data_files]
         # get list of metric files for all waterfall chunks.
-        uvfs = [UVFlag(glob.glob(dirname + '/*' + ext_input_metrics))[0] for dirname in dirnames]
-        uvf_fs = [[UVFlag(glob.glob(dirname + '/*' + ext_input_flags))[0] for dirname in dirnames]]
+        uvfs = [UVFlag(glob.glob(dirname + '/*' + ext_input_metrics)) for dirname in dirnames]
+        uvf_fs = [UVFlag(glob.glob(dirname + '/*' + ext_input_flags)) for dirname in dirnames]
+        # check that all metrics and flags are waterfalls.
+        for uvf in uvfs:
+            if uvf.type != 'waterfall':
+                raise ValueError("Must provide waterfall metrics.")
+            if uvf.Npols != 1:
+                raise ValueError("Must collapse polarizations for metrics.")
+        for uvf_f in uvf_fs:
+            if uvf_f.type != 'waterfall':
+                raise ValueError("Must provide waterfall flags.")
+            if uvf_f.Npols != 1:
+                raise ValueError("Must collapse polarizations for flags.")
         # average the metric files together
         uvf_avg = copy.deepcopy(uvfs[0])
         uvf_avg_f = copy.deepcopy(uvf_fs[0])
         # Make sure that that spws, antenna/bls, and pols have already been collapsed.
-        if uvf_avg.metric_array.shape[1] != 1:
-            raise ValueError("Maxing not supported for uvflags with multiple spws!")
-        if uvf_avg.metric_array.shape[-1] != 1:
-            raise ValueError("Maxing not supported for uvflags with multiple pols!")
-        if uvf_avg.metric_array.shape[0] != 1:
-            raise ValueError("Maxing not supported for uvflags with multiple antennas / baselines!")
         uvf_avg.weights_array = np.sum([uvf.weights_array for uvf in uvfs], axis=0)
+        for uvf in uvfs:
+            uvf.metric_array[~np.isfinite(uvf.metric_array)] = 0.
         if avg_method == 'quadmean':
             uvf_avg.metric_array = np.sum([uvf.weights_array * np.abs(uvf.metric_array) ** 2. for uvf in uvfs], axis=0)
         elif avg_method == 'mean':
@@ -2187,23 +2198,23 @@ def multfile_metric_max_flag_run(data_file, datafile_list, avg_method='quadmean'
         uvf_avg.metric_array /= uvf_avg.weights_array
         if 'quad' in avg_method:
             uvf_avg.metric_array = np.sqrt(uvf_avg.metric_array)
+        uvf_avg_f.flag_array = np.all([uvf_f.flag_array for uvf in uvfs], axis=0)
         # write out averaged metrics.
-        basename = qm_utils.strip_extension(os.path.basename(data_file))
-        outfile = '.'.join([basename, ext])
-        outpath = os.path.join(dirname, outfile)
+        outdir = resolve_xrfi_path(xrfi_path, data_files[0])
+        basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
+        outfile = '.'.join([basename, ext]) + '.metrics.h5'
+        outpath = os.path.join(outdir, outfile)
         uvf_avg.write(outpath, clobber=clobber)
         # perform max cut in time
-        apriori_flags = uvf_avg_f.flag_array[0, 0, :, :, 0].squeeze().T
-        max_array = np.asarray([np.max(uvf_m.metric_array[0, 0, :, ~flgs, 0].squeeze(), axis=-1)\
-                                if not np.all(flgs) else np.inf for flgs in apriori_flags])
+        apriori_flags = uvf_avg_f.flag_array.squeeze()
+        max_array = np.asarray([np.max(uvf_avg.metric_array[~flgs, :, 0].squeeze(), axis=-1)\
+                                if not np.all(flgs) else np.inf for flgs in apriori_flags.T])
         thresh = np.percentile(max_array[np.isfinite(max_array)], flag_threshold)
         flagged_channels = (max_array >= thresh)
         flags = np.asarray([flagged_channels for m in uvf_avg.Ntimes]) | apriori_flags
-        uvf_avg_f.flag_array[0, 0, :, :, 0] = flags.T
+        uvf_avg_f.flag_array[:, :, 0] = flags.T
         # write new flags to disk
-        basename = qm_utils.strip_extension(os.path.basename(data_file))
-        outdir = resolve_xrfi_path('', data_files[0])
-        outfile = '.'.join([basename, ext])
+        outfile = '.'.join([basename, ext]) + '.flags.h5'
         outpath = os.path.join(outdir, outfile)
         uvf_avg_f.write(outpath, clobber=clobber)
 
