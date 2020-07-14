@@ -402,68 +402,6 @@ class AntennaMetrics():
         self.history = ''
         self._reset_summary_stats()
 
-
-    def mean_Vij_metrics(self, pols=None, xants=[], rawMetric=False):
-        """Calculate how an antennas's average |Vij| deviates from others.
-
-        Local wrapper for mean_Vij_metrics in hera_qm.ant_metrics module
-
-        Parameters
-        ----------
-        pols : list of str, optional
-            List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-            Default is self.pols.
-        xants : list of tuples, optional
-            List of antenna-polarization tuples that should be ignored. The
-            expected format is (ant, antpol). Default is empty list.
-        rawMetric : bool, optional
-            If True, return the raw mean Vij metric instead of the modified z-score.
-            Default is False.
-
-        Returns
-        -------
-        meanMetrics : dict
-            Dictionary indexed by (ant, antpol) keys. Contains the modified z-score
-            of the mean of the absolute value of all visibilities associated with
-            an antenna. Very small or very large numbers are probably bad antennas.
-
-        """
-        if pols is None:
-            pols = self.pols
-        return mean_Vij_metrics(self.data, pols, self.antpols,
-                                self.ants, self.bls, xants=xants,
-                                rawMetric=rawMetric)
-
-    def mean_Vij_cross_pol_metrics(self, xants=[], rawMetric=False):
-        """Calculate the ratio of cross-pol visibilities to same-pol visibilities.
-
-        This method is a local wrapper for mean_Vij_cross_pol_metrics. It finds
-        which antennas are outliers based on the ratio of mean cross-pol visibilities
-        to mean same-pol visibilities:
-            (Vxy+Vyx)/(Vxx+Vyy).
-
-        Parameters
-        ----------
-        xants : list of tuples, optional
-            List of antenna-polarization tuples that should be ignored. The
-            expected format is (ant, antpol). Default is empty list.
-        rawMetric : bool, optional
-            If True, return the raw power correlations instead of the modified z-score.
-            Default is False.
-
-        Returns
-        -------
-        mean_Vij_cross_pol_metrics : dict
-            Dictionary indexed by (ant,antpol) keys. Contains the modified z-scores of the
-            ratio of mean visibilities, (Vxy+Vyx)/(Vxx+Vyy). Results are duplicated in
-            both antpols. Very large values are likely cross-polarized.
-
-        """
-        return mean_Vij_cross_pol_metrics(self.data, self.pols,
-                                          self.antpols, self.ants,
-                                          self.bls, xants=xants,
-                                          rawMetric=rawMetric)
-
     def reset_summary_stats(self):
         # Load and summarize data
         self._load_time_freq_abs_vis_stats(Nbls_per_load=Nbls_per_load)
