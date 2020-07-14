@@ -469,18 +469,20 @@ class AntennaMetrics():
         # Compute all raw metrics
         metNames = []
         metVals = []
+        
+        if run_cross_pols_only and not run_cross_pols:
+            raise ValueError('Must run at least 1 metric, but run_cross_pols is False '
+                             'while run_cross_pols_only is True')
 
         if not run_cross_pols_only:
             metNames.append('meanVij')
-            meanVij = self.mean_Vij_metrics(pols=self.pols,
-                                            xants=self.xants,
-                                            rawMetric=True)
+            meanVij = mean_Vij_metrics(self.abs_vis_stats, xants=self.xants, rawMetric=True)
             metVals.append(meanVij)
 
         if run_cross_pols:
             metNames.append('meanVijXPol')
-            meanVijXPol = self.mean_Vij_cross_pol_metrics(xants=self.xants,
-                                                          rawMetric=True)
+            meanVijXPol = mean_Vij_cross_pol_metrics(self.abs_vis_stats, 
+                                                     xants=self.xants, rawMetric=True)
             metVals.append(meanVijXPol)
 
         # Save all metrics and zscores
@@ -490,19 +492,20 @@ class AntennaMetrics():
             modz = per_antenna_modified_z_scores(metric)
             modzScores[metName] = modz
             for key in metric:
-                if metName in self.finalMetrics:
-                    self.finalMetrics[metName][key] = metric[key]
-                    self.finalModzScores[metName][key] = modz[key]
+                if metName in self.final_metrics:
+                    self.final_metrics[metName][key] = metric[key]
+                    self.final_mod_z_scores[metName][key] = modz[key]
                 else:
-                    self.finalMetrics[metName] = {key: metric[key]}
-                    self.finalModzScores[metName] = {key: modz[key]}
-        self.allMetrics.update({self.iter: metrics})
-        self.allModzScores.update({self.iter: modzScores})
 
     def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
                                                alwaysDeadCut=10,
                                                verbose=False,
                                                run_cross_pols=True,
+                    self.final_metrics[metName] = {key: metric[key]}
+                    self.final_mod_z_scores[metName] = {key: modz[key]}
+        self.all_metrics.update({self.iter: metrics})
+        self.all_mod_z_scores.update({self.iter: modzScores})
+
                                                run_cross_pols_only=False):
         """Run both Mean Vij and Mean Vij crosspol metrics and stores results in self.
 
