@@ -1194,9 +1194,9 @@ def test_day_threshold_run_cal_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
     mess1 = ['This object is already a waterfall']
-    messages = 6 * mess1
+    messages = 8 * mess1
     cat1 = [UserWarning]
-    categories = 6 * cat1
+    categories = 8 * cat1
     # Spoof the files - run xrfi_run twice on spoofed files.
     tmp_path = tmpdir.strpath
     fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
@@ -1236,7 +1236,7 @@ def test_day_threshold_run_cal_only(tmpdir):
                          nwarnings=len(messages), message=messages, category=categories)
 
     xrfi.day_threshold_run(data_files, 'just a test')
-    types = ['ox', 'og', 'ax', 'ag', 'chi_sq_renormed', 'combined']
+    types = ['ox', 'og', 'ax', 'ag', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed', 'combined']
     for type in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
