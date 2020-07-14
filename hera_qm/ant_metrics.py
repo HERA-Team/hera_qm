@@ -322,60 +322,86 @@ class AntennaMetrics():
 
     """
 
-    def __init__(self, dataFileList, fileformat='miriad'):
-        """Initilize an AntennaMetrics object.
+    def __init__(self, data_files, fileformat='uvh5', apriori_xants=[], Nbls_per_load=None):
+        """Initilize an AntennaMetrics object and load mean visibility amplitudes.
 
         Parameters
         ----------
-        dataFileList : list of str
-            List of data filenames of the four different visibility polarizations
-            for the same observation.
-        format : str, optional
+        data_files : str or list of str
+            Path to file or files of raw data to calculate antenna metrics on
+        fileformat : str, optional
             File type of data. Must be one of: 'miriad', 'uvh5', 'uvfits', 'fhd',
-            'ms' (see pyuvdata docs). Default is 'miriad'.
+            'ms' (see pyuvdata docs). Default is 'uvh5'.
+        apriori_xants : list of integers or tuples, optional
+            List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
+            as excluded apriori. These are included in self.xants, but not
+            self.dead_ants or self.crossed_ants when writing results to disk.
+        Nbls_per_load : integer, optional
+            Number of baselines to load simultaneously. Trades speed for memory
+            efficiency. Default None means load all baselines.
 
         Attributes
         ----------
         hd : HERAData
-            HERAData object generated from dataFileList.
-        data : array
-            Data contained in HERAData object.
-        flags : array
-            Flags contained in HERAData object.
-        nsamples : array
-            Nsamples contained in HERAData object.
-        ants : list of ints
-            List of antennas in HERAData object.
-        pols : list of str
-            List of polarizations in HERAData object.
+            HERAData object generated from datafile_list.
+        ants : list of tuples
+            List of antenna-polarization tuples to assess
+        antnums : list of ints
+            List of antenna numbers
+        antpols : List of str
+            List of antenna polarization strings. Typically ['Jee', 'Jnn']
         bls : list of ints
             List of baselines in HERAData object.
-        dataFileList : list of str
-            List of data filenames of the four different visibility polarizations
-            for the same observation.
+        datafile_list : list of str
+            List of data filenames that went into this calculation.
+        abs_vis_stats : dictionary
+            Dictionary mapping baseline keys e.g. (0, 1, 'ee') to single floats
+            representing visibility amplitudes.
+
         version_str : str
             The version of the hera_qm module used to generate these metrics.
         history : str
             History to append to the metrics files when writing out files.
 
         """
+        # Instantiate HERAData object and figure out baselines
         from hera_cal.io import HERAData
-
-        self.hd = HERAData(dataFileList, filetype=fileformat)
-
-        self.data, self.flags, self.nsamples = self.hd.read()
-        self.ants = self.hd.get_ants()
-        self.pols = [pol.lower() for pol in self.hd.get_pols()]
-        self.antpols = [antpol.lower() for antpol in self.hd.get_feedpols()]
-        self.bls = self.hd.get_antpairs()
-        self.dataFileList = dataFileList
+        if isinstance(data_files, str):
+            data_files = [data_files]
+        self.datafile_list = data_files
+        self.hd = HERAData(data_files, filetype=fileformat)
+        if len(self.hd.filepaths) > 1:
+            # only load baselines in all files
+            self.bls = sorted(set.intersection(*[set(bls) for bls in self.hd.bls.values()]))
+        else:
+            self.bls = self.hd.bls
+        
+        # Figure out which antennas are in the data
+        from hera_cal.utils import split_bl, comply_pol
+        self.split_bl = split_bl  # prevents the need for importing again later
+        self.ants = set([ant for bl in self.bls for ant in split_bl(bl)])
+        self.antnums = set([ant[0] for ant in self.ants])
+        self.antpols = set([ant[1] for ant in self.ants])
+        
+        # Parse apriori_xants
+        self.apriori_xants = set([])
+        for ant in apriori_xants:
+            if isinstance(ant, int):
+                for ap in self.antpols:
+                    self.apriori_xants.add((ant, ap))
+            elif isinstance(ant, tuple):
+                if (len(ant) != 2) or (comply_pol(ant[1]) not in self.antpols):
+                    raise ValueError(f'{ant} is not a valid entry in apriori_xants.')
+                self.apriori_xants.add((ant[0], comply_pol(ant[1])))
+            else:
+                raise ValueError(f'{ant} is not a valid entry in apriori_xants.')
+        self.apriori_xants = apriori_xants
+        
+        # Set up metadata and summary stats
         self.version_str = hera_qm_version_str
         self.history = ''
+        self._reset_summary_stats()
 
-        if len(self.antpols) != 2 or len(self.pols) != 4:
-            raise ValueError('Missing polarization information. pols ='
-                             + str(self.pols) + ' and antpols = '
-                             + str(self.antpols))
 
     def mean_Vij_metrics(self, pols=None, xants=[], rawMetric=False):
         """Calculate how an antennas's average |Vij| deviates from others.
@@ -439,6 +465,9 @@ class AntennaMetrics():
                                           rawMetric=rawMetric)
 
     def reset_summary_stats(self):
+        # Load and summarize data
+        self._load_time_freq_abs_vis_stats(Nbls_per_load=Nbls_per_load)
+        
         """Reset all the internal summary statistics back to empty."""
         self.xants, self.crossedAntsRemoved, self.deadAntsRemoved = [], [], []
         self.iter = 0
