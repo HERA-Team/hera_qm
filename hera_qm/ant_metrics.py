@@ -601,8 +601,8 @@ class AntennaMetrics():
 def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0, 
                     run_cross_pols=True, run_cross_pols_only=False,
                     metrics_path='', extension='.ant_metrics.hdf5',
-                    filetype='uvh5', Nbls_per_load=None,
-                     history='', verbose=True):
+                    overwrite=False, filetype='uvh5', Nbls_per_load=None,
+                    history='', verbose=True):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
@@ -634,12 +634,14 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
         as input data files.
     extension : str, optional
         File extension to add to output files. Default is ant_metrics.hdf5.
+    overwrite: bool, optional
+        Whether to overwrite existing ant_metrics files. Default is False.
     filetype : str, optional
         File type of data. Must be one of: 'miriad', 'uvh5', 'uvfits', 'fhd',
         'ms' (see pyuvdata docs). Default is 'uvh5'.
     Nbls_per_load : integer, optional
         Number of baselines to load simultaneously. Trades speed for memory
-        efficiency. Default None means load all baselines.        
+        efficiency. Default None means load all baselines.
     history : str, optional
         The history the add to metrics. Default is nothing (empty string).
     verbose : bool, optional
@@ -662,4 +664,5 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
         if metrics_path == '':
             # default path is same directory as file
             metrics_path = os.path.dirname(os.path.abspath(file))
-        am.save_antenna_metrics(os.path.join(metrics_path, metrics_basename))
+        am.save_antenna_metrics(os.path.join(metrics_path, metrics_basename),
+                                overwrite=overwrite)
