@@ -598,65 +598,66 @@ class AntennaMetrics():
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
 
-def ant_metrics_run(files, crossCut=5.0, deadCut=5.0, alwaysDeadCut=10.0,
+def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0, 
+                    run_cross_pols=True, run_cross_pols_only=False,
                     metrics_path='', extension='.ant_metrics.hdf5',
-                    vis_format='uvh5', verbose=True, history='',
-                    run_cross_pols=True, run_cross_pols_only=False):
+                    filetype='uvh5', Nbls_per_load=None,
+                     history='', verbose=True):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
     Note
     ----
-    The funciton will take in a list of files and options. It will run the
-    series of ant metrics tests, and produce an HDF5 file containing the
-    relevant information.
+    The funciton will take a file or list of files and options. It will run 
+    ant metrics once on all files together but then save the results to am
+    identical HDF5 file for each input file.
 
     Parameters
     ----------
-    files : list of str
-        List of files to run ant metrics on, one at a time. Each must include
-        all both polarizations (or all 4 if run_cross_pols is True).
+    data_files : str or list of str
+        Path to file or files of raw data to calculate antenna metrics on. 
+    apriori_xants : list of integers or tuples, optional
+        List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
+        as excluded apriori. These are included in self.xants, but not
+        self.dead_ants or self.crossed_ants when writing results to disk.
     crossCut : float, optional
-        Modified Z-Score limit to cut cross-polarized antennas. Default is 5.0.
+            Modified Z-Score limit to cut cross-polarized antennas. Default is 5.0.
     deadCut : float, optional
         Modifized Z-Score limit to cut dead antennas. Default is 5.0.
-    alwaysDeadCut : float, optional
-        Modified Z-Score limit for antennas that are definitely dead. Antennas with
-        z-scores above this limit are thrown away before iterative flagging.
-        Default is 10.0.
-    metrics_path : str, optional
-        Full path to directory to story output metric. Default is the same directory
-        as input data files.
-    extension : str, optional
-        File extension to add to output files. Default is ant_metrics.hdf5.
-    vis_format : str, optional
-        File format of input visibility data. Must be one of: 'miriad', 'uvh5',
-        'uvfits', 'fhd', 'ms' (see pyuvdata docs). Default is 'uvh5'.
-    verbose : bool, optional
-        If True, print out statements during iterative flagging. Default is True.
-    history : str, optional
-        The history the add to metrics. Default is nothing (empty string).
     run_cross_pols : bool, optional
         Define if mean_Vij_cross_pol_metrics is executed. Default is True.
     run_cross_pols_only : bool, optional
         Define if mean_Vij_cross_pol_metrics is the *only* metric to be run.
         Default is False.
-
-    Returns
-    -------
-    None
-
+    metrics_path : str, optional
+        Full path to directory to story output metric. Default is the same directory
+        as input data files.
+    extension : str, optional
+        File extension to add to output files. Default is ant_metrics.hdf5.
+    filetype : str, optional
+        File type of data. Must be one of: 'miriad', 'uvh5', 'uvfits', 'fhd',
+        'ms' (see pyuvdata docs). Default is 'uvh5'.
+    Nbls_per_load : integer, optional
+        Number of baselines to load simultaneously. Trades speed for memory
+        efficiency. Default None means load all baselines.        
+    history : str, optional
+        The history the add to metrics. Default is nothing (empty string).
+    verbose : bool, optional
+        If True, print out statements during iterative flagging. Default is True.
     """
-    for file in files:
-        am = AntennaMetrics(file, fileformat=vis_format)
-        am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
-                                                  deadCut=deadCut,
-                                                  alwaysDeadCut=alwaysDeadCut,
-                                                  verbose=verbose,
-                                                  run_cross_pols=run_cross_pols,
-                                                  run_cross_pols_only=run_cross_pols_only)
-        am.history = am.history + history
 
+    # run ant metrics
+    am = AntennaMetrics(data_files, filetype=filetype,
+                        apriori_xants=apriori_xants, Nbls_per_load=Nbls_per_load)
+    am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
+                                              deadCut=deadCut,
+                                              verbose=verbose,
+                                              run_cross_pols=run_cross_pols,
+                                              run_cross_pols_only=run_cross_pols_only)
+    am.history = am.history + history
+
+
+    for file in am.datafile_list:
         metrics_basename = utils.strip_extension(os.path.basename(file)) + extension
         if metrics_path == '':
             # default path is same directory as file
