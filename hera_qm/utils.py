@@ -47,21 +47,14 @@ def get_metrics_ArgumentParser(method_name):
 
     if method_name == 'ant_metrics':
         ap.prog = 'ant_metrics.py'
+        ap.add_argument('data_files', metavar='files', type=str, nargs='*', default=[],
+                        help='4-pol visibility files used to compute antenna metrics')
+        ap.add_argument('--apriori_xants', type=int, nargs='*', default=[], 
+                        help='space-delimited list of integer antenna numbers to exclude apriori.')
         ap.add_argument('--crossCut', default=5.0, type=float,
                         help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
         ap.add_argument('--deadCut', default=5.0, type=float,
                         help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
-        ap.add_argument('--alwaysDeadCut', default=10.0, type=float,
-                        help='Modified z-score cut for antennas that are definitely dead. Default 10 "sigmas".'
-                        'These are all thrown away at once without waiting to iteratively throw away only the worst offender.')
-        ap.add_argument('--extension', default='.ant_metrics.json', type=str,
-                        help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
-        ap.add_argument('--metrics_path', default='', type=str,
-                        help='Path to save metrics file to. Default is same directory as file.')
-        ap.add_argument('--vis_format', default='uvh5', type=str,
-                        help='File format for visibility files. Default is uvh5.')
-        ap.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
-                        help='Silence feedback to the command line.')
         ap.add_argument('--skip_cross_pols', action='store_false',
                         dest='run_cross_pols', default=True,
                         help=('Sets boolean flag to False. Flag determines if '
@@ -71,8 +64,16 @@ def get_metrics_ArgumentParser(method_name):
                         dest='run_cross_pols_only', default=False,
                         help=('Define if cross pol metrics are the *only* '
                               'metrics to be run. Default is False.'))
-        ap.add_argument('files', metavar='files', type=str, nargs='*', default=[],
-                        help='*.uv files for which to calculate ant_metrics.')
+        ap.add_argument('--metrics_path', default='', type=str,
+                        help='Path to save metrics file to. Default is same directory as file.')
+        ap.add_argument('--extension', default='.ant_metrics.json', type=str,
+                        help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
+        ap.add_argument('--filetype', default='uvh5', type=str,
+                        help='File format for visibility files. Default is uvh5.')
+        ap.add_argument('--Nbls_per_load', default=None, type=int,
+                        help='Number of baselines to load simultaneously.')
+        ap.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
+                        help='Silence feedback to the command line.')
     elif method_name == 'firstcal_metrics':
         ap.prog = 'firstcal_metrics.py'
         ap.add_argument('--std_cut', default=0.5, type=float,
