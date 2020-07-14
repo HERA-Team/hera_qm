@@ -122,7 +122,8 @@ def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np
     -------
     abs_vis_stats : dictionary
         Dictionary mapping baseline keys e.g. (0, 1, 'ee') to single floats representing
-        visibility amplitudes.
+        visibility amplitudes. If the median value is 0, the stat will always be 0 to catch
+        help catch completely dead antennas (this was observed in H1C).
 
     """
     abs_vis_stats = {}
