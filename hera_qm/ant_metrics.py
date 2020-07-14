@@ -173,7 +173,8 @@ def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
     
     # figure out which antennas match pols and and are not in xants
     if pols is not None:
-        antpols = set([ap for bl in abs_vis_stats for ap in split_pol(bl[2])])
+        antpols = set([ap for bl in abs_vis_stats for ap in split_pol(bl[2])
+                       if ((pols is None) or (bl[2] in pols))])
     ants = set()
     for bl in abs_vis_stats:
         for ant in split_bl(bl):
