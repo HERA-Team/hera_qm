@@ -417,6 +417,21 @@ class AntennaMetrics():
             self.xants.append(ant)
             self.removal_iteration[ant] = -1
     
+    def _load_time_freq_abs_vis_stats(self, Nbls_per_load=None):
+        """Loop through groups of baselines to calculate self.abs_vis_stats
+        using time_freq_abs_vis_stats()
+        """
+        if Nbls_per_load is None:
+            bl_load_groups = [self.bls]
+        else:
+            bl_load_groups = [self.bls[i:i + Nbls_per_load]
+                              for i in range(0, len(self.bls), Nbls_per_load)]
+        
+        self.abs_vis_stats = {}
+        for blg in bl_load_groups:
+            data, flags, _ = self.hd.read(bls=blg)
+            self.abs_vis_stats.update(time_freq_abs_vis_stats(data, flags))
+            
         """Flag antennas whose median autoPower is 0.0.
 
         These antennas are marked as dead. They do not appear in recorded antenna
