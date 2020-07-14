@@ -197,50 +197,45 @@ def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
         return per_antenna_modified_z_scores(per_ant_means)
 
 
-def antpol_metric_sum_ratio(ants, antpols, crossMetrics, sameMetrics,
-                            xants=[]):
+def antpol_metric_sum_ratio(cross_metrics, same_metrics):
     """Compute ratio of two metrics summed over polarizations.
 
-    Take the ratio of two antenna metrics, summed over both polarizations, and create a new
-    antenna metric with the same value in both polarizations for each antenna.
+    Takes the ratio of two antenna metrics, summed over both polarizations, and creates
+    a new antenna metric with the same value in both polarizations for each antenna.
 
     Parameters
     ----------
-    ants : list of ints
-        List of all antenna indices.
-    antpols : list of str
-        List of antenna polarizations (e.g. ['x', 'y']).
-    crossMetrics : dict
+    cross_metrics : dict
         Dict of a metrics computed with cross-polarizaed antennas. Keys are of
-        the form (ant, antpol).
-    sameMetrics : dict
+        the form (ant, antpol) and must match same_metrics keys.
+    same_metrics : dict
         Dict of a metrics computed with non-cross-polarized antennas. Keys are of
-        the form (ant, antpol).
-    xants : list of tuples, optional
-        List of antennas that should be ignored. Entries are of the form (ant, antpol).
-        Default is empty list.
+        the form (ant, antpol) and must match cross_metrics keys.
 
     Returns
     -------
-    crossPolRatio
-        Dictionary of the ratio between the sum ocrossMetrics and  sum of sameMetrics
-        for each antenna provided in ants. Keys are of the form (ant, antpol).
+    cross_pol_ratio
+        Dictionary of the ratio between the sum of cross_metrics and sum of same_metrics
+        for each antenna provided in ants. Keys are of the form (ant, antpol) and will
+        be identical for both polarizations for a given antenna by construction
 
     """
-    crossPolRatio = {}
-    for ant in ants:
-        if np.all([(ant, antpol) not in xants for antpol in antpols]):
-            crossSum = np.sum([crossMetrics[(ant, antpol)]
-                               for antpol in antpols])
-            sameSum = np.sum([sameMetrics[(ant, antpol)]
-                              for antpol in antpols])
-            for antpol in antpols:
-                crossPolRatio[(ant, antpol)] = crossSum / sameSum
-    return crossPolRatio
-
-
 def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
                                rawMetric=False):
+    # figure out antenna numbers and polarizations in the metrics
+    antnums = set([ant[0] for metric in [cross_metrics, same_metrics] for ant in metric])
+    antpols = set([ant[1] for metric in [cross_metrics, same_metrics] for ant in metric])
+
+    # compute cross_pol_ratios
+    cross_pol_ratio = {}
+    for an in antnums:
+        cross_sum = np.sum([cross_metrics[(an, ap)] for ap in antpols])
+        same_sum = np.sum([same_metrics[(an, ap)] for ap in antpols]) 
+        for ap in antpols:
+            cross_pol_ratio[(an, ap)] = cross_sum / same_sum
+    return cross_pol_ratio
+
+
     """Calculate the ratio of cross-pol visibilities to same-pol visibilities.
 
     Find which antennas are outliers based on the ratio of mean cross-pol
