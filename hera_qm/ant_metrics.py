@@ -220,8 +220,6 @@ def antpol_metric_sum_ratio(cross_metrics, same_metrics):
         be identical for both polarizations for a given antenna by construction
 
     """
-def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
-                               rawMetric=False):
     # figure out antenna numbers and polarizations in the metrics
     antnums = set([ant[0] for metric in [cross_metrics, same_metrics] for ant in metric])
     antpols = set([ant[1] for metric in [cross_metrics, same_metrics] for ant in metric])
@@ -236,60 +234,55 @@ def mean_Vij_cross_pol_metrics(data, pols, antpols, ants, bls, xants=[],
     return cross_pol_ratio
 
 
+def mean_Vij_cross_pol_metrics(abs_vis_stats, xants=[], rawMetric=False):
     """Calculate the ratio of cross-pol visibilities to same-pol visibilities.
 
     Find which antennas are outliers based on the ratio of mean cross-pol
     visibilities to mean same-pol visibilities:
-        (Vxy+Vyx)/(Vxx+Vyy).
+        (|Ven|+|Vne|)/(|Vee|+|Vnn|).
 
     Parameters
     ----------
-    data : array or HERAData object
-        Data for all polarizations, stored in a format that supports indexing
-        as data[ant1, ant2, pol].
-    pols : list of str
-        List of visibility polarizations (e.g. ['xx','xy','yx','yy']).
-    antpols : list of str
-        List of antenna polarizations (e.g. ['x', 'y']).
-    ants : list of ints
-        List of all antenna indices.
-    bls : list of tuples
-        List of tuples of antenna pairs.
-    xants : list of tuples, optional
-        List of antenna-polarization tuples that should be ignored. The
-        expected format is (ant, antpol). Note that if, e.g., (81, "y") is
-        excluded, then (81, "x") cannot be identified as cross-polarized and
-        will be exluded as well. Default is empty list.
+    abs_vis_stats : dictionary
+        Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to 
+        mean absolute value of visibilites over time and frequency.
+    xants : list of integers or tuples of antennas to exlcude, optional
     rawMetric : bool, optional
-        If True, return the raw power ratio instead of the modified z-score.
-        Default is False.
+        If True, return the raw mean Vij cross pol metric instead of the 
+        modified z-score. Default is False.
 
     Returns
     -------
     mean_Vij_cross_pol_metrics : dict
         Dictionary indexed by (ant, antpol) keys. Contains the modified z-scores
-        of the ratio of mean visibilities, (Vxy*Vyx)/(Vxx*Vyy). Results are
+        of the ratio of mean visibilities, (|Ven|+|Vne|)/(|Vee|+|Vnn|). Results are
         duplicated in both antpols. Very large values are likely cross-polarized.
 
     """
-    # Compute metrics and cross pols only and and same pols only
-    samePols = [pol for pol in pols if pol[0] == pol[1]]
-    crossPols = [pol for pol in pols if pol[0] != pol[1]]
-    full_xants = exclude_partially_excluded_ants(antpols, xants)
-    meanVijMetricsSame = mean_Vij_metrics(data, samePols, antpols, ants, bls,
-                                          xants=full_xants, rawMetric=True)
-    meanVijMetricsCross = mean_Vij_metrics(data, crossPols, antpols, ants, bls,
-                                           xants=full_xants, rawMetric=True)
+    pols = set([bl[2] for bl in abs_vis_stats])
+    cross_pols = [pol for pol in pols if pol[0] != pol[1]]
+    same_pols = [pol for pol in pols if pol[0] == pol[1]]
+    if (len(cross_pols) != 2) or (len(same_pols) != 2):
+        raise ValueError('There must be precisely two "cross" visbility polarizations '
+                         'and two "same" polarizations but we have instead '
+                         f'{cross_pols} and {same_pols}')
+                                 
 
-    # Compute the ratio of the cross/same metrics,
-    # saving the same value in each antpol
-    crossPolRatio = antpol_metric_sum_ratio(ants, antpols, meanVijMetricsCross,
-                                            meanVijMetricsSame,
-                                            xants=full_xants)
+    # Compute metrics and cross pols only and and same pols only
+    full_xants = set([ant[0] if isinstance(ant, tuple) else ant for ant in xants])
+    cross_metrics = mean_Vij_metrics(abs_vis_stats, xants=full_xants,
+                                     pols=cross_pols, rawMetric=True)
+    same_metrics = mean_Vij_metrics(abs_vis_stats, xants=full_xants,
+                                    pols=same_pols, rawMetric=True)
+
+
+    # Save the ratio of the cross/same metrics in both antpols
+    cross_pol_ratio = antpol_metric_sum_ratio(cross_metrics, same_metrics)
+    
     if rawMetric:
-        return crossPolRatio
+        return cross_pol_ratio
     else:
-        return per_antenna_modified_z_scores(crossPolRatio)
+        return per_antenna_modified_z_scores(cross_pol_ratio)
 
 
 def load_antenna_metrics(filename):
