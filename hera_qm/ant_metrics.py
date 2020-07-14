@@ -322,14 +322,14 @@ class AntennaMetrics():
 
     """
 
-    def __init__(self, data_files, fileformat='uvh5', apriori_xants=[], Nbls_per_load=None):
+    def __init__(self, data_files, filetype='uvh5', apriori_xants=[], Nbls_per_load=None):
         """Initilize an AntennaMetrics object and load mean visibility amplitudes.
 
         Parameters
         ----------
         data_files : str or list of str
             Path to file or files of raw data to calculate antenna metrics on
-        fileformat : str, optional
+        filetype : str, optional
             File type of data. Must be one of: 'miriad', 'uvh5', 'uvfits', 'fhd',
             'ms' (see pyuvdata docs). Default is 'uvh5'.
         apriori_xants : list of integers or tuples, optional
@@ -369,7 +369,7 @@ class AntennaMetrics():
         if isinstance(data_files, str):
             data_files = [data_files]
         self.datafile_list = data_files
-        self.hd = HERAData(data_files, filetype=fileformat)
+        self.hd = HERAData(data_files, filetype=filetype)
         if len(self.hd.filepaths) > 1:
             # only load baselines in all files
             self.bls = sorted(set.intersection(*[set(bls) for bls in self.hd.bls.values()]))
