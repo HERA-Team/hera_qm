@@ -584,17 +584,16 @@ class AntennaMetrics():
                             'iterative_antenna_metrics_and_flagging() first.'))
 
         out_dict = {'xants': self.xants}
-        out_dict['crossed_ants'] = self.crossedAntsRemoved
-        out_dict['dead_ants'] = self.deadAntsRemoved
-        out_dict['final_metrics'] = self.finalMetrics
-        out_dict['all_metrics'] = self.allMetrics
-        out_dict['final_mod_z_scores'] = self.finalModzScores
-        out_dict['all_mod_z_scores'] = self.allModzScores
-        out_dict['removal_iteration'] = self.removalIter
+        out_dict['crossed_ants'] = self.crossed_ants
+        out_dict['dead_ants'] = self.dead_ants
+        out_dict['final_metrics'] = self.final_metrics
+        out_dict['all_metrics'] = self.all_metrics
+        out_dict['final_mod_z_scores'] = self.final_mod_z_scores
+        out_dict['all_mod_z_scores'] = self.all_mod_z_scores
+        out_dict['removal_iteration'] = self.removal_iteration
         out_dict['cross_pol_z_cut'] = self.crossCut
         out_dict['dead_ant_z_cut'] = self.deadCut
-        out_dict['always_dead_ant_z_cut'] = self.alwaysDeadCut
-        out_dict['datafile_list'] = self.dataFileList
+        out_dict['datafile_list'] = self.datafile_list
 
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
