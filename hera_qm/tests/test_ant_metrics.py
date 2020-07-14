@@ -97,6 +97,11 @@ def test_mean_Vij_metrics():
         assert ant != (1, 'Jee')
         assert mean_Vij[ant] == {0: 5, 1: 4, 2: 5}[ant[0]]
 
+    # test error
+    abs_vis_stats = {(0, 1, 'ee'): 1.0}
+    with pytest.raises(ValueError):
+        mean_Vij = ant_metrics.mean_Vij_metrics(abs_vis_stats)
+
 
 def test_antpol_metric_sum_ratio():
     crossMetrics = {(0, 'Jnn'): 1.0, (0, 'Jee'): 1.0}
