@@ -402,18 +402,21 @@ class AntennaMetrics():
         self.history = ''
         self._reset_summary_stats()
 
-    def reset_summary_stats(self):
         # Load and summarize data
         self._load_time_freq_abs_vis_stats(Nbls_per_load=Nbls_per_load)
         
+    def _reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
-        self.xants, self.crossedAntsRemoved, self.deadAntsRemoved = [], [], []
+        self.xants, self.crossed_ants, self.dead_ants = [], [], []
         self.iter = 0
-        self.removalIter = {}
-        self.allMetrics, self.allModzScores = OrderedDict(), OrderedDict()
-        self.finalMetrics, self.finalModzScores = {}, {}
-
     def find_totally_dead_ants(self):
+        self.removal_iteration = {}
+        self.all_metrics, self.all_mod_z_scores = {}, {}
+        self.final_metrics, self.final_mod_z_scores = {}, {}
+        for ant in self.apriori_xants:
+            self.xants.append(ant)
+            self.removal_iteration[ant] = -1
+    
         """Flag antennas whose median autoPower is 0.0.
 
         These antennas are marked as dead. They do not appear in recorded antenna
