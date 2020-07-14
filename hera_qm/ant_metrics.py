@@ -496,18 +496,15 @@ class AntennaMetrics():
                     self.final_metrics[metName][key] = metric[key]
                     self.final_mod_z_scores[metName][key] = modz[key]
                 else:
-
-    def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
-                                               alwaysDeadCut=10,
-                                               verbose=False,
-                                               run_cross_pols=True,
                     self.final_metrics[metName] = {key: metric[key]}
                     self.final_mod_z_scores[metName] = {key: modz[key]}
         self.all_metrics.update({self.iter: metrics})
         self.all_mod_z_scores.update({self.iter: modzScores})
 
+    def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5, 
+                                               verbose=False, run_cross_pols=True,
                                                run_cross_pols_only=False):
-        """Run both Mean Vij and Mean Vij crosspol metrics and stores results in self.
+        """Run Mean Vij and Mean Vij crosspol metrics and stores results in self.
 
         Parameters
         ----------
@@ -515,10 +512,6 @@ class AntennaMetrics():
             Modified z-score cut for most cross-polarized antennas. Default is 5 "sigmas".
         deadCut : float, optional
             Modified z-score cut for most likely dead antennas. Default is 5 "sigmas".
-        alwaysDeadCut : float, optional
-            Modified z-score cut for definitely dead antennas. Default is 10 "sigmas".
-            These are all thrown away at once without waiting to iteratively throw away
-            only the worst offender.
         run_cross_pols : bool, optional
             Define if mean_Vij_cross_pol_metrics is executed. Default is True.
         run_cross_pols_only : bool, optional
@@ -526,61 +519,49 @@ class AntennaMetrics():
             Default is False.
 
         """
-        self.reset_summary_stats()
-        self.find_totally_dead_ants()
+        self._reset_summary_stats()
+        self._find_totally_dead_ants(verbose=verbose)
         self.crossCut, self.deadCut = crossCut, deadCut
-        self.alwaysDeadCut = alwaysDeadCut
-
-        # Loop over
-        for iter in range(len(self.antpols) * len(self.ants)):
-            self.iter = iter
+        
+        # iteratively remove antennas, removing only the worst antenna 
+        for iteration in range(len(self.antpols) * len(self.ants)):
+            self.iter = iteration
             self._run_all_metrics(run_cross_pols=run_cross_pols,
                                   run_cross_pols_only=run_cross_pols_only)
-
-            # Mostly likely dead antenna
-            last_iter = list(self.allModzScores)[-1]
             worstDeadCutRatio = -1
             worstCrossCutRatio = -1
-
+            
+            # Find most likely dead antenna
             if not run_cross_pols_only:
                 deadMetrics = {ant: np.abs(metric) for ant, metric
-                               in self.allModzScores[last_iter]['meanVij'].items()}
-            try:
+                               in self.all_mod_z_scores[iteration]['meanVij'].items()}
                 worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
                 worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt]) / deadCut
-            except NameError:
-                # Dead metrics weren't run, but that's fine.
-                pass
 
+            # Find most likely cross-polarized antenna
             if run_cross_pols:
-                # Most likely cross-polarized antenna
                 crossMetrics = {ant: np.abs(metric) for ant, metric
-                                in self.allModzScores[last_iter]['meanVijXPol'].items()}
+                                in self.all_mod_z_scores[iteration]['meanVijXPol'].items()}
                 worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
-                worstCrossCutRatio = (np.abs(crossMetrics[worstCrossAnt]) / crossCut)
-
+                worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt]) / crossCut
+            
             # Find the single worst antenna, remove it, log it, and run again
-            if (worstCrossCutRatio >= worstDeadCutRatio
-                    and worstCrossCutRatio >= 1.0):
-                for antpol in self.antpols:
-                    self.xants.append((worstCrossAnt[0], antpol))
-                    self.crossedAntsRemoved.append((worstCrossAnt[0], antpol))
-                    self.removalIter[(worstCrossAnt[0], antpol)] = iter
+            if (worstCrossCutRatio >= worstDeadCutRatio) and (worstCrossCutRatio >= 1.0):
+                for antpol in self.antpols: # if crossed remove both polarizations
+                    crossed_ant = (worstCrossAnt[0], antpol) 
+                    self.xants.append(crossed_ant)
+                    self.crossed_ants.append(crossed_ant)
+                    self.removal_iteration[crossed_ant] = iteration
                     if verbose:
-                        print('On iteration', iter, 'we flag\t', end='')
-                        print((worstCrossAnt[0], antpol))
-            elif (worstDeadCutRatio > worstCrossCutRatio
-                    and worstDeadCutRatio > 1.0):
+                        print(f'On iteration {iteration} we flag {crossed_ant} with modified z of {crossMetrics[worstCrossAnt]}.')
+            elif (worstDeadCutRatio > worstCrossCutRatio) and (worstDeadCutRatio > 1.0):
                 dead_ants = set([worstDeadAnt])
-                for (ant, metric) in deadMetrics.items():
-                    if metric > alwaysDeadCut:
-                        dead_ants.add(ant)
                 for dead_ant in dead_ants:
                     self.xants.append(dead_ant)
-                    self.deadAntsRemoved.append(dead_ant)
-                    self.removalIter[dead_ant] = iter
+                    self.dead_ants.append(dead_ant)
+                    self.removal_iteration[dead_ant] = iteration
                     if verbose:
-                        print('On iteration', iter, 'we flag', dead_ant)
+                        print(f'On iteration {iteration} we flag {dead_ant} with modified z of {deadMetrics[worstDeadAnt]}.')
             else:
                 break
 
