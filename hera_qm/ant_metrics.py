@@ -409,7 +409,6 @@ class AntennaMetrics():
         """Reset all the internal summary statistics back to empty."""
         self.xants, self.crossed_ants, self.dead_ants = [], [], []
         self.iter = 0
-    def find_totally_dead_ants(self):
         self.removal_iteration = {}
         self.all_metrics, self.all_mod_z_scores = {}, {}
         self.final_metrics, self.final_mod_z_scores = {}, {}
@@ -432,28 +431,28 @@ class AntennaMetrics():
             data, flags, _ = self.hd.read(bls=blg)
             self.abs_vis_stats.update(time_freq_abs_vis_stats(data, flags))
             
+    def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median autoPower is 0.0.
 
         These antennas are marked as dead. They do not appear in recorded antenna
         metrics or zscores. Their removal iteration is -1 (i.e. before iterative
         flagging).
         """
-        autoPowers = {bl: np.median(np.mean(np.abs(self.data[bl])**2, axis=0))
-                      for bl in self.data.keys()}
-        power_list_by_ant = {(ant, antpol): []
-                             for ant in self.ants
-                             for antpol in self.antpols
-                             if (ant, antpol) not in self.xants}
-        for ((ant0, ant1, pol), power) in autoPowers.items():
-            if ((ant0, pol[0]) not in self.xants
-                    and (ant1, pol[1]) not in self.xants):
-                power_list_by_ant[(ant0, pol[0])].append(power)
-                power_list_by_ant[(ant1, pol[1])].append(power)
-        for (key, val) in power_list_by_ant.items():
-            if np.median(val) == 0:
-                self.xants.append(key)
-                self.deadAntsRemoved.append(key)
-                self.removalIter[key] = -1
+        # assign abs_vis_stats to antennas
+        abs_vis_stats_by_ant = {ant: [] for ant in self.ants}
+        for bl in self.abs_vis_stats:
+            for ant in self.split_bl(bl):
+                abs_vis_stats_by_ant[ant].append(self.abs_vis_stats[bl])
+
+        # remove antennas that are totally dead and all nans
+        for ant, vis_stats in abs_vis_stats_by_ant.items():
+            med = np.nanmedian(vis_stats)
+            if ~np.isfinite(med) or (med == 0):
+                self.xants.append(ant)
+                self.dead_ants.append(ant)
+                self.removal_iteration[ant] = -1
+                if verbose:
+                    print(f'Antenna {ant} appears totally dead and is removed.')
 
     def _run_all_metrics(self, run_cross_pols=True, run_cross_pols_only=False):
         """Local call for all metrics as part of iterative flagging method.
