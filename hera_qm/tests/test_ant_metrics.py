@@ -10,9 +10,6 @@ import numpy as np
 # import pyuvdata.tests as uvtest
 # from hera_qm import utils
 from hera_qm import ant_metrics
-
-
-class fake_data():
 # from hera_qm import metrics_io
 # from hera_qm.data import DATA_PATH
 # import hera_qm.tests as qmtest
@@ -151,3 +148,405 @@ def test_mean_Vij_metrics():
             assert mean_Vij_cross[ant] == {0: 12 / 11, 2: 20 / 3}[ant[0]]
 
 
+# def test_load_antenna_metrics():
+#     # load a metrics file and check some values
+#     metrics_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
+#     metrics = ant_metrics.load_antenna_metrics(metrics_file)
+
+#     assert np.isclose(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')], 0.17529333517595402)
+#     assert np.isclose(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')], 0.17529333517595402)
+#     assert np.isclose(metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')], 0.7012786080508268)
+
+#     # change some values to FPE values, and write it out
+#     metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')] = np.nan
+#     metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')] = np.inf
+#     metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')] = -np.inf
+
+#     outpath = os.path.join(DATA_PATH, 'test_output',
+#                            'ant_metrics_output.hdf5')
+#     metrics_io.write_metric_file(outpath, metrics, overwrite=True)
+
+#     # test reading it back in, and that the values agree
+#     metrics_new = ant_metrics.load_antenna_metrics(outpath)
+#     assert np.isnan(metrics_new['final_mod_z_scores']['meanVijXPol'][(72, 'x')])
+#     assert np.isinf(metrics_new['final_mod_z_scores']['meanVijXPol'][(72, 'y')])
+#     assert np.isneginf(metrics_new['final_mod_z_scores']['meanVijXPol'][(31, 'y')])
+
+#     # clean up after ourselves
+#     os.remove(outpath)
+
+
+# def test_load_ant_metrics_json():
+#     json_file = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+#     hdf5_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
+#     warn_message = ["JSON-type files can still be read but are no longer "
+#                     "written by default.\n"
+#                     "Write to HDF5 format for future compatibility."]
+#     json_dict = uvtest.checkWarnings(ant_metrics.load_antenna_metrics,
+#                                      func_args=[json_file],
+#                                      category=PendingDeprecationWarning,
+#                                      nwarnings=1,
+#                                      message=warn_message)
+#     hdf5_dict = ant_metrics.load_antenna_metrics(hdf5_file)
+
+#     # The written hdf5 may have these keys that differ by design
+#     # so ignore them.
+#     json_dict.pop('history', None)
+#     json_dict.pop('version', None)
+#     hdf5_dict.pop('history', None)
+#     hdf5_dict.pop('version', None)
+
+#     # This function recursively walks dictionary and compares
+#     # data types together with asserts or np.allclose
+#     assert qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
+
+
+@pytest.fixture(scope='function')
+def antmetrics_data():
+    dataFileList = [DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA',
+                    DATA_PATH + '/zen.2457698.40355.yy.HH.uvcA',
+                    DATA_PATH + '/zen.2457698.40355.xy.HH.uvcA',
+                    DATA_PATH + '/zen.2457698.40355.yx.HH.uvcA']
+    if not os.path.exists(DATA_PATH + '/test_output/'):
+        os.makedirs(DATA_PATH + '/test_output/')
+    # internal names for summary statistics
+    summaryStats = ['xants', 'crossedAntsRemoved', 'deadAntsRemoved',
+                    'removalIter', 'finalMetrics', 'allMetrics',
+                    'finalModzScores', 'allModzScores', 'crossCut',
+                    'deadCut', 'dataFileList']
+
+    class DataHolder():
+        def __init__(self, dataFileList, summaryStats):
+            self.dataFileList = dataFileList
+            self.summaryStats = summaryStats
+    antmetrics_data = DataHolder(dataFileList, summaryStats)
+
+    # yield returns the data we need but lets us continue after for cleanup
+    yield antmetrics_data
+
+    # post-test cleanup
+    del(antmetrics_data)
+
+
+# def test_load_errors(antmetrics_data):
+#     with pytest.raises(ValueError):
+#         uvtest.checkWarnings(ant_metrics.AntennaMetrics,
+#                              [[DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA']],
+#                              {"fileformat": 'miriad'}, nwarnings=1,
+#                              message='antenna_diameters is not set')
+#     with pytest.raises(IOError):
+#         ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
+#                                    fileformat='uvfits')
+#     with pytest.raises(NotImplementedError):
+#         ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
+#                                    fileformat='fhd')
+#     with pytest.raises(NotImplementedError):
+#         ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
+#                                    fileformat='not_a_format')
+
+
+# def test_init(antmetrics_data):
+#     am = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+#                                     fileformat='miriad')
+#     assert len(am.ants) == 19
+#     assert set(am.pols) == set(['xx', 'yy', 'xy', 'yx'])
+#     assert set(am.antpols) == set(['x', 'y'])
+#     assert len(am.bls) == 19 * 18 / 2 + 19
+
+
+# def test_iterative_antenna_metrics_and_flagging_and_saving_and_loading(antmetrics_data):
+#     am = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+#                                     fileformat='miriad')
+#     with pytest.raises(KeyError):
+#         filename = os.path.join(DATA_PATH, 'test_output',
+#                                 'ant_metrics_output.hdf5')
+#         am.save_antenna_metrics(filename)
+
+#     am.iterative_antenna_metrics_and_flagging()
+#     for stat in antmetrics_data.summaryStats:
+#         assert hasattr(am, stat)
+#     assert (81, 'x') in am.xants
+#     assert (81, 'y') in am.xants
+#     assert (81, 'x') in am.deadAntsRemoved
+#     assert (81, 'y') in am.deadAntsRemoved
+
+#     outfile = os.path.join(DATA_PATH, 'test_output',
+#                            'ant_metrics_output.hdf5')
+#     am.save_antenna_metrics(outfile)
+#     loaded = ant_metrics.load_antenna_metrics(outfile)
+#     # json names for summary statistics
+#     jsonStats = ['xants', 'crossed_ants', 'dead_ants', 'removal_iteration',
+#                  'final_metrics', 'all_metrics', 'final_mod_z_scores',
+#                  'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
+#                  'datafile_list', 'version']
+#     for stat, jsonStat in zip(antmetrics_data.summaryStats, jsonStats):
+#         assert np.array_equal(loaded[jsonStat],
+#                               getattr(am, stat))
+#     os.remove(outfile)
+
+
+# def test_save_json(antmetrics_data):
+#     am = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+#                                     fileformat='miriad')
+#     am.iterative_antenna_metrics_and_flagging()
+#     for stat in antmetrics_data.summaryStats:
+#         assert hasattr(am, stat)
+#     assert (81, 'x') in am.xants
+#     assert (81, 'y') in am.xants
+#     assert (81, 'x') in am.deadAntsRemoved
+#     assert (81, 'y') in am.deadAntsRemoved
+
+#     outfile = os.path.join(DATA_PATH, 'test_output',
+#                            'ant_metrics_output.json')
+#     warn_message = ["JSON-type files can still be written "
+#                     "but are no longer written by default.\n"
+#                     "Write to HDF5 format for future compatibility."]
+#     uvtest.checkWarnings(am.save_antenna_metrics,
+#                          func_args=[outfile], func_kwargs={'overwrite': True},
+#                          category=PendingDeprecationWarning, nwarnings=1,
+#                          message=warn_message)
+
+#     # am.save_antenna_metrics(json_file)
+#     warn_message = ["JSON-type files can still be read but are no longer "
+#                     "written by default.\n"
+#                     "Write to HDF5 format for future compatibility."]
+#     loaded = uvtest.checkWarnings(ant_metrics.load_antenna_metrics,
+#                                   func_args=[outfile],
+#                                   category=PendingDeprecationWarning,
+#                                   nwarnings=1,
+#                                   message=warn_message)
+#     _ = loaded.pop('history', '')
+
+#     jsonStats = ['xants', 'crossed_ants', 'dead_ants', 'removal_iteration',
+#                  'final_metrics', 'all_metrics', 'final_mod_z_scores',
+#                  'all_mod_z_scores', 'cross_pol_z_cut', 'dead_ant_z_cut',
+#                  'datafile_list', 'version']
+
+#     for stat, jsonStat in zip(antmetrics_data.summaryStats, jsonStats):
+#         file_val = loaded[jsonStat]
+#         obj_val = getattr(am, stat)
+#         if isinstance(file_val, dict):
+#             assert qmtest.recursive_compare_dicts(file_val, obj_val)
+#         else:
+#             assert file_val == obj_val
+#     os.remove(outfile)
+
+
+# def test_add_file_appellation(antmetrics_data):
+#     am = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+#                                     fileformat='miriad')
+#     am.iterative_antenna_metrics_and_flagging()
+#     for stat in antmetrics_data.summaryStats:
+#         assert hasattr(am, stat)
+#     assert (81, 'x') in am.xants
+#     assert (81, 'y') in am.xants
+#     assert (81, 'x') in am.deadAntsRemoved
+#     assert (81, 'y') in am.deadAntsRemoved
+
+#     outfile = os.path.join(DATA_PATH, 'test_output',
+#                            'ant_metrics_output')
+
+#     am.save_antenna_metrics(outfile, overwrite=True)
+#     outname = os.path.join(DATA_PATH, 'test_output',
+#                            'ant_metrics_output.hdf5')
+#     assert os.path.isfile(outname)
+#     os.remove(outname)
+
+
+# def test_cross_detection(antmetrics_data):
+#     am2 = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+#                                      fileformat='miriad')
+#     am2.iterative_antenna_metrics_and_flagging(crossCut=3, deadCut=10)
+#     for stat in antmetrics_data.summaryStats:
+#         assert hasattr(am2, stat)
+#     assert (81, 'x') in am2.xants
+#     assert (81, 'y') in am2.xants
+#     assert (81, 'x') in am2.crossedAntsRemoved
+#     assert (81, 'y') in am2.crossedAntsRemoved
+
+
+# def test_totally_dead_ants(antmetrics_data):
+#     am2 = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
+#                                      fileformat='miriad')
+#     deadant = 9
+#     for ant1, ant2 in am2.bls:
+#         if deadant in (ant1, ant2):
+#             for pol in am2.pols:
+#                 am2.data[ant1, ant2, pol][:] = 0.0
+#     am2.reset_summary_stats()
+#     am2.find_totally_dead_ants()
+#     for antpol in am2.antpols:
+#         assert (deadant, antpol) in am2.xants
+#         assert (deadant, antpol) in am2.deadAntsRemoved
+#         assert am2.removalIter[(deadant, antpol)] == -1
+
+
+# def test_run_ant_metrics_no_files():
+#     # get argument object
+#     a = utils.get_metrics_ArgumentParser('ant_metrics')
+#     if DATA_PATH not in sys.path:
+#         sys.path.append(DATA_PATH)
+#     arg1 = "--crossCut=5"
+#     arg2 = "--deadCut=5"
+#     arg3 = "--extension=.ant_metrics.hdf5"
+#     arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+#                                                    'test_output'))
+#     arg5 = "--vis_format=miriad"
+#     arg6 = "--alwaysDeadCut=10"
+#     arg7 = "--run_cross_pols"
+#     arguments = ' '.join([arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+
+#     # test running with no files
+#     cmd = ' '.join([arguments, ''])
+#     args = a.parse_args(cmd.split())
+#     pols = list(args.pol.split(','))
+
+#     history = cmd
+
+#     pytest.raises(AssertionError, ant_metrics.ant_metrics_run,
+#                   args.files, pols, args.crossCut, args.deadCut,
+#                   args.alwaysDeadCut, args.metrics_path,
+#                   args.extension, args.vis_format,
+#                   args.verbose, history, args.run_cross_pols)
+
+
+# def test_run_ant_metrics_one_file():
+#     a = utils.get_metrics_ArgumentParser('ant_metrics')
+#     if DATA_PATH not in sys.path:
+#         sys.path.append(DATA_PATH)
+#     arg1 = "--crossCut=5"
+#     arg2 = "--deadCut=5"
+#     arg3 = "--extension=.ant_metrics.hdf5"
+#     arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+#                                                    'test_output'))
+#     arg5 = "--vis_format=miriad"
+#     arg6 = "--alwaysDeadCut=10"
+#     arg7 = "--run_cross_pols"
+#     arguments = ' '.join([arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+
+#     # test running with a lone file
+#     lone_file = os.path.join(DATA_PATH,
+#                              'zen.2457698.40355.xx.HH.uvcAA')
+#     cmd = ' '.join([arguments, lone_file])
+#     args = a.parse_args(cmd.split())
+#     history = cmd
+#     pols = list(args.pol.split(','))
+
+#     # this test raises a warning, then fails...
+#     uvtest.checkWarnings(pytest.raises,
+#                          [AssertionError, ant_metrics.ant_metrics_run,
+#                           args.files, pols, args.crossCut,
+#                           args.deadCut, args.alwaysDeadCut,
+#                           args.metrics_path,
+#                           args.extension, args.vis_format,
+#                           args.verbose, history, args.run_cross_pols],
+#                          nwarnings=1,
+#                          message='Could not find')
+
+
+# def test_ant_metrics_run_no_cross_pols():
+#     # get arguments
+#     a = utils.get_metrics_ArgumentParser('ant_metrics')
+#     if DATA_PATH not in sys.path:
+#         sys.path.append(DATA_PATH)
+#     arg0 = "-p xx,yy,xy,yx"
+#     arg1 = "--crossCut=5"
+#     arg2 = "--deadCut=5"
+#     arg3 = "--extension=.ant_metrics.hdf5"
+#     arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH, 'test_output'))
+#     arg5 = "--vis_format=miriad"
+#     arg6 = "--alwaysDeadCut=10"
+#     arg7 = "--skip_cross_pols"
+#     arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+
+#     xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+#     dest_file = os.path.join(DATA_PATH, 'test_output',
+#                              'zen.2458002.47754.HH.ant_metrics.hdf5')
+#     if os.path.exists(dest_file):
+#         os.remove(dest_file)
+#     cmd = ' '.join([arguments, xx_file])
+#     args = a.parse_args(cmd.split())
+#     history = cmd
+#     pols = list(args.pol.split(','))
+#     ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
+#                                 args.deadCut, args.alwaysDeadCut,
+#                                 args.metrics_path,
+#                                 args.extension, args.vis_format,
+#                                 args.verbose, history=history,
+#                                 run_cross_pols=args.run_cross_pols)
+#     assert os.path.exists(dest_file)
+#     os.remove(dest_file)
+
+
+# def test_ant_metrics_run_all_metrics():
+#     # get arguments
+#     a = utils.get_metrics_ArgumentParser('ant_metrics')
+#     if DATA_PATH not in sys.path:
+#         sys.path.append(DATA_PATH)
+#     arg0 = "-p xx,yy,xy,yx"
+#     arg1 = "--crossCut=5"
+#     arg2 = "--deadCut=5"
+#     arg3 = "--extension=.ant_metrics.hdf5"
+#     arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+#                                                    'test_output'))
+#     arg5 = "--vis_format=miriad"
+#     arg6 = "--alwaysDeadCut=10"
+#     arg7 = "--run_cross_pols"
+#     arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+
+#     xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+#     dest_file = os.path.join(DATA_PATH, 'test_output',
+#                              'zen.2458002.47754.HH.ant_metrics.hdf5')
+#     if os.path.exists(dest_file):
+#         os.remove(dest_file)
+#     cmd = ' '.join([arguments, xx_file])
+#     args = a.parse_args(cmd.split())
+#     history = cmd
+#     pols = list(args.pol.split(','))
+#     if os.path.exists(dest_file):
+#         os.remove(dest_file)
+#     ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
+#                                 args.deadCut, args.alwaysDeadCut,
+#                                 args.metrics_path,
+#                                 args.extension, args.vis_format,
+#                                 args.verbose, history=history,
+#                                 run_cross_pols=args.run_cross_pols)
+#     assert os.path.exists(dest_file)
+#     os.remove(dest_file)
+
+
+# def test_ant_metrics_run_only_cross_pols():
+#     # get arguments
+#     a = utils.get_metrics_ArgumentParser('ant_metrics')
+#     if DATA_PATH not in sys.path:
+#         sys.path.append(DATA_PATH)
+#     arg0 = "-p xx,yy,xy,yx"
+#     arg1 = "--crossCut=5"
+#     arg2 = "--deadCut=5"
+#     arg3 = "--extension=.ant_metrics.hdf5"
+#     arg4 = "--metrics_path={}".format(os.path.join(DATA_PATH,
+#                                                    'test_output'))
+#     arg5 = "--vis_format=miriad"
+#     arg6 = "--alwaysDeadCut=10"
+#     arg7 = "--run_cross_pols_only"
+#     arguments = ' '.join([arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7])
+
+#     xx_file = os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA')
+#     dest_file = os.path.join(DATA_PATH, 'test_output',
+#                              'zen.2458002.47754.HH.ant_metrics.hdf5')
+#     if os.path.exists(dest_file):
+#         os.remove(dest_file)
+#     cmd = ' '.join([arguments, xx_file])
+#     args = a.parse_args(cmd.split())
+#     history = cmd
+#     pols = list(args.pol.split(','))
+#     if os.path.exists(dest_file):
+#         os.remove(dest_file)
+#     ant_metrics.ant_metrics_run(args.files, pols, args.crossCut,
+#                                 args.deadCut, args.alwaysDeadCut,
+#                                 args.metrics_path,
+#                                 args.extension, args.vis_format,
+#                                 args.verbose, history=history,
+#                                 run_cross_pols_only=args.run_cross_pols_only)
+#     assert os.path.exists(dest_file)
+#     os.remove(dest_file)
