@@ -1090,6 +1090,11 @@ def calculate_metric(uv, algorithm, cal_mode='gain', correlations='both', run_ch
         is raised.
 
     """
+    if issubclass(uv.__class__, (UVData)):
+        if correlations == 'auto':
+            uv = uv.select(bls=[(ant1, ant2) for ant1, ant2, in zip(uv.ant_1_array, uv.ant_2_array) if ant1 == ant2], inplace=False)
+        if correlations == 'cross':
+            uv = uv.select(bls=[(ant1, ant2) for ant1, ant2, in zip(uv.ant_1_array, uv.ant_2_array) if ant1 != ant2], inplace=False)
     if not issubclass(uv.__class__, (UVData, UVCal)):
         raise ValueError('uv must be a UVData or UVCal object.')
     try:
@@ -1107,13 +1112,9 @@ def calculate_metric(uv, algorithm, cal_mode='gain', correlations='both', run_ch
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
-                if correlations == 'both' or (correlations == 'auto' and ind[0] == ind[1])\
-                                          or (correlations == 'cross' and ind[0] != ind[1]):
-                    flags = uv.flag_array[ind, 0, :, ipol]
-                    uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
-                else:
-                    uvf.metric_array[ind] = 0.
-                    uvf.weights_array[ind] = 0.
+                flags = uv.flag_array[ind, 0, :, ipol]
+                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
+
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
             uvf.to_waterfall(run_check=run_check,
@@ -1231,6 +1232,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 
 
 def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
+              correlations='both',
               wf_method='quadmean', sig_init=6.0, sig_adj=2.0, label='',
               run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
@@ -1255,6 +1257,11 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
+    correlations : {"auto", "cross", "both"}, optional
+        The data correlations to use in  metric.
+        "auto" means use only auto-correlations.
+        "cross" means use only cross-correlations.
+        "both" means use both.
     wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
         How to collapse the dimension(s) to form a single waterfall.
     sig_init : float, optional
@@ -1285,6 +1292,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
                check_extra=check_extra,
                run_check_acceptability=run_check_acceptability)
     uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode,
+                             correlations=correlations,
                              run_check=run_check, check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
     uvf_m.label = label
@@ -1381,16 +1389,18 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 
 
 def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=None,
-             omnical_median_filter=True, abscal_median_filter=True,
-             omnical_chi2_median_filter=True, abscal_chi2_median_filter=True,
-             omnical_mean_filter=True, abscal_mean_filter=True,
-             omnical_chi2_mean_filter=True, abscal_chi2_mean_filter=True,
-             omnical_zscore_filter=True, abscal_zscore_filter=True,
-             omnivis_median_filter=True, data_median_filter=False,
-             omnivis_mean_filter=True, data_mean_filter=True,
-             correlations='both', history=None,
+             omnical_median_filter=True, omnical_mean_filter=True,
+             omnical_chi2_median_filter=True, omnical_chi2_mean_filter=True,
+             omnical_zscore_filter=True,
+             abscal_median_filter=True, abscal_mean_filter=True,
+             abscal_chi2_median_filter=True, abscal_chi2_mean_filter=True,
+             abscal_zscore_filter=True,
+             omnivis_median_filter=True, omnivis_mean_filter=True,
+             auto_median_filter=True, auto_mean_filter=True,
+             cross_median_filter=False, cross_mean_filter=True,
+             history=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
-             ex_ants=None, ant_str=None, metrics_file=None,
+             ex_ants=None, metrics_file=None,
              output_prefix=None, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
@@ -1413,8 +1423,6 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         The omnical calfits file to use to flag on gains and chisquared values.
     acalfits_file : str, optional
         The abscal calfits file to use to flag on gains and chisquared values.
-    medfilt : bool, optional
-        Determine whether to run a round of median filtering
     model_file : str, optional
         THe model visibility file to flag on.
     data_file : str, optional
@@ -1423,60 +1431,84 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         If true, run a median filter on omnical gains.
         Mean filters are run after median filters.
         Default is True.
-    abscal_median_filter : bool, optional
-        If true, run a median filter on abscal gains.
-        Mean filters are run after median filters.
-        Default is True.
-    omnical_chi2_median_filter : bool, optional
-        If True, run a median filter on omnical chisquare statistics.
-        Mean filters are run after median filters.
-        Default is True.
-    abscal_chi2_median_filter : bool, optional
-        If True, run a median filter on abscal chisquare statistics.
-        Mean filters are run after median filters.
-        Default is True.
+        If no omnical calfits files are provided
+        filter is not run.
     omnical_mean_filter : bool, optional
         If True, run a mean filter on omnical gain solutions.
         Mean filters are run after median filters.
         Default is True.
-    abscal_mean_filter : bool, optional
-        If True, run mean filter on abscal gain solutions.
+        If no omnical calfits files are provided
+        filter is not run.
+    omnical_chi2_median_filter : bool, optional
+        If True, run a median filter on omnical chisquare statistics.
         Mean filters are run after median filters.
         Default is True.
+        If no omnical calfits files are provided
+        filter is not run.
     omnical_chi2_mean_filter : bool, optional
         If True, run mean filter on abscal chisquare statistics.
         Mean filters are run after median filters.
         Default is True.
+        If no omnical calfits files are provided
+        filter is not run.
+    omnical_zscore_filter : bool, optional
+        If True, flag on omnical total z-score statistic.
+        Default is True.
+        If no omnical calfits files are provided
+        filter is not run.
+    abscal_median_filter : bool, optional
+        If true, run a median filter on abscal gains.
+        Mean filters are run after median filters.
+        Default is True.
+        If no abscal calfits files are provided
+        filter is not run.
+    abscal_mean_filter : bool, optional
+        If True, run mean filter on abscal gain solutions.
+        Mean filters are run after median filters.
+        Default is True.
+        If no abscal calfits files are provided
+        filter is not run.
+    abscal_chi2_median_filter : bool, optional
+        If True, run a median filter on abscal chisquare statistics.
+        Mean filters are run after median filters.
+        Default is True.
+        If no abscal calfits files are provided
+        filter is not run.
     abscal_chi2_mean_filter : bool, optional
         If True, run mean filter on abscal chisquare statistics.
         Mean filters are run after median filters.
         Default is True.
-    omnical_zscore : bool, optional
-        If True, flag on omnical total z-score statistic.
-        Default is True.
-    abscal_zscore : bool, optional
+        If no abscal calfits files are provided
+        filter is not run.
+    abscal_zscore_filter : bool, optional
         If True, flag on abscal total z-score statistic.
         Default is True.
+        If no abscal calfits files are provided
+        filter is not run.
     omnivis_median_filter : bool, optional
         If True, flag on omnivis median filter statistic.
-        Mean filters are run after median filters.
-        Default is True.
-    data_median_filter : bool, optional
-        If True, flag on data median filter statistic.
         Mean filters are run after median filters.
         Default is True.
     omnivis_mean_filter : bool, optional
         If True, flag on omnivis mean filter statistic.
         Mean filters are run after median filters.
         Default is True.
-    data_mean_filter : bool, optional
+    auto_median_filter : bool, optional
+        If True, flag on autocorr median filter statistic.
+        Mean filters are run after median filters.
+        Default is True.
+    auto_mean_filter : bool, optional
+        If True, flag on autocorrelations mean filter statistics.
+        Mean filters are run after median filters.
+        Default is True.
+    cross_median_filter : bool, optional
+        If True, flag on data median filter statistic.
+        Mean filters are run after median filters.
+        Default is True.
+    cross_mean_filter : bool, optional
         If True, flag on data mean filter statistic.
         Mean filters are run after median filters.
         Default is True.
-    correlations : str, optional
-        specify which components of the visibilities to use
-        Options are "both", "cross", "auto".
-        Default is "both".
     history : str
         The history string to include in files.
     xrfi_path : str, optional
@@ -1497,10 +1529,6 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         A comma-separated list of antennas to exclude. Flags of visibilities formed
         with these antennas will be set to True. Default is None (i.e., no antennas
         will be excluded).
-    ant_str : str, optional
-        ant_str to pass into UVData.read() to set which baselines are used in the
-        flagging on raw visibilities. Default None is all baselines. Useful
-        alternatives include 'cross' and 'auto'. See UVData.read() for details.
     metrics_file : str, optional
         Metrics file that contains a list of excluded antennas. Flags of visibilities
         formed with these antennas will be set to True. Default is None (i.e.,
@@ -1688,10 +1716,10 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
             flag_apply(uvf_apriori, uv_d, keep_existing=True, run_check=run_check,
                        check_extra=check_extra,
                        run_check_acceptability=run_check_acceptability)
-        if data_median_filter:
+        if cross_median_filter:
             uvf_d, uvf_df = xrfi_pipe(uv_d, alg='detrend_medfilt', xants=xants, Kt=kt_size, Kf=kf_size,
-                                      sig_init=sig_init, sig_adj=sig_adj,
-                                      label='Data, median filter.',
+                                      sig_init=sig_init, sig_adj=sig_adj, correlations='cross',
+                                      label='Crosscorr, median filter.',
                                       run_check=run_check,
                                       check_extra=check_extra,
                                       run_check_acceptability=run_check_acceptability)
@@ -1699,9 +1727,21 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
             flags += [uvf_df]
         else:
             uvf_d = None; uvf_df = None
+        if auto_median_filter:
+            uvf_da, uvf_daf = xrfi_pipe(uv_d, alg='detrend_medfilt', xants=xants, Kt=kt_size, Kf=kf_size,
+                                      sig_init=sig_init, sig_adj=sig_adj, correlations='auto',
+                                      label='Autocorr, median filter.',
+                                      run_check=run_check,
+                                      check_extra=check_extra,
+                                      run_check_acceptability=run_check_acceptability)
+            metrics += [uvf_da]
+            flags += [uvf_daf]
+        else:
+            uvf_da = None; uvf_daf = None
     else:
         uv_d = None
         uvf_d = None; uvf_df = None
+        uvf_da = None; uvf_daf = None
 
     # It is possible to have no median filters run so metrics could have len 0.
     if len(metrics) > 0:
@@ -1839,10 +1879,10 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         uvf_v2 = None; uvf_vf2 = None
 
     # Mean filter data.
-    if uv_d is not None and data_mean_filter:
+    if uv_d is not None and cross_mean_filter:
         uvf_d2, uvf_df2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
-                                    sig_init=sig_init, sig_adj=sig_adj,
-                                    label='Data, mean filter.',
+                                    sig_init=sig_init, sig_adj=sig_adj, correlations='cross',
+                                    label='Crosscorr, mean filter.',
                                     run_check=run_check,
                                     check_extra=check_extra,
                                     run_check_acceptability=run_check_acceptability)
@@ -1850,6 +1890,17 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         flags += [uvf_df2]
     else:
         uvf_d2 = None; uvf_df2 = None
+    if uv_d is not None and auto_mean_filter:
+        uvf_da2, uvf_daf2 = xrfi_pipe(uv_d, alg='detrend_meanfilt', xants=[], Kt=kt_size, Kf=kf_size,
+                                    sig_init=sig_init, sig_adj=sig_adj, correlations='auto',
+                                    label='Autocorr, mean filter.',
+                                    run_check=run_check,
+                                    check_extra=check_extra,
+                                    run_check_acceptability=run_check_acceptability)
+        metrics += [uvf_da2]
+        flags += [uvf_daf2]
+    else:
+        uvf_da2 = None; uvf_daf2 = None
     # Combine the metrics together
     if len(metrics) > 1:
         uvf_metrics2 = metrics[-1].combine_metrics(metrics[:-1],
@@ -1893,7 +1944,8 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                 'ox_metrics1.h5': uvf_ox, 'ox_flags1.h5': uvf_oxf,
                 'ag_metrics1.h5': uvf_ag, 'ag_flags1.h5': uvf_agf,
                 'ax_metrics1.h5': uvf_ax, 'ax_flags1.h5': uvf_axf,
-                'data_metrics1.h5': uvf_d, 'data_flags1.h5': uvf_df,
+                'auto_metrics1.h5': uvf_da, 'auto_flags1.h5': uvf_daf,
+                'cross_metrics1.h5': uvf_d, 'cross_flags1.h5': uvf_df,
                 'omnical_chi_sq_renormed_metrics1.h5': uvf_oz, 'omnical_chi_sq_flags1.h5': uvf_ozf,
                 'abscal_chi_sq_renormed_metrics1.h5': uvf_az, 'abscal_chi_sq_flags1.h5': uvf_azf,
                 'combined_metrics1.h5': uvf_metrics, 'combined_flags1.h5': uvf_fws,
@@ -1903,7 +1955,8 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                 'ox_metrics2.h5': uvf_ox2, 'ox_flags2.h5': uvf_oxf2,
                 'ag_metrics2.h5': uvf_ag2, 'ag_flags2.h5': uvf_agf2,
                 'ax_metrics2.h5': uvf_ax2, 'ax_flags2.h5': uvf_axf2,
-                'data_metrics2.h5': uvf_d2, 'data_flags2.h5': uvf_df2,
+                'auto_metrics2.h5': uvf_da2, 'auto_flags2.h5': uvf_daf2,
+                'cross_metrics2.h5': uvf_d2, 'cross_flags2.h5': uvf_df2,
                 'omnical_chi_sq_renormed_metrics2.h5': uvf_oz2, 'omnical_chi_sq_flags2.h5': uvf_ozf2,
                 'abscal_chi_sq_renormed_metrics2.h5': uvf_az2, 'abscal_chi_sq_flags2.h5': uvf_azf2,
                 'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
@@ -2253,11 +2306,11 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
     outdir = resolve_xrfi_path('', data_files[0])
     # Set up extensions to find the many files
-    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'omnical_chi_sq_renormed',
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
              'abscal_chi_sq_renormed', 'combined']
     mexts = ['og_metrics', 'ox_metrics', 'ag_metrics', 'ax_metrics',
-             'v_metrics', 'data_metrics', 'omnical_chi_sq_renormed_metrics',
-             'abscal_chi_sq_renormed_metrics', 'combined_metrics']
+             'v_metrics', 'omnical_chi_sq_renormed_metrics',
+             'abscal_chi_sq_renormed_metrics', 'combined_metrics', 'cross_metrics', 'auto_metrics']
     # Read in the metrics objects
     filled_metrics = []
     for ext in mexts:

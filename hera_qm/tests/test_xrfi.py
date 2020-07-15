@@ -907,8 +907,7 @@ def test_xrfi_run(tmpdir):
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile], {'history': 'Just a test', 'kt_size': 3, 'ant_str': 'cross',
-                                         'data_median_filter':True},
+                                         raw_dfile], {'history': 'Just a test', 'kt_size': 3},
                          nwarnings=len(messages), message=messages, category=categories)
 
     outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
@@ -933,10 +932,14 @@ def test_xrfi_run(tmpdir):
                   'combined_flags2': 'Flags from combined metrics, round 2.',
                   'combined_metrics1': 'Combined metrics, round 1.',
                   'combined_metrics2': 'Combined metrics, round 2.',
-                  'data_flags1': 'Data, median filter. Flags.',
-                  'data_flags2': 'Data, mean filter. Flags.',
-                  'data_metrics2': 'Data, mean filter.',
-                  'data_metrics1': 'Data, median filter.',
+                  'cross_flags1': 'Crosscorr, median filter. Flags.',
+                  'cross_flags2': 'Crosscorr, mean filter. Flags.',
+                  'auto_flags1': 'Autocorr, median filter. Flags.',
+                  'auto_flags2': 'Autocorr, mean filter. Flags.',
+                  'auto_metrics2': 'Autocorr, mean filter.',
+                  'auto_metrics1': 'Autocorr, median filter.',
+                  'cross_metrics2': 'Crosscorr, mean filter.',
+                  'cross_metrics1': 'Crosscorr, median filter.',
                   'flags1': 'ORd flags, round 1.',
                   'flags2': 'ORd flags, round 2.',
                   'og_flags1': 'Omnical gains, median filter. Flags.',
@@ -952,6 +955,23 @@ def test_xrfi_run(tmpdir):
                   'v_metrics1': 'Omnical visibility solutions, median filter.',
                   'v_metrics2': 'Omnical visibility solutions, mean filter.'}
     for ext, label in ext_labels.items():
+        # by default, only cross median filter / mean filter is not performed.
+        if not ext in['cross_metrics1', 'cross_flags1']:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # now really do everything.
+    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
+                                         raw_dfile], {'history': 'Just a test', 'kt_size': 3,
+                                         'cross_median_filter': True},
+                         nwarnings=len(messages), message=messages, category=categories)
+    for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
         uvf = UVFlag(out)
@@ -962,25 +982,25 @@ def test_xrfi_run(tmpdir):
         if os.path.exists(out):
             os.remove(out)
     # test cross correlations.
-    xrfi.xrfi_run(history='data cross corrs.', data_file=raw_dfile, model_file=model_file,
-                  correlations='cross', data_median_filter=True)
+    xrfi.xrfi_run(history='data cross corrs.', data_file=raw_dfile,
+                  cross_median_filter=True, cross_mean_filter=True, auto_mean_filter=False, auto_median_filter=False)
     for ext, label in ext_labels.items():
       out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-      if 'data' in ext or 'combined' in ext:
+      if 'cross' in ext or 'combined' in ext:
           assert os.path.exists(out)
           uvf = UVFlag(out)
           assert uvf.label == label
-      # cleanup
+    # cleanup
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
           os.remove(out)
     # test auto correlations.
-    xrfi.xrfi_run(history='data autocorrs.', data_file=raw_dfile, model_file=model_file,
-                  correlations='auto', data_median_filter=True)
+    xrfi.xrfi_run(history='data autocorrs.', data_file=raw_dfile,
+                  cross_mean_filter=False, cross_median_filter=False)
     for ext, label in ext_labels.items():
       out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-      if 'data' in ext or 'combined' in ext and '1' not in ext:
+      if 'auto' in ext or 'combined' in ext:
           assert os.path.exists(out)
           uvf = UVFlag(out)
           assert uvf.label == label
@@ -1000,7 +1020,7 @@ def test_xrfi_run(tmpdir):
                   output_prefix=raw_dfile)
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-        if 'data' not in ext and 'v_' not in ext:
+        if 'cross' not in ext and 'v_' not in ext and 'auto' not in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
             assert uvf.label == label
@@ -1009,11 +1029,11 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
-    # test run with only data files
-    xrfi.xrfi_run(data_file=raw_dfile, history='data only flags.', data_median_filter=True)
+    # test run with only data files. Median/mean filter on autos and crosses.
+    xrfi.xrfi_run(data_file=raw_dfile, history='data only flags.', cross_median_filter=True)
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-        if 'data' in ext or 'combined' in ext and '1' not in ext:
+        if 'cross' in ext or 'combined' in ext or 'auto' in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
             assert uvf.label == label
@@ -1035,10 +1055,10 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
-    # test run with data and omnivis files
-    xrfi.xrfi_run(data_file=raw_dfile, model_file=model_file, history='omnivis and data flags.', data_median_filter=True)
+    # test run with auto data and omnivis files
+    xrfi.xrfi_run(data_file=raw_dfile, model_file=model_file, history='omnivis and cross flags.', cross_mean_filter=False)
     for ext, label in ext_labels.items():
-        if 'v_' in ext or 'combined' in ext or 'data' in ext:
+        if 'v_' in ext or 'combined' in ext or 'auto' in ext:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
             uvf = UVFlag(out)
@@ -1050,7 +1070,7 @@ def test_xrfi_run(tmpdir):
             os.remove(out)
     # test data with data and omnical
     xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file,
-                  data_file=raw_dfile, history='data and omni/abs cal.', data_median_filter=True)
+                  data_file=raw_dfile, history='data and omni/abs cal.', cross_median_filter=True)
     for ext, label in ext_labels.items():
         if not 'v_' in ext:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
@@ -1066,7 +1086,7 @@ def test_xrfi_run(tmpdir):
     xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file,
                   model_file=model_file, history='model and omni/abs cal.', output_prefix=raw_dfile)
     for ext, label in ext_labels.items():
-        if 'data' not in ext:
+        if 'cross' not in ext and 'auto' not in ext:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
             uvf = UVFlag(out)
@@ -1128,7 +1148,7 @@ def test_day_threshold_run(tmpdir):
                          nwarnings=len(messages), message=messages, category=categories)
 
     xrfi.day_threshold_run(data_files, 'just a test')
-    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed', 'combined']
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed', 'combined']
     for type in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
