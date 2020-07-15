@@ -394,7 +394,6 @@ class AntennaMetrics():
                 self.apriori_xants.add((ant[0], comply_pol(ant[1])))
             else:
                 raise ValueError(f'{ant} is not a valid entry in apriori_xants.')
-        self.apriori_xants = apriori_xants
         
         # Set up metadata and summary stats
         self.version_str = hera_qm_version_str
