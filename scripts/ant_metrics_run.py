@@ -19,7 +19,6 @@ ant_metrics.ant_metrics_run(args.data_files,
                             metrics_path=args.metrics_path,
                             extension=args.extension,
                             overwrite=args.clobber,
-                            filetype=args.filetype,
                             Nbls_per_load=args.Nbls_per_load,
                             verbose=args.verbose,
                             history=history)

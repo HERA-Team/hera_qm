@@ -324,16 +324,13 @@ class AntennaMetrics():
 
     """
 
-    def __init__(self, data_files, filetype='uvh5', apriori_xants=[], Nbls_per_load=None):
+    def __init__(self, data_files, apriori_xants=[], Nbls_per_load=None):
         """Initilize an AntennaMetrics object and load mean visibility amplitudes.
 
         Parameters
         ----------
         data_files : str or list of str
             Path to file or files of raw data to calculate antenna metrics on
-        filetype : str, optional
-            File type of data. Must be one of: 'miriad', 'uvh5', 'uvfits', 'fhd',
-            'ms' (see pyuvdata docs). Default is 'uvh5'.
         apriori_xants : list of integers or tuples, optional
             List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
             as excluded apriori. These are included in self.xants, but not
@@ -371,7 +368,7 @@ class AntennaMetrics():
         if isinstance(data_files, str):
             data_files = [data_files]
         self.datafile_list = data_files
-        self.hd = HERAData(data_files, filetype=filetype)
+        self.hd = HERAData(data_files)
         if len(self.hd.filepaths) > 1:
             # only load baselines in all files
             self.bls = sorted(set.intersection(*[set(bls) for bls in self.hd.bls.values()]))
@@ -603,8 +600,7 @@ class AntennaMetrics():
 def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0, 
                     run_cross_pols=True, run_cross_pols_only=False,
                     metrics_path='', extension='.ant_metrics.hdf5',
-                    overwrite=False, filetype='uvh5', Nbls_per_load=None,
-                    history='', verbose=True):
+                    overwrite=False, Nbls_per_load=None, history='', verbose=True):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
@@ -638,9 +634,6 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
         File extension to add to output files. Default is ant_metrics.hdf5.
     overwrite: bool, optional
         Whether to overwrite existing ant_metrics files. Default is False.
-    filetype : str, optional
-        File type of data. Must be one of: 'miriad', 'uvh5', 'uvfits', 'fhd',
-        'ms' (see pyuvdata docs). Default is 'uvh5'.
     Nbls_per_load : integer, optional
         Number of baselines to load simultaneously. Trades speed for memory
         efficiency. Default None means load all baselines.
@@ -651,8 +644,9 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
     """
 
     # run ant metrics
-    am = AntennaMetrics(data_files, filetype=filetype,
-                        apriori_xants=apriori_xants, Nbls_per_load=Nbls_per_load)
+    am = AntennaMetrics(data_files, 
+                        apriori_xants=apriori_xants,
+                        Nbls_per_load=Nbls_per_load)
     am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
                                               deadCut=deadCut,
                                               verbose=verbose,

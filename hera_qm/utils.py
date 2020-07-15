@@ -70,8 +70,6 @@ def get_metrics_ArgumentParser(method_name):
                         help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing firstcal_metrics file (default False)')
-        ap.add_argument('--filetype', default='uvh5', type=str,
-                        help='File format for visibility files. Default is uvh5.')
         ap.add_argument('--Nbls_per_load', default=None, type=int,
                         help='Number of baselines to load simultaneously.')
         ap.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
