@@ -423,17 +423,13 @@ def test_run_ant_metrics_one_file():
     history = cmd
     pols = list(args.pol.split(','))
 
-    # this test raises a warning, then fails...
-    uvtest.checkWarnings(pytest.raises,
-                         [AssertionError, ant_metrics.ant_metrics_run,
-                          args.files, pols, args.crossCut,
-                          args.deadCut, args.alwaysDeadCut,
-                          args.metrics_path,
-                          args.extension, args.vis_format,
-                          args.verbose, history, args.run_cross_pols],
-                         nwarnings=1,
-                         message='Could not find')
-
+    # test error
+    with pytest.raises(AssertionError, match='Could not find'):
+        ant_metrics.ant_metrics_run(args.files, pols, args.crossCut, 
+                                    args.deadCut, args.alwaysDeadCut,
+                                    args.metrics_path,
+                                    args.extension, args.vis_format,
+                                    args.verbose, history, args.run_cross_pols)
 
 def test_ant_metrics_run_no_cross_pols():
     # get arguments
