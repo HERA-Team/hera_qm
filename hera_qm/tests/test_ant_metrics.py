@@ -431,6 +431,7 @@ def test_run_ant_metrics_one_file():
                                     args.extension, args.vis_format,
                                     args.verbose, history, args.run_cross_pols)
 
+
 def test_ant_metrics_run_no_cross_pols():
     # get arguments
     a = utils.get_metrics_ArgumentParser('ant_metrics')

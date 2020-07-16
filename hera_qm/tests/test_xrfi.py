@@ -917,7 +917,6 @@ def test_xrfi_run(tmpdir):
             n_matched_warnings += 1
     assert n_matched_warnings == 6
 
-                         # nwarnings=len(messages), message=messages, category=categories)
     # remove spoofed files
     for fname in [ocal_file, acal_file, model_file, raw_dfile]:
         os.remove(fname)
