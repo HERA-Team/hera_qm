@@ -906,9 +906,17 @@ def test_xrfi_run(tmpdir):
     shutil.copyfile(test_uvh5_file, raw_dfile)
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile, 'Just a test'], {'kt_size': 3, 'ant_str': 'cross'},
-                         nwarnings=len(messages), message=messages, category=categories)
+
+    # check warnings
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3, ant_str='cross')
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 6
+
     # remove spoofed files
     for fname in [ocal_file, acal_file, model_file, raw_dfile]:
         os.remove(fname)
@@ -975,9 +983,17 @@ def test_day_threshold_run(tmpdir):
     data_files = [raw_dfile]
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile, 'Just a test'], {'kt_size': 3},
-                         nwarnings=len(messages), message=messages, category=categories)
+
+    # check warnings
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 6
+
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
@@ -996,9 +1012,16 @@ def test_day_threshold_run(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
-    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         data_files[1], 'Just a test'], {'kt_size': 3},
-                         nwarnings=len(messages), message=messages, category=categories)
+
+    # check warnings
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], 'Just a test', kt_size=3, clobber=True)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 6
 
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
@@ -1019,11 +1042,16 @@ def test_xrfi_h1c_run():
                       kt_size=3)
 
     # catch no provided data file for flagging
-    uvtest.checkWarnings(xrfi.xrfi_h1c_run, [None],
-                         {'filename': test_d_file, 'history': 'Just a test.',
-                          'model_file': test_d_file, 'model_file_format': 'miriad',
-                          'xrfi_path': xrfi_path}, nwarnings=191,
-                         message=['indata is None'] + 190 * ['K1 value 8'])
+    with pytest.warns(None) as record:
+        xrfi.xrfi_h1c_run(None, **{'filename': test_d_file, 'history': 'Just a test.',
+                                   'model_file': test_d_file, 'model_file_format': 'miriad',
+                                   'xrfi_path': xrfi_path})
+    assert len(record) >= 191
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if 'indata is None' in str(record[i].message) or 'K1 value 8' in str(record[i].message):
+            n_matched_warnings += 1
+    assert n_matched_warnings == 191
 
 
 def test_xrfi_h1c_run_no_indata():
