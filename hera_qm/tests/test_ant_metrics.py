@@ -201,32 +201,6 @@ def test_mean_Vij_metrics():
 #     assert qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
 
 
-@pytest.fixture(scope='function')
-def antmetrics_data():
-    dataFileList = [DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA',
-                    DATA_PATH + '/zen.2457698.40355.yy.HH.uvcA',
-                    DATA_PATH + '/zen.2457698.40355.xy.HH.uvcA',
-                    DATA_PATH + '/zen.2457698.40355.yx.HH.uvcA']
-    if not os.path.exists(DATA_PATH + '/test_output/'):
-        os.makedirs(DATA_PATH + '/test_output/')
-    # internal names for summary statistics
-    summaryStats = ['xants', 'crossedAntsRemoved', 'deadAntsRemoved',
-                    'removalIter', 'finalMetrics', 'allMetrics',
-                    'finalModzScores', 'allModzScores', 'crossCut',
-                    'deadCut', 'dataFileList']
-
-    class DataHolder():
-        def __init__(self, dataFileList, summaryStats):
-            self.dataFileList = dataFileList
-            self.summaryStats = summaryStats
-    antmetrics_data = DataHolder(dataFileList, summaryStats)
-
-    # yield returns the data we need but lets us continue after for cleanup
-    yield antmetrics_data
-
-    # post-test cleanup
-    del(antmetrics_data)
-
 
 # def test_load_errors(antmetrics_data):
 #     with pytest.raises(ValueError):
