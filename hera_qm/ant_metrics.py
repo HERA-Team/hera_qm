@@ -383,6 +383,8 @@ class AntennaMetrics():
         self.antpols = set([ant[1] for ant in self.ants])
         
         # Parse apriori_xants
+        if not isinstance(apriori_xants, list) and isinstance(apriori_xants, np.ndarray):
+            raise ValueError('apriori_xants must be a list or numpy array.')
         self.apriori_xants = set([])
         for ant in apriori_xants:
             if isinstance(ant, int):
