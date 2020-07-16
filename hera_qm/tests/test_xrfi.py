@@ -906,7 +906,7 @@ def test_xrfi_run(tmpdir):
     shutil.copyfile(test_uvh5_file, raw_dfile)
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    
+
     # check warnings
     with pytest.warns(None) as record:
         xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3, ant_str='cross')
