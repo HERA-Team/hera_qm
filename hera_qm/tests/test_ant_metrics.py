@@ -305,6 +305,53 @@ def test_init():
     for bl in am.bls:
         assert am.abs_vis_stats[bl] == am2.abs_vis_stats[bl]
 
+def test_iterative_antenna_metrics_and_flagging():
+    four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
+    am = ant_metrics.AntennaMetrics(four_pol_uvh5)
+    
+    # try normal operation
+    am.iterative_antenna_metrics_and_flagging(verbose=True, crossCut=5, deadCut=5)
+    assert (81, 'Jxx') in am.crossed_ants
+    assert (81, 'Jyy') in am.crossed_ants
+    assert (81, 'Jxx') in am.xants
+    assert (81, 'Jyy') in am.xants
+    assert list(am.all_mod_z_scores.keys()) == [0, 1]
+    assert list(am.all_metrics.keys()) == [0, 1]
+    assert am.all_mod_z_scores[0]['meanVijXPol'][(81, 'Jxx')] >= 5
+    assert am.all_mod_z_scores[0]['meanVijXPol'][(81, 'Jyy')] >= 5
+    for metric in am.all_metrics[1]:
+        for ant in am.all_metrics[1][metric]:
+            assert am.all_metrics[1][metric][ant] < 5
+    assert am.final_mod_z_scores['meanVijXPol'][(81, 'Jxx')] == am.final_mod_z_scores['meanVijXPol'][(81, 'Jyy')]
+    assert am.final_mod_z_scores['meanVijXPol'][(81, 'Jxx')] == am.all_mod_z_scores[0]['meanVijXPol'][(81, 'Jxx')]
+    assert am.final_mod_z_scores['meanVijXPol'][(81, 'Jyy')] == am.all_mod_z_scores[0]['meanVijXPol'][(81, 'Jyy')]
+    assert am.final_metrics['meanVijXPol'][(81, 'Jxx')] == am.final_metrics['meanVijXPol'][(81, 'Jyy')]
+    assert am.final_metrics['meanVijXPol'][(81, 'Jxx')] == am.all_metrics[0]['meanVijXPol'][(81, 'Jxx')]
+    assert am.final_metrics['meanVijXPol'][(81, 'Jyy')] == am.all_metrics[0]['meanVijXPol'][(81, 'Jyy')]
+
+
+    # try run_cross_pols=False
+    am.iterative_antenna_metrics_and_flagging(verbose=True, deadCut=4, run_cross_pols=False)
+    assert (81, 'Jxx') in am.dead_ants
+    assert (81, 'Jyy') in am.dead_ants
+    assert (81, 'Jxx') in am.xants
+    assert (81, 'Jyy') in am.xants
+    assert am.crossed_ants == []
+
+    # try run_cross_pols_only=True
+    am.iterative_antenna_metrics_and_flagging(verbose=True, run_cross_pols_only=True)
+    assert (81, 'Jxx') in am.crossed_ants
+    assert (81, 'Jyy') in am.crossed_ants
+    assert (81, 'Jxx') in am.xants
+    assert (81, 'Jyy') in am.xants
+    assert am.dead_ants == []
+
+    # test error
+    with pytest.raises(ValueError):
+        am.iterative_antenna_metrics_and_flagging(verbose=True, run_cross_pols=False, run_cross_pols_only=True)
+
+
+
 # def test_init(antmetrics_data):
 #     am = ant_metrics.AntennaMetrics(antmetrics_data.dataFileList,
 #                                     fileformat='miriad')
