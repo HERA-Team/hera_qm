@@ -381,7 +381,7 @@ class AntennaMetrics():
         self.antpols = set([ant[1] for ant in self.ants])
 
         # Parse apriori_xants
-        if not isinstance(apriori_xants, list) and isinstance(apriori_xants, np.ndarray):
+        if not (isinstance(apriori_xants, list) or isinstance(apriori_xants, np.ndarray)):
             raise ValueError('apriori_xants must be a list or numpy array.')
         self.apriori_xants = set([])
         for ant in apriori_xants:
@@ -577,10 +577,6 @@ class AntennaMetrics():
             Whether to overwrite an existing file. Default is False.
 
         """
-        if not hasattr(self, 'xants'):
-            raise KeyError(('Must run AntennaMetrics.'
-                            'iterative_antenna_metrics_and_flagging() first.'))
-
         out_dict = {'xants': self.xants}
         out_dict['crossed_ants'] = self.crossed_ants
         out_dict['dead_ants'] = self.dead_ants
