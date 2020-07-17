@@ -20,7 +20,7 @@ from . import utils as qm_utils
 # Define a custom numpy dtype for tuples we wish to preserve shape
 # antpol items look like (antenna, antpol) with types (int, string)
 antpol_dtype = np.dtype([('ant', np.int32),
-                         ('pol', np.dtype('S1'))])
+                         ('pol', np.dtype('S3'))])
 
 # antpair items look like (ant1, ant2) with types (int, int)
 antpair_dtype = np.dtype([('ant1', np.int32),
