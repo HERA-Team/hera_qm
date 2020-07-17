@@ -1558,9 +1558,6 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     """
     if ocalfits_file is None and acalfits_file is None and model_file is None and data_file is None:
         raise ValueError("Must provide at least one of the following; ocalfits_file, acalfits_file, model_file, data_file")
-    # if ocalfits_file is supplied so too must acalfits_file
-    if (ocalfits_file is not None and acalfits_file is None) or (ocalfits_file is None and acalfits_file is not None):
-        raise ValueError("Must provide a non-empty history string.")
     # user must provide an optional output prefix if no data file is provided.
     if output_prefix is None:
         if data_file is not None:
@@ -1824,7 +1821,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
             flags += [uvf_axf2]
         else:
             uvf_ax2 = None; uvf_axf2 = None
-            
+
         if abscal_zscore_filter:
             uvf_az2, uvf_azf2 = chi_sq_pipe(uvc_a, alg='zscore_full_array', modified=True,
                                             sig_init=sig_init, sig_adj=sig_adj,

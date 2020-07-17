@@ -1042,6 +1042,21 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
+    # abscal ONLY
+    xrfi.xrfi_run(acalfits_file=acal_file, history='abscal only flags.',
+                  output_prefix=raw_dfile)
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if 'cross' not in ext and 'v_' not in ext and 'auto' not in ext\
+         and 'ox_' not in ext and 'og_' not in ext and not 'omnical' in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
     # test run with only data files. Median/mean filter on autos and crosses.
     xrfi.xrfi_run(data_file=raw_dfile, history='data only flags.', cross_median_filter=True)
     for ext, label in ext_labels.items():
@@ -1069,6 +1084,29 @@ def test_xrfi_run(tmpdir):
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if 'cross' in ext or 'combined' in ext or 'auto' in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # Don't do any median filters.
+    xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, data_file=raw_dfile,
+                  model_file=model_file,
+                  history='data only flags.',
+                  abscal_mean_filter=False, abscal_median_filter=False,
+                  abscal_chi2_median_filter=False, abscal_chi2_mean_filter=False,
+                  abscal_zscore_filter=False,
+                  omnical_mean_filter=False, omnical_median_filter=False,
+                  omnical_chi2_median_filter=False, omnical_chi2_mean_filter=False,
+                  omnical_zscore_filter=False,
+                  omnivis_mean_filter=False, omnivis_median_filter=False,
+                  cross_median_filter=False, auto_median_filter=False)
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if ('cross' in ext or 'combined' in ext or 'auto' in ext) and '1' not in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
             assert uvf.label == label
