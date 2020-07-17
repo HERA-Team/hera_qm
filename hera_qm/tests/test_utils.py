@@ -75,9 +75,8 @@ def test_generate_fullpol_file_list():
 
     # try to pass in a file that doesn't have all pols present
     lone_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-    fullpol_file_list = uvtest.checkWarnings(utils.generate_fullpol_file_list,
-                                             [[lone_file], pol_list], nwarnings=1,
-                                             message='Could not find')
+    with pytest.warns(UserWarning, match='Could not find'):
+        fullpol_file_list = utils.generate_fullpol_file_list([lone_file], pol_list)
     assert fullpol_file_list == []
 
 
