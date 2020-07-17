@@ -5,14 +5,13 @@
 
 import pytest
 import numpy as np
-# import os
+import os
 # import sys
-# import pyuvdata.tests as uvtest
 # from hera_qm import utils
 from hera_qm import ant_metrics
-# from hera_qm import metrics_io
+from hera_qm import metrics_io
 from hera_qm.data import DATA_PATH
-# import hera_qm.tests as qmtest
+import hera_qm.tests as qmtest
 
 
 def test_per_antenna_modified_z_scores():
@@ -148,75 +147,60 @@ def test_mean_Vij_metrics():
             assert mean_Vij_cross[ant] == {0: 12 / 11, 2: 20 / 3}[ant[0]]
 
 
-# def test_load_antenna_metrics():
-#     # load a metrics file and check some values
-#     metrics_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
-#     metrics = ant_metrics.load_antenna_metrics(metrics_file)
+def test_load_antenna_metrics():
+    # N.B. This test operates on an old json with an old polarization convetion.
+    # Appears to work OK for now, but may not be worth maintaining.
 
-#     assert np.isclose(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')], 0.17529333517595402)
-#     assert np.isclose(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')], 0.17529333517595402)
-#     assert np.isclose(metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')], 0.7012786080508268)
+    # load a metrics file and check some values
+    metrics_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
+    metrics = ant_metrics.load_antenna_metrics(metrics_file)
 
-#     # change some values to FPE values, and write it out
-#     metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')] = np.nan
-#     metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')] = np.inf
-#     metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')] = -np.inf
+    assert np.isclose(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')], 0.17529333517595402)
+    assert np.isclose(metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')], 0.17529333517595402)
+    assert np.isclose(metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')], 0.7012786080508268)
 
-#     outpath = os.path.join(DATA_PATH, 'test_output',
-#                            'ant_metrics_output.hdf5')
-#     metrics_io.write_metric_file(outpath, metrics, overwrite=True)
+    # change some values to FPE values, and write it out
+    metrics['final_mod_z_scores']['meanVijXPol'][(72, 'x')] = np.nan
+    metrics['final_mod_z_scores']['meanVijXPol'][(72, 'y')] = np.inf
+    metrics['final_mod_z_scores']['meanVijXPol'][(31, 'y')] = -np.inf
 
-#     # test reading it back in, and that the values agree
-#     metrics_new = ant_metrics.load_antenna_metrics(outpath)
-#     assert np.isnan(metrics_new['final_mod_z_scores']['meanVijXPol'][(72, 'x')])
-#     assert np.isinf(metrics_new['final_mod_z_scores']['meanVijXPol'][(72, 'y')])
-#     assert np.isneginf(metrics_new['final_mod_z_scores']['meanVijXPol'][(31, 'y')])
+    outpath = os.path.join(DATA_PATH, 'test_output',
+                           'ant_metrics_output.hdf5')
+    metrics_io.write_metric_file(outpath, metrics, overwrite=True)
 
-#     # clean up after ourselves
-#     os.remove(outpath)
+    # test reading it back in, and that the values agree
+    metrics_new = ant_metrics.load_antenna_metrics(outpath)
+    assert np.isnan(metrics_new['final_mod_z_scores']['meanVijXPol'][(72, 'x')])
+    assert np.isinf(metrics_new['final_mod_z_scores']['meanVijXPol'][(72, 'y')])
+    assert np.isneginf(metrics_new['final_mod_z_scores']['meanVijXPol'][(31, 'y')])
 
-
-# def test_load_ant_metrics_json():
-#     json_file = os.path.join(DATA_PATH, 'example_ant_metrics.json')
-#     hdf5_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
-#     warn_message = ["JSON-type files can still be read but are no longer "
-#                     "written by default.\n"
-#                     "Write to HDF5 format for future compatibility."]
-#     json_dict = uvtest.checkWarnings(ant_metrics.load_antenna_metrics,
-#                                      func_args=[json_file],
-#                                      category=PendingDeprecationWarning,
-#                                      nwarnings=1,
-#                                      message=warn_message)
-#     hdf5_dict = ant_metrics.load_antenna_metrics(hdf5_file)
-
-#     # The written hdf5 may have these keys that differ by design
-#     # so ignore them.
-#     json_dict.pop('history', None)
-#     json_dict.pop('version', None)
-#     hdf5_dict.pop('history', None)
-#     hdf5_dict.pop('version', None)
-
-#     # This function recursively walks dictionary and compares
-#     # data types together with asserts or np.allclose
-#     assert qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
+    # clean up after ourselves
+    os.remove(outpath)
 
 
+def test_load_ant_metrics_json():
+    # N.B. This test operates on an old json with an old polarization convetion.
+    # Appears to work OK for now, but may not be worth maintaining.
 
-# def test_load_errors(antmetrics_data):
-#     with pytest.raises(ValueError):
-#         uvtest.checkWarnings(ant_metrics.AntennaMetrics,
-#                              [[DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA']],
-#                              {"fileformat": 'miriad'}, nwarnings=1,
-#                              message='antenna_diameters is not set')
-#     with pytest.raises(IOError):
-#         ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
-#                                    fileformat='uvfits')
-#     with pytest.raises(NotImplementedError):
-#         ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
-#                                    fileformat='fhd')
-#     with pytest.raises(NotImplementedError):
-#         ant_metrics.AntennaMetrics([DATA_PATH + '/zen.2457698.40355.xx.HH.uvcA'],
-#                                    fileformat='not_a_format')
+    json_file = os.path.join(DATA_PATH, 'example_ant_metrics.json')
+    hdf5_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
+    warn_message = ["JSON-type files can still be read but are no longer "
+                    "written by default.\n"
+                    "Write to HDF5 format for future compatibility."]
+    with pytest.warns(PendingDeprecationWarning, match=warn_message[0]):
+        json_dict = ant_metrics.load_antenna_metrics(json_file)
+    hdf5_dict = ant_metrics.load_antenna_metrics(hdf5_file)
+
+    # The written hdf5 may have these keys that differ by design
+    # so ignore them.
+    json_dict.pop('history', None)
+    json_dict.pop('version', None)
+    hdf5_dict.pop('history', None)
+    hdf5_dict.pop('version', None)
+
+    # This function recursively walks dictionary and compares
+    # data types together with asserts or np.allclose
+    assert qmtest.recursive_compare_dicts(hdf5_dict, json_dict)
 
 
 def test_init():
