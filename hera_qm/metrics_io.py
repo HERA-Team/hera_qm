@@ -113,7 +113,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
         with h5py, a TypeError is raised.
 
     """
-    allowed_types = (np.ndarray, np.float, np.int,
+    allowed_types = (np.ndarray, np.float32, np.float, np.int,
                      bytes, str, list, bool, np.bool_)
     compressable_types = (np.ndarray, list)
     for key in in_dict:
