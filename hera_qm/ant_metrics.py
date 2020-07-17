@@ -658,5 +658,7 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
         if metrics_path == '':
             # default path is same directory as file
             metrics_path = os.path.dirname(os.path.abspath(file))
-        am.save_antenna_metrics(os.path.join(metrics_path, metrics_basename),
-                                overwrite=overwrite)
+        outfile = os.path.join(metrics_path, metrics_basename)
+        if verbose:
+            print(f'Now saving results to {outfile}')
+        am.save_antenna_metrics(outfile, overwrite=overwrite)
