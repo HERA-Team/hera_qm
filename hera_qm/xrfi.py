@@ -1534,7 +1534,12 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         formed with these antennas will be set to True. Default is None (i.e.,
         no antennas will be excluded).
     output_prefix : str, optional
-        Optional output prefix. If none is provided, use data-file.
+        Optional output prefix. If none is provided, use data_file.
+        Required of data_file is None.
+        Provide output_prefix in the same format as a data_file with an extension
+        (should have a .uvh5 at the end). Output products will replace extension
+        with various output labels. For example, output_prefix='filename.uvh5'
+        will result in products with names like 'filename.cross_flags1.h5'. 
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
     run_check : bool
@@ -1606,11 +1611,11 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
             uvf_oxf = None
         if omnical_zscore_filter:
             uvf_oz, uvf_ozf = chi_sq_pipe(uvc_o, alg='zscore_full_array', modified=True,
-                                                   sig_init=sig_init, sig_adj=sig_adj,
-                                                   label='Omnical Renormalized chisq, median filter.',
-                                                   run_check=run_check,
-                                                   check_extra=check_extra,
-                                                   run_check_acceptability=run_check_acceptability)
+                                          sig_init=sig_init, sig_adj=sig_adj,
+                                          label='Omnical Renormalized chisq, median filter.',
+                                          run_check=run_check,
+                                          check_extra=check_extra,
+                                          run_check_acceptability=run_check_acceptability)
             metrics += [uvf_oz]
             flags += [uvf_ozf]
         else:
@@ -1810,11 +1815,11 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
             flags += [uvf_axf2]
         if abscal_zscore_filter:
             uvf_az2, uvf_azf2 = chi_sq_pipe(uvc_a, alg='zscore_full_array', modified=True,
-                                                   sig_init=sig_init, sig_adj=sig_adj,
-                                                   label='Abscal Renormalized chisq, median filter, round 2.',
-                                                   run_check=run_check,
-                                                   check_extra=check_extra,
-                                                   run_check_acceptability=run_check_acceptability)
+                                            sig_init=sig_init, sig_adj=sig_adj,
+                                            label='Abscal Renormalized chisq, median filter, round 2.',
+                                            run_check=run_check,
+                                            check_extra=check_extra,
+                                            run_check_acceptability=run_check_acceptability)
             metrics += [uvf_az2]
             flags += [uvf_azf2]
         else:
