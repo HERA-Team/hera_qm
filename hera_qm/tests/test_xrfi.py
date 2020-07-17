@@ -1286,7 +1286,8 @@ def test_day_threshold_run_data_only(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
-    xrfi.xrfi_run(None, None, None, data_files[1], 'Just a test', kt_size=3)
+    # only perform median filter on autocorrs to hit lines where only first round exists.
+    xrfi.xrfi_run(None, None, None, data_files[1], 'Just a test', kt_size=3, auto_mean_filter=False)
 
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['cross', 'auto', 'combined', 'total']
