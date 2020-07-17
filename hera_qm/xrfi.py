@@ -1539,7 +1539,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         Provide output_prefix in the same format as a data_file with an extension
         (should have a .uvh5 at the end). Output products will replace extension
         with various output labels. For example, output_prefix='filename.uvh5'
-        will result in products with names like 'filename.cross_flags1.h5'. 
+        will result in products with names like 'filename.cross_flags1.h5'.
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
     run_check : bool
@@ -2258,7 +2258,8 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
 
 
 def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
-                      nsig_f_adj=3., nsig_t_adj=3., clobber=False,
+                      nsig_f_adj=3., nsig_t_adj=3., flag_abscal=True,
+                      clobber=False,
                       run_check=True, check_extra=True,
                       run_check_acceptability=True):
     """Apply thresholding across all times/frequencies, using a full day of data.
@@ -2289,6 +2290,8 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     nsig_t_adj : float, optional
         The number of sigma above which to flag integrations if they neighbor flagged integrations.
         Default is 3.0.
+    flag_abscal : bool, optional
+        If True, generate new abscal solutions with day thresholded flags.
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
     run_check : bool
@@ -2314,8 +2317,8 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
              'abscal_chi_sq_renormed', 'combined']
     mexts = ['og_metrics', 'ox_metrics', 'ag_metrics', 'ax_metrics',
-             'v_metrics', 'omnical_chi_sq_renormed_metrics',
-             'abscal_chi_sq_renormed_metrics', 'combined_metrics', 'cross_metrics', 'auto_metrics']
+             'v_metrics', 'cross_metrics', 'auto_metrics', 'omnical_chi_sq_renormed_metrics',
+             'abscal_chi_sq_renormed_metrics', 'combined_metrics']
     # Read in the metrics objects
     filled_metrics = []
     for ext in mexts:
@@ -2363,23 +2366,29 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     files = [glob.glob(d + '/*.flags*.h5')[0] for d in xrfi_dirs]
     uvf_total |= UVFlag(files)
 
-    # Apply to abs calfits
-    uvc_a = UVCal()
-    incal_ext = 'abs'
-    outcal_ext = 'flagged_abs'
-    for dfile in data_files:
-        basename = qm_utils.strip_extension(dfile)
-        abs_in = '.'.join([basename, incal_ext, 'calfits'])
-        abs_out = '.'.join([basename, outcal_ext, 'calfits'])
-        uvc_a.read_calfits(abs_in)
+    outfile = '.'.join([basename, 'total_threshold_flags.h5'])
+    outpath = os.path.join(outdir, outfile)
+    uvf_total.write(outpath, clobber=clobber)
 
-        # select the times from the file we are going to flag
-        uvf_file = uvf_total.select(times=uvc_a.time_array, inplace=False)
+    if flag_abscal:
+        # Apply to abs calfits
+        uvc_a = UVCal()
+        incal_ext = 'abs'
+        outcal_ext = 'flagged_abs'
+        for dfile in data_files:
+            basename = qm_utils.strip_extension(dfile)
+            abs_in = '.'.join([basename, incal_ext, 'calfits'])
+            abs_out = '.'.join([basename, outcal_ext, 'calfits'])
+            # abscal flagging only happens if the abscal files exist.
+            uvc_a.read_calfits(abs_in)
 
-        flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
-                   run_check=run_check, check_extra=check_extra,
-                   run_check_acceptability=run_check_acceptability)
-        uvc_a.write_calfits(abs_out, clobber=clobber)
+            # select the times from the file we are going to flag
+            uvf_file = uvf_total.select(times=uvc_a.time_array, inplace=False)
+
+            flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
+                       run_check=run_check, check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
+            uvc_a.write_calfits(abs_out, clobber=clobber)
 
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',

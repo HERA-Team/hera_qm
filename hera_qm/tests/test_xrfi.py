@@ -975,7 +975,7 @@ def test_xrfi_run(tmpdir):
             os.remove(out)
     # now really do everything.
     with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
                       history='Just a test', kt_size=3, cross_median_filter=True)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
@@ -1176,7 +1176,8 @@ def test_day_threshold_run(tmpdir):
     assert n_matched_warnings == 8
 
     xrfi.day_threshold_run(data_files, 'just a test')
-    types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed', 'combined']
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
+             'abscal_chi_sq_renormed', 'combined', 'total']
     for type in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
@@ -1228,7 +1229,7 @@ def test_day_threshold_run_data_only(tmpdir):
     xrfi.xrfi_run(None, None, None, data_files[1], 'Just a test', kt_size=3)
 
     xrfi.day_threshold_run(data_files, 'just a test')
-    types = ['data', 'combined']
+    types = ['cross', 'auto', 'combined', 'total']
     for t in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
@@ -1284,7 +1285,8 @@ def test_day_threshold_run_cal_only(tmpdir):
                          nwarnings=len(messages), message=messages, category=categories)
 
     xrfi.day_threshold_run(data_files, 'just a test')
-    types = ['ox', 'og', 'ax', 'ag', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed', 'combined']
+    types = ['ox', 'og', 'ax', 'ag', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed',
+             'combined', 'total']
     for t in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
@@ -1333,7 +1335,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
-    xrfi.xrfi_run(None, None, model_file, None, 'Just a test', kt_size=3, output_prefix=data_files[1])
+    xrfi.xrfi_run(None, None, model_file, None, history='Just a test', kt_size=3, output_prefix=data_files[1])
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['v', 'combined']
     for t in types:
