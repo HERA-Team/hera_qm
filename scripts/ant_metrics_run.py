@@ -10,7 +10,7 @@ import sys
 ap = utils.get_metrics_ArgumentParser('ant_metrics')
 args = ap.parse_args()
 history = ' '.join(sys.argv)
-ant_metrics.ant_metrics_run(args.data_files, 
+ant_metrics.ant_metrics_run(args.data_files,
                             apriori_xants=args.apriori_xants,
                             crossCut=args.crossCut,
                             deadCut=args.deadCut,

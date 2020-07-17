@@ -306,6 +306,7 @@ def test_iterative_antenna_metrics_and_flagging():
     with pytest.raises(ValueError):
         am.iterative_antenna_metrics_and_flagging(verbose=True, run_cross_pols=False, run_cross_pols_only=True)
 
+
 def test_ant_metrics_run_and_load_antenna_metrics():
     four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
     am = ant_metrics.AntennaMetrics(four_pol_uvh5)
@@ -313,15 +314,15 @@ def test_ant_metrics_run_and_load_antenna_metrics():
 
     ant_metrics.ant_metrics_run(four_pol_uvh5, overwrite=True, history='test_history_string', verbose=True)
     am_hdf5 = ant_metrics.load_antenna_metrics(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
-    
+
     assert 'test_history_string' in am_hdf5['history']
     assert am.version_str == am_hdf5['version']
     assert am.crossCut == am_hdf5['cross_pol_z_cut']
     assert am.deadCut == am_hdf5['dead_ant_z_cut']
-    assert set(am.xants) ==set(am_hdf5['xants'])
-    assert set(am.crossed_ants) ==set(am_hdf5['crossed_ants'])
-    assert set(am.dead_ants) ==set(am_hdf5['dead_ants'])
-    assert set(am.datafile_list) ==set(am_hdf5['datafile_list'])
+    assert set(am.xants) == set(am_hdf5['xants'])
+    assert set(am.crossed_ants) == set(am_hdf5['crossed_ants'])
+    assert set(am.dead_ants) == set(am_hdf5['dead_ants'])
+    assert set(am.datafile_list) == set(am_hdf5['datafile_list'])
 
     assert qmtest.recursive_compare_dicts(am.removal_iteration, am_hdf5['removal_iteration'])
     assert qmtest.recursive_compare_dicts(am.final_metrics, am_hdf5['final_metrics'])

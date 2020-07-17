@@ -840,8 +840,8 @@ def _recursively_validate_dict(in_dict):
         aps = antpol_str.replace('(', '')
         aps = aps.replace(')', '')
         aps = aps.replace(' ', '')
-        aps = aps.replace("'","")
-        aps = aps.replace('"','')
+        aps = aps.replace("'", "")
+        aps = aps.replace('"', '')
         ant, antpol = aps.split(',')
         return (int(ant), antpol)
 
