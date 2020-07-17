@@ -37,6 +37,7 @@ antpol_dict_keys = ['removal_iteration']
 list_of_strings_keys = ['datafile_list']
 dict_of_dicts_keys = ['final_mod_z_scores', 'final_metrics']
 dict_of_dict_of_dicts_keys = ['all_metrics', 'all_mod_z_scores']
+dict_of_dict_of_tuple_keys = ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']
 
 
 def _reds_list_to_dict(reds):
@@ -833,6 +834,17 @@ def _recursively_validate_dict(in_dict):
         A copy of input dictionary with antpairs and antpols cast as tuples.
 
     """
+    def _antpol_str_to_tuple(antpol_str):
+        if isinstance(antpol_str, tuple):
+            return antpol_str
+        aps = antpol_str.replace('(', '')
+        aps = aps.replace(')', '')
+        aps = aps.replace(' ', '')
+        aps = aps.replace("'","")
+        aps = aps.replace('"','')
+        ant, antpol = aps.split(',')
+        return (int(ant), antpol)
+
     for key in in_dict:
         if key in ['history', 'version']:
             if isinstance(in_dict[key], bytes):
@@ -850,6 +862,12 @@ def _recursively_validate_dict(in_dict):
             in_dict[key] = [tuple((int(ant), qm_utils._bytes_to_str(pol)))
                             if isinstance(pol, bytes) else tuple((int(ant), (pol)))
                             for ant, pol in in_dict[key]]
+
+        if key in antpol_dict_keys:
+            in_dict[key] = {_antpol_str_to_tuple(k): in_dict[key][k] for k in in_dict[key]}
+
+        if key in dict_of_dict_of_tuple_keys:
+            in_dict[key] = {_antpol_str_to_tuple(k): in_dict[key][k] for k in in_dict[key]}
 
         if key in known_string_keys and isinstance(in_dict[key], bytes):
             in_dict[key] = in_dict[key].decode()
