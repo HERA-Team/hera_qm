@@ -1822,6 +1822,9 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                                           run_check_acceptability=run_check_acceptability)
             metrics += [uvf_ax2]
             flags += [uvf_axf2]
+        else:
+            uvf_ax2 = None; uvf_axf2 = None
+            
         if abscal_zscore_filter:
             uvf_az2, uvf_azf2 = chi_sq_pipe(uvc_a, alg='zscore_full_array', modified=True,
                                             sig_init=sig_init, sig_adj=sig_adj,

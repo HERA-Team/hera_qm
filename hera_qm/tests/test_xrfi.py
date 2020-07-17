@@ -1055,6 +1055,28 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
+    # Make sure switches work, provide all files but set all filters to false except data.
+    xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, data_file=raw_dfile,
+                  model_file=model_file,
+                  history='data only flags.', cross_median_filter=True,
+                  abscal_mean_filter=False, abscal_median_filter=False,
+                  abscal_chi2_median_filter=False, abscal_chi2_mean_filter=False,
+                  abscal_zscore_filter=False,
+                  omnical_mean_filter=False, omnical_median_filter=False,
+                  omnical_chi2_median_filter=False, omnical_chi2_mean_filter=False,
+                  omnical_zscore_filter=False,
+                  omnivis_mean_filter=False, omnivis_median_filter=False)
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if 'cross' in ext or 'combined' in ext or 'auto' in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
     # test run with only omnivis files
     xrfi.xrfi_run(model_file=model_file, output_prefix=raw_dfile, history='omnivis only flags.')
     for ext, label in ext_labels.items():
