@@ -49,7 +49,7 @@ def get_metrics_ArgumentParser(method_name):
         ap.prog = 'ant_metrics.py'
         ap.add_argument('data_files', metavar='files', type=str, nargs='*', default=[],
                         help='4-pol visibility files used to compute antenna metrics')
-        ap.add_argument('--apriori_xants', type=int, nargs='*', default=[], 
+        ap.add_argument('--apriori_xants', type=int, nargs='*', default=[],
                         help='space-delimited list of integer antenna numbers to exclude apriori.')
         ap.add_argument('--crossCut', default=5.0, type=float,
                         help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')

@@ -220,10 +220,10 @@ def test_mean_Vij_metrics():
 
 
 def test_init():
-    #load data
+    # load data
     four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
     am = ant_metrics.AntennaMetrics(four_pol_uvh5, apriori_xants=[9, (10, 'Jxx'), (20, 'jxx')])
-    
+
     # test metadata
     assert am.datafile_list == [four_pol_uvh5]
     assert am.hd is not None
@@ -279,10 +279,11 @@ def test_init():
     for bl in am.bls:
         assert am.abs_vis_stats[bl] == am2.abs_vis_stats[bl]
 
+
 def test_iterative_antenna_metrics_and_flagging():
     four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
     am = ant_metrics.AntennaMetrics(four_pol_uvh5)
-    
+
     # try normal operation
     am.iterative_antenna_metrics_and_flagging(verbose=True, crossCut=5, deadCut=5)
     assert (81, 'Jxx') in am.crossed_ants
@@ -303,7 +304,6 @@ def test_iterative_antenna_metrics_and_flagging():
     assert am.final_metrics['meanVijXPol'][(81, 'Jxx')] == am.all_metrics[0]['meanVijXPol'][(81, 'Jxx')]
     assert am.final_metrics['meanVijXPol'][(81, 'Jyy')] == am.all_metrics[0]['meanVijXPol'][(81, 'Jyy')]
 
-
     # try run_cross_pols=False
     am.iterative_antenna_metrics_and_flagging(verbose=True, deadCut=4, run_cross_pols=False)
     assert (81, 'Jxx') in am.dead_ants
@@ -323,7 +323,6 @@ def test_iterative_antenna_metrics_and_flagging():
     # test error
     with pytest.raises(ValueError):
         am.iterative_antenna_metrics_and_flagging(verbose=True, run_cross_pols=False, run_cross_pols_only=True)
-
 
 
 # def test_init(antmetrics_data):

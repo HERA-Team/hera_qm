@@ -115,7 +115,7 @@ def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np
     freq_alg : function, optional
         Function that reuduces a 1D array to a single number or a 2D array to a 1D
         array using the axis kwarg. If its the same as time_alg, the 2D --> float
-        version will be used (no axis kwarg). To handle flags properly, should be 
+        version will be used (no axis kwarg). To handle flags properly, should be
         the "nan" version of the function.
 
     Returns
@@ -132,7 +132,7 @@ def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np
         data_here[~np.isfinite(data_here)] = np.nan
         if flags is not None:
             data_here[flags[bl]] = np.nan
-            
+
         med_abs_vis = np.nanmedian(np.abs(data_here))
         if med_abs_vis == 0:
             abs_vis_stats[bl] = 0
@@ -150,7 +150,7 @@ def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
     Parameters
     ----------
     abs_vis_stats : dictionary
-        Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to 
+        Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to
         mean absolute value of visibilites over time and frequency.
     xants : list of ints or tuples, optional
         Antenna numbers or tuples e.g. (1, 'Jee') to exclude from metrics
@@ -170,7 +170,7 @@ def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
 
     """
     from hera_cal.utils import split_pol, split_bl
-    
+
     # figure out which antennas match pols and and are not in xants
     if pols is not None:
         antpols = set([ap for bl in abs_vis_stats for ap in split_pol(bl[2])
@@ -181,12 +181,12 @@ def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
             if (ant not in xants) and (ant[0] not in xants):
                 if (pols is None) or (ant[1] in antpols):
                     ants.add(ant)
-    
-    # assign visibility means to each antenna in the baseline 
+
+    # assign visibility means to each antenna in the baseline
     per_ant_means = {ant: [] for ant in ants}
     for bl, vis_mean in abs_vis_stats.items():
         if bl[0] == bl[1]:
-            continue # ignore autocorrelations
+            continue  # ignore autocorrelations
         if (pols is None) or (bl[2] in pols):
             for ant in split_bl(bl):
                 if ant in ants:
@@ -230,7 +230,7 @@ def antpol_metric_sum_ratio(cross_metrics, same_metrics):
     cross_pol_ratio = {}
     for an in antnums:
         cross_sum = np.sum([cross_metrics[(an, ap)] for ap in antpols])
-        same_sum = np.sum([same_metrics[(an, ap)] for ap in antpols]) 
+        same_sum = np.sum([same_metrics[(an, ap)] for ap in antpols])
         for ap in antpols:
             cross_pol_ratio[(an, ap)] = cross_sum / same_sum
     return cross_pol_ratio
@@ -246,11 +246,11 @@ def mean_Vij_cross_pol_metrics(abs_vis_stats, xants=[], rawMetric=False):
     Parameters
     ----------
     abs_vis_stats : dictionary
-        Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to 
+        Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to
         mean absolute value of visibilites over time and frequency.
     xants : list of integers or tuples of antennas to exlcude, optional
     rawMetric : bool, optional
-        If True, return the raw mean Vij cross pol metric instead of the 
+        If True, return the raw mean Vij cross pol metric instead of the
         modified z-score. Default is False.
 
     Returns
@@ -268,7 +268,6 @@ def mean_Vij_cross_pol_metrics(abs_vis_stats, xants=[], rawMetric=False):
         raise ValueError('There must be precisely two "cross" visbility polarizations '
                          'and two "same" polarizations but we have instead '
                          f'{cross_pols} and {same_pols}')
-                                 
 
     # Compute metrics and cross pols only and and same pols only
     full_xants = set([ant[0] if isinstance(ant, tuple) else ant for ant in xants])
@@ -277,10 +276,9 @@ def mean_Vij_cross_pol_metrics(abs_vis_stats, xants=[], rawMetric=False):
     same_metrics = mean_Vij_metrics(abs_vis_stats, xants=full_xants,
                                     pols=same_pols, rawMetric=True)
 
-
     # Save the ratio of the cross/same metrics in both antpols
     cross_pol_ratio = antpol_metric_sum_ratio(cross_metrics, same_metrics)
-    
+
     if rawMetric:
         return cross_pol_ratio
     else:
@@ -374,14 +372,14 @@ class AntennaMetrics():
             self.bls = sorted(set.intersection(*[set(bls) for bls in self.hd.bls.values()]))
         else:
             self.bls = self.hd.bls
-        
+
         # Figure out which antennas are in the data
         from hera_cal.utils import split_bl, comply_pol
         self.split_bl = split_bl  # prevents the need for importing again later
         self.ants = set([ant for bl in self.bls for ant in split_bl(bl)])
         self.antnums = set([ant[0] for ant in self.ants])
         self.antpols = set([ant[1] for ant in self.ants])
-        
+
         # Parse apriori_xants
         if not isinstance(apriori_xants, list) and isinstance(apriori_xants, np.ndarray):
             raise ValueError('apriori_xants must be a list or numpy array.')
@@ -396,7 +394,7 @@ class AntennaMetrics():
                 self.apriori_xants.add((ant[0], comply_pol(ant[1])))
             else:
                 raise ValueError(f'{ant} is not a valid entry in apriori_xants.')
-        
+
         # Set up metadata and summary stats
         self.version_str = hera_qm_version_str
         self.history = ''
@@ -404,7 +402,7 @@ class AntennaMetrics():
 
         # Load and summarize data
         self._load_time_freq_abs_vis_stats(Nbls_per_load=Nbls_per_load)
-        
+
     def _reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
         self.xants, self.crossed_ants, self.dead_ants = [], [], []
@@ -415,7 +413,7 @@ class AntennaMetrics():
         for ant in self.apriori_xants:
             self.xants.append(ant)
             self.removal_iteration[ant] = -1
-    
+
     def _load_time_freq_abs_vis_stats(self, Nbls_per_load=None):
         """Loop through groups of baselines to calculate self.abs_vis_stats
         using time_freq_abs_vis_stats()
@@ -425,12 +423,12 @@ class AntennaMetrics():
         else:
             bl_load_groups = [self.bls[i:i + Nbls_per_load]
                               for i in range(0, len(self.bls), Nbls_per_load)]
-        
+
         self.abs_vis_stats = {}
         for blg in bl_load_groups:
             data, flags, _ = self.hd.read(bls=blg)
             self.abs_vis_stats.update(time_freq_abs_vis_stats(data, flags))
-            
+
     def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median autoPower is 0.0.
 
@@ -469,7 +467,7 @@ class AntennaMetrics():
         # Compute all raw metrics
         metNames = []
         metVals = []
-        
+
         if run_cross_pols_only and not run_cross_pols:
             raise ValueError('Must run at least 1 metric, but run_cross_pols is False '
                              'while run_cross_pols_only is True')
@@ -481,7 +479,7 @@ class AntennaMetrics():
 
         if run_cross_pols:
             metNames.append('meanVijXPol')
-            meanVijXPol = mean_Vij_cross_pol_metrics(self.abs_vis_stats, 
+            meanVijXPol = mean_Vij_cross_pol_metrics(self.abs_vis_stats,
                                                      xants=self.xants, rawMetric=True)
             metVals.append(meanVijXPol)
 
@@ -501,7 +499,7 @@ class AntennaMetrics():
         self.all_metrics.update({self.iter: metrics})
         self.all_mod_z_scores.update({self.iter: modzScores})
 
-    def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5, 
+    def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
                                                verbose=False, run_cross_pols=True,
                                                run_cross_pols_only=False):
         """Run Mean Vij and Mean Vij crosspol metrics and stores results in self.
@@ -522,15 +520,15 @@ class AntennaMetrics():
         self._reset_summary_stats()
         self._find_totally_dead_ants(verbose=verbose)
         self.crossCut, self.deadCut = crossCut, deadCut
-        
-        # iteratively remove antennas, removing only the worst antenna 
+
+        # iteratively remove antennas, removing only the worst antenna
         for iteration in range(len(self.antpols) * len(self.ants)):
             self.iter = iteration
             self._run_all_metrics(run_cross_pols=run_cross_pols,
                                   run_cross_pols_only=run_cross_pols_only)
             worstDeadCutRatio = -1
             worstCrossCutRatio = -1
-            
+
             # Find most likely dead antenna
             if not run_cross_pols_only:
                 deadMetrics = {ant: np.abs(metric) for ant, metric
@@ -544,11 +542,11 @@ class AntennaMetrics():
                                 in self.all_mod_z_scores[iteration]['meanVijXPol'].items()}
                 worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
                 worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt]) / crossCut
-            
+
             # Find the single worst antenna, remove it, log it, and run again
             if (worstCrossCutRatio >= worstDeadCutRatio) and (worstCrossCutRatio >= 1.0):
-                for antpol in self.antpols: # if crossed remove both polarizations
-                    crossed_ant = (worstCrossAnt[0], antpol) 
+                for antpol in self.antpols:  # if crossed remove both polarizations
+                    crossed_ant = (worstCrossAnt[0], antpol)
                     self.xants.append(crossed_ant)
                     self.crossed_ants.append(crossed_ant)
                     self.removal_iteration[crossed_ant] = iteration
@@ -598,7 +596,7 @@ class AntennaMetrics():
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
 
-def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0, 
+def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
                     run_cross_pols=True, run_cross_pols_only=False,
                     metrics_path='', extension='.ant_metrics.hdf5',
                     overwrite=False, Nbls_per_load=None, history='', verbose=True):
@@ -607,14 +605,14 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
 
     Note
     ----
-    The funciton will take a file or list of files and options. It will run 
+    The funciton will take a file or list of files and options. It will run
     ant metrics once on all files together but then save the results to am
     identical HDF5 file for each input file.
 
     Parameters
     ----------
     data_files : str or list of str
-        Path to file or files of raw data to calculate antenna metrics on. 
+        Path to file or files of raw data to calculate antenna metrics on.
     apriori_xants : list of integers or tuples, optional
         List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
         as excluded apriori. These are included in self.xants, but not
@@ -645,7 +643,7 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
     """
 
     # run ant metrics
-    am = AntennaMetrics(data_files, 
+    am = AntennaMetrics(data_files,
                         apriori_xants=apriori_xants,
                         Nbls_per_load=Nbls_per_load)
     am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
@@ -654,7 +652,6 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
                                               run_cross_pols=run_cross_pols,
                                               run_cross_pols_only=run_cross_pols_only)
     am.history = am.history + history
-
 
     for file in am.datafile_list:
         metrics_basename = utils.strip_extension(os.path.basename(file)) + extension
