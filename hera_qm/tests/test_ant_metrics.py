@@ -302,6 +302,18 @@ def test_iterative_antenna_metrics_and_flagging():
     assert (81, 'Jyy') in am.xants
     assert am.dead_ants == []
 
+    # test _find_totally_dead_ants
+    for bl in am.abs_vis_stats:
+        if 9 in bl:
+            am.abs_vis_stats[bl] = 0.0
+    am.iterative_antenna_metrics_and_flagging(verbose=True)
+    assert (9, 'Jxx') in am.xants
+    assert (9, 'Jyy') in am.xants
+    assert (9, 'Jxx') in am.dead_ants
+    assert (9, 'Jyy') in am.dead_ants
+    assert am.removal_iteration[9, 'Jxx'] == -1
+    assert am.removal_iteration[9, 'Jyy'] == -1
+
     # test error
     with pytest.raises(ValueError):
         am.iterative_antenna_metrics_and_flagging(verbose=True, run_cross_pols=False, run_cross_pols_only=True)
