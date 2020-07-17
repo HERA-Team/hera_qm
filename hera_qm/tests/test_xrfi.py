@@ -906,9 +906,16 @@ def test_xrfi_run(tmpdir):
     shutil.copyfile(test_uvh5_file, raw_dfile)
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile], {'history': 'Just a test', 'kt_size': 3},
-                         nwarnings=len(messages), message=messages, category=categories)
+
+    # check warnings
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
 
     outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
     ext_labels = {'ag_flags1': 'Abscal gains, median filter. Flags.',
@@ -967,10 +974,16 @@ def test_xrfi_run(tmpdir):
         if os.path.exists(out):
             os.remove(out)
     # now really do everything.
-    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile], {'history': 'Just a test', 'kt_size': 3,
-                                         'cross_median_filter': True},
-                         nwarnings=len(messages), message=messages, category=categories)
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 
+                      history='Just a test', kt_size=3, cross_median_filter=True)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
+
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
@@ -1122,9 +1135,17 @@ def test_day_threshold_run(tmpdir):
     data_files = [raw_dfile]
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         raw_dfile, 'Just a test'], {'kt_size': 3},
-                         nwarnings=len(messages), message=messages, category=categories)
+
+    # check warnings
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
+
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
@@ -1143,9 +1164,16 @@ def test_day_threshold_run(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
-    uvtest.checkWarnings(xrfi.xrfi_run, [ocal_file, acal_file, model_file,
-                                         data_files[1], 'Just a test'], {'kt_size': 3},
-                         nwarnings=len(messages), message=messages, category=categories)
+
+    # check warnings
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], 'Just a test', kt_size=3, clobber=True)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
 
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed', 'combined']
@@ -1201,8 +1229,8 @@ def test_day_threshold_run_data_only(tmpdir):
 
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['data', 'combined']
-    for type in types:
-        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
+    for t in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
         assert os.path.exists(outfile)
 
@@ -1257,8 +1285,8 @@ def test_day_threshold_run_cal_only(tmpdir):
 
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['ox', 'og', 'ax', 'ag', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed', 'combined']
-    for type in types:
-        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
+    for t in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
         assert os.path.exists(outfile)
 
@@ -1308,8 +1336,8 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     xrfi.xrfi_run(None, None, model_file, None, 'Just a test', kt_size=3, output_prefix=data_files[1])
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['v', 'combined']
-    for type in types:
-        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
+    for t in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
         assert os.path.exists(outfile)
 
@@ -1324,11 +1352,16 @@ def test_xrfi_h1c_run():
                       kt_size=3)
 
     # catch no provided data file for flagging
-    uvtest.checkWarnings(xrfi.xrfi_h1c_run, [None],
-                         {'filename': test_d_file, 'history': 'Just a test.',
-                          'model_file': test_d_file, 'model_file_format': 'miriad',
-                          'xrfi_path': xrfi_path}, nwarnings=191,
-                         message=['indata is None'] + 190 * ['K1 value 8'])
+    with pytest.warns(None) as record:
+        xrfi.xrfi_h1c_run(None, **{'filename': test_d_file, 'history': 'Just a test.',
+                                   'model_file': test_d_file, 'model_file_format': 'miriad',
+                                   'xrfi_path': xrfi_path})
+    assert len(record) >= 191
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if 'indata is None' in str(record[i].message) or 'K1 value 8' in str(record[i].message):
+            n_matched_warnings += 1
+    assert n_matched_warnings == 191
 
 
 def test_xrfi_h1c_run_no_indata():
