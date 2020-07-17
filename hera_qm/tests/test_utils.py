@@ -19,7 +19,6 @@ def test_get_metrics_ArgumentParser_ant_metrics():
     # First try defaults - test a few of them
     args = a.parse_args('')
     assert args.crossCut == 5.0
-    assert args.alwaysDeadCut == 10.0
     assert args.metrics_path == ''
     assert args.verbose is True
     # try to set something
