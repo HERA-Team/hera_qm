@@ -1711,7 +1711,16 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     # compute data median filter.
     if data_file is not None:
         uv_d = UVData()
-        uv_d.read(data_file)
+        # If only autos are being used, only load autos.
+        if not cross_median_filter and not cross_mean_filter:
+            ant_str = 'auto'
+        # If only crosses are being used, only load crosses.
+        elif not auto_median_filter and not auto_mean_filter:
+            ant_str = 'cross'
+        else:
+        # otherwise, load everything.
+            ant_str = 'all'
+        uv_d.read(data_file, ant_str=ant_str)
         if uvf_apriori is None:
             uvf_apriori = UVFlag(uv_d, mode='flag', copy_flags=True, label='A priori flags.')
             uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
