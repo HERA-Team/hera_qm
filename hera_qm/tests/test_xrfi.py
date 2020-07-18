@@ -892,9 +892,9 @@ def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
     mess1 = ['This object is already a waterfall']
-    messages = 6 * mess1
+    messages = 8 * mess1
     cat1 = [UserWarning]
-    categories = 6 * cat1
+    categories = 8 * cat1
     # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
     tmp_path = tmpdir.strpath
     fake_obs = 'zen.2457698.40355.HH'
@@ -909,67 +909,279 @@ def test_xrfi_run(tmpdir):
 
     # check warnings
     with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3, ant_str='cross')
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
     for i in range(len(record)):
         if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
             n_matched_warnings += 1
-    assert n_matched_warnings == 6
-
-    # remove spoofed files
-    for fname in [ocal_file, acal_file, model_file, raw_dfile]:
-        os.remove(fname)
+    assert n_matched_warnings == 8
 
     outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
-    ext_labels = {'ag_flags1': 'Abscal gains, round 1. Flags.',
-                  'ag_flags2': 'Abscal gains, round 2. Flags.',
-                  'ag_metrics1': 'Abscal gains, round 1.',
-                  'ag_metrics2': 'Abscal gains, round 2.',
+    ext_labels = {'ag_flags1': 'Abscal gains, median filter. Flags.',
+                  'ag_flags2': 'Abscal gains, mean filter. Flags.',
+                  'ag_metrics1': 'Abscal gains, median filter.',
+                  'ag_metrics2': 'Abscal gains, mean filter.',
                   'apriori_flags': 'A priori flags.',
-                  'ax_flags1': 'Abscal chisq, round 1. Flags.',
-                  'ax_flags2': 'Abscal chisq, round 2. Flags.',
-                  'ax_metrics1': 'Abscal chisq, round 1.',
-                  'ax_metrics2': 'Abscal chisq, round 2.',
-                  'chi_sq_flags1': 'Renormalized chisq, round 1. Flags.',
-                  'chi_sq_flags2': 'Renormalized chisq, round 2. Flags.',
-                  'chi_sq_renormed1': 'Renormalized chisq, round 1.',
-                  'chi_sq_renormed2': 'Renormalized chisq, round 2.',
+                  'ax_flags1': 'Abscal chisq, median filter. Flags.',
+                  'ax_flags2': 'Abscal chisq, mean filter. Flags.',
+                  'ax_metrics1': 'Abscal chisq, median filter.',
+                  'ax_metrics2': 'Abscal chisq, mean filter.',
+                  'omnical_chi_sq_flags1': 'Omnical Renormalized chisq, median filter. Flags.',
+                  'omnical_chi_sq_flags2': 'Omnical Renormalized chisq, median filter, round 2. Flags.',
+                  'omnical_chi_sq_renormed_metrics1': 'Omnical Renormalized chisq, median filter.',
+                  'omnical_chi_sq_renormed_metrics2': 'Omnical Renormalized chisq, median filter, round 2.',
+                  'abscal_chi_sq_flags1': 'Abscal Renormalized chisq, median filter. Flags.',
+                  'abscal_chi_sq_flags2': 'Abscal Renormalized chisq, median filter, round 2. Flags.',
+                  'abscal_chi_sq_renormed_metrics1': 'Abscal Renormalized chisq, median filter.',
+                  'abscal_chi_sq_renormed_metrics2': 'Abscal Renormalized chisq, median filter, round 2.',
                   'combined_flags1': 'Flags from combined metrics, round 1.',
                   'combined_flags2': 'Flags from combined metrics, round 2.',
                   'combined_metrics1': 'Combined metrics, round 1.',
                   'combined_metrics2': 'Combined metrics, round 2.',
-                  'data_flags2': 'Data, round 2. Flags.',
-                  'data_metrics2': 'Data, round 2.',
+                  'cross_flags1': 'Crosscorr, median filter. Flags.',
+                  'cross_flags2': 'Crosscorr, mean filter. Flags.',
+                  'auto_flags1': 'Autocorr, median filter. Flags.',
+                  'auto_flags2': 'Autocorr, mean filter. Flags.',
+                  'auto_metrics2': 'Autocorr, mean filter.',
+                  'auto_metrics1': 'Autocorr, median filter.',
+                  'cross_metrics2': 'Crosscorr, mean filter.',
+                  'cross_metrics1': 'Crosscorr, median filter.',
                   'flags1': 'ORd flags, round 1.',
                   'flags2': 'ORd flags, round 2.',
-                  'og_flags1': 'Omnical gains, round 1. Flags.',
-                  'og_flags2': 'Omnical gains, round 2. Flags.',
-                  'og_metrics1': 'Omnical gains, round 1.',
-                  'og_metrics2': 'Omnical gains, round 2.',
-                  'ox_flags1': 'Omnical chisq, round 1. Flags.',
-                  'ox_flags2': 'Omnical chisq, round 2. Flags.',
-                  'ox_metrics1': 'Omnical chisq, round 1.',
-                  'ox_metrics2': 'Omnical chisq, round 2.',
-                  'v_flags1': 'Omnical visibility solutions, round 1. Flags.',
-                  'v_flags2': 'Omnical visibility solutions, round 2. Flags.',
-                  'v_metrics1': 'Omnical visibility solutions, round 1.',
-                  'v_metrics2': 'Omnical visibility solutions, round 2.'}
+                  'og_flags1': 'Omnical gains, median filter. Flags.',
+                  'og_flags2': 'Omnical gains, mean filter. Flags.',
+                  'og_metrics1': 'Omnical gains, median filter.',
+                  'og_metrics2': 'Omnical gains, mean filter.',
+                  'ox_flags1': 'Omnical chisq, median filter. Flags.',
+                  'ox_flags2': 'Omnical chisq, mean filter. Flags.',
+                  'ox_metrics1': 'Omnical chisq, median filter.',
+                  'ox_metrics2': 'Omnical chisq, mean filter.',
+                  'v_flags1': 'Omnical visibility solutions, median filter. Flags.',
+                  'v_flags2': 'Omnical visibility solutions, mean filter. Flags.',
+                  'v_metrics1': 'Omnical visibility solutions, median filter.',
+                  'v_metrics2': 'Omnical visibility solutions, mean filter.'}
+    for ext, label in ext_labels.items():
+        # by default, only cross median filter / mean filter is not performed.
+        if not ext in['cross_metrics1', 'cross_flags1']:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # now really do everything.
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
+                      history='Just a test', kt_size=3, cross_median_filter=True)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
+
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
         uvf = UVFlag(out)
         assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # test cross correlations.
+    xrfi.xrfi_run(history='data cross corrs.', data_file=raw_dfile,
+                  cross_median_filter=True, cross_mean_filter=True, auto_mean_filter=False, auto_median_filter=False)
+    for ext, label in ext_labels.items():
+      out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+      if 'cross' in ext or 'combined' in ext:
+          assert os.path.exists(out)
+          uvf = UVFlag(out)
+          assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+          os.remove(out)
+    # test auto correlations.
+    xrfi.xrfi_run(history='data autocorrs.', data_file=raw_dfile,
+                  cross_mean_filter=False, cross_median_filter=False)
+    for ext, label in ext_labels.items():
+      out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+      if 'auto' in ext or 'combined' in ext:
+          assert os.path.exists(out)
+          uvf = UVFlag(out)
+          assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+      out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+      if os.path.exists(out):
+          os.remove(out)
+    # test xrfi_run errors when providing no data inputs
+    with pytest.raises(ValueError):
+         xrfi.xrfi_run(None, None, None, None, None)
+    # test error when no data file or output prefix provided.
+    with pytest.raises(ValueError):
+        xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, history='fail', output_prefix=None)
+    # test run with only ocal and acal files.
+    xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, history='calibration only flags.',
+                  output_prefix=raw_dfile)
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if 'cross' not in ext and 'v_' not in ext and 'auto' not in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # abscal ONLY
+    xrfi.xrfi_run(acalfits_file=acal_file, history='abscal only flags.',
+                  output_prefix=raw_dfile)
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if 'cross' not in ext and 'v_' not in ext and 'auto' not in ext\
+         and 'ox_' not in ext and 'og_' not in ext and not 'omnical' in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # test run with only data files. Median/mean filter on autos and crosses.
+    xrfi.xrfi_run(data_file=raw_dfile, history='data only flags.', cross_median_filter=True)
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if 'cross' in ext or 'combined' in ext or 'auto' in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # Make sure switches work, provide all files but set all filters to false except data.
+    xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, data_file=raw_dfile,
+                  model_file=model_file,
+                  history='data only flags.', cross_median_filter=True,
+                  abscal_mean_filter=False, abscal_median_filter=False,
+                  abscal_chi2_median_filter=False, abscal_chi2_mean_filter=False,
+                  abscal_zscore_filter=False,
+                  omnical_mean_filter=False, omnical_median_filter=False,
+                  omnical_chi2_median_filter=False, omnical_chi2_mean_filter=False,
+                  omnical_zscore_filter=False,
+                  omnivis_mean_filter=False, omnivis_median_filter=False)
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if 'cross' in ext or 'combined' in ext or 'auto' in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # Don't do any median filters.
+    xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file, data_file=raw_dfile,
+                  model_file=model_file,
+                  history='data only flags.',
+                  abscal_mean_filter=False, abscal_median_filter=False,
+                  abscal_chi2_median_filter=False, abscal_chi2_mean_filter=False,
+                  abscal_zscore_filter=False,
+                  omnical_mean_filter=False, omnical_median_filter=False,
+                  omnical_chi2_median_filter=False, omnical_chi2_mean_filter=False,
+                  omnical_zscore_filter=False,
+                  omnivis_mean_filter=False, omnivis_median_filter=False,
+                  cross_median_filter=False, auto_median_filter=False)
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if ('cross' in ext or 'combined' in ext or 'auto' in ext) and '1' not in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # test run with only omnivis files
+    xrfi.xrfi_run(model_file=model_file, output_prefix=raw_dfile, history='omnivis only flags.')
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if 'v_' in ext or 'combined' in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # test run with auto data and omnivis files
+    xrfi.xrfi_run(data_file=raw_dfile, model_file=model_file, history='omnivis and cross flags.', cross_mean_filter=False)
+    for ext, label in ext_labels.items():
+        if 'v_' in ext or 'combined' in ext or 'auto' in ext:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # test data with data and omnical
+    xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file,
+                  data_file=raw_dfile, history='data and omni/abs cal.', cross_median_filter=True)
+    for ext, label in ext_labels.items():
+        if not 'v_' in ext:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # test omnivis with omnical
+    xrfi.xrfi_run(acalfits_file=acal_file, ocalfits_file=ocal_file,
+                  model_file=model_file, history='model and omni/abs cal.', output_prefix=raw_dfile)
+    for ext, label in ext_labels.items():
+        if 'cross' not in ext and 'auto' not in ext:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # remove spoofed files
     shutil.rmtree(outdir)  # cleanup
+    for fname in [ocal_file, acal_file, model_file, raw_dfile]:
+        os.remove(fname)
 
 
 def test_day_threshold_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
     mess1 = ['This object is already a waterfall']
-    messages = 6 * mess1
+    messages = 8 * mess1
     cat1 = [UserWarning]
-    categories = 6 * cat1
+    categories = 8 * cat1
     # Spoof the files - run xrfi_run twice on spoofed files.
     tmp_path = tmpdir.strpath
     fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
@@ -992,7 +1204,7 @@ def test_day_threshold_run(tmpdir):
     for i in range(len(record)):
         if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
             n_matched_warnings += 1
-    assert n_matched_warnings == 6
+    assert n_matched_warnings == 8
 
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
@@ -1021,10 +1233,11 @@ def test_day_threshold_run(tmpdir):
     for i in range(len(record)):
         if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
             n_matched_warnings += 1
-    assert n_matched_warnings == 6
+    assert n_matched_warnings == 8
 
     xrfi.day_threshold_run(data_files, 'just a test')
-    types = ['og', 'ox', 'ag', 'ax', 'v', 'data', 'chi_sq_renormed', 'combined']
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
+             'abscal_chi_sq_renormed', 'combined', 'total']
     for type in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
@@ -1034,6 +1247,166 @@ def test_day_threshold_run(tmpdir):
         calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
         assert os.path.exists(calfile)
 
+def test_day_threshold_run_data_only(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    messages = 6 * mess1
+    cat1 = [UserWarning]
+    categories = 6 * cat1
+    # Spoof the files - run xrfi_run twice on spoofed files.
+    tmp_path = tmpdir.strpath
+    fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    ocal_file = os.path.join(tmp_path, fake_obses[0] + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[0] + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obses[0] + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    data_files = [raw_dfile]
+    model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    xrfi.xrfi_run(None, None, None, raw_dfile, 'Just a test', kt_size=3)
+    # Need to adjust time arrays when duplicating files
+    uvd = UVData()
+    uvd.read_uvh5(data_files[0])
+    dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
+    uvd.time_array += dt
+    uvd.set_lsts_from_time_array()
+    data_files += [os.path.join(tmp_path, fake_obses[1] + '.uvh5')]
+    uvd.write_uvh5(data_files[1])
+    model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
+    uvd.write_uvh5(model_file)
+    uvc = UVCal()
+    uvc.read_calfits(ocal_file)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.time_array += dt
+    ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
+    uvc.write_calfits(ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
+    uvc.write_calfits(acal_file)
+    # only perform median filter on autocorrs to hit lines where only first round exists.
+    xrfi.xrfi_run(None, None, None, data_files[1], 'Just a test', kt_size=3, auto_mean_filter=False)
+
+    xrfi.day_threshold_run(data_files, 'just a test')
+    types = ['cross', 'auto', 'combined', 'total']
+    for t in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
+        outfile = os.path.join(tmp_path, basename)
+        assert os.path.exists(outfile)
+
+    for fake_obs in fake_obses:
+        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
+        assert os.path.exists(calfile)
+
+def test_day_threshold_run_cal_only(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    messages = 8 * mess1
+    cat1 = [UserWarning]
+    categories = 8 * cat1
+    # Spoof the files - run xrfi_run twice on spoofed files.
+    tmp_path = tmpdir.strpath
+    fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    ocal_file = os.path.join(tmp_path, fake_obses[0] + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[0] + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obses[0] + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    data_files = [raw_dfile]
+    model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
+                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': raw_dfile},
+                         nwarnings=len(messages), message=messages, category=categories)
+    # Need to adjust time arrays when duplicating files
+    uvd = UVData()
+    uvd.read_uvh5(data_files[0])
+    dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
+    uvd.time_array += dt
+    uvd.set_lsts_from_time_array()
+    data_files += [os.path.join(tmp_path, fake_obses[1] + '.uvh5')]
+    uvd.write_uvh5(data_files[1])
+    model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
+    uvd.write_uvh5(model_file)
+    uvc = UVCal()
+    uvc.read_calfits(ocal_file)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.time_array += dt
+    ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
+    uvc.write_calfits(ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
+    uvc.write_calfits(acal_file)
+    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
+                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': data_files[1]},
+                         nwarnings=len(messages), message=messages, category=categories)
+
+    xrfi.day_threshold_run(data_files, 'just a test')
+    types = ['ox', 'og', 'ax', 'ag', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed',
+             'combined', 'total']
+    for t in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
+        outfile = os.path.join(tmp_path, basename)
+        assert os.path.exists(outfile)
+
+    for fake_obs in fake_obses:
+        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
+        assert os.path.exists(calfile)
+
+def test_day_threshold_run_omnivis_only(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    messages = 6 * mess1
+    cat1 = [UserWarning]
+    categories = 6 * cat1
+    # Spoof the files - run xrfi_run twice on spoofed files.
+    tmp_path = tmpdir.strpath
+    fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    ocal_file = os.path.join(tmp_path, fake_obses[0] + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[0] + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obses[0] + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    data_files = [raw_dfile]
+    model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+    xrfi.xrfi_run(None, None, model_file, None, 'Just a test', kt_size=3, output_prefix=raw_dfile)
+    # Need to adjust time arrays when duplicating files
+    uvd = UVData()
+    uvd.read_uvh5(data_files[0])
+    dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
+    uvd.time_array += dt
+    uvd.set_lsts_from_time_array()
+    data_files += [os.path.join(tmp_path, fake_obses[1] + '.uvh5')]
+    uvd.write_uvh5(data_files[1])
+    model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
+    uvd.write_uvh5(model_file)
+    uvc = UVCal()
+    uvc.read_calfits(ocal_file)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.time_array += dt
+    ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
+    uvc.write_calfits(ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
+    uvc.write_calfits(acal_file)
+    xrfi.xrfi_run(None, None, model_file, None, history='Just a test', kt_size=3, output_prefix=data_files[1])
+    xrfi.day_threshold_run(data_files, 'just a test')
+    types = ['v', 'combined']
+    for t in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
+        outfile = os.path.join(tmp_path, basename)
+        assert os.path.exists(outfile)
+
+    for fake_obs in fake_obses:
+        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
+        assert os.path.exists(calfile)
 
 def test_xrfi_h1c_run():
     # run with bad antennas specified
