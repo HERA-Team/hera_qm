@@ -269,8 +269,6 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
-        ap.add_argument('--ant_str', default=None, type=str,
-                        help='option to pass into UVData.read() setting which baselines are used for raw visibility flags')
         ap.add_argument('--metrics_file', default=None, type=str,
                         help='Metrics file that contains a list of excluded antennas. Flags of '
                         'visibilities formed with these antennas will be set to True.')
@@ -295,8 +293,6 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
-        ap.add_argument('--ant_str', default=None, type=str,
-                        help='option to pass into UVData.read() setting which baselines are used for raw visibility flags')
         ap.add_argument('--metrics_file', default=None, type=str,
                         help='Metrics file that contains a list of excluded antennas. Flags of '
                         'visibilities formed with these antennas will be set to True.')
@@ -357,7 +353,7 @@ def get_metrics_ArgumentParser(method_name):
                         day_threshold_run if the first item in the sorted data_files \
                         list matches run_if_first (default None means always run)')
         ap.add_argument("--skip_making_flagged_abs_calfits", default=False, action="store_true",
-                        help='If True, flag the abscal files.')
+                        help='If True, skip flagging the abscal files.')
     elif method_name == 'xrfi_apply':
         ap.prog = 'xrfi_apply.py'
         ap.add_argument('--infile_format', default='miriad', type=str,

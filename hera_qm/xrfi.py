@@ -1092,9 +1092,9 @@ def calculate_metric(uv, algorithm, cal_mode='gain', correlations='both', run_ch
     """
     if issubclass(uv.__class__, (UVData)):
         if correlations == 'auto':
-            uv = uv.select(bls=[(ant1, ant2) for ant1, ant2, in zip(uv.ant_1_array, uv.ant_2_array) if ant1 == ant2], inplace=False)
+            uv = uv.select(ant_str='auto', inplace=False)
         if correlations == 'cross':
-            uv = uv.select(bls=[(ant1, ant2) for ant1, ant2, in zip(uv.ant_1_array, uv.ant_2_array) if ant1 != ant2], inplace=False)
+            uv = uv.select(ant_str='cross', inplace=False)
     if not issubclass(uv.__class__, (UVData, UVCal)):
         raise ValueError('uv must be a UVData or UVCal object.')
     try:

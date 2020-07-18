@@ -16,5 +16,5 @@ xrfi.xrfi_run(data_file=args.data_file,
               cross_mean_filter=not(args.skip_cross_mean_filter),
               history=history, xrfi_path=args.xrfi_path,
               kt_size=args.kt_size, kf_size=args.kf_size, sig_init=args.sig_init,
-              sig_adj=args.sig_adj, ex_ants=args.ex_ants, ant_str=args.ant_str,
+              sig_adj=args.sig_adj, ex_ants=args.ex_ants,
               metrics_file=args.metrics_file, clobber=args.clobber)
