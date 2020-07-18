@@ -1235,7 +1235,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
               correlations='both',
               wf_method='quadmean', sig_init=6.0, sig_adj=2.0, label='',
               run_check=True, check_extra=True, run_check_acceptability=True):
-    """Run the xrfi excision pipeline used for H1C IDR2.2.
+    """Run the xrfi excision pipeline originally designed for H1C IDR2.2.
 
     This pipeline uses the detrending and watershed algorithms above.
 
