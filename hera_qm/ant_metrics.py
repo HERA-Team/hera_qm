@@ -607,8 +607,8 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
 
     Note
     ----
-    The funciton will take a file or list of files and options. It will run
-    ant metrics once on all files together but then save the results to am
+    The function will take a file or list of files and options. It will run
+    ant metrics once on all files together but then save the results to an
     identical HDF5 file for each input file.
 
     Parameters
