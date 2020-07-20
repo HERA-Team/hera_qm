@@ -204,15 +204,20 @@ def antpol_metric_sum_ratio(cross_metrics, same_metrics):
 
     Takes the ratio of two antenna metrics, summed over both polarizations, and creates
     a new antenna metric with the same value in both polarizations for each antenna.
+    For example, if we're looking a metric for antenna 1, m1[pol], this would be:
+    (m1['en'] + m1['ne']) / (m1['ee'] + m1['nn']) which would be inserted in both
+    cross_pol_ratio[1, 'Jee'] and cross_pol_ratio[1, 'Jnn'].
 
     Parameters
     ----------
     cross_metrics : dict
         Dict of a metrics computed with cross-polarizaed antennas. Keys are of
-        the form (ant, antpol) and must match same_metrics keys.
+        the form (ant, antpol) and must match same_metrics keys. Typically computed
+        with mean_Vij_metrics() with pols=['en', 'ne'].
     same_metrics : dict
         Dict of a metrics computed with non-cross-polarized antennas. Keys are of
-        the form (ant, antpol) and must match cross_metrics keys.
+        the form (ant, antpol) and must match cross_metrics keys. Typically computed
+        with mean_Vij_metrics() with pols=['ee', 'nn'].
 
     Returns
     -------
