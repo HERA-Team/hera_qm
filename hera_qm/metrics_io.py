@@ -835,6 +835,7 @@ def _recursively_validate_dict(in_dict):
 
     """
     def _antpol_str_to_tuple(antpol_str):
+        '''Turns a string of the form "(1, 'Jee')" into a int/string tuple e.g. (1, "Jee")'''
         if isinstance(antpol_str, tuple):
             return antpol_str
         aps = antpol_str.replace('(', '')
