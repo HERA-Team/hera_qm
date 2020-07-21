@@ -47,25 +47,14 @@ def get_metrics_ArgumentParser(method_name):
 
     if method_name == 'ant_metrics':
         ap.prog = 'ant_metrics.py'
-        ap.add_argument('-p', '--pol', default='', type=str,
-                        help="Comma-separated list of polarizations included. Default is ''")
+        ap.add_argument('data_files', metavar='files', type=str, nargs='*', default=[],
+                        help='4-pol visibility files used to compute antenna metrics')
+        ap.add_argument('--apriori_xants', type=int, nargs='*', default=[],
+                        help='space-delimited list of integer antenna numbers to exclude apriori.')
         ap.add_argument('--crossCut', default=5.0, type=float,
                         help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
         ap.add_argument('--deadCut', default=5.0, type=float,
                         help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
-        ap.add_argument('--alwaysDeadCut', default=10.0, type=float,
-                        help='Modified z-score cut for antennas that are definitely dead. Default 10 "sigmas".'
-                        'These are all thrown away at once without waiting to iteratively throw away only the worst offender.')
-        ap.add_argument('--extension', default='.ant_metrics.json', type=str,
-                        help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
-        ap.add_argument('--metrics_path', default='', type=str,
-                        help='Path to save metrics file to. Default is same directory as file.')
-        ap.add_argument('--vis_format', default='miriad', type=str,
-                        help='File format for visibility files. Default is miriad.')
-        ap.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
-                        help='Silence feedback to the command line.')
-        ap.add_argument('files', metavar='files', type=str, nargs='*', default=[],
-                        help='*.uv files for which to calculate ant_metrics.')
         ap.add_argument('--skip_cross_pols', action='store_false',
                         dest='run_cross_pols', default=True,
                         help=('Sets boolean flag to False. Flag determines if '
@@ -75,6 +64,16 @@ def get_metrics_ArgumentParser(method_name):
                         dest='run_cross_pols_only', default=False,
                         help=('Define if cross pol metrics are the *only* '
                               'metrics to be run. Default is False.'))
+        ap.add_argument('--metrics_path', default='', type=str,
+                        help='Path to save metrics file to. Default is same directory as file.')
+        ap.add_argument('--extension', default='.ant_metrics.json', type=str,
+                        help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
+        ap.add_argument("--clobber", default=False, action="store_true",
+                        help='overwrites existing firstcal_metrics file (default False)')
+        ap.add_argument('--Nbls_per_load', default=None, type=int,
+                        help='Number of baselines to load simultaneously.')
+        ap.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
+                        help='Silence feedback to the command line.')
     elif method_name == 'firstcal_metrics':
         ap.prog = 'firstcal_metrics.py'
         ap.add_argument('--std_cut', default=0.5, type=float,
@@ -381,136 +380,6 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
                         help='file for which to flag RFI (only one file allowed).')
     return ap
-
-
-def get_pol(fname):
-    """Strip the filename of a HERA visibility to its polarization.
-
-    Note
-    ----
-    This function assumes the file naming format:
-        zen.ddddddd.ddddd.pp.*
-    The 'd' values are the 7-digit Julian day and 5-digit fractional Julian
-    date. The 'pp' is the polarization extracted. It need not be 2 characters,
-    and the parser will return everying between the two periods.
-
-    Parameters
-    ----------
-    fname : str
-        The name of a file. Note that just the file name should be passed in, to
-        avoid pathological problems like directories that may match the structure
-        being searched for.
-
-    Returns
-    -------
-    polarization : str
-        The polarization label contained in the filename, e.g., "xx"
-
-    """
-    fn = re.findall(r'zen\.\d{7}\.\d{5}\..*', fname)[0]
-    return fn.split('.')[3]
-
-
-def generate_fullpol_file_list(files, pol_list):
-    """Generate a list of unique JDs that have all four polarizations available.
-
-    This function, when given a list of files, will look for the specified polarizations,
-    and add the JD to the returned list if all polarizations were found. The return is a
-    list of lists, where the outer list is a single JD and the inner list is a "full set"
-    of polarizations, based on the polarization list provided.
-
-    Parameters
-    ----------
-    files : list of str
-        The list of files to look for.
-    pol_list : list of str
-        The list of polarizations to look for, as strings (e.g., ['xx', 'xy', 'yx',
-        'yy']).
-
-    Returns
-    -------
-    jd_list : list
-        The list of lists of JDs where all supplied polarizations could be found.
-
-    """
-    # initialize
-    file_list = []
-
-    # Check if all input files are full-pol files
-    # if so return the input files as the full list
-    uvd = UVData()
-
-    for filename in files:
-        if filename.split('.')[-1] == 'uvh5':
-            uvd.read_uvh5(filename, read_data=False)
-        else:
-            uvd.read(filename)
-        # convert the polarization array to strings and compare with the
-        # expected input.
-        # If anyone file is not a full-pol file then this will be false.
-        input_pols = uvutils.polnum2str(uvd.polarization_array,
-                                        x_orientation=uvd.x_orientation)
-        full_pol_check = np.array_equal(np.sort(input_pols), np.sort(pol_list))
-
-        if not full_pol_check:
-            # if a file has more than one polarization but not all expected pols
-            # raise an error that mixed pols are not allowed.
-            if len(input_pols) > 1:
-                base_fname = os.path.basename(filename)
-                raise ValueError("The file: {fname} contains {npol} "
-                                 "polarizations: {pol}. "
-                                 "Currently only full lists of all expected "
-                                 "polarization files or lists of "
-                                 "files with single polarizations in the "
-                                 "name of the file (e.g. zen.JD.pol.HH.uv) "
-                                 "are allowed.".format(fname=base_fname,
-                                                       npol=len(input_pols),
-                                                       pol=input_pols))
-
-            else:
-                # if only one polarization then try the old regex method
-                # assumes all files have the same number of polarizations
-                break
-    del uvd
-
-    if full_pol_check:
-        # Output of this function is a list of lists of files
-        # We expect all full pol files to be unique JDs so
-        # turn the list of files into a list of lists of each file.
-        return [[f] for f in files]
-
-    for filename in files:
-        abspath = os.path.abspath(filename)
-        # need to loop through groups of JDs already present
-        in_list = False
-        for jd_list in file_list:
-            if abspath in jd_list:
-                in_list = True
-                break
-        if not in_list:
-            # try to find the other polarizations
-            pols_exist = True
-            file_pol = get_pol(filename)
-            dirname = os.path.dirname(abspath)
-            for pol in pol_list:
-                # guard against strange directory names that might contain something that
-                # looks like a pol string
-                fn = re.sub(file_pol, pol, filename)
-                full_filename = os.path.join(dirname, fn)
-                if not os.path.exists(full_filename):
-                    warnings.warn("Could not find " + full_filename + "; skipping that JD")
-                    pols_exist = False
-                    break
-            if pols_exist:
-                # add all pols to file_list
-                jd_list = []
-                for pol in pol_list:
-                    fn = re.sub(file_pol, pol, filename)
-                    full_filename = os.path.join(dirname, fn)
-                    jd_list.append(full_filename)
-                file_list.append(jd_list)
-
-    return file_list
 
 
 def get_metrics_dict():
