@@ -1381,6 +1381,41 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
+
+def xrfi_step(uv_filename, alg='detrend_medfilt', kt_size=8, kf_size=8, xants=xants,
+              uvf_apriori=None, cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
+              label='', run_check=run_check,
+              Nwf_per_load=None,
+              dtype='uvcal', ant_str='both', fun_filter=True,
+              check_extra=check_extra,
+              run_check_acceptability=run_check_acceptability):
+    """
+    """
+    if dtype=='uvcal':
+        uv = UVCal()
+        # No partial i/o for uvcal yet.
+        uv.load(uv_filename)
+        if uvf_apriori is None:
+            uvf_apriori = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+            uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                                     check_extra=check_extra,
+                                     run_check_acceptability=run_check_acceptability)
+    elif dtype=='uvdata':
+        uv = UVData()
+        uv.read(uv_filename, read_data=False)
+        else:
+            flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check,
+                       check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
+
+        if run_filter:
+            uvf, uvf_f = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+                                   cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                   label=label, run_check=run_check, check_extra=check_extra,
+                                   run_check_acceptability=run_check_acceptability)
+
+
+
 #############################################################################
 # Wrappers -- Interact with input and output files
 #   Note: "current" wrappers should have simple names, but when replaced,
@@ -1398,7 +1433,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
              omnivis_median_filter=True, omnivis_mean_filter=True,
              auto_median_filter=True, auto_mean_filter=True,
              cross_median_filter=False, cross_mean_filter=True,
-             history=None,
+             history=None, Nwf_per_load=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
              ex_ants=None, metrics_file=None,
              output_prefixes=None, throw_away_edges=True, clobber=False,
@@ -1509,6 +1544,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         If True, flag on data mean filter statistic.
         Mean filters are run after median filters.
         Default is True.
+    Nwf_per_load : int, optional
+        Specify the number of waterfalls to load simultaneously when computing
+        metrics.
     history : str
         The history string to include in files.
     xrfi_path : str, optional
