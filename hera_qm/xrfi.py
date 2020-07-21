@@ -1382,37 +1382,68 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     return uvf_m, uvf_fws
 
 
-def xrfi_step(uv_filename, alg='detrend_medfilt', kt_size=8, kf_size=8, xants=xants,
+def xrfi_step(uv_filename=None, alg='detrend_medfilt', kt_size=8, kf_size=8, xants=xants,
               uvf_apriori=None, cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
               label='', run_check=run_check,
-              Nwf_per_load=None,
-              dtype='uvcal', ant_str='both', fun_filter=True,
+              Nwf_per_load=None, xants=None,
+              dtype='uvcal', ant_str='both', fun_filter=True, wf_method='quadmena',
               check_extra=check_extra,
               run_check_acceptability=run_check_acceptability):
     """
     """
-    if dtype=='uvcal':
-        uv = UVCal()
-        # No partial i/o for uvcal yet.
-        uv.load(uv_filename)
+    if uv_filename is not None:
+        if dtype=='uvcal':
+            uv = UVCal()
+            # No partial i/o for uvcal yet.
+            uv.load(uv_filename)
+        elif dtype=='uvdata':
+            uv = UVData()
+            uv.read(uv_filename, read_data=False)
         if uvf_apriori is None:
             uvf_apriori = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
             uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
                                      check_extra=check_extra,
                                      run_check_acceptability=run_check_acceptability)
-    elif dtype=='uvdata':
-        uv = UVData()
-        uv.read(uv_filename, read_data=False)
         else:
             flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check,
                        check_extra=check_extra,
                        run_check_acceptability=run_check_acceptability)
-
         if run_filter:
-            uvf, uvf_f = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
-                                   cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
-                                   label=label, run_check=run_check, check_extra=check_extra,
-                                   run_check_acceptability=run_check_acceptability)
+            if issubclass(uv, UVData):
+                bls = uv.get_antpairpols()
+                nbls = len(bls)
+                # if no Nwf_per_load is provided
+                # then just set it equal to the
+                # number of baselines
+                if Nwf_per_load is None:
+                    Nwf_per_load = nbls
+                nloads = int(np.ceil(Nwf_per_load / nbls))
+                for loadnum in range(nloads):
+                    uv.read(uv_filename, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                    uvft, uvft_f = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+                                           cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                           label=label, run_check=run_check, check_extra=check_extra,
+                                           run_check_acceptability=run_check_acceptability)
+                    if loadnum == 0:
+                        uvf = uvft
+                        uvf_f = uvft_f
+                    else:
+                        uvf.combine_metrics(uvft, method=wf_method, run_check=run_check,
+                                           check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                        uvf_f.combine_metrics(uvft_f, method='or', run_check=run_check,
+                                              check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+            else:
+                uvf, uvf_f = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+                                       cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                       wf_method=wf_method,
+                                       label=label, run_check=run_check, check_extra=check_extra,
+                                       run_check_acceptability=run_check_acceptability)
+        else:
+            uvf = None; uvf_f = None
+    else:
+        uvf = None; uvf_f = None; uv = None
+    return uvf, uvf_f
+
 
 
 
@@ -1433,7 +1464,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
              omnivis_median_filter=True, omnivis_mean_filter=True,
              auto_median_filter=True, auto_mean_filter=True,
              cross_median_filter=False, cross_mean_filter=True,
-             history=None, Nwf_per_load=None,
+             history=None, wf_method='quadmean', Nwf_per_load=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
              ex_ants=None, metrics_file=None,
              output_prefixes=None, throw_away_edges=True, clobber=False,
@@ -1547,6 +1578,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     Nwf_per_load : int, optional
         Specify the number of waterfalls to load simultaneously when computing
         metrics.
+    wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
+        How to collapse the dimension(s) to form a single waterfall.
     history : str
         The history string to include in files.
     xrfi_path : str, optional
@@ -1627,7 +1660,19 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     # Calculate metric on abscal data
     metrics = []
     flags = []
-    if ocalfits_files is not None:
+    uvc_o, uvf_og, uvf_ogf, uvc_a, uvf_ag, uvf_agf = None, None, None, None, None, None
+    uvf_ox, uvf_oxf, uvf_ax, uvf_axf = None, None, None, None
+    uvc_v, uvf_v, uvf_vf = None, None, None, None
+    if ocalfits_file is not None:
+        uvc_o, uvf_og, uvf_ogf, apriori_flags = xrfi_step(uv_filename=ocalfits_file, alg=alg, kt_size=kt_size, kf_size=kf_size,
+                                                          xants=xants, cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                                          label=label, run_check=run_check, check_extra=check_extra,
+                                                          run_check_acceptability=run_check_acceptability)
+        if uvf_og is not None and uvf_ogf is not None:
+            flags += [uvf_ogf]
+            metrics += [uvf_og]
+
+
         uvc_o = UVCal()
         uvc_o.read_calfits(ocalfits_files)
         uvf_apriori = UVFlag(uvc_o, mode='flag', copy_flags=True, label='A priori flags.')
