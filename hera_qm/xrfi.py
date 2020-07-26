@@ -1381,43 +1381,30 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
-
-def xrfi_run_step(uv=None, alg='detrend_medfilt', kt_size=8, kf_size=8, xants=xants,
-              uvf_apriori=None, cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
-              label='', run_check=run_check, calculate_uvf_apriori=False,
+def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_size=8,
+              uvf_apriori=None, cal_mode='gain', sig_init=5.0, sig_adj=2.0,
+              label='', calculate_uvf_apriori=False,
               Nwf_per_load=None, xants=None, apply_uvf_apriori=True,
-              dtype='uvcal', ant_str='both', fun_filter=True, wf_method='quadmena',
-              metrics=None, flags=None, correlations='cross',
-              check_extra=check_extra,
-              run_check_acceptability=run_check_acceptability):
+              dtype='uvcal', ant_str='both', run_filter=True, wf_method='quadmean',
+              metrics=None, flags=None, correlations='cross', run_check=True,
+              check_extra=True,
+              run_check_acceptability=True):
     """
     """
-    if uv_filename is not None:
-        # initialize appropriately if a string was provided.
-        if isinstance(uv, string):
-            if dtype=='uvcal':
-                uv = UVCal()
-                # No partial i/o for uvcal yet.
-                uv.load(uv_filename)
-            elif dtype=='uvdata':
-                uv = UVData()
-                uv.read(uv_filename, read_data=False, ant_str=correlations)
-        if uvf_apriori is None:
-            if calculate_uvf_apriori:
-                uvf_apriori = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
-                uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
-                                         check_extra=check_extra,
-                                         run_check_acceptability=run_check_acceptability)
-            if apply_uvf_apriori:
-                flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check,
-                           check_extra=check_extra,
-                           run_check_acceptability=run_check_acceptability)
-        elif apply_uvf_apriori:
-            flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check,
-                       check_extra=check_extra,
-                       run_check_acceptability=run_check_acceptability)
+    if uv is None:
+        if uv_file is not None:
+            # initialize appropriately if a string was provided.
+            if isinstance(uv_file, (str, np.str)):
+                if dtype=='uvcal':
+                    uv = UVCal()
+                    # No partial i/o for uvcal yet.
+                    uv.read_calfits(uv_file)
+                elif dtype=='uvdata':
+                    uv = UVData()
+                    uv.read(uv_file, read_data=False, ant_str=correlations)
+    if uv is not None:
         if run_filter:
-            if issubclass(uv, UVData):
+            if issubclass(uv.__class__, UVData):
                 bls = uv.get_antpairpols()
                 nbls = len(bls)
                 # if no Nwf_per_load is provided
@@ -1428,11 +1415,27 @@ def xrfi_run_step(uv=None, alg='detrend_medfilt', kt_size=8, kf_size=8, xants=xa
                 nloads = int(np.ceil(Nwf_per_load / nbls))
                 for loadnum in range(nloads):
                     # Does a partially loaded uvdata object remember all its baselines?
-                    uv.read(uv_filename, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                    uv.read(uv_file, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                    if uvf_apriori is None:
+                        if calculate_uvf_apriori:
+                            uvf_apriori_chunk = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+                            uvf_apriori_chunk.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                                                    check_extra=check_extra,
+                                                    run_check_acceptability=run_check_acceptability)
+                            if loadnum == 0:
+                                uvf_apriori = uvf_apriori_chunk
+                            else:
+                                uvf_apriori = uvf_apriori.combine_flags(uvf_apriori_chunk, method='and',
+                                                                        run_check=run_check,
+                                                                        check_extra=check_extra,
+                                                                        run_check_acceptability=run_check_acceptability)
+                    elif apply_uvf_apriori:
+                        flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability)
+
                     uvft, uvft_f = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
-                                           cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
-                                           label=label, run_check=run_check, check_extra=check_extra,
-                                           run_check_acceptability=run_check_acceptability)
+                                             cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                             label=label, run_check=run_check, check_extra=check_extra,
+                                             run_check_acceptability=run_check_acceptability)
                     if loadnum == 0:
                         uvf = uvft
                         uvf_f = uvft_f
@@ -1442,6 +1445,16 @@ def xrfi_run_step(uv=None, alg='detrend_medfilt', kt_size=8, kf_size=8, xants=xa
                         uvf_f.combine_metrics(uvft_f, method='or', run_check=run_check,
                                               check_extra=check_extra, run_check_acceptability=run_check_acceptability)
             else:
+                if uvf_apriori is None:
+                    if calculate_uvf_apriori:
+                         uvf_apriori = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+                         uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                                                 check_extra=check_extra,
+                                                 run_check_acceptability=run_check_acceptability)
+                elif apply_uvf_apriori:
+                    flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check,
+                               check_extra=check_extra,
+                               run_check_acceptability=run_check_acceptability)
                 if alg in ['zscore_full_array']:
                     uvf, uvf_f = chi_sq_pipe(uv, alg=alg, modified=True, sig_init=sig_init, sig_adj=sig_adj,
                                              label=label, run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
@@ -1453,10 +1466,13 @@ def xrfi_run_step(uv=None, alg='detrend_medfilt', kt_size=8, kf_size=8, xants=xa
                                            run_check_acceptability=run_check_acceptability)
             metrics += [uvf]
             flags += [uvf_f]
+            if uvf_apriori is not None and calculate_uvf_apriori:
+                flags += [uvf_apriori]
         else:
             uvf = None; uvf_f = None
     else:
-        uvf = None; uvf_f = None; uv = None
+        uvf = None; uvf_f = None
+
     return uv, uvf, uvf_f, uvf_apriori, metrics, flags
 
 
@@ -1676,33 +1692,33 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     metrics = []
     flags = []
     cal_algs = ['detrend_medfilt', 'detrend_medfilt', 'zscore_full_array']
-    cal_labels = [' gains, median filter.', ' chisq, median filter.', ' Renormalized chisq, median filter.']
-    cal_modes = ['gain', 'tot_chisq', None]
+    labels = [' gains, median filter.', ' chisq, median filter.', ' Renormalized chisq, median filter.']
+    modes = ['gain', 'tot_chisq', None]
     filter_switches = [omnical_median_filter, omnical_chi2_mean_filter, omnical_zscore_filter]
     # now store everything in vdict.
     vdict = {'ocalfits_file': ocalfits_file, 'acalfits_file': acalfits_file,
     'model_file': model_file, 'data_file': data_file, 'uvf_apriori': None,
     'uvf_init': None, 'uvf_fws': None, 'uvf_f': None, 'uvf_metrics': None,
     'uvf_metrics2': None, 'uvf_f2': None, 'uvf_fws2': None,
-    'uvf_combined2': None} # keep all the variables here.
+    'uvf_combined2': None, 'uvc_o':None, 'uvc_a':None, 'uvc_v':None, 'uv_v':None, 'uv_d':None} # keep all the variables here.
     uvmetrics = ['uvf_og', 'uvf_ox', 'uvf_oz']
     uvflags = ['uvf_ogf', 'uvf_oxf', 'uvf_ozf']
-    input_uvs = ['ocalfits_file', 'uvc_o', 'uvc_o']
+    input_uvs = ['uvc_o', 'uvc_o', 'uvc_o']
     apply_inits = [True, False, False]
-    # omnical median filters.
+    # omnical median filters.''
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
-            vdict['uvc_o'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
-                                                                                     xants=xants, cal_mode='mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
+            vdict['uvc_o'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], uv_file=vdict['ocalfits_file'], alg=alg, kt_size=kt_size, kf_size=kf_size,
+                                                                                     xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label='Omnical' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
                                                                                      run_check=run_check, check_extra=check_extra, calculate_uvf_apriori=True,
                                                                                      run_check_acceptability=run_check_acceptability)
     uvmetrics = ['uvf_ag', 'uvf_ax', 'uvf_az']
     uvflags = ['uvf_agf', 'uvf_axf', 'uvf_azf']
-    input_uvs = ['acalfits_file', 'uvc_a', 'uvc_a']
+    input_uvs = ['uvc_a', 'uvc_a', 'uvc_a']
     # abscal gain flags.
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
-            vdict['uvc_a'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict['uvc_a'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], uv_file=vdict['acalfits_file'], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label='Abscal' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
@@ -1712,15 +1728,16 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     vdict['model_file'] = model_file; vdict['data_file'] = data_file
     uvmetrics = ['uvf_v', 'uvf_d', 'uvf_da']
     uvflags = ['uvf_vf', 'uvf_df', 'uvf_daf']
-    input_uvs = ['model_file', 'data_file', 'uv_d']
+    input_uvs = ['model_file', 'data_file', 'data_file']
     correlations = ['both', 'cross', 'auto']
     uvs = ['uv_v', 'uv_d', 'uv_d']
     apply_inits = [True, True, False]
-    labels = ['Omnical visibility solutions, median filter', 'Crosscorr, median filter', 'Autocorr, median filter.']
+    algs = ['detrend_medfilt', 'detrend_medfilt', 'detrend_medfilt']
+    labels = ['Omnical visibility solutions, median filter.', 'Crosscorr, median filter.', 'Autocorr, median filter.']
     filter_switches = [omnivis_median_filter, cross_median_filter, auto_median_filter]
     algs = ['detrend_medfilt', 'detrend_medfilt', 'detrend_medfilt']
-    for mf, ff, switch, alg, label, corr, input, uv, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, correlations, input_uvs, uvs, apply_inits):
-            vdict[uv], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+    for mf, ff, switch, alg, label, corr, input, uv, api in zip(uvmetrics, uvflags, filter_switches, algs, labels, correlations, input_uvs, uvs, apply_inits):
+            vdict[uv], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[uv], uv_file=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
@@ -1744,7 +1761,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         # Flag on combined metrics
         vdict['uvf_f'] = flag(vdict['uvf_metrics'], nsig_p=sig_init, run_check=run_check,
                      check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-        vdict['uvf_fws'] = watershed_flag(uvf_metrics, uvf_f, nsig_p=sig_adj, inplace=False,
+        vdict['uvf_fws'] = watershed_flag(vdict['uvf_metrics'], vdict['uvf_f'], nsig_p=sig_adj, inplace=False,
                                  run_check=run_check, check_extra=check_extra,
                                  run_check_acceptability=run_check_acceptability)
         vdict['uvf_fws'].label = 'Flags from combined metrics, round 1.'
@@ -1762,10 +1779,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     metrics = []
     flags = []
     cal_algs = ['detrend_meanfilt', 'detrend_meanfilt', 'zscore_full_array']
-    cal_labels = [' gains, mean filter.', ' chisq, mean filter.', ' Renormalized chisq, median filter, round 2.']
-    cal_modes = ['gain', 'tot_chisq', None]
+    labels = [' gains, mean filter.', ' chisq, mean filter.', ' Renormalized chisq, median filter, round 2.']
+    modes = ['gain', 'tot_chisq', None]
     filter_switches = [omnical_median_filter, omnical_chi2_mean_filter, omnical_zscore_filter]
-    vdict = {'uvc_o': None, 'ocalfits_file':ocalfits_file}
     uvmetrics = ['uvf_og2', 'uvf_ox2', 'uvf_oz2']
     uvflags = ['uvf_ogf2', 'uvf_oxf2', 'uvf_ozf2']
     input_uvs = ['uvc_o', 'uvc_o', 'uvc_o']
@@ -1773,7 +1789,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     # note that init flags are applied by passing them as uvf_apriori.
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
             vdict['uvc_o'], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
-                                                                                     xants=xants, cal_mode='mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
+                                                                                     xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label='Omnical' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
                                                                                      run_check=run_check, check_extra=check_extra, calculate_uvf_apriori=False,
@@ -1792,14 +1808,14 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     apply_inits = [True, True, False]
     uvmetrics = ['uvf_v2', 'uvf_d2', 'uvf_da2']
     uvflags = ['uvf_vf2', 'uvf_df2', 'uvf_daf2']
-    input_uvs = ['uv_v', 'uv_d', 'uv_d']
+    input_uvs = ['model_file', 'data_file', 'data_file']
     correlations = ['both', 'cross', 'auto']
     uvs = ['uv_v', 'uv_d', 'uv_d']
-    labels = ['Omnical visibility solutions, mean filter', 'Crosscorr, mean filter', 'Autocorr, mean filter.']
-    filter_switches = [omnivis_median_filter, cross_median_filter, auto_median_filter]
-    algs = ['detrend_medfilt', 'detrend_medfilt', 'detrend_medfilt']
-    for mf, ff, switch, alg, label, corr, input, uv, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, correlations, input_uvs, uvs, apply_inits):
-            vdict[uv], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+    labels = ['Omnical visibility solutions, mean filter.', 'Crosscorr, mean filter.', 'Autocorr, mean filter.']
+    filter_switches = [omnivis_mean_filter, cross_mean_filter, auto_mean_filter]
+    algs = ['detrend_meanfilt', 'detrend_meanfilt', 'detrend_meanfilt']
+    for mf, ff, switch, alg, label, corr, input, uv, input, api in zip(uvmetrics, uvflags, filter_switches, algs, labels, correlations, input_uvs, uvs, input_uvs, apply_inits):
+            vdict[uv], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[uv], uv_file=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
