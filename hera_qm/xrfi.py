@@ -1234,7 +1234,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
               correlations='both', skip_flags=False,
               wf_method='quadmean', reset_weights=True,
-              sig_init=6.0, sig_adj=2.0, label='',
+              sig_init=6.0, sig_adj=2.0, label='', center_metric=True,
               run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline originally designed for H1C IDR2.2.
 
@@ -1292,6 +1292,7 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         A UVFlag object with flags after watershed.
 
     """
+    alg_func = algorithm_dict[alg]
     if not isinstance(uv, UVFlag):
         flag_xants(uv, xants, run_check=run_check,
                    check_extra=check_extra,
@@ -1306,16 +1307,16 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
                            run_check_acceptability=run_check_acceptability)
         # This next line resets the weights to 1 (with data) or 0 (no data) to equally
         # combine with the other metrics.
-        alg_func = algorithm_dict[alg]
-        # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
-        uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
-                                               flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
-                                               Kt=Kt, Kf=Kf)
         # Flag and watershed on each data product individually.
         # That is, on each complete file (e.g. calibration gains), not on individual
         # antennas/baselines. We don't broadcast until the very end.
     else:
         uvf_m = uv
+    if center_metric:
+        # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
+        uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
+                                               flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
+                                               Kt=Kt, Kf=Kf)
     if reset_weights:
         uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
     if not skip_flags:
@@ -1400,7 +1401,22 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
               metrics=None, flags=None, correlations='cross', run_check=True,
               check_extra=True,
               run_check_acceptability=True):
-    """
+    """Helper functin for xrfi run.
+
+    This function contains the repeated pattern in xrfi run in which a uv_file is supplied
+    If it has not yet been loaded, then we load it. If it has, we can supply it as uv
+    If apriori flags exist, then we apply them.
+    If not, we can optionally compute apriori flags from the uv_file
+    If we want to run filter on the data, then we do can compute metrics and
+    flag according to arguments specifying metric algorithms and their parameters.
+    Any computed metrics and flags are appended to user supplied lists
+    that can contain previously computed metrics / flags, and returned.
+
+    Parameters
+    ----------
+    
+
+
     """
     if flags is None:
         flags = []
@@ -1430,8 +1446,6 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
                 if Nwf_per_load is None:
                     Nwf_per_load = nbls
                 nloads = int(np.ceil(nbls / Nwf_per_load))
-                print('Nwf_per_load=%d'%Nwf_per_load)
-                print('nloads=%d'%nloads)
                 for loadnum in range(nloads):
                     # Does a partially loaded uvdata object remember all its baselines?
                     uv.read(uv_file, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
@@ -1450,10 +1464,14 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
                                                                         run_check_acceptability=run_check_acceptability)
                     elif apply_uvf_apriori:
                         flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability)
-
+                    # for partial i/o, we can compute individual metrics for each baseline and then collapse them
+                    # onto a running average metric. Some slight modifications to xrfi_pipe are in order to make
+                    # this work. First, eachn baseline cannot be translated to a z-score centered at zero so
+                    # we disable this step with the center_metric keyword. We also don't want to flag or
+                    # reset the weights which we deactivate with the reset_weights and skip_flags keyword
                     uvft, _ = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=True,
                                              cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
-                                             reset_weights=False,
+                                             reset_weights=False, center_metric=False, wf_method=wf_method,
                                              label=label, run_check=run_check, check_extra=check_extra,
                                              run_check_acceptability=run_check_acceptability)
                     if loadnum == 0:
@@ -1461,8 +1479,16 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
                     else:
                         uvf.combine_metrics(uvft, method=wf_method, run_check=run_check,
                                            check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                # now that we have a uvf that includes the combined metric of all the baselines, we can
+                # run one last round of xrfi_pipe with flagging enabled, centering the metric enabled, and resetting
+                # the weights enabled to perform these final steps which are run on the full collapsed metric.
+                # note that we pass uvf as an arg instead of uv. xrfi_pipe has been modified so that if a uvflag
+                # is passed in place of uvdata or uvcal, it skips the metric calculation /waterfalling
+                # steps and goes straight to steps performed on combined metrics, i.e.
+                # flagging, normalizing, and weights reseting.
                 uvf, uvf_f = xrfi_pipe(uvf, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=False,
-                                         cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                         cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
+                                         center_metric=True, reset_weights=True,
                                          label=label, run_check=run_check, check_extra=check_extra,
                                          run_check_acceptability=run_check_acceptability)
             else:
