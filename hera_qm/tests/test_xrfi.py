@@ -898,6 +898,51 @@ def test_xrfi_h1c_idr2_2_pipe():
     assert len(uvf_m.polarization_array) == 1
     assert uvf_m.weights_array.max() == 1.
 
+def test_xrfi_run_step(tmpdir):
+    # setup files in tmpdir.
+    tmp_path = tmpdir.strpath
+    fake_obs = 'zen.2457698.40355.HH'
+    ocal_file = os.path.join(tmp_path, fake_obs + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+
+    # if run_filter is false, then uv should not be None but everything else should be None
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile, run_filter=False, dtype='uvdata')
+    assert issubclass(uv1.__class__, UVData)
+    assert uvf1 is None
+    assert uvf_f1 is None
+    assert uvf_a1 is None
+    assert len(metrics1) == 0
+    assert len(flags1) == 0
+
+
+    # test expected output formats if run_filter is True.
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile, run_filter=True, dtype='uvdata')
+    assert len(flags1) == 1
+    assert len(metrics1) == 1
+    assert uvf_a1 is None
+
+    # test expected output formats when calculate_uvf_apriori is True
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='mean')
+    assert len(flags1) == 2
+    assert len(metrics1) == 1
+    assert uvf_a1 is not None
+
+    # now test partial i/o
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', Nwf_per_load=1, wf_method='mean')
+    assert len(flags2) == 2
+    assert len(metrics2) == 1
+    assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
+    assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -984,6 +1029,7 @@ def test_xrfi_run(tmpdir):
         if os.path.exists(out):
             os.remove(out)
     # now really do everything.
+    uvf_list1 = []
     with pytest.warns(None) as record:
         xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
                       history='Just a test', kt_size=3, cross_median_filter=True)
@@ -998,12 +1044,39 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
         uvf = UVFlag(out)
+        uvf_list1.append(uvf)
         assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
+    # now do partial i/o and check equality of outputs.
+    uvf_list2 = []
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, Nwf_per_load=1,
+                      history='Just a test', kt_size=3, cross_median_filter=True)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
+
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        assert os.path.exists(out)
+        uvf = UVFlag(out)
+        uvf_list2.append(uvf)
+        assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # compare
+    for uvf1, uvf2 in zip(uvf_list1, uvf_list2):
+        assert uvf1 == uvf2
     # test cross correlations.
     xrfi.xrfi_run(history='data cross corrs.', data_files=raw_dfile,
                   cross_median_filter=True, cross_mean_filter=True, auto_mean_filter=False, auto_median_filter=False)

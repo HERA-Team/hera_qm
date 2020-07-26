@@ -1232,8 +1232,9 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 
 
 def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
-              correlations='both',
-              wf_method='quadmean', sig_init=6.0, sig_adj=2.0, label='',
+              correlations='both', skip_flags=False,
+              wf_method='quadmean', reset_weights=True,
+              sig_init=6.0, sig_adj=2.0, label='',
               run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline originally designed for H1C IDR2.2.
 
@@ -1262,6 +1263,9 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         "auto" means use only auto-correlations.
         "cross" means use only cross-correlations.
         "both" means use both.
+    skip_flags : bool, optional
+        If True, skip flagging steps (only compute the metric).
+        Default is False.
     wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
         How to collapse the dimension(s) to form a single waterfall.
     sig_init : float, optional
@@ -1288,35 +1292,42 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         A UVFlag object with flags after watershed.
 
     """
-    flag_xants(uv, xants, run_check=run_check,
-               check_extra=check_extra,
-               run_check_acceptability=run_check_acceptability)
-    uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode,
-                             correlations=correlations,
-                             run_check=run_check, check_extra=check_extra,
-                             run_check_acceptability=run_check_acceptability)
-    uvf_m.label = label
-    uvf_m.to_waterfall(method=wf_method, keep_pol=False,
-                       run_check=run_check, check_extra=check_extra,
-                       run_check_acceptability=run_check_acceptability)
-    # This next line resets the weights to 1 (with data) or 0 (no data) to equally
-    # combine with the other metrics.
-    uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
-    alg_func = algorithm_dict[alg]
-    # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
-    uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
-                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
-                                           Kt=Kt, Kf=Kf)
-    # Flag and watershed on each data product individually.
-    # That is, on each complete file (e.g. calibration gains), not on individual
-    # antennas/baselines. We don't broadcast until the very end.
-    uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
-                 check_extra=check_extra,
-                 run_check_acceptability=run_check_acceptability)
-    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False,
-                             run_check=run_check, check_extra=check_extra,
-                             run_check_acceptability=run_check_acceptability)
-    uvf_fws.label += ' Flags.'
+    if not isinstance(uv, UVFlag):
+        flag_xants(uv, xants, run_check=run_check,
+                   check_extra=check_extra,
+                   run_check_acceptability=run_check_acceptability)
+        uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode,
+                                 correlations=correlations,
+                                 run_check=run_check, check_extra=check_extra,
+                                 run_check_acceptability=run_check_acceptability)
+        uvf_m.label = label
+        uvf_m.to_waterfall(method=wf_method, keep_pol=False,
+                           run_check=run_check, check_extra=check_extra,
+                           run_check_acceptability=run_check_acceptability)
+        # This next line resets the weights to 1 (with data) or 0 (no data) to equally
+        # combine with the other metrics.
+        alg_func = algorithm_dict[alg]
+        # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
+        uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
+                                               flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
+                                               Kt=Kt, Kf=Kf)
+        # Flag and watershed on each data product individually.
+        # That is, on each complete file (e.g. calibration gains), not on individual
+        # antennas/baselines. We don't broadcast until the very end.
+    else:
+        uvf_m = uv
+    if reset_weights:
+        uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
+    if not skip_flags:
+        uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
+                     check_extra=check_extra,
+                     run_check_acceptability=run_check_acceptability)
+        uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False,
+                                 run_check=run_check, check_extra=check_extra,
+                                 run_check_acceptability=run_check_acceptability)
+        uvf_fws.label += ' Flags.'
+    else:
+        uvf_fws = None
     return uvf_m, uvf_fws
 
 
@@ -1391,6 +1402,12 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
               run_check_acceptability=True):
     """
     """
+    if flags is None:
+        flags = []
+    if metrics is None:
+        metrics = []
+    if xants is None:
+        xants = []
     if uv is None:
         if uv_file is not None:
             # initialize appropriately if a string was provided.
@@ -1412,7 +1429,9 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
                 # number of baselines
                 if Nwf_per_load is None:
                     Nwf_per_load = nbls
-                nloads = int(np.ceil(Nwf_per_load / nbls))
+                nloads = int(np.ceil(nbls / Nwf_per_load))
+                print('Nwf_per_load=%d'%Nwf_per_load)
+                print('nloads=%d'%nloads)
                 for loadnum in range(nloads):
                     # Does a partially loaded uvdata object remember all its baselines?
                     uv.read(uv_file, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
@@ -1432,18 +1451,20 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
                     elif apply_uvf_apriori:
                         flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability)
 
-                    uvft, uvft_f = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+                    uvft, _ = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=True,
                                              cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                             reset_weights=False,
                                              label=label, run_check=run_check, check_extra=check_extra,
                                              run_check_acceptability=run_check_acceptability)
                     if loadnum == 0:
                         uvf = uvft
-                        uvf_f = uvft_f
                     else:
                         uvf.combine_metrics(uvft, method=wf_method, run_check=run_check,
                                            check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-                        uvf_f.combine_metrics(uvft_f, method='or', run_check=run_check,
-                                              check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                uvf, uvf_f = xrfi_pipe(uvf, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=False,
+                                         cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                         label=label, run_check=run_check, check_extra=check_extra,
+                                         run_check_acceptability=run_check_acceptability)
             else:
                 if uvf_apriori is None:
                     if calculate_uvf_apriori:
