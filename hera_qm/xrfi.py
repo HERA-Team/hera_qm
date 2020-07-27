@@ -2009,9 +2009,11 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         vdict['uvf_init'].label = 'ORd flags, round 1.'
 
 
-    # mean filter omnical,
+    # Now perform the mean filtering after median filtering.
+    # we reset our metrics and flags list.
     metrics = []
     flags = []
+    # medfilt -> meanfilt.
     cal_algs = ['detrend_meanfilt', 'detrend_meanfilt', 'zscore_full_array']
     labels = [' gains, mean filter.', ' chisq, mean filter.', ' Renormalized chisq, median filter, round 2.']
     modes = ['gain', 'tot_chisq', None]
@@ -2028,7 +2030,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
                                                                                      run_check=run_check, check_extra=check_extra, calculate_uvf_apriori=False,
                                                                                      run_check_acceptability=run_check_acceptability)
-    # second round abscal filters. Note that init flags are pased as apriori_flags.
+    # Meanfilter abscal. Note that init flags are pased as apriori_flags.
     uvmetrics = ['uvf_ag2', 'uvf_ax2', 'uvf_az2']
     uvflags = ['uvf_agf2', 'uvf_axf2', 'uvf_azf2']
     input_uvs = ['uvc_a', 'uvc_a', 'uvc_a']
@@ -2039,6 +2041,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
                                                                                      run_check=run_check, check_extra=check_extra, calculate_uvf_apriori=False,
                                                                                      run_check_acceptability=run_check_acceptability)
+    # mean filter omnivis and data files.
     apply_inits = [True, True, False]
     uvmetrics = ['uvf_v2', 'uvf_d2', 'uvf_da2']
     uvflags = ['uvf_vf2', 'uvf_df2', 'uvf_daf2']
@@ -2056,40 +2059,45 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
                                                                                      run_check=run_check, check_extra=check_extra, calculate_uvf_apriori=False,
                                                                                      run_check_acceptability=run_check_acceptability)
-    # Combine the metrics together
-    if len(metrics) > 1:
-        vdict['uvf_metrics2'] = metrics[-1].combine_metrics(metrics[:-1],
-                                              method='quadmean', inplace=False)
-    else:
-        vdict['uvf_metrics2'] = copy.deepcopy(metrics[-1])
-    if vdict['uvf_init'] is None:
-        spoof_init = True
-        vdict['uvf_init'] = copy.deepcopy(vdict['uvf_metrics2'])
-        vdict['uvf_init'].to_flag(run_check=run_check, check_extra=check_extra,
-                         run_check_acceptability=run_check_acceptability)
-        vdict['uvf_init'].flag_array[:] = False
-    else:
-        spoof_init = False
-    vdict['uvf_metrics2'].label = 'Combined metrics, round 2.'
-    alg_func = algorithm_dict['detrend_meanfilt']
-    vdict['uvf_metrics2'].metric_array[:, :, 0] = alg_func(vdict['uvf_metrics2'].metric_array[:, :, 0],
-                                                           flags=vdict['uvf_init'].flag_array[:, :, 0],
-                                                           Kt=kt_size, Kf=kf_size)
-    # Flag on combined metrics
-    vdict['uvf_f2'] = flag(vdict['uvf_metrics2'], nsig_p=sig_init, run_check=run_check,
-                  check_extra=check_extra,
-                  run_check_acceptability=run_check_acceptability)
-    vdict['uvf_fws2'] = watershed_flag(vdict['uvf_metrics2'], vdict['uvf_f2'], nsig_p=sig_adj,
-                                       inplace=False, run_check=run_check,
-                                       check_extra=check_extra,
-                                       run_check_acceptability=run_check_acceptability)
-    flags += [vdict['uvf_fws2']]
-    vdict['uvf_fws2'].label = 'Flags from combined metrics, round 2.'
-    vdict['uvf_combined2'] = copy.deepcopy(flags[0])
-    if len(flags) > 1:
-        for flg in flags[1:]:
-            vdict['uvf_combined2'] |= flg
-    vdict['uvf_combined2'].label = 'ORd flags, round 2.'
+    if len(metrics) > 0:
+    # combine all the mean metrics together using our metrics list.
+        if len(metrics) > 1:
+            vdict['uvf_metrics2'] = metrics[-1].combine_metrics(metrics[:-1],
+                                                  method='quadmean', inplace=False)
+        else:
+            vdict['uvf_metrics2'] = copy.deepcopy(metrics[-1])
+        if vdict['uvf_init'] is None:
+            spoof_init = True
+            vdict['uvf_init'] = copy.deepcopy(vdict['uvf_metrics2'])
+            vdict['uvf_init'].to_flag(run_check=run_check, check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
+            vdict['uvf_init'].flag_array[:] = False
+        else:
+            spoof_init = False
+        vdict['uvf_metrics2'].label = 'Combined metrics, round 2.'
+        alg_func = algorithm_dict['detrend_meanfilt']
+        vdict['uvf_metrics2'].metric_array[:, :, 0] = alg_func(vdict['uvf_metrics2'].metric_array[:, :, 0],
+                                                               flags=vdict['uvf_init'].flag_array[:, :, 0],
+                                                               Kt=kt_size, Kf=kf_size)
+        # Flag on combined metrics
+        vdict['uvf_f2'] = flag(vdict['uvf_metrics2'], nsig_p=sig_init, run_check=run_check,
+                      check_extra=check_extra,
+                      run_check_acceptability=run_check_acceptability)
+        vdict['uvf_fws2'] = watershed_flag(vdict['uvf_metrics2'], vdict['uvf_f2'], nsig_p=sig_adj,
+                                           inplace=False, run_check=run_check,
+                                           check_extra=check_extra,
+                                           run_check_acceptability=run_check_acceptability)
+        flags += [vdict['uvf_fws2']]
+        vdict['uvf_fws2'].label = 'Flags from combined metrics, round 2.'
+        vdict['uvf_combined2'] = copy.deepcopy(flags[0])
+        if len(flags) > 1:
+            for flg in flags[1:]:
+                vdict['uvf_combined2'] |= flg
+        vdict['uvf_combined2'].label = 'ORd flags, round 2.'
+    # since uvf_combined2, uvf_fws2, uvf_f2 and uvf_metrics2 are already initialized
+    # to None in vdict, we don't need to explicitly
+    # consider the case when len(metrics) = 0.
+
     # Write everything out
     if spoof_init:
         vdict['uvf_init'] = None
