@@ -280,6 +280,8 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument("--keep_edge_times", default=False, action="store_true",
                         help='keep metrics and flags within a convolution kernel width of the edges'
                         'of the time chunk being analyzed.')
+        ap.add_argument("--Nwf_per_load", type=int, default=None,
+                        help="Number of uvdata waterfalls to load simultaneously. Default, load all simultaneously.")
     elif method_name == 'xrfi_run_data_only':
         ap.prog = 'xrfi_run_data_only.py'
         ap.add_argument('--data_files', default=None, type=str, help='Raw visibility '
@@ -311,6 +313,8 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument("--keep_edge_times", default=False, action="store_true",
                         help='keep metrics and flags within a convolution kernel width of the edges'
                         'of the time chunk being analyzed.')
+        ap.add_argument("--Nwf_per_load", type=int, default=None,
+                        help="Number of uvdata waterfalls to load simultaneously. Default, load all simultaneously.")
     elif method_name == 'xrfi_h3c_idr2_1_run':
         ap.prog = 'xrfi_h3c_idr2_1_run.py'
         ap.add_argument('--ocalfits_files', nargs='+', type=str, help='Omnical '
