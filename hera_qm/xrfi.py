@@ -1393,15 +1393,17 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
-def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_size=8,
-              uvf_apriori=None, cal_mode='gain', sig_init=5.0, sig_adj=2.0,
-              label='', calculate_uvf_apriori=False, reinitialize=True,
-              Nwf_per_load=None, xants=None, apply_uvf_apriori=True,
-              dtype='uvcal', ant_str='both', run_filter=True, wf_method='quadmean',
-              metrics=None, flags=None, correlations='cross',
-              run_check=True,
-              check_extra=True,
-              run_check_acceptability=True):
+def _xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
+                   alg='detrend_medfilt', kt_size=8, kf_size=8,
+                   xants=None, cal_mode='gain', correlations='cross',
+                   wf_method='quadmean', sig_init=5.0, sig_adj=2.0, label='',
+                   calculate_uvf_apriori=False, reinitialize=True,
+                   Nwf_per_load=None, apply_uvf_apriori=True,
+                   dtype='uvcal', run_filter=True,
+                   metrics=None, flags=None,
+                   run_check=True,
+                   check_extra=True,
+                   run_check_acceptability=True):
     """Helper functin for xrfi run.
 
     This function contains the repeated pattern in xrfi run in which a uv_file is supplied
@@ -1415,10 +1417,99 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
 
     Parameters
     ----------
-
-
+    uv_file : string, optional
+        name of file to load (which is a uvdata or uvcal calfits file)
+        default is None. If none is provided, then metric calculations
+        and flagging will be conducted object provided in uv arg (see below).
+        If uv_file but not uv is provided, must specify the type of data
+        (uvdata or uvcal) using the dtype arg below.
+    uv : uvdata or uvcal object, optional
+        uvdata or uvcal object to flag on.
+        default is none. if none is provided, then will attempt to load in
+        and initialize file specified by uv_file.
+    uvf_apriori : uvflag object, optional.
+        uvflag containing apriori flags to apply to uv / file loaded in uv_file.
+        default is none. This should be a waterfall mode uvflag object.
+    alg : str, optional
+        The algorithm for calculating the metric. Default is "detrend_medfilt".
+    kt_size : int, optional
+        The size of kernel in time dimension for detrending in the xrfi algorithm.
+        Default is 8.
+    kf_size : int, optional
+        The size of kernel in frequency dimension for detrending in the xrfi
+        algorithm. Default is 8.
+    xants : list, optional
+        A list of antennas to flag. Default is an empty list.
+    cal_mode : {"gain", "chisq", "tot_chisq"}, optional
+        The mode to calculate metric if uv is a UVCal object. The options use
+        the gain_array, quality_array, and total_quality_array attributes,
+        respectively. Default is "gain".
+    correlations : {"auto", "cross", "both"}, optional
+        The data correlations to use in  metric.
+        "auto" means use only auto-correlations.
+        "cross" means use only cross-correlations.
+        "both" means use both.
+    wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
+        How to collapse the dimension(s) to form a single waterfall.
+    sig_init : float, optional
+        The starting number of sigmas to flag on. Default is 6.0.
+    sig_adj : float, optional
+        The number of sigmas to flag on for data adjacent to a flag. Default is 2.0.
+    label : str, optional
+        Label to be added to UVFlag objects.
+    calculate_uvf_apriori : bool, optional
+        if true, and uvf_apriori provided is None, then calculate a uvf_apriori
+        from the flag arrays provided in the uv / uv_file inputs.
+        the computed uvf_apriori will be a waterfall.
+        default is False.
+    reinitialize : bool, optional
+        Reinitialize uv object if both uv and uv_file are provided.
+        This is necessary for instances where different sets of baselines
+        are operated on successively in a uvdata object and we pass the uvdata
+        object in multiple calls to _xrfi_run_step.
+        default is True (only happens if both uv and uv_file are specified).
+    Nwf_per_load : int, optional
+        number of waterfalls to load simultaneously for flagging. This provides
+        support for partial i/o whereby a net waterfall metric is computed by
+        loading in small numbers of waterfalls from uv, computing a waterfall
+        metric for each chunk, and combining them to form the waterfall for the
+        entire dataset.
+        CURRENTLY ONLY WORKS FOR UVDATA OBJECTS. UVCAL OBJECTS STILL HAVE ALL
+        WATERFALLS LOADED SIMULTANEOUSLY.
+        default (none) sets Nwf_per_load = Number of waterfalls in uvdata that
+        are of the type specified by the correlation argument above.
+    apply_uvf_apriori : bool, optional
+        If false, don't apply the supplied uvf_apriori to uv before computing
+        metrics and flagging.
+        default is True.
+    dtype : string optional
+        specifies the type of data in uv_file (needed if uv is not provided).
+        set to "uvdata" if uv_file contains a uvdata object. "uvcal" if uv_file
+        contains a uvcal object.
+        default is 'uvcal'.
+    run_filter : bool, optional
+        if false, don't calculate any metrics or flags. occassions for setting
+        this to false are for using _xrfi_run_step to initialize a uvcal object
+        and to obtain (or apply) uvf_apriori without running calculating metrics
+        or flagging.
+    metrics : list, optional
+        optional list to append metrics too.
+        default is None
+    flags : list, optional
+        optional list to append flags too.
+        default is None.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
 
     """
+    # flags and metrics are lists
+    # that computed flags and metrics can be appended too.
     if flags is None:
         flags = []
     if metrics is None:
@@ -1426,6 +1517,8 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
     if xants is None:
         xants = []
     if uv is None:
+        # if no uv is provided, we should try loading it from the file specified
+        # by uv_file.
         if uv_file is not None:
             # initialize appropriately if a string was provided.
             if isinstance(uv_file, (str, np.str)):
@@ -1435,70 +1528,81 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
                     uv.read_calfits(uv_file)
                 elif dtype=='uvdata':
                     uv = UVData()
+    no_uvf_apriori = (uvf_apriori is None)
+    # now, assuming uv was either provided or successfully loaded.
     if uv is not None:
-        # even if uv is not None, we can provide a uv_file
-        # to reread the object.
+        # if we want, we can reinitialize uv
         if reinitialize:
             if uv_file is not None:
                 if issubclass(uv.__class__, UVData):
                     uv.read(uv_file, read_data=False, ant_str=correlations)
                 else:
                     uv.read_calfits(uv_file)
-        if run_filter:
+            # if uv is a UVData object
             if issubclass(uv.__class__, UVData):
                 bls = uv.get_antpairpols()
                 nbls = len(bls)
-                # if no Nwf_per_load is provided
-                # then just set it equal to the
-                # number of baselines
+                # figure out how many baseline chunks
+                # we need to iterate over.
                 if Nwf_per_load is None:
                     Nwf_per_load = nbls
                 nloads = int(np.ceil(nbls / Nwf_per_load))
+                # iterate over baseline chunks
                 for loadnum in range(nloads):
-                    # Does a partially loaded uvdata object remember all its baselines?
+                    # read in chunk
                     uv.read(uv_file, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
-                    if uvf_apriori is None:
+                    # if no uvf apriori was provided.
+                    if no_uvf_apriori:
+                        # and we want to calculate it
                         if calculate_uvf_apriori:
+                            # then extract the flags for the chunk of baselines we are on
                             uvf_apriori_chunk = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+                            # waterfall them
                             uvf_apriori_chunk.to_waterfall(method='and', keep_pol=False, run_check=run_check,
                                                     check_extra=check_extra,
                                                     run_check_acceptability=run_check_acceptability)
+                            # and if this is the first chunk, initialize uvf_apriori
                             if loadnum == 0:
                                 uvf_apriori = uvf_apriori_chunk
+                            # if this isn't the first chunk, and them with uvf_apriori.
                             else:
                                 uvf_apriori = uvf_apriori.combine_flags(uvf_apriori_chunk, method='and',
                                                                         run_check=run_check,
                                                                         check_extra=check_extra,
                                                                         run_check_acceptability=run_check_acceptability)
+                    # if uvf_apriori was supplied and we want to apply it, then apply it to the current
+                    # data chunk.
                     elif apply_uvf_apriori:
                         flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability)
-                    # for partial i/o, we can compute individual metrics for each baseline and then collapse them
-                    # onto a running average metric. Some slight modifications to xrfi_pipe are in order to make
-                    # this work. First, eachn baseline cannot be translated to a z-score centered at zero so
-                    # we disable this step with the center_metric keyword. We also don't want to flag or
-                    # reset the weights which we deactivate with the reset_weights and skip_flags keyword
-                    uvft, _ = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=True,
-                                             cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
-                                             reset_weights=False, center_metric=False, wf_method=wf_method,
+                    if run_filter:
+                        # We can compute individual metrics for each baseline and then collapse them
+                        # onto a running average metric. Some slight modifications to xrfi_pipe were necessary to make
+                        # this work. First, each individual chunk cannot be translated to a z-score centered at zero so
+                        # we disable this step (per chunk) with the center_metric keyword. We also don't want to flag or
+                        # reset the weights which we deactivate with the reset_weights and skip_flags keyword
+                        uvft, _ = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=True,
+                                                 cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                                 reset_weights=False, center_metric=False, wf_method=wf_method,
+                                                 label=label, run_check=run_check, check_extra=check_extra,
+                                                 run_check_acceptability=run_check_acceptability)
+                        if loadnum == 0:
+                            uvf = uvft
+                        else:
+                            uvf.combine_metrics(uvft, method=wf_method, run_check=run_check,
+                                               check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                if run_filter:
+                    # now that we have a uvf that includes the combined metric of all the baselines, we can
+                    # run one last round of xrfi_pipe with flagging enabled, centering the metric enabled, and resetting
+                    # the weights enabled to perform these final steps which are run on the full collapsed metric.
+                    # note that we pass uvf as an arg instead of uv. xrfi_pipe has been modified so that if a uvflag
+                    # is passed in place of uvdata or uvcal, it skips the metric calculation /waterfalling
+                    # steps and goes straight to steps performed on combined metrics, i.e.
+                    # flagging, normalizing, and weights reseting.
+                    uvf, uvf_f = xrfi_pipe(uvf, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=False,
+                                             cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
+                                             center_metric=True, reset_weights=True,
                                              label=label, run_check=run_check, check_extra=check_extra,
                                              run_check_acceptability=run_check_acceptability)
-                    if loadnum == 0:
-                        uvf = uvft
-                    else:
-                        uvf.combine_metrics(uvft, method=wf_method, run_check=run_check,
-                                           check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-                # now that we have a uvf that includes the combined metric of all the baselines, we can
-                # run one last round of xrfi_pipe with flagging enabled, centering the metric enabled, and resetting
-                # the weights enabled to perform these final steps which are run on the full collapsed metric.
-                # note that we pass uvf as an arg instead of uv. xrfi_pipe has been modified so that if a uvflag
-                # is passed in place of uvdata or uvcal, it skips the metric calculation /waterfalling
-                # steps and goes straight to steps performed on combined metrics, i.e.
-                # flagging, normalizing, and weights reseting.
-                uvf, uvf_f = xrfi_pipe(uvf, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=False,
-                                         cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
-                                         center_metric=True, reset_weights=True,
-                                         label=label, run_check=run_check, check_extra=check_extra,
-                                         run_check_acceptability=run_check_acceptability)
             else:
                 if uvf_apriori is None:
                     if calculate_uvf_apriori:
@@ -1762,7 +1866,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     apply_inits = [True, False, False]
     # omnical median filters.''
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
-            vdict['uvc_o'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], uv_file=vdict['ocalfits_file'], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict['uvc_o'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = _xrfi_run_step(uv=vdict[input], uv_file=vdict['ocalfits_file'], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label='Omnical' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
@@ -1773,7 +1877,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     input_uvs = ['uvc_a', 'uvc_a', 'uvc_a']
     # abscal gain flags.
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
-            vdict['uvc_a'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], uv_file=vdict['acalfits_file'], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict['uvc_a'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = _xrfi_run_step(uv=vdict[input], uv_file=vdict['acalfits_file'], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label='Abscal' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
@@ -1792,7 +1896,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     filter_switches = [omnivis_median_filter, cross_median_filter, auto_median_filter]
     algs = ['detrend_medfilt', 'detrend_medfilt', 'detrend_medfilt']
     for mf, ff, switch, alg, label, corr, input, uv, api in zip(uvmetrics, uvflags, filter_switches, algs, labels, correlations, input_uvs, uvs, apply_inits):
-            vdict[uv], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[uv], uv_file=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict[uv], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = _xrfi_run_step(uv=vdict[uv], uv_file=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
@@ -1844,7 +1948,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     apply_inits = [True, False, False]
     # note that init flags are applied by passing them as uvf_apriori.
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
-            vdict['uvc_o'], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict['uvc_o'], vdict[mf], vdict[ff], _, metrics, flags = _xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label='Omnical' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
@@ -1855,7 +1959,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     uvflags = ['uvf_agf2', 'uvf_axf2', 'uvf_azf2']
     input_uvs = ['uvc_a', 'uvc_a', 'uvc_a']
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
-            vdict['uvc_a'], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict['uvc_a'], vdict[mf], vdict[ff], _, metrics, flags = _xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label='Abscal' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
@@ -1871,7 +1975,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     filter_switches = [omnivis_mean_filter, cross_mean_filter, auto_mean_filter]
     algs = ['detrend_meanfilt', 'detrend_meanfilt', 'detrend_meanfilt']
     for mf, ff, switch, alg, label, corr, input, uv, input, api in zip(uvmetrics, uvflags, filter_switches, algs, labels, correlations, input_uvs, uvs, input_uvs, apply_inits):
-            vdict[uv], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[uv], uv_file=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict[uv], vdict[mf], vdict[ff], _, metrics, flags = _xrfi_run_step(uv=vdict[uv], uv_file=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                      correlations=corr,
