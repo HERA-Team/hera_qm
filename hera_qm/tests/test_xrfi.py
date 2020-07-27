@@ -943,6 +943,78 @@ def test_xrfi_run_step(tmpdir):
     assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
     assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
 
+
+    # comparison for autos only.
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='quadmean', alg='detrend_medfilt', correlations='auto')
+    assert len(flags1) == 2
+    assert len(metrics1) == 1
+    assert uvf_a1 is not None
+
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', Nwf_per_load=1, wf_method='quadmean', alg='detrend_medfilt', correlations='auto')
+    assert len(flags2) == 2
+    assert len(metrics2) == 1
+    assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
+    assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+
+    #now try autos, then crosses
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+                                                                     calculate_uvf_apriori=True,
+                                                                     run_filter=True, dtype='uvdata',
+                                                                     wf_method='quadmean',
+                                                                     alg='detrend_medfilt',
+                                                                     correlations='cross')
+
+    uv1x, uvf1x, uvf_f1x, uvf_a1x, metrics1x, flags1x = xrfi.xrfi_run_step(uv_file=raw_dfile,
+                                                                         uv = uv1,
+                                                                         apply_uvf_apriori=True,
+                                                                         uvf_apriori=uvf_a1,
+                                                                         run_filter=True, dtype='uvdata',
+                                                                         wf_method='quadmean',
+                                                                         alg='detrend_medfilt',
+                                                                         correlations='auto')
+
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+                                                                    calculate_uvf_apriori=True,
+                                                                    run_filter=True, dtype='uvdata',
+                                                                    Nwf_per_load=1,
+                                                                    wf_method='quadmean',
+                                                                    alg='detrend_medfilt',
+                                                                    correlations='cross')
+
+    uv2, uvf2x, uvf_f2x, uvf_a2x, metrics2x, flags2x = xrfi.xrfi_run_step(uv_file=raw_dfile,
+                                                                    uv=uv2,
+                                                                    apply_uvf_apriori=True,
+                                                                    uvf_apriori=uvf_a2,
+                                                                    run_filter=True, dtype='uvdata',
+                                                                    Nwf_per_load=1,
+                                                                    wf_method='quadmean',
+                                                                    alg='detrend_medfilt',
+                                                                    correlations='auto')
+    assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
+    assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+    assert np.all(np.isclose(uvf1x.metric_array, uvf2x.metric_array))
+    assert np.all(np.isclose(uvf_f1x.flag_array, uvf_f2x.flag_array))
+    assert np.all(np.isclose(uvf_a1x.flag_array, uvf_a2x.flag_array))
+
+    # comparison for meanfilter.
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='mean', alg='detrend_meanfilt')
+    assert len(flags1) == 2
+    assert len(metrics1) == 1
+    assert uvf_a1 is not None
+
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', Nwf_per_load=1, wf_method='mean', alg='detrend_meanfilt')
+    assert len(flags2) == 2
+    assert len(metrics2) == 1
+    assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
+    assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -1030,6 +1102,7 @@ def test_xrfi_run(tmpdir):
             os.remove(out)
     # now really do everything.
     uvf_list1 = []
+    uvf_list1_names = []
     with pytest.warns(None) as record:
         xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
                       history='Just a test', kt_size=3, cross_median_filter=True)
@@ -1045,6 +1118,7 @@ def test_xrfi_run(tmpdir):
         assert os.path.exists(out)
         uvf = UVFlag(out)
         uvf_list1.append(uvf)
+        uvf_list1_names.append(out)
         assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1053,6 +1127,7 @@ def test_xrfi_run(tmpdir):
             os.remove(out)
     # now do partial i/o and check equality of outputs.
     uvf_list2 = []
+    uvf_list2_names = []
     with pytest.warns(None) as record:
         xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, Nwf_per_load=1,
                       history='Just a test', kt_size=3, cross_median_filter=True)
@@ -1068,6 +1143,7 @@ def test_xrfi_run(tmpdir):
         assert os.path.exists(out)
         uvf = UVFlag(out)
         uvf_list2.append(uvf)
+        uvf_list2_names.append(out)
         assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1076,7 +1152,10 @@ def test_xrfi_run(tmpdir):
             os.remove(out)
     # compare
     for uvf1, uvf2 in zip(uvf_list1, uvf_list2):
-        assert uvf1 == uvf2
+        if uvf1.mode == 'flag':
+            assert np.all(np.isclose(uvf1.flag_array, uvf2.flag_array))
+        elif uvf1.mode == 'metric':
+            assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
     # test cross correlations.
     xrfi.xrfi_run(history='data cross corrs.', data_files=raw_dfile,
                   cross_median_filter=True, cross_mean_filter=True, auto_mean_filter=False, auto_median_filter=False)

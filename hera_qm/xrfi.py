@@ -1395,10 +1395,11 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 
 def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_size=8,
               uvf_apriori=None, cal_mode='gain', sig_init=5.0, sig_adj=2.0,
-              label='', calculate_uvf_apriori=False,
+              label='', calculate_uvf_apriori=False, reinitialize=True,
               Nwf_per_load=None, xants=None, apply_uvf_apriori=True,
               dtype='uvcal', ant_str='both', run_filter=True, wf_method='quadmean',
-              metrics=None, flags=None, correlations='cross', run_check=True,
+              metrics=None, flags=None, correlations='cross',
+              run_check=True,
               check_extra=True,
               run_check_acceptability=True):
     """Helper functin for xrfi run.
@@ -1414,7 +1415,7 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
 
     Parameters
     ----------
-    
+
 
 
     """
@@ -1434,8 +1435,15 @@ def xrfi_run_step(uv_file=None, uv=None, alg='detrend_medfilt', kt_size=8, kf_si
                     uv.read_calfits(uv_file)
                 elif dtype=='uvdata':
                     uv = UVData()
-                    uv.read(uv_file, read_data=False, ant_str=correlations)
     if uv is not None:
+        # even if uv is not None, we can provide a uv_file
+        # to reread the object.
+        if reinitialize:
+            if uv_file is not None:
+                if issubclass(uv.__class__, UVData):
+                    uv.read(uv_file, read_data=False, ant_str=correlations)
+                else:
+                    uv.read_calfits(uv_file)
         if run_filter:
             if issubclass(uv.__class__, UVData):
                 bls = uv.get_antpairpols()
@@ -1788,6 +1796,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                      xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
+                                                                                     correlations=corr,
                                                                                      run_check=run_check, check_extra=check_extra, calculate_uvf_apriori=True,
                                                                                      run_check_acceptability=run_check_acceptability)
     # now combine stuff
@@ -1865,6 +1874,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
             vdict[uv], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[uv], uv_file=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
+                                                                                     correlations=corr,
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
                                                                                      run_check=run_check, check_extra=check_extra, calculate_uvf_apriori=False,
                                                                                      run_check_acceptability=run_check_acceptability)
