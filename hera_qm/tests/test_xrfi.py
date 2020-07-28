@@ -23,6 +23,12 @@ test_f_file_flags = test_d_file + '.testuvflag.flags.h5'  # version in 'flag' mo
 test_outfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
 xrfi_path = os.path.join(DATA_PATH, 'test_output')
 
+test_uvh5_files = ['zen.2457698.40355191.xx.HH.uvh5',
+                   'zen.2457698.4036761867.xx.HH.uvh5',
+                   'zen.2457698.4038004624.xx.HH.uvh5']
+test_c_files = ['zen.2457698.40355191.xx.HH.uvcAA.omni.calfits',
+                'zen.2457698.40367619.xx.HH.uvcAA.omni.calfits',
+                'zen.2457698.40380046.xx.HH.uvcAA.omni.calfits']
 
 def test_uvdata():
     uv = UVData()
@@ -887,7 +893,6 @@ def test_xrfi_h1c_idr2_2_pipe():
     assert len(uvf_m.polarization_array) == 1
     assert uvf_m.weights_array.max() == 1.
 
-
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -1173,6 +1178,100 @@ def test_xrfi_run(tmpdir):
     shutil.rmtree(outdir)  # cleanup
     for fname in [ocal_file, acal_file, model_file, raw_dfile]:
         os.remove(fname)
+
+def test_xrfi_run_multifile(tmpdir):
+    # test xrfi_run with multiple files
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    messages = 8 * mess1
+    cat1 = [UserWarning]
+    categories = 8 * cat1
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    tmp_path = tmpdir.strpath
+    fake_obs = 'zen.2457698.40355.HH'
+    ocal_files = []
+    acal_files = []
+    model_files =[]
+    raw_dfiles = []
+    for cf, uvf in zip(test_uvh5_files, test_c_files):
+        ocal_file = os.path.join(tmp_path, fake_obs + '.omni.calfits')
+        shutil.copyfile(cf, ocal_file)
+        ocal_files.append(ocal_file)
+        acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
+        shutil.copyfile(cf, acal_file)
+        acal_files.append(acal_file)
+        raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+        shutil.copyfile(uvf, raw_dfile)
+        raw_dfiles.append(raw_dfile)
+        model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
+        shutil.copyfile(uvf, model_file)
+        model_files.append(model_file)
+
+    # check warnings
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles,
+                      'Just a test', kt_size=3, cross_median_filter=True)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
+    outdirs = ['zen.2457698.40355191.xrfi',
+               'zen.2457698.40367619.xrfi',
+               'zen.2457698.40380046.xrfi']
+    ext_labels = {'ag_flags1': 'Abscal gains, median filter. Flags.',
+                  'ag_flags2': 'Abscal gains, mean filter. Flags.',
+                  'ag_metrics1': 'Abscal gains, median filter.',
+                  'ag_metrics2': 'Abscal gains, mean filter.',
+                  'apriori_flags': 'A priori flags.',
+                  'ax_flags1': 'Abscal chisq, median filter. Flags.',
+                  'ax_flags2': 'Abscal chisq, mean filter. Flags.',
+                  'ax_metrics1': 'Abscal chisq, median filter.',
+                  'ax_metrics2': 'Abscal chisq, mean filter.',
+                  'omnical_chi_sq_flags1': 'Omnical Renormalized chisq, median filter. Flags.',
+                  'omnical_chi_sq_flags2': 'Omnical Renormalized chisq, median filter, round 2. Flags.',
+                  'omnical_chi_sq_renormed_metrics1': 'Omnical Renormalized chisq, median filter.',
+                  'omnical_chi_sq_renormed_metrics2': 'Omnical Renormalized chisq, median filter, round 2.',
+                  'abscal_chi_sq_flags1': 'Abscal Renormalized chisq, median filter. Flags.',
+                  'abscal_chi_sq_flags2': 'Abscal Renormalized chisq, median filter, round 2. Flags.',
+                  'abscal_chi_sq_renormed_metrics1': 'Abscal Renormalized chisq, median filter.',
+                  'abscal_chi_sq_renormed_metrics2': 'Abscal Renormalized chisq, median filter, round 2.',
+                  'combined_flags1': 'Flags from combined metrics, round 1.',
+                  'combined_flags2': 'Flags from combined metrics, round 2.',
+                  'combined_metrics1': 'Combined metrics, round 1.',
+                  'combined_metrics2': 'Combined metrics, round 2.',
+                  'cross_flags1': 'Crosscorr, median filter. Flags.',
+                  'cross_flags2': 'Crosscorr, mean filter. Flags.',
+                  'auto_flags1': 'Autocorr, median filter. Flags.',
+                  'auto_flags2': 'Autocorr, mean filter. Flags.',
+                  'auto_metrics2': 'Autocorr, mean filter.',
+                  'auto_metrics1': 'Autocorr, median filter.',
+                  'cross_metrics2': 'Crosscorr, mean filter.',
+                  'cross_metrics1': 'Crosscorr, median filter.',
+                  'flags1': 'ORd flags, round 1.',
+                  'flags2': 'ORd flags, round 2.',
+                  'og_flags1': 'Omnical gains, median filter. Flags.',
+                  'og_flags2': 'Omnical gains, mean filter. Flags.',
+                  'og_metrics1': 'Omnical gains, median filter.',
+                  'og_metrics2': 'Omnical gains, mean filter.',
+                  'ox_flags1': 'Omnical chisq, median filter. Flags.',
+                  'ox_flags2': 'Omnical chisq, mean filter. Flags.',
+                  'ox_metrics1': 'Omnical chisq, median filter.',
+                  'ox_metrics2': 'Omnical chisq, mean filter.',
+                  'v_flags1': 'Omnical visibility solutions, median filter. Flags.',
+                  'v_flags2': 'Omnical visibility solutions, mean filter. Flags.',
+                  'v_metrics1': 'Omnical visibility solutions, median filter.',
+                  'v_metrics2': 'Omnical visibility solutions, mean filter.'}
+        # check all the metrics and flags.
+        for outdir in outdirs:
+            for ext, label in ext_labels.items():
+                # by default, only cross median filter / mean filter is not performed.
+                out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+                assert os.path.exists(out)
+                uvf = UVFlag(out)
+                assert uvf.label == label
 
 
 def test_day_threshold_run(tmpdir):
