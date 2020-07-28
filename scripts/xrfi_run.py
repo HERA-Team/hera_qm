@@ -11,7 +11,7 @@ ap = utils.get_metrics_ArgumentParser('xrfi_run')
 args = ap.parse_args()
 history = ' '.join(sys.argv)
 
-xrfi.xrfi_run(args.ocalfits_file, args.acalfits_file, args.model_file, args.data_file,
+xrfi.xrfi_run(args.ocalfits_files, args.acalfits_files, args.model_files, args.data_files,
               history, xrfi_path=args.xrfi_path,
               kt_size=args.kt_size, kf_size=args.kf_size, sig_init=args.sig_init,
               sig_adj=args.sig_adj, ex_ants=args.ex_ants,

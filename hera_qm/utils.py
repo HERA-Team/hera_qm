@@ -245,14 +245,18 @@ def get_metrics_ArgumentParser(method_name):
                         'to full flag array and apply before delay filter.')
     elif method_name == 'xrfi_run':
         ap.prog = 'xrfi_run.py'
-        ap.add_argument('--ocalfits_file', default=None, type=str, help='Omnical '
-                        'calfits file to use to flag on gains and chisquared values.')
-        ap.add_argument('--acalfits_file', default=None, type=str, help='Abscal '
-                        'calfits file to use to flag on gains and chisquared values.')
-        ap.add_argument('--model_file', default=None, type=str, help='Model visibility '
-                        'file to flag on.')
+        ap.add_argument('--ocalfits_files', default=None, type=str, help='Omnical '
+                        'calfits files to use to flag on gains and chisquared values.',
+                        nargs='+')
+        ap.add_argument('--acalfits_files', default=None, type=str, help='Abscal '
+                        'calfits files to use to flag on gains and chisquared values.',
+                        nargs='+')
+        ap.add_argument('--model_files', default=None, type=str, help='Model visibility '
+                        'file to flag on.',
+                        nargs='+')
         ap.add_argument('--data_file', default=None, type=str, help='Raw visibility '
-                        'data file to flag on.')
+                        'data files to flag on.',
+                        nargs='+')
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,
@@ -275,8 +279,8 @@ def get_metrics_ArgumentParser(method_name):
                         help='overwrites existing files (default False)')
     elif method_name == 'xrfi_run_data_only':
         ap.prog = 'xrfi_run_data_only.py'
-        ap.add_argument('--data_file', default=None, type=str, help='Raw visibility '
-                        'data file to flag on.')
+        ap.add_argument('--data_files', default=None, type=str, help='Raw visibility '
+                        'data files to flag on.', nargs='+')
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,

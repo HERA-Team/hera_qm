@@ -1388,7 +1388,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
 #############################################################################
 
 
-def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=None,
+def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_files=None,
              omnical_median_filter=True, omnical_mean_filter=True,
              omnical_chi2_median_filter=True, omnical_chi2_mean_filter=True,
              omnical_zscore_filter=True,
@@ -1401,7 +1401,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
              history=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
              ex_ants=None, metrics_file=None,
-             output_prefix=None, clobber=False,
+             output_prefixes=None, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
@@ -1419,13 +1419,13 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
 
     Parameters
     ----------
-    ocalfits_file : str, optional
+    ocalfits_files : str or list of strings, optional
         The omnical calfits file to use to flag on gains and chisquared values.
-    acalfits_file : str, optional
+    acalfits_files : str or list of strings, optional
         The abscal calfits file to use to flag on gains and chisquared values.
-    model_file : str, optional
+    model_files : str or list of strings, optional
         THe model visibility file to flag on.
-    data_file : str, optional
+    data_files : str or list of strings, optional
         The raw visibility data file to flag.
     omnical_median_filter : bool, optional
         If true, run a median filter on omnical gains.
@@ -1533,12 +1533,12 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         Metrics file that contains a list of excluded antennas. Flags of visibilities
         formed with these antennas will be set to True. Default is None (i.e.,
         no antennas will be excluded).
-    output_prefix : str, optional
+    output_prefixes : str or list of strings, optional
         Optional output prefix. If none is provided, use data_file.
         Required of data_file is None.
-        Provide output_prefix in the same format as a data_file with an extension
+        Provide output_prefixes in the same format as a data_file with an extension
         (should have a .uvh5 at the end). Output products will replace extension
-        with various output labels. For example, output_prefix='filename.uvh5'
+        with various output labels. For example, output_prefixes='filename.uvh5'
         will result in products with names like 'filename.cross_flags1.h5'.
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
@@ -1556,27 +1556,36 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
     None
 
     """
-    if ocalfits_file is None and acalfits_file is None and model_file is None and data_file is None:
-        raise ValueError("Must provide at least one of the following; ocalfits_file, acalfits_file, model_file, data_file")
+    if ocalfits_files is None and acalfits_files is None and model_files is None and data_files is None:
+        raise ValueError("Must provide at least one of the following; ocalfits_files, acalfits_files, model_files, data_files")
     # user must provide an optional output prefix if no data file is provided.
-    if output_prefix is None:
-        if data_file is not None:
-            output_prefix = data_file
+    if isinstance(acalfits_files, (str, np.string)):
+        acalfits_files = [acalfits_files]
+    if isinstance(ocalfits_files, (str, np.string)):
+        ocalfits_files = [ocalfits_files]
+    if isinstance(model_files, (str, np.string)):
+        model_files = [model_files]
+    if isinstance(data_files, (str, np.string)):
+        data_files = [data_files]
+    if isinstance(output_prefixes, (str, np.string)):
+        output_prefixes = [output_prefixes]
+    if output_prefixes is None:
+        if data_files is not None:
+            output_prefixes = data_files
         else:
-            raise ValueError("Must provide either output_prefix or data_file!")
+            raise ValueError("Must provide either output_prefixes or data_files!")
     if history is None:
         history = ''
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
-    dirname = resolve_xrfi_path(xrfi_path, output_prefix, jd_subdir=True)
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
 
     # Initial run on cal data products
     # Calculate metric on abscal data
     metrics = []
     flags = []
-    if ocalfits_file is not None:
+    if ocalfits_files is not None:
         uvc_o = UVCal()
-        uvc_o.read_calfits(acalfits_file)
+        uvc_o.read_calfits(ocalfits_files)
         uvf_apriori = UVFlag(uvc_o, mode='flag', copy_flags=True, label='A priori flags.')
         uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
                                  check_extra=check_extra,
@@ -1623,9 +1632,9 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         uvf_og = None; uvf_ox = None; uvf_oz = None
         uvf_ogf = None; uvf_oxf = None; uvf_ozf = None
 
-    if acalfits_file is not None:
+    if acalfits_files is not None:
         uvc_a = UVCal()
-        uvc_a.read_calfits(acalfits_file)
+        uvc_a.read_calfits(acalfits_files)
         if uvf_apriori is None:
             uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
             uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
@@ -1678,9 +1687,9 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         uvf_agf = None; uvf_axf = None; uvf_azf = None
 
 
-    if model_file is not None:
+    if model_files is not None:
         uv_v = UVData()
-        uv_v.read(model_file)
+        uv_v.read(model_files)
         if uvf_apriori is None:
             uvf_apriori = UVFlag(uv_v, mode='flag', copy_flags=True, label='A priori flags.')
             uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
@@ -1706,7 +1715,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         uvf_v = None; uvf_vf = None
 
     # compute data median filter.
-    if data_file is not None:
+    if data_files is not None:
         uv_d = UVData()
         # If only autos are being used, only load autos.
         if not cross_median_filter and not cross_mean_filter:
@@ -1717,7 +1726,7 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
         else:
         # otherwise, load everything.
             ant_str = 'all'
-        uv_d.read(data_file, ant_str=ant_str)
+        uv_d.read(data_files, ant_str=ant_str)
         if uvf_apriori is None:
             uvf_apriori = UVFlag(uv_d, mode='flag', copy_flags=True, label='A priori flags.')
             uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
@@ -1976,6 +1985,74 @@ def xrfi_run(ocalfits_file=None, acalfits_file=None, model_file=None, data_file=
                 'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
                 'flags2.h5': uvf_combined2}
     basename = qm_utils.strip_extension(os.path.basename(output_prefix))
+
+
+    # Determine the actual files to store
+    # We will drop kt_size / (integrations per file) files at the start and
+    # end to avoid edge effects from the convolution kernel.
+    # If this chunk includes the start or end of the night, we will write
+    # output files for those, but flag everything.
+
+    # Read metadata from first file to get integrations per file.
+    file_lists = [ocalfits_files, acalfits_files, data_files, model_files]
+    if data_files is not None:
+        dtypet = 'uvdata'
+        uvlist = data_files
+    elif model_files is not None:
+        dtypet = 'uvdata'
+        uvlist = model_files
+    elif ocalfits_files is not None:
+        dtypet = 'uvcal'
+        uvlist = ocalfits_files
+    elif acalfits_files is not None:
+        dtypet = 'uvcal'
+        uvlist = acalfits_files
+    if dtypet == 'uvdata':
+        uvtemp = UVData()
+        uvtemp.read(uvlist[0], read_data=False)
+    elif dtypet == 'uvcal':
+        uvtemp = UVCal()
+        uvtemp.read_calfits(uvlist[0])
+
+    nintegrations = len(uvlist) * uvtemp.Ntimes
+    # Calculate number of files to drop on edges, rounding up.
+    ndrop = int(np.ceil(kt_size / uvtemp.Ntimes))
+    # start_ind and end_ind are the indices in the file list to include
+    start_ind = ndrop
+    end_ind = len(uvlist) - ndrop
+    # If we're the first or last job, store all flags for the edge
+    datadir = os.path.dirname(os.path.abspath(output_prefixes[0]))
+    bname = os.path.basename(output_prefixes[0])
+    # Because we don't necessarily know the filename structure, search for
+    # files that are the same except different numbers (JDs)
+    search_str = os.path.join(datadir, re.sub('[0-9]', '?', bname))
+    all_files = sorted(glob.glob(search_str))
+    if os.path.basename(output_prefixes[0]) == os.path.basename(all_files[0]):
+        # This is the first job, store the early edge.
+        start_ind = 0
+    if os.path.basename(output_prefixes[-1]) == os.path.basename(all_files[-1]):
+        # Last job, store the late edge.
+        end_ind = len(output_prefixes)
+
+    # Loop through the files to output, storing all the different data products.
+    for ind in range(start_ind, end_ind):
+        dirname = resolve_xrfi_path(xrfi_path, output_prefixes[ind], jd_subdir=True)
+        basename = qm_utils.strip_extension(os.path.basename(output_prefixes[ind]))
+        for ext, uvf in uvf_dict.items():
+            # This is calculated separately for each uvf because machine
+            # precision error was leading to times not found in object.
+            this_times = np.unique(uvf.time_array)
+            t_ind = ind * uvtemp.Ntimes
+            uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
+                                 inplace=False)
+            if (ext == 'flags2.h5') and ((ind <= ndrop) or (ind >= nintegrations - ndrop)):
+                # Edge file, flag it completely.
+                uvf_out.flag_array = np.ones_like(uvf_out.flag_array)
+            outfile = '.'.join([basename, ext])
+            outpath = os.path.join(dirname, outfile)
+            uvf_out.history += history
+            uvf_out.write(outpath, clobber=clobber)
+
     for ext, uvf in uvf_dict.items():
         if uvf is not None:
             outfile = '.'.join([basename, ext])

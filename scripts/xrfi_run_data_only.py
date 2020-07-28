@@ -11,7 +11,7 @@ ap = utils.get_metrics_ArgumentParser('xrfi_run_data_only')
 args = ap.parse_args()
 history = ' '.join(sys.argv)
 
-xrfi.xrfi_run(data_file=args.data_file,
+xrfi.xrfi_run(data_files=args.data_files,
               cross_median_filter=args.cross_median_filter,
               cross_mean_filter=not(args.skip_cross_mean_filter),
               history=history, xrfi_path=args.xrfi_path,
