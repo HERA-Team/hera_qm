@@ -1047,7 +1047,7 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
 # Higher level functions that loop through data to calculate metrics
 #############################################################################
 
-def calculate_metric(uv, algorithm, cal_mode='gain', correlations='both', run_check=True,
+def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
                      check_extra=True, run_check_acceptability=True, **kwargs):
     """Make a UVFlag object of mode 'metric' from a UVData or UVCal object.
 
@@ -1061,8 +1061,6 @@ def calculate_metric(uv, algorithm, cal_mode='gain', correlations='both', run_ch
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
-    correlations : {"cross", "auto", "both"}, optional
-        The correlations to use when computing metrics for visibility data sets.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1090,11 +1088,6 @@ def calculate_metric(uv, algorithm, cal_mode='gain', correlations='both', run_ch
         is raised.
 
     """
-    if issubclass(uv.__class__, (UVData)):
-        if correlations == 'auto':
-            uv = uv.select(ant_str='auto', inplace=False)
-        if correlations == 'cross':
-            uv = uv.select(ant_str='cross', inplace=False)
     if not issubclass(uv.__class__, (UVData, UVCal)):
         raise ValueError('uv must be a UVData or UVCal object.')
     try:
@@ -1232,7 +1225,7 @@ def xrfi_h1c_pipe(uv, Kt=8, Kf=8, sig_init=6., sig_adj=2., px_threshold=0.2,
 
 
 def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
-              correlations='both', skip_flags=False,
+              skip_flags=False,
               wf_method='quadmean', reset_weights=True,
               sig_init=6.0, sig_adj=2.0, label='', center_metric=True,
               run_check=True, check_extra=True, run_check_acceptability=True):
@@ -1258,11 +1251,6 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
         The mode to calculate metric if uv is a UVCal object. The options use
         the gain_array, quality_array, and total_quality_array attributes,
         respectively. Default is "gain".
-    correlations : {"auto", "cross", "both"}, optional
-        The data correlations to use in  metric.
-        "auto" means use only auto-correlations.
-        "cross" means use only cross-correlations.
-        "both" means use both.
     skip_flags : bool, optional
         If True, skip flagging steps (only compute the metric).
         Default is False.
@@ -1298,7 +1286,6 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
                    check_extra=check_extra,
                    run_check_acceptability=run_check_acceptability)
         uvf_m = calculate_metric(uv, alg, Kt=Kt, Kf=Kf, cal_mode=cal_mode,
-                                 correlations=correlations,
                                  run_check=run_check, check_extra=check_extra,
                                  run_check_acceptability=run_check_acceptability)
         uvf_m.label = label
@@ -1551,6 +1538,7 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
                     uv.read_calfits(uv_file)
                 elif dtype=='uvdata':
                     uv = UVData()
+                    uv.read(uv_file, read_data=False)
     no_uvf_apriori = (uvf_apriori is None)
     # now, assuming uv was either provided or successfully loaded.
     if uv is not None:
@@ -1558,12 +1546,17 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
         if reinitialize:
             if uv_file is not None:
                 if issubclass(uv.__class__, UVData):
-                    uv.read(uv_file, read_data=False, ant_str=correlations)
+                    uv.read(uv_file, read_data=False)
                 else:
                     uv.read_calfits(uv_file)
         # The following code applies if uv is a UVData object.
         if issubclass(uv.__class__, UVData):
             bls = uv.get_antpairpols()
+            if correlations == 'cross':
+                bls = [app for app in bls if app[1] != app[0]]
+            elif correlations == 'auto':
+                bls = [app for app in bls if app[1] == app[0]]
+
             nbls = len(bls)
             # figure out how many baseline chunks
             # we need to iterate over.
@@ -1593,7 +1586,7 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
                 # if uvf_apriori was supplied and we want to apply it, then apply it to the current
                 # data chunk.
                 elif apply_uvf_apriori:
-                    flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability)
+                    flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
                 if run_filter:
                     # We can compute individual metrics for each baseline and then collapse them
                     # onto a running average metric. Some slight modifications to xrfi_pipe were necessary to make
@@ -1961,7 +1954,6 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     # so we need to set the second / third apply_init True to apply
     # flags to uv_d crosses (and then autos).
     apply_inits = [True, True, True]
-    algs = ['detrend_medfilt', 'detrend_medfilt', 'detrend_medfilt']
     labels = ['Omnical visibility solutions, median filter.', 'Crosscorr, median filter.', 'Autocorr, median filter.']
     filter_switches = [omnivis_median_filter, cross_median_filter, auto_median_filter]
     algs = ['detrend_medfilt', 'detrend_medfilt', 'detrend_medfilt']
