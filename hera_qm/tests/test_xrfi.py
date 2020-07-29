@@ -24,11 +24,15 @@ test_outfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
 xrfi_path = os.path.join(DATA_PATH, 'test_output')
 
 test_uvh5_files = ['zen.2457698.40355191.xx.HH.uvh5',
-                   'zen.2457698.4036761867.xx.HH.uvh5',
-                   'zen.2457698.4038004624.xx.HH.uvh5']
+                   'zen.2457698.40367619.xx.HH.uvh5',
+                   'zen.2457698.40380046.xx.HH.uvh5']
 test_c_files = ['zen.2457698.40355191.xx.HH.uvcAA.omni.calfits',
                 'zen.2457698.40367619.xx.HH.uvcAA.omni.calfits',
                 'zen.2457698.40380046.xx.HH.uvcAA.omni.calfits']
+for cnum, cf, uvf in zip(range(3), test_c_files, test_uvh5_files):
+    test_c_files[cnum] = os.path.join(DATA_PATH, cf)
+    test_uvh5_files[cnum] = os.path.join(DATA_PATH, uvf)
+
 
 def test_uvdata():
     uv = UVData()
@@ -1121,7 +1125,7 @@ def test_xrfi_run(tmpdir):
         if os.path.exists(out):
             os.remove(out)
     # test run with only omnivis files
-    xrfi.xrfi_run(model_files=model_file, output_prefix=raw_dfile, history='omnivis only flags.')
+    xrfi.xrfi_run(model_files=model_file, output_prefixes=raw_dfile, history='omnivis only flags.')
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if 'v_' in ext or 'combined' in ext:
@@ -1162,7 +1166,7 @@ def test_xrfi_run(tmpdir):
             os.remove(out)
     # test omnivis with omnical
     xrfi.xrfi_run(acalfits_files=acal_file, ocalfits_files=ocal_file,
-                  model_files=model_file, history='model and omni/abs cal.', output_prefix=raw_dfile)
+                  model_files=model_file, history='model and omni/abs cal.', output_prefixes=raw_dfile)
     for ext, label in ext_labels.items():
         if 'cross' not in ext and 'auto' not in ext:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
@@ -1189,22 +1193,22 @@ def test_xrfi_run_multifile(tmpdir):
     categories = 8 * cat1
     # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
     tmp_path = tmpdir.strpath
-    fake_obs = 'zen.2457698.40355.HH'
+    fake_obses = ['zen.2457698.40355191.HH', 'zen.2457698.40367619.HH', 'zen.2457698.40380046.HH']
     ocal_files = []
     acal_files = []
     model_files =[]
     raw_dfiles = []
-    for cf, uvf in zip(test_uvh5_files, test_c_files):
-        ocal_file = os.path.join(tmp_path, fake_obs + '.omni.calfits')
+    for uvf, cf, fo in zip(test_uvh5_files, test_c_files, fake_obses):
+        ocal_file = os.path.join(tmp_path, fo + '.omni.calfits')
         shutil.copyfile(cf, ocal_file)
         ocal_files.append(ocal_file)
-        acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
+        acal_file = os.path.join(tmp_path, fo + '.abs.calfits')
         shutil.copyfile(cf, acal_file)
         acal_files.append(acal_file)
-        raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+        raw_dfile = os.path.join(tmp_path, fo + '.uvh5')
         shutil.copyfile(uvf, raw_dfile)
         raw_dfiles.append(raw_dfile)
-        model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
+        model_file = os.path.join(tmp_path, fo + '.omni_vis.uvh5')
         shutil.copyfile(uvf, model_file)
         model_files.append(model_file)
 
@@ -1264,14 +1268,15 @@ def test_xrfi_run_multifile(tmpdir):
                   'v_flags2': 'Omnical visibility solutions, mean filter. Flags.',
                   'v_metrics1': 'Omnical visibility solutions, median filter.',
                   'v_metrics2': 'Omnical visibility solutions, mean filter.'}
-        # check all the metrics and flags.
-        for outdir in outdirs:
-            for ext, label in ext_labels.items():
-                # by default, only cross median filter / mean filter is not performed.
-                out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-                assert os.path.exists(out)
-                uvf = UVFlag(out)
-                assert uvf.label == label
+    # check all the metrics and flags.
+    for outdir, fake_obs in zip(outdirs, fake_obses):
+        outdir = os.path.join(tmp_path, outdir)
+        for ext, label in ext_labels.items():
+            # by default, only cross median filter / mean filter is not performed.
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
 
 
 def test_day_threshold_run(tmpdir):
@@ -1297,7 +1302,7 @@ def test_day_threshold_run(tmpdir):
 
     # check warnings
     with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3)
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
     for i in range(len(record)):
@@ -1326,7 +1331,7 @@ def test_day_threshold_run(tmpdir):
 
     # check warnings
     with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], 'Just a test', kt_size=3, clobber=True)
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], history='Just a test', kt_size=3, clobber=True)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
     for i in range(len(record)):
@@ -1420,7 +1425,7 @@ def test_day_threshold_run_cal_only(tmpdir):
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
-                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': raw_dfile},
+                                         None, 'Just a test'], {'kt_size': 3, 'output_prefixes': raw_dfile},
                          nwarnings=len(messages), message=messages, category=categories)
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
@@ -1441,7 +1446,7 @@ def test_day_threshold_run_cal_only(tmpdir):
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
-                                         None, 'Just a test'], {'kt_size': 3, 'output_prefix': data_files[1]},
+                                         None, 'Just a test'], {'kt_size': 3, 'output_prefixes': data_files[1]},
                          nwarnings=len(messages), message=messages, category=categories)
 
     xrfi.day_threshold_run(data_files, 'just a test')
@@ -1476,7 +1481,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     data_files = [raw_dfile]
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    xrfi.xrfi_run(None, None, model_file, None, 'Just a test', kt_size=3, output_prefix=raw_dfile)
+    xrfi.xrfi_run(None, None, model_file, None, 'Just a test', kt_size=3, output_prefixes=raw_dfile)
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
@@ -1495,7 +1500,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
-    xrfi.xrfi_run(None, None, model_file, None, history='Just a test', kt_size=3, output_prefix=data_files[1])
+    xrfi.xrfi_run(None, None, model_file, None, history='Just a test', kt_size=3, output_prefixes=data_files[1])
     xrfi.day_threshold_run(data_files, 'just a test')
     types = ['v', 'combined']
     for t in types:

@@ -1559,15 +1559,15 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     if ocalfits_files is None and acalfits_files is None and model_files is None and data_files is None:
         raise ValueError("Must provide at least one of the following; ocalfits_files, acalfits_files, model_files, data_files")
     # user must provide an optional output prefix if no data file is provided.
-    if isinstance(acalfits_files, (str, np.string)):
+    if isinstance(acalfits_files, (str, np.str)):
         acalfits_files = [acalfits_files]
-    if isinstance(ocalfits_files, (str, np.string)):
+    if isinstance(ocalfits_files, (str, np.str)):
         ocalfits_files = [ocalfits_files]
-    if isinstance(model_files, (str, np.string)):
+    if isinstance(model_files, (str, np.str)):
         model_files = [model_files]
-    if isinstance(data_files, (str, np.string)):
+    if isinstance(data_files, (str, np.str)):
         data_files = [data_files]
-    if isinstance(output_prefixes, (str, np.string)):
+    if isinstance(output_prefixes, (str, np.str)):
         output_prefixes = [output_prefixes]
     if output_prefixes is None:
         if data_files is not None:
@@ -1984,8 +1984,6 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                 'abscal_chi_sq_renormed_metrics2.h5': uvf_az2, 'abscal_chi_sq_flags2.h5': uvf_azf2,
                 'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
                 'flags2.h5': uvf_combined2}
-    basename = qm_utils.strip_extension(os.path.basename(output_prefix))
-
 
     # Determine the actual files to store
     # We will drop kt_size / (integrations per file) files at the start and
@@ -2014,51 +2012,22 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         uvtemp = UVCal()
         uvtemp.read_calfits(uvlist[0])
 
-    nintegrations = len(uvlist) * uvtemp.Ntimes
-    # Calculate number of files to drop on edges, rounding up.
-    ndrop = int(np.ceil(kt_size / uvtemp.Ntimes))
-    # start_ind and end_ind are the indices in the file list to include
-    start_ind = ndrop
-    end_ind = len(uvlist) - ndrop
-    # If we're the first or last job, store all flags for the edge
-    datadir = os.path.dirname(os.path.abspath(output_prefixes[0]))
-    bname = os.path.basename(output_prefixes[0])
-    # Because we don't necessarily know the filename structure, search for
-    # files that are the same except different numbers (JDs)
-    search_str = os.path.join(datadir, re.sub('[0-9]', '?', bname))
-    all_files = sorted(glob.glob(search_str))
-    if os.path.basename(output_prefixes[0]) == os.path.basename(all_files[0]):
-        # This is the first job, store the early edge.
-        start_ind = 0
-    if os.path.basename(output_prefixes[-1]) == os.path.basename(all_files[-1]):
-        # Last job, store the late edge.
-        end_ind = len(output_prefixes)
-
     # Loop through the files to output, storing all the different data products.
-    for ind in range(start_ind, end_ind):
+    for ind in range(0, len(uvlist)):
         dirname = resolve_xrfi_path(xrfi_path, output_prefixes[ind], jd_subdir=True)
         basename = qm_utils.strip_extension(os.path.basename(output_prefixes[ind]))
         for ext, uvf in uvf_dict.items():
-            # This is calculated separately for each uvf because machine
-            # precision error was leading to times not found in object.
-            this_times = np.unique(uvf.time_array)
-            t_ind = ind * uvtemp.Ntimes
-            uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
-                                 inplace=False)
-            if (ext == 'flags2.h5') and ((ind <= ndrop) or (ind >= nintegrations - ndrop)):
-                # Edge file, flag it completely.
-                uvf_out.flag_array = np.ones_like(uvf_out.flag_array)
-            outfile = '.'.join([basename, ext])
-            outpath = os.path.join(dirname, outfile)
-            uvf_out.history += history
-            uvf_out.write(outpath, clobber=clobber)
-
-    for ext, uvf in uvf_dict.items():
-        if uvf is not None:
-            outfile = '.'.join([basename, ext])
-            outpath = os.path.join(dirname, outfile)
-            uvf.write(outpath, clobber=clobber)
-
+            if uvf is not None:
+                # This is calculated separately for each uvf because machine
+                # precision error was leading to times not found in object.
+                this_times = np.unique(uvf.time_array)
+                t_ind = ind * uvtemp.Ntimes
+                uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
+                                     inplace=False)
+                outfile = '.'.join([basename, ext])
+                outpath = os.path.join(dirname, outfile)
+                uvf_out.history += history
+                uvf_out.write(outpath, clobber=clobber)
 
 def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                         flag_command, xrfi_path='', kt_size=8, kf_size=8,
