@@ -277,6 +277,9 @@ def get_metrics_ArgumentParser(method_name):
                         'visibilities formed with these antennas will be set to True.')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing files (default False)')
+        ap.add_argument("--keep_edge_times", default=False, action="store_true",
+                        help='keep metrics and flags within a convolution kernel width of the edges'
+                        'of the time chunk being analyzed.')
     elif method_name == 'xrfi_run_data_only':
         ap.prog = 'xrfi_run_data_only.py'
         ap.add_argument('--data_files', default=None, type=str, help='Raw visibility '
@@ -305,6 +308,9 @@ def get_metrics_ArgumentParser(method_name):
                         help="performs a median filter on cross-correlations. Adds significantly to runtime.")
         ap.add_argument("--skip_mean_filter_cross", default=False, action="store_true",
                         help="save i/o by skipping mean filter on cross correlations.")
+        ap.add_argument("--keep_edge_times", default=False, action="store_true",
+                        help='keep metrics and flags within a convolution kernel width of the edges'
+                        'of the time chunk being analyzed.')
     elif method_name == 'xrfi_h3c_idr2_1_run':
         ap.prog = 'xrfi_h3c_idr2_1_run.py'
         ap.add_argument('--ocalfits_files', nargs='+', type=str, help='Omnical '

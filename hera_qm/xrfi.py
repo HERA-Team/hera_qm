@@ -1401,7 +1401,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
              history=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
              ex_ants=None, metrics_file=None,
-             output_prefixes=None, clobber=False,
+             output_prefixes=None, throw_away_edges=True, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
 
@@ -1540,6 +1540,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         (should have a .uvh5 at the end). Output products will replace extension
         with various output labels. For example, output_prefixes='filename.uvh5'
         will result in products with names like 'filename.cross_flags1.h5'.
+    throw_away_edges : bool, optional
+        avoids writing out files at the edges where there is overlap with the time deconvolution kernel.
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
     run_check : bool
@@ -1985,12 +1987,6 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                 'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
                 'flags2.h5': uvf_combined2}
 
-    # Determine the actual files to store
-    # We will drop kt_size / (integrations per file) files at the start and
-    # end to avoid edge effects from the convolution kernel.
-    # If this chunk includes the start or end of the night, we will write
-    # output files for those, but flag everything.
-
     # Read metadata from first file to get integrations per file.
     if data_files is not None:
         uvlist = data_files
@@ -2008,9 +2004,38 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         uvlist = acalfits_files
         uvtemp = UVCal()
         uvtemp.read_calfits(uvlist[0])
+    nintegrations = len(uvlist) * uvtemp.Ntimes
+    if throw_away_edges:
+        # Determine the actual files to store
+        # We will drop kt_size / (integrations per file) files at the start and
+        # end to avoid edge effects from the convolution kernel.
+        # If this chunk includes the start or end of the night, we will write
+        # output files for those, but flag everything.
+        # Calculate number of files to drop on edges, rounding up.
+        ndrop = int(np.ceil(kt_size / uvtemp.Ntimes))
+        # start_ind and end_ind are the indices in the file list to include
+        start_ind = ndrop
+        end_ind = len(uvlist) - ndrop
+        # If we're the first or last job, store all flags for the edge
+        datadir = os.path.dirname(os.path.abspath(uvlist[0]))
+        bname = os.path.basename(uvlist[0])
+        # Because we don't necessarily know the filename structure, search for
+        # files that are the same except different numbers (JDs)
+        search_str = os.path.join(datadir, re.sub('[0-9]', '?', bname))
+        all_files = sorted(glob.glob(search_str))
+        if os.path.basename(uvlist[0]) == os.path.basename(all_files[0]):
+            # This is the first job, store the early edge.
+            start_ind = 0
+        if os.path.basename(uvlist[-1]) == os.path.basename(all_files[-1]):
+            # Last job, store the late edge.
+            end_ind = len(uvlist)
+    else:
+        end_ind = len(uvlist)
+        start_ind = 0
+        ndrop = 0
 
     # Loop through the files to output, storing all the different data products.
-    for ind in range(0, len(uvlist)):
+    for ind in range(start_ind, end_ind):
         dirname = resolve_xrfi_path(xrfi_path, output_prefixes[ind], jd_subdir=True)
         basename = qm_utils.strip_extension(os.path.basename(output_prefixes[ind]))
         for ext, uvf in uvf_dict.items():
@@ -2022,6 +2047,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                 t_ind = ind * uvtemp.Ntimes
                 uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
                                      inplace=False)
+                if (ext == 'flags2.h5') and ((ind <= ndrop) or (ind >= nintegrations - ndrop)):
+                    # Edge file, flag it completely.
+                    uvf_out.flag_array = np.ones_like(uvf_out.flag_array)
                 outfile = '.'.join([basename, ext])
                 outpath = os.path.join(dirname, outfile)
                 uvf_out.history += history
