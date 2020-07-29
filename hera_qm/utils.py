@@ -252,7 +252,7 @@ def get_metrics_ArgumentParser(method_name):
                         'calfits files to use to flag on gains and chisquared values.',
                         nargs='+')
         ap.add_argument('--model_files', default=None, type=str, help='Model visibility '
-                        'file to flag on.',
+                        'files to flag on.',
                         nargs='+')
         ap.add_argument('--data_file', default=None, type=str, help='Raw visibility '
                         'data files to flag on.',

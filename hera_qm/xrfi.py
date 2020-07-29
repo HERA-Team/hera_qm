@@ -1992,23 +1992,20 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     # output files for those, but flag everything.
 
     # Read metadata from first file to get integrations per file.
-    file_lists = [ocalfits_files, acalfits_files, data_files, model_files]
     if data_files is not None:
-        dtypet = 'uvdata'
         uvlist = data_files
-    elif model_files is not None:
-        dtypet = 'uvdata'
-        uvlist = model_files
-    elif ocalfits_files is not None:
-        dtypet = 'uvcal'
-        uvlist = ocalfits_files
-    elif acalfits_files is not None:
-        dtypet = 'uvcal'
-        uvlist = acalfits_files
-    if dtypet == 'uvdata':
         uvtemp = UVData()
         uvtemp.read(uvlist[0], read_data=False)
-    elif dtypet == 'uvcal':
+    elif model_files is not None:
+        uvlist = model_files
+        uvtemp = UVData()
+        uvtemp.read(uvlist[0], read_data=False)
+    elif ocalfits_files is not None:
+        uvlist = ocalfits_files
+        uvtemp = UVCal()
+        uvtemp.read_calfits(uvlist[0])
+    elif acalfits_files is not None:
+        uvlist = acalfits_files
         uvtemp = UVCal()
         uvtemp.read_calfits(uvlist[0])
 
@@ -2021,6 +2018,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                 # This is calculated separately for each uvf because machine
                 # precision error was leading to times not found in object.
                 this_times = np.unique(uvf.time_array)
+                # This assumes that all files have the same number of time integrations!
                 t_ind = ind * uvtemp.Ntimes
                 uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
                                      inplace=False)
