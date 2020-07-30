@@ -1541,7 +1541,11 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         with various output labels. For example, output_prefixes='filename.uvh5'
         will result in products with names like 'filename.cross_flags1.h5'.
     throw_away_edges : bool, optional
-        avoids writing out files at the edges where there is overlap with the time deconvolution kernel.
+        avoids writing out files at the edges where there is overlap with the time 
+        deconvolution kernel. Used in a chunked analysis where stride length is 
+        shorter than the chunk size (i.e. overlapping times to avoid edge effects).
+        If True, files at the beginning and end of the night that might exhibit edge
+        effects are written, but fully flagged.
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
     run_check : bool
