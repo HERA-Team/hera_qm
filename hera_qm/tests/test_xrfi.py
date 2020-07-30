@@ -1014,6 +1014,8 @@ def test_xrfi_run_step(tmpdir):
     assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
     assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
     assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+    # hit one line involving uvcal reinitialization.
+    xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True)
 
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
