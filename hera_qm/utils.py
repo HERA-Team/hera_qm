@@ -304,9 +304,9 @@ def get_metrics_ArgumentParser(method_name):
                         'visibilities formed with these antennas will be set to True.')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing files (default False)')
-        ap.add_argument("--median_filter_cross", default=False, action="store_true",
+        ap.add_argument("--cross_median_filter", default=False, action="store_true",
                         help="performs a median filter on cross-correlations. Adds significantly to runtime.")
-        ap.add_argument("--skip_mean_filter_cross", default=False, action="store_true",
+        ap.add_argument("--skip_cross_mean_filter", default=False, action="store_true",
                         help="save i/o by skipping mean filter on cross correlations.")
         ap.add_argument("--keep_edge_times", default=False, action="store_true",
                         help='keep metrics and flags within a convolution kernel width of the edges'
