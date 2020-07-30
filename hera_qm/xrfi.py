@@ -1393,7 +1393,7 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
                    run_check_acceptability=True):
     """Helper functin for xrfi run.
 
-    This function contains the repeated pattern in xrfi run in which a uv_file is supplied
+    This function contains the repeated pattern in xrfi run in which a uv_files is supplied
     If it has not yet been loaded, then we load it. If it has, we can supply it as uv
     If apriori flags exist, then we apply them.
     If not, we can optionally compute apriori flags from the uv_file
@@ -1408,7 +1408,7 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
         name of file to load (which is a uvdata or uvcal calfits file)
         default is None. If none is provided, then metric calculations
         and flagging will be conducted object provided in uv arg (see below).
-        If uv_file but not uv is provided, must specify the type of data
+        If uv_files but not uv is provided, must specify the type of data
         (uvdata or uvcal) using the dtype arg below.
     uv : uvdata or uvcal object, optional
         uvdata or uvcal object to flag on.
@@ -1446,15 +1446,15 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
         Label to be added to UVFlag objects.
     calculate_uvf_apriori : bool, optional
         if true, and uvf_apriori provided is None, then calculate a uvf_apriori
-        from the flag arrays provided in the uv / uv_file inputs.
+        from the flag arrays provided in the uv / uv_files inputs.
         the computed uvf_apriori will be a waterfall.
         default is False.
     reinitialize : bool, optional
-        Reinitialize uv object if both uv and uv_file are provided.
+        Reinitialize uv object if both uv and uv_files are provided.
         This is necessary for instances where different sets of baselines
         are operated on successively in a uvdata object and we pass the uvdata
         object in multiple calls to xrfi_run_step.
-        default is True (only happens if both uv and uv_file are specified).
+        default is True (only happens if both uv and uv_files are specified).
     Nwf_per_load : int, optional
         number of waterfalls to load simultaneously for flagging. This provides
         support for partial i/o whereby a net waterfall metric is computed by
@@ -1470,8 +1470,8 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
         metrics and flagging.
         default is True.
     dtype : string optional
-        specifies the type of data in uv_file (needed if uv is not provided).
-        set to "uvdata" if uv_file contains a uvdata object. "uvcal" if uv_file
+        specifies the type of data in uv_files (needed if uv is not provided).
+        set to "uvdata" if uv_files contains a uvdata object. "uvcal" if uv_file
         contains a uvcal object.
         default is 'uvcal'.
     run_filter : bool, optional
@@ -1501,13 +1501,13 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
         then uv will differ from the uv provided in args in that the flags are now applied
     uvf : UVFlag object
         UVFlag containing metrics if any filters were run. Is None if run_filter=False
-        or uv = None and uv_file = None
+        or uv = None and uv_files = None
     uvf_f : UVFlag object
         UFlag containing flags if any filters were run. Is None if run_filter=False or
-        uv = None and uv_file = None
+        uv = None and uv_files = None
     uvf_apriori : UVFlag object
         UVFlag containing apriori flags provided in args or the apriori flags
-        derived from uv. Can be None if uv / uv_file were None or calculate_uvf_apriori
+        derived from uv. Can be None if uv / uv_files were None or calculate_uvf_apriori
         = False.
     metrics : list
         list equal to the metrics list provided as a parameter plus uvf appended
@@ -1529,26 +1529,25 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
     if uv is None:
         # if no uv is provided, we should try loading it from the file specified
         # by uv_file.
-        if uv_file is not None:
+        if uv_files is not None:
             # initialize appropriately if a string was provided.
-            if isinstance(uv_file, (str, np.str)):
-                if dtype=='uvcal':
-                    uv = UVCal()
-                    # No partial i/o for uvcal yet.
-                    uv.read_calfits(uv_file)
-                elif dtype=='uvdata':
-                    uv = UVData()
-                    uv.read(uv_file, read_data=False)
+            if dtype=='uvcal':
+                uv = UVCal()
+                # No partial i/o for uvcal yet.
+                uv.read_calfits(uv_files)
+            elif dtype=='uvdata':
+                uv = UVData()
+                uv.read(uv_files, read_data=False)
     no_uvf_apriori = (uvf_apriori is None)
     # now, assuming uv was either provided or successfully loaded.
     if uv is not None:
         # if we want, we can reinitialize uv
         if reinitialize:
-            if uv_file is not None:
+            if uv_files is not None:
                 if issubclass(uv.__class__, UVData):
-                    uv.read(uv_file, read_data=False)
+                    uv.read(uv_files, read_data=False)
                 else:
-                    uv.read_calfits(uv_file)
+                    uv.read_calfits(uv_files)
         # The following code applies if uv is a UVData object.
         if issubclass(uv.__class__, UVData):
             bls = uv.get_antpairpols()
@@ -1566,7 +1565,7 @@ def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
             # iterate over baseline chunks
             for loadnum in range(nloads):
                 # read in chunk
-                uv.read(uv_file, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                uv.read(uv_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
                 # if no uvf apriori was provided.
                 if no_uvf_apriori:
                     # and we want to calculate it
@@ -1695,8 +1694,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     rounds are stored in the xrfi_path (which defaults to a subdirectory, see
     xrfi_path below). Also stored are the a priori flags and combined metrics/flags.
 
-    User must provide at least one an ocalfits_file, acalfits_file, model_file,
-    or data_file.
+    User must provide at least one an ocalfits_files, acalfits_files, model_files,
+    or data_files.
 
     Parameters
     ----------
@@ -1886,8 +1885,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     # vdict stores all of the inputs and outputs (metrics, flags etc...) All possible products
     # are ultimately referenced by vdict but could be set to None. outputs set to None are simply
     # not written and can be used to determine whether steps depending on them should be run.
-    vdict = {'ocalfits_file': ocalfits_file, 'acalfits_file': acalfits_file,
-    'model_file': model_file, 'data_file': data_file, 'uvf_apriori': None,
+    vdict = {'ocalfits_files': ocalfits_files, 'acalfits_files': acalfits_files,
+    'model_files': model_files, 'data_files': data_files, 'uvf_apriori': None,
     'uvf_init': None, 'uvf_fws': None, 'uvf_f': None, 'uvf_metrics': None,
     'uvf_metrics2': None, 'uvf_f2': None, 'uvf_fws2': None,
     'uvf_combined2': None, 'uvc_o':None, 'uvc_a':None, 'uvc_v':None, 'uv_v':None, 'uv_d':None} # keep all the variables here.
@@ -1914,7 +1913,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     # they are appended to metrics and flags inside of the function.
     # if not, the get passed through without changing.
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
-            vdict['uvc_o'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], uv_file=vdict['ocalfits_file'], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict['uvc_o'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], uv_files=vdict['ocalfits_files'], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method, reinitialize=False,
                                                                                      label='Omnical' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
@@ -1928,7 +1927,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     input_uvs = ['uvc_a', 'uvc_a', 'uvc_a']
     # iterate through abscal median filters.
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
-            vdict['uvc_a'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], uv_file=vdict['acalfits_file'], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict['uvc_a'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], uv_files=vdict['acalfits_files'], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method, reinitialize=False,
                                                                                      label='Abscal' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
@@ -1937,14 +1936,14 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                      run_check_acceptability=run_check_acceptability)
     # now do omnivis and data files.
     # add the names of the model and data files to vdict.
-    vdict['model_file'] = model_file; vdict['data_file'] = data_file
+    vdict['model_files'] = model_files; vdict['data_files'] = data_files
     # first iteration is our model file, second and third are our cross
     # and auto correlations (stored as uvf_d and uvf_da).
     uvmetrics = ['uvf_v', 'uvf_d', 'uvf_da']
     uvflags = ['uvf_vf', 'uvf_df', 'uvf_daf']
-    input_uvs = ['model_file', 'data_file', 'data_file']
+    input_uvs = ['model_files', 'data_files', 'data_files']
     # here we specify the data products to use in each iteration of the
-    # first round of median filtering. For model_file, we use both cross/auto
+    # first round of median filtering. For model_files, we use both cross/auto
     # for crosses we use cross, for autos, auto.
     correlations = ['both', 'cross', 'auto']
     # input uvs
@@ -1958,7 +1957,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     filter_switches = [omnivis_median_filter, cross_median_filter, auto_median_filter]
     algs = ['detrend_medfilt', 'detrend_medfilt', 'detrend_medfilt']
     for mf, ff, switch, alg, label, corr, input, uv, api in zip(uvmetrics, uvflags, filter_switches, algs, labels, correlations, input_uvs, uvs, apply_inits):
-            vdict[uv], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[uv], uv_file=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict[uv], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[uv], uv_files=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method, reinitialize=True,
                                                                                      label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
@@ -2041,14 +2040,14 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     apply_inits = [True, True, True]
     uvmetrics = ['uvf_v2', 'uvf_d2', 'uvf_da2']
     uvflags = ['uvf_vf2', 'uvf_df2', 'uvf_daf2']
-    input_uvs = ['model_file', 'data_file', 'data_file']
+    input_uvs = ['model_files', 'data_files', 'data_files']
     correlations = ['both', 'cross', 'auto']
     uvs = ['uv_v', 'uv_d', 'uv_d']
     labels = ['Omnical visibility solutions, mean filter.', 'Crosscorr, mean filter.', 'Autocorr, mean filter.']
     filter_switches = [omnivis_mean_filter, cross_mean_filter, auto_mean_filter]
     algs = ['detrend_meanfilt', 'detrend_meanfilt', 'detrend_meanfilt']
     for mf, ff, switch, alg, label, corr, input, uv, input, api in zip(uvmetrics, uvflags, filter_switches, algs, labels, correlations, input_uvs, uvs, input_uvs, apply_inits):
-            vdict[uv], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[uv], uv_file=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict[uv], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[uv], uv_files=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                      xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                      label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                      correlations=corr, reinitialize=True,
@@ -2181,7 +2180,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
             if uvf is not None:
                 # This is calculated separately for each uvf because machine
                 # precision error was leading to times not found in object.
-                this_times = np.unique(uvf.time_array)
+                this_times = np.unique(vdict[uvf].time_array)
                 # This assumes that all files have the same number of time integrations!
                 t_ind = ind * uvtemp.Ntimes
                 uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],

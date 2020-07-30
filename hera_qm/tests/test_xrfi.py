@@ -912,7 +912,7 @@ def test_xrfi_run_step(tmpdir):
     shutil.copyfile(test_uvh5_file, model_file)
 
     # if run_filter is false, then uv should not be None but everything else should be None
-    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile, run_filter=False, dtype='uvdata')
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile, run_filter=False, dtype='uvdata')
     assert issubclass(uv1.__class__, UVData)
     assert uvf1 is None
     assert uvf_f1 is None
@@ -922,20 +922,20 @@ def test_xrfi_run_step(tmpdir):
 
 
     # test expected output formats if run_filter is True.
-    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile, run_filter=True, dtype='uvdata')
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile, run_filter=True, dtype='uvdata')
     assert len(flags1) == 1
     assert len(metrics1) == 1
     assert uvf_a1 is None
 
     # test expected output formats when calculate_uvf_apriori is True
-    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
     calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='mean')
     assert len(flags1) == 2
     assert len(metrics1) == 1
     assert uvf_a1 is not None
 
     # now test partial i/o
-    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_files=raw_dfile,
     calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', Nwf_per_load=1, wf_method='mean')
     assert len(flags2) == 2
     assert len(metrics2) == 1
@@ -945,13 +945,13 @@ def test_xrfi_run_step(tmpdir):
 
 
     # comparison for autos only.
-    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
     calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='quadmean', alg='detrend_medfilt', correlations='auto')
     assert len(flags1) == 2
     assert len(metrics1) == 1
     assert uvf_a1 is not None
 
-    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_files=raw_dfile,
     calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', Nwf_per_load=1, wf_method='quadmean', alg='detrend_medfilt', correlations='auto')
     assert len(flags2) == 2
     assert len(metrics2) == 1
@@ -960,14 +960,14 @@ def test_xrfi_run_step(tmpdir):
     assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
 
     #now try autos, then crosses
-    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
                                                                      calculate_uvf_apriori=True,
                                                                      run_filter=True, dtype='uvdata',
                                                                      wf_method='quadmean',
                                                                      alg='detrend_medfilt',
                                                                      correlations='cross')
 
-    uv1x, uvf1x, uvf_f1x, uvf_a1x, metrics1x, flags1x = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv1x, uvf1x, uvf_f1x, uvf_a1x, metrics1x, flags1x = xrfi.xrfi_run_step(uv_files=raw_dfile,
                                                                          uv = uv1,
                                                                          apply_uvf_apriori=True,
                                                                          uvf_apriori=uvf_a1,
@@ -976,7 +976,7 @@ def test_xrfi_run_step(tmpdir):
                                                                          alg='detrend_medfilt',
                                                                          correlations='auto')
 
-    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_files=raw_dfile,
                                                                     calculate_uvf_apriori=True,
                                                                     run_filter=True, dtype='uvdata',
                                                                     Nwf_per_load=1,
@@ -984,7 +984,7 @@ def test_xrfi_run_step(tmpdir):
                                                                     alg='detrend_medfilt',
                                                                     correlations='cross')
 
-    uv2, uvf2x, uvf_f2x, uvf_a2x, metrics2x, flags2x = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv2, uvf2x, uvf_f2x, uvf_a2x, metrics2x, flags2x = xrfi.xrfi_run_step(uv_files=raw_dfile,
                                                                     uv=uv2,
                                                                     apply_uvf_apriori=True,
                                                                     uvf_apriori=uvf_a2,
@@ -1001,13 +1001,13 @@ def test_xrfi_run_step(tmpdir):
     assert np.all(np.isclose(uvf_a1x.flag_array, uvf_a2x.flag_array))
 
     # comparison for meanfilter.
-    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
     calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='mean', alg='detrend_meanfilt')
     assert len(flags1) == 2
     assert len(metrics1) == 1
     assert uvf_a1 is not None
 
-    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_file=raw_dfile,
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_files=raw_dfile,
     calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', Nwf_per_load=1, wf_method='mean', alg='detrend_meanfilt')
     assert len(flags2) == 2
     assert len(metrics2) == 1
