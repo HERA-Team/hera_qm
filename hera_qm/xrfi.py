@@ -1541,8 +1541,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         with various output labels. For example, output_prefixes='filename.uvh5'
         will result in products with names like 'filename.cross_flags1.h5'.
     throw_away_edges : bool, optional
-        avoids writing out files at the edges where there is overlap with the time 
-        deconvolution kernel. Used in a chunked analysis where stride length is 
+        avoids writing out files at the edges where there is overlap with the time
+        deconvolution kernel. Used in a chunked analysis where stride length is
         shorter than the chunk size (i.e. overlapping times to avoid edge effects).
         If True, files at the beginning and end of the night that might exhibit edge
         effects are written, but fully flagged.
@@ -2051,9 +2051,14 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                 t_ind = ind * uvtemp.Ntimes
                 uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
                                      inplace=False)
-                if (ext == 'flags2.h5') and ((ind <= ndrop) or (ind >= nintegrations - ndrop)):
-                    # Edge file, flag it completely.
-                    uvf_out.flag_array = np.ones_like(uvf_out.flag_array)
+                # Determine indices relative to zero below and above which to flag edges.
+                lower_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * (len(uvlist) - 1 - ind)) - 1, 0])
+                upper_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * ind) - 1, 0])
+                if (ext == 'flags2.h5'):
+                    if lower_flag_ind < uvtemp.Ntimes and lower_flag_ind >=  0:
+                        uvf_out.flag_array[lower_flag_ind:] = True
+                    if upper_flag_ind < uvtemp.Ntimes and lower_flag_ind >= 0:
+                        uvf_out.flag_array[:upper_flag_ind] = True
                 outfile = '.'.join([basename, ext])
                 outpath = os.path.join(dirname, outfile)
                 uvf_out.history += history
