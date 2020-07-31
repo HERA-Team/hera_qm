@@ -2455,8 +2455,14 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
 
     # Read non thresholded flags and combine
     # Include round 1 and 2 flags for potential medain filter only.
-    files = [glob.glob(d + '/*.flags*.h5')[0] for d in xrfi_dirs]
-    uvf_total |= UVFlag(files)
+    for rnd in [1, 2]:
+        for mext in (mexts + ['flags']):
+            try:
+                ext_here = f'{mext.replace("metrics", "flags")}{rnd}.h5'
+                files = [glob.glob(f'{d}/*.{ext_here}')[0] for d in xrfi_dirs]
+                uvf_total |= UVFlag(files)
+            except IndexError:
+                pass
 
     outfile = '.'.join([basename, 'total_threshold_flags.h5'])
     outpath = os.path.join(outdir, outfile)
