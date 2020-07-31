@@ -2051,7 +2051,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                      inplace=False)
                 # Determine indices relative to zero below and above which to flag edges.
                 # flag all integrations above Ntimes - (kernel size - ntimes x (number of files to end of night)
-                lower_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * (len(uvlist) - 1 - night_index)), 0])
+                lower_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * (len(all_files) - 1 - night_index)), 0])
                 # flag all integrations below kernel_size - ntimes x (number of files from beginning of night)
                 upper_flag_ind = np.max([kt_size - uvtemp.Ntimes * night_index, 0])
                 if throw_away_edges:
