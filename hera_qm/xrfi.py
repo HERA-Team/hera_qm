@@ -2276,9 +2276,9 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvf_fws2 = watershed_flag(uvf_metrics2, uvf_f2, nsig_p=sig_adj,
                               inplace=False, **check_kwargs)
     uvf_fws2.label = 'Flags from combined metrics, round 2.'
-    uvf_combined2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
-                     | uvf_vf2 | uvf_df2 | uvf_chisq_f2 | uvf_init)
-    uvf_combined2.label = 'ORd flags, round 2.'
+    uvf_total2 = (uvf_fws2 | uvf_ogf2 | uvf_oxf2 | uvf_agf2 | uvf_axf2
+                  | uvf_vf2 | uvf_df2 | uvf_chisq_f2 | uvf_init)
+    uvf_total2.label = 'ORd flags, round 2.'
 
     # Write everything out
     uvf_dict = {'apriori_flags.h5': uvf_apriori,
@@ -2287,18 +2287,22 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                 'ox_metrics1.h5': uvf_ox, 'ox_flags1.h5': uvf_oxf,
                 'ag_metrics1.h5': uvf_ag, 'ag_flags1.h5': uvf_agf,
                 'ax_metrics1.h5': uvf_ax, 'ax_flags1.h5': uvf_axf,
-                'chi_sq_renormed1.h5': uvf_chisq, 'chi_sq_flags1.h5': uvf_chisq_f,
-                'combined_metrics1.h5': uvf_metrics, 'combined_flags1.h5': uvf_fws,
-                'flags1.h5': uvf_init,
+                'chi_sq_renormed_metrics1.h5': uvf_chisq,
+                'chi_sq_renormed_flags1.h5': uvf_chisq_f,
+                'combined_metrics1.h5': uvf_metrics,
+                'combined_flags1.h5': uvf_fws,
+                'total_flags1.h5': uvf_init,
                 'v_metrics2.h5': uvf_v2, 'v_flags2.h5': uvf_vf2,
                 'og_metrics2.h5': uvf_og2, 'og_flags2.h5': uvf_ogf2,
                 'ox_metrics2.h5': uvf_ox2, 'ox_flags2.h5': uvf_oxf2,
                 'ag_metrics2.h5': uvf_ag2, 'ag_flags2.h5': uvf_agf2,
                 'ax_metrics2.h5': uvf_ax2, 'ax_flags2.h5': uvf_axf2,
                 'data_metrics2.h5': uvf_d2, 'data_flags2.h5': uvf_df2,
-                'chi_sq_renormed2.h5': uvf_chisq2, 'chi_sq_flags2.h5': uvf_chisq_f2,
-                'combined_metrics2.h5': uvf_metrics2, 'combined_flags2.h5': uvf_fws2,
-                'flags2.h5': uvf_combined2}
+                'chi_sq_renormed_metrics2.h5': uvf_chisq2,
+                'chi_sq_renomred_flags2.h5': uvf_chisq_f2,
+                'combined_metrics2.h5': uvf_metrics2,
+                'combined_flags2.h5': uvf_fws2,
+                'total_flags2.h5': uvf_total2}
 
     # Determine the actual files to store
     # We will drop kt_size / (integrations per file) files at the start and
@@ -2340,7 +2344,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
             t_ind = ind * uvtemp.Ntimes
             uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
                                  inplace=False)
-            if (ext == 'flags2.h5') and ((ind <= ndrop) or (ind >= nintegrations - ndrop)):
+            if (ext == 'total_flags2.h5') and ((ind <= ndrop) or (ind >= nintegrations - ndrop)):
                 # Edge file, flag it completely.
                 uvf_out.flag_array = np.ones_like(uvf_out.flag_array)
             outfile = '.'.join([basename, ext])
@@ -2455,7 +2459,7 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
 
     # Read non thresholded flags and combine
     # Include round 1 and 2 flags for potential medain filter only.
-    files = [glob.glob(d + '/*.flags*.h5')[0] for d in xrfi_dirs]
+    files = [glob.glob(d + '/*total_flags2.h5')[0] for d in xrfi_dirs]
     uvf_total |= UVFlag(files)
 
     outfile = '.'.join([basename, 'total_threshold_flags.h5'])
