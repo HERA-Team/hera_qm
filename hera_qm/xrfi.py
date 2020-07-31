@@ -2052,12 +2052,14 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                 uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
                                      inplace=False)
                 # Determine indices relative to zero below and above which to flag edges.
-                lower_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * (len(uvlist) - 1 - ind)) - 1, 0])
-                upper_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * ind) - 1, 0])
+                # flag all integrations above Ntimes - (kernel size - ntimes x (number of files to end)
+                lower_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * (len(uvlist) - 1 - ind)), 0])
+                # flag all integrations below kernel_size - ntimes x (number of files from beginning)
+                upper_flag_ind = np.max([kt_size - uvtemp.Ntimes * ind, 0])
                 if (ext == 'flags2.h5'):
                     if lower_flag_ind < uvtemp.Ntimes and lower_flag_ind >=  0:
                         uvf_out.flag_array[lower_flag_ind:] = True
-                    if upper_flag_ind < uvtemp.Ntimes and lower_flag_ind >= 0:
+                    if upper_flag_ind <= uvtemp.Ntimes and upper_flag_ind > 0:
                         uvf_out.flag_array[:upper_flag_ind] = True
                 outfile = '.'.join([basename, ext])
                 outpath = os.path.join(dirname, outfile)
