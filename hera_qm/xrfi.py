@@ -2009,37 +2009,35 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         uvtemp = UVCal()
         uvtemp.read_calfits(uvlist[0])
     nintegrations = len(uvlist) * uvtemp.Ntimes
-    if throw_away_edges:
-        # Determine the actual files to store
-        # We will drop kt_size / (integrations per file) files at the start and
-        # end to avoid edge effects from the convolution kernel.
-        # If this chunk includes the start or end of the night, we will write
-        # output files for those, but flag everything.
-        # Calculate number of files to drop on edges, rounding up.
-        ndrop = int(np.ceil(kt_size / uvtemp.Ntimes))
-        # start_ind and end_ind are the indices in the file list to include
-        start_ind = ndrop
-        end_ind = len(uvlist) - ndrop
-        # If we're the first or last job, store all flags for the edge
-        datadir = os.path.dirname(os.path.abspath(uvlist[0]))
-        bname = os.path.basename(uvlist[0])
-        # Because we don't necessarily know the filename structure, search for
-        # files that are the same except different numbers (JDs)
-        search_str = os.path.join(datadir, re.sub('[0-9]', '?', bname))
-        all_files = sorted(glob.glob(search_str))
-        if os.path.basename(uvlist[0]) == os.path.basename(all_files[0]):
-            # This is the first job, store the early edge.
-            start_ind = 0
-        if os.path.basename(uvlist[-1]) == os.path.basename(all_files[-1]):
-            # Last job, store the late edge.
-            end_ind = len(uvlist)
-    else:
-        end_ind = len(uvlist)
+    # Determine the actual files to store
+    # We will drop kt_size / (integrations per file) files at the start and
+    # end to avoid edge effects from the convolution kernel.
+    # If this chunk includes the start or end of the night, we will write
+    # output files for those, but flag everything.
+    # Calculate number of files to drop on edges, rounding up.
+    ndrop = int(np.ceil(kt_size / uvtemp.Ntimes))
+    # start_ind and end_ind are the indices in the file list to include
+    start_ind = ndrop
+    end_ind = len(uvlist) - ndrop
+    # If we're the first or last job, store all flags for the edge
+    datadir = os.path.dirname(os.path.abspath(uvlist[0]))
+    bname = os.path.basename(uvlist[0])
+    # Because we don't necessarily know the filename structure, search for
+    # files that are the same except different numbers (JDs)
+    search_str = os.path.join(datadir, re.sub('[0-9]', '?', bname))
+    all_files = sorted(glob.glob(search_str))
+    if os.path.basename(uvlist[0]) == os.path.basename(all_files[0]) or not throw_away_edges:
+        # This is the first job, store the early edge.
         start_ind = 0
+    if os.path.basename(uvlist[-1]) == os.path.basename(all_files[-1]) or not throw_away_edges:
+        # Last job, store the late edge.
+        end_ind = len(uvlist)
         ndrop = 0
 
     # Loop through the files to output, storing all the different data products.
     for ind in range(start_ind, end_ind):
+        night_index = all_files.index(uvlist[ind])
+        # we need an absolute index for entire night to do edge flagging.
         dirname = resolve_xrfi_path(xrfi_path, output_prefixes[ind], jd_subdir=True)
         basename = qm_utils.strip_extension(os.path.basename(output_prefixes[ind]))
         for ext, uvf in uvf_dict.items():
@@ -2052,15 +2050,16 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                 uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
                                      inplace=False)
                 # Determine indices relative to zero below and above which to flag edges.
-                # flag all integrations above Ntimes - (kernel size - ntimes x (number of files to end)
-                lower_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * (len(uvlist) - 1 - ind)), 0])
-                # flag all integrations below kernel_size - ntimes x (number of files from beginning)
-                upper_flag_ind = np.max([kt_size - uvtemp.Ntimes * ind, 0])
-                if (ext == 'flags2.h5'):
-                    if lower_flag_ind < uvtemp.Ntimes and lower_flag_ind >=  0:
-                        uvf_out.flag_array[lower_flag_ind:] = True
-                    if upper_flag_ind <= uvtemp.Ntimes and upper_flag_ind > 0:
-                        uvf_out.flag_array[:upper_flag_ind] = True
+                # flag all integrations above Ntimes - (kernel size - ntimes x (number of files to end of night)
+                lower_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * (len(uvlist) - 1 - night_index)), 0])
+                # flag all integrations below kernel_size - ntimes x (number of files from beginning of night)
+                upper_flag_ind = np.max([kt_size - uvtemp.Ntimes * night_index, 0])
+                if throw_away_edges:
+                    if (ext == 'flags2.h5'):
+                        if lower_flag_ind < uvtemp.Ntimes and lower_flag_ind >=  0:
+                            uvf_out.flag_array[lower_flag_ind:] = True
+                        if upper_flag_ind <= uvtemp.Ntimes and upper_flag_ind > 0:
+                            uvf_out.flag_array[:upper_flag_ind] = True
                 outfile = '.'.join([basename, ext])
                 outpath = os.path.join(dirname, outfile)
                 uvf_out.history += history
