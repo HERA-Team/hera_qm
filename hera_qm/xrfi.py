@@ -1380,7 +1380,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
-def xrfi_run_step(uv_file=None, uv=None, uvf_apriori=None,
+def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                    alg='detrend_medfilt', kt_size=8, kf_size=8,
                    xants=None, cal_mode='gain', correlations='cross',
                    wf_method='quadmean', sig_init=5.0, sig_adj=2.0, label='',
@@ -2120,12 +2120,6 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                 'abscal_chi_sq_renormed_metrics2.h5': 'uvf_az2', 'abscal_chi_sq_flags2.h5': 'uvf_azf2',
                 'combined_metrics2.h5': 'uvf_metrics2', 'combined_flags2.h5': 'uvf_fws2',
                 'flags2.h5': 'uvf_combined2'}
-    basename = qm_utils.strip_extension(os.path.basename(output_prefix))
-    for ext, uvf in uvf_dict.items():
-        if vdict[uvf] is not None:
-            outfile = '.'.join([basename, ext])
-            outpath = os.path.join(dirname, outfile)
-            vdict[uvf].write(outpath, clobber=clobber)
 
     # Read metadata from first file to get integrations per file.
     if data_files is not None:
@@ -2177,13 +2171,13 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         dirname = resolve_xrfi_path(xrfi_path, output_prefixes[ind], jd_subdir=True)
         basename = qm_utils.strip_extension(os.path.basename(output_prefixes[ind]))
         for ext, uvf in uvf_dict.items():
-            if uvf is not None:
+            if vdict[uvf] is not None:
                 # This is calculated separately for each uvf because machine
                 # precision error was leading to times not found in object.
                 this_times = np.unique(vdict[uvf].time_array)
                 # This assumes that all files have the same number of time integrations!
                 t_ind = ind * uvtemp.Ntimes
-                uvf_out = uvf.select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
+                uvf_out = vdict[uvf].select(times=this_times[t_ind:(t_ind + uvtemp.Ntimes)],
                                      inplace=False)
                 # Determine indices relative to zero below and above which to flag edges.
                 # flag all integrations above Ntimes - (kernel size - ntimes x (number of files to end of night)
