@@ -2053,12 +2053,12 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                 # flag all integrations above Ntimes - (kernel size - ntimes x (number of files to end of night)
                 lower_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * (len(all_files) - 1 - night_index)), 0])
                 # flag all integrations below kernel_size - ntimes x (number of files from beginning of night)
-                upper_flag_ind = np.max([kt_size - uvtemp.Ntimes * night_index, 0])
+                upper_flag_ind = np.min([np.max([kt_size - uvtemp.Ntimes * night_index, 0]), uvtemp.Ntimes])
                 if throw_away_edges:
                     if (ext == 'flags2.h5'):
                         if lower_flag_ind < uvtemp.Ntimes and lower_flag_ind >=  0:
                             uvf_out.flag_array[lower_flag_ind:] = True
-                        if upper_flag_ind <= uvtemp.Ntimes and upper_flag_ind > 0:
+                        if upper_flag_ind > 0:
                             uvf_out.flag_array[:upper_flag_ind] = True
                 outfile = '.'.join([basename, ext])
                 outpath = os.path.join(dirname, outfile)
