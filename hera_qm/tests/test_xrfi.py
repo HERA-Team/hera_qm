@@ -898,6 +898,129 @@ def test_xrfi_h1c_idr2_2_pipe():
     assert len(uvf_m.polarization_array) == 1
     assert uvf_m.weights_array.max() == 1.
 
+def test_xrfi_run_step(tmpdir):
+    # setup files in tmpdir.
+    tmp_path = tmpdir.strpath
+    fake_obs = 'zen.2457698.40355.HH'
+    ocal_file = os.path.join(tmp_path, fake_obs + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+
+    # if run_filter is false, then uv should not be None but everything else should be None
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile, run_filter=False, dtype='uvdata')
+    assert issubclass(uv1.__class__, UVData)
+    assert uvf1 is None
+    assert uvf_f1 is None
+    assert uvf_a1 is None
+    assert len(metrics1) == 0
+    assert len(flags1) == 0
+
+
+    # test expected output formats if run_filter is True.
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile, run_filter=True, dtype='uvdata')
+    assert len(flags1) == 1
+    assert len(metrics1) == 1
+    assert uvf_a1 is None
+
+    # test expected output formats when calculate_uvf_apriori is True
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='mean')
+    assert len(flags1) == 2
+    assert len(metrics1) == 1
+    assert uvf_a1 is not None
+
+    # now test partial i/o
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_files=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', Nwf_per_load=1, wf_method='mean')
+    assert len(flags2) == 2
+    assert len(metrics2) == 1
+    assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
+    assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+
+
+    # comparison for autos only.
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='quadmean', alg='detrend_medfilt', correlations='auto')
+    assert len(flags1) == 2
+    assert len(metrics1) == 1
+    assert uvf_a1 is not None
+
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_files=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', Nwf_per_load=1, wf_method='quadmean', alg='detrend_medfilt', correlations='auto')
+    assert len(flags2) == 2
+    assert len(metrics2) == 1
+    assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
+    assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+
+    #now try autos, then crosses
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
+                                                                     calculate_uvf_apriori=True,
+                                                                     run_filter=True, dtype='uvdata',
+                                                                     wf_method='quadmean',
+                                                                     alg='detrend_medfilt',
+                                                                     correlations='cross')
+
+    uv1x, uvf1x, uvf_f1x, uvf_a1x, metrics1x, flags1x = xrfi.xrfi_run_step(uv_files=raw_dfile,
+                                                                         uv = uv1,
+                                                                         apply_uvf_apriori=True,
+                                                                         uvf_apriori=uvf_a1,
+                                                                         run_filter=True, dtype='uvdata',
+                                                                         wf_method='quadmean',
+                                                                         alg='detrend_medfilt',
+                                                                         correlations='auto')
+
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_files=raw_dfile,
+                                                                    calculate_uvf_apriori=True,
+                                                                    run_filter=True, dtype='uvdata',
+                                                                    Nwf_per_load=1,
+                                                                    wf_method='quadmean',
+                                                                    alg='detrend_medfilt',
+                                                                    correlations='cross')
+
+    uv2, uvf2x, uvf_f2x, uvf_a2x, metrics2x, flags2x = xrfi.xrfi_run_step(uv_files=raw_dfile,
+                                                                    uv=uv2,
+                                                                    apply_uvf_apriori=True,
+                                                                    uvf_apriori=uvf_a2,
+                                                                    run_filter=True, dtype='uvdata',
+                                                                    Nwf_per_load=1,
+                                                                    wf_method='quadmean',
+                                                                    alg='detrend_medfilt',
+                                                                    correlations='auto')
+    assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
+    assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+    assert np.all(np.isclose(uvf1x.metric_array, uvf2x.metric_array))
+    assert np.all(np.isclose(uvf_f1x.flag_array, uvf_f2x.flag_array))
+    assert np.all(np.isclose(uvf_a1x.flag_array, uvf_a2x.flag_array))
+
+    # comparison for meanfilter.
+    uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='mean', alg='detrend_meanfilt')
+    assert len(flags1) == 2
+    assert len(metrics1) == 1
+    assert uvf_a1 is not None
+
+    uv2, uvf2, uvf_f2, uvf_a2, metrics2, flags2 = xrfi.xrfi_run_step(uv_files=raw_dfile,
+    calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', Nwf_per_load=1, wf_method='mean', alg='detrend_meanfilt')
+    assert len(flags2) == 2
+    assert len(metrics2) == 1
+    assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
+    assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+    # hit one line involving uvcal reinitialization.
+    xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True)
+    # test invalid data type error
+    with pytest.raises(ValueError):
+        xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True, dtype='uvwhatever')
+
+
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -937,14 +1060,14 @@ def test_xrfi_run(tmpdir):
                   'ax_flags2': 'Abscal chisq, mean filter. Flags.',
                   'ax_metrics1': 'Abscal chisq, median filter.',
                   'ax_metrics2': 'Abscal chisq, mean filter.',
-                  'omnical_chi_sq_flags1': 'Omnical Renormalized chisq, median filter. Flags.',
-                  'omnical_chi_sq_flags2': 'Omnical Renormalized chisq, median filter, round 2. Flags.',
-                  'omnical_chi_sq_renormed_metrics1': 'Omnical Renormalized chisq, median filter.',
-                  'omnical_chi_sq_renormed_metrics2': 'Omnical Renormalized chisq, median filter, round 2.',
-                  'abscal_chi_sq_flags1': 'Abscal Renormalized chisq, median filter. Flags.',
-                  'abscal_chi_sq_flags2': 'Abscal Renormalized chisq, median filter, round 2. Flags.',
-                  'abscal_chi_sq_renormed_metrics1': 'Abscal Renormalized chisq, median filter.',
-                  'abscal_chi_sq_renormed_metrics2': 'Abscal Renormalized chisq, median filter, round 2.',
+                  'omnical_chi_sq_flags1': 'Omnical overall modified z-score of chisq, round 1. Flags.',
+                  'omnical_chi_sq_flags2': 'Omnical overall modified z-score of chisq, round 2. Flags.',
+                  'omnical_chi_sq_renormed_metrics1': 'Omnical overall modified z-score of chisq, round 1.',
+                  'omnical_chi_sq_renormed_metrics2': 'Omnical overall modified z-score of chisq, round 2.',
+                  'abscal_chi_sq_flags1': 'Abscal overall modified z-score of chisq, round 1. Flags.',
+                  'abscal_chi_sq_flags2': 'Abscal overall modified z-score of chisq, round 2. Flags.',
+                  'abscal_chi_sq_renormed_metrics1': 'Abscal overall modified z-score of chisq, round 1.',
+                  'abscal_chi_sq_renormed_metrics2': 'Abscal overall modified z-score of chisq, round 2.',
                   'combined_flags1': 'Flags from combined metrics, round 1.',
                   'combined_flags2': 'Flags from combined metrics, round 2.',
                   'combined_metrics1': 'Combined metrics, round 1.',
@@ -984,6 +1107,8 @@ def test_xrfi_run(tmpdir):
         if os.path.exists(out):
             os.remove(out)
     # now really do everything.
+    uvf_list1 = []
+    uvf_list1_names = []
     with pytest.warns(None) as record:
         xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
                       history='Just a test', kt_size=3, cross_median_filter=True)
@@ -998,12 +1123,45 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
         uvf = UVFlag(out)
+        uvf_list1.append(uvf)
+        uvf_list1_names.append(out)
         assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
+    # now do partial i/o and check equality of outputs.
+    uvf_list2 = []
+    uvf_list2_names = []
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, Nwf_per_load=1,
+                      history='Just a test', kt_size=3, cross_median_filter=True)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
+
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        assert os.path.exists(out)
+        uvf = UVFlag(out)
+        uvf_list2.append(uvf)
+        uvf_list2_names.append(out)
+        assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # compare
+    for uvf1, uvf2 in zip(uvf_list1, uvf_list2):
+        if uvf1.mode == 'flag':
+            assert np.all(np.isclose(uvf1.flag_array, uvf2.flag_array))
+        elif uvf1.mode == 'metric':
+            assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
     # test cross correlations.
     xrfi.xrfi_run(history='data cross corrs.', data_files=raw_dfile,
                   cross_median_filter=True, cross_mean_filter=True, auto_mean_filter=False, auto_median_filter=False)
@@ -1223,14 +1381,14 @@ def test_xrfi_run_edgeflag(tmpdir):
                   'ax_flags2': 'Abscal chisq, mean filter. Flags.',
                   'ax_metrics1': 'Abscal chisq, median filter.',
                   'ax_metrics2': 'Abscal chisq, mean filter.',
-                  'omnical_chi_sq_flags1': 'Omnical Renormalized chisq, median filter. Flags.',
-                  'omnical_chi_sq_flags2': 'Omnical Renormalized chisq, median filter, round 2. Flags.',
-                  'omnical_chi_sq_renormed_metrics1': 'Omnical Renormalized chisq, median filter.',
-                  'omnical_chi_sq_renormed_metrics2': 'Omnical Renormalized chisq, median filter, round 2.',
-                  'abscal_chi_sq_flags1': 'Abscal Renormalized chisq, median filter. Flags.',
-                  'abscal_chi_sq_flags2': 'Abscal Renormalized chisq, median filter, round 2. Flags.',
-                  'abscal_chi_sq_renormed_metrics1': 'Abscal Renormalized chisq, median filter.',
-                  'abscal_chi_sq_renormed_metrics2': 'Abscal Renormalized chisq, median filter, round 2.',
+                  'omnical_chi_sq_flags1': 'Omnical overall modified z-score of chisq, round 1. Flags.',
+                  'omnical_chi_sq_flags2': 'Omnical overall modified z-score of chisq, round 2. Flags.',
+                  'omnical_chi_sq_renormed_metrics1': 'Omnical overall modified z-score of chisq, round 1.',
+                  'omnical_chi_sq_renormed_metrics2': 'Omnical overall modified z-score of chisq, round 2.',
+                  'abscal_chi_sq_flags1': 'Abscal overall modified z-score of chisq, round 1. Flags.',
+                  'abscal_chi_sq_flags2': 'Abscal overall modified z-score of chisq, round 2. Flags.',
+                  'abscal_chi_sq_renormed_metrics1': 'Abscal overall modified z-score of chisq, round 1.',
+                  'abscal_chi_sq_renormed_metrics2': 'Abscal overall modified z-score of chisq, round 2.',
                   'combined_flags1': 'Flags from combined metrics, round 1.',
                   'combined_flags2': 'Flags from combined metrics, round 2.',
                   'combined_metrics1': 'Combined metrics, round 1.',
@@ -1364,14 +1522,14 @@ def test_xrfi_run_multifile(tmpdir):
                   'ax_flags2': 'Abscal chisq, mean filter. Flags.',
                   'ax_metrics1': 'Abscal chisq, median filter.',
                   'ax_metrics2': 'Abscal chisq, mean filter.',
-                  'omnical_chi_sq_flags1': 'Omnical Renormalized chisq, median filter. Flags.',
-                  'omnical_chi_sq_flags2': 'Omnical Renormalized chisq, median filter, round 2. Flags.',
-                  'omnical_chi_sq_renormed_metrics1': 'Omnical Renormalized chisq, median filter.',
-                  'omnical_chi_sq_renormed_metrics2': 'Omnical Renormalized chisq, median filter, round 2.',
-                  'abscal_chi_sq_flags1': 'Abscal Renormalized chisq, median filter. Flags.',
-                  'abscal_chi_sq_flags2': 'Abscal Renormalized chisq, median filter, round 2. Flags.',
-                  'abscal_chi_sq_renormed_metrics1': 'Abscal Renormalized chisq, median filter.',
-                  'abscal_chi_sq_renormed_metrics2': 'Abscal Renormalized chisq, median filter, round 2.',
+                  'omnical_chi_sq_flags1': 'Omnical overall modified z-score of chisq, round 1. Flags.',
+                  'omnical_chi_sq_flags2': 'Omnical overall modified z-score of chisq, round 2. Flags.',
+                  'omnical_chi_sq_renormed_metrics1': 'Omnical overall modified z-score of chisq, round 1.',
+                  'omnical_chi_sq_renormed_metrics2': 'Omnical overall modified z-score of chisq, round 2.',
+                  'abscal_chi_sq_flags1': 'Abscal overall modified z-score of chisq, round 1. Flags.',
+                  'abscal_chi_sq_flags2': 'Abscal overall modified z-score of chisq, round 2. Flags.',
+                  'abscal_chi_sq_renormed_metrics1': 'Abscal overall modified z-score of chisq, round 1.',
+                  'abscal_chi_sq_renormed_metrics2': 'Abscal overall modified z-score of chisq, round 2.',
                   'combined_flags1': 'Flags from combined metrics, round 1.',
                   'combined_flags2': 'Flags from combined metrics, round 2.',
                   'combined_metrics1': 'Combined metrics, round 1.',
