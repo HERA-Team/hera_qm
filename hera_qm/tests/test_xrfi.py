@@ -1017,7 +1017,7 @@ def test_xrfi_run_step(tmpdir):
     # hit one line involving uvcal reinitialization.
     xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True)
     # test invalid data type error
-    with pytest.raises(ValueError)
+    with pytest.raises(ValueError):
         xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True, dtype='uvwhatever')
 
 

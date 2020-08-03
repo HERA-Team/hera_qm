@@ -1885,7 +1885,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     'uvf_combined2': None, 'uvc_o':None, 'uvc_a':None, 'uvc_v':None, 'uv_v':None, 'uv_d':None} # keep all the variables here.
     # inputs_dict stores all of the inputs.
     inputs_dict = {'ocalfits_files': ocalfits_files, 'acalfits_files': acalfits_files,
-    'model_files': model_files, 'data_files': data_files},
+    'model_files': model_files, 'data_files': data_files}
 
 
     # The following args are iterated over when running xrfi median filters on omni and abscal solutions.
