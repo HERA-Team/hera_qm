@@ -1893,7 +1893,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     # cal gains / chi-squares and last is zscore_full_array on chi-squares.
     cal_algs = ['detrend_medfilt', 'detrend_medfilt', 'zscore_full_array']
     # labels in flag / metric files.
-    labels = [' gains, median filter.', ' chisq, median filter.', ' overall modified z-score of chisq, round 1.']
+    labels = [' gains, median filter.', ' chisq, median filter.', ' overall modified z-score of chisq.']
     # gain modes for each iteration.
     modes = ['gain', 'tot_chisq', None] #calibration modes
     # This is a list of booleans determining whether a filter is to be run for each iteration.
@@ -2014,7 +2014,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     flags = []
     # medfilt -> meanfilt.
     cal_algs = ['detrend_meanfilt', 'detrend_meanfilt', 'zscore_full_array']
-    labels = [' gains, mean filter.', ' chisq, mean filter.', ' overall modified z-score of chisq, round 2.']
+    labels = [' gains, mean filter.', ' chisq, mean filter.', ' overall z-score of chisq']
     modes = ['gain', 'tot_chisq', None]
     filter_switches = [omnical_median_filter, omnical_chi2_mean_filter, omnical_zscore_filter]
     uvmetrics = ['uvf_og2', 'uvf_ox2', 'uvf_oz2']
