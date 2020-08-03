@@ -2014,7 +2014,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     flags = []
     # medfilt -> meanfilt.
     cal_algs = ['detrend_meanfilt', 'detrend_meanfilt', 'zscore_full_array']
-    labels = [' gains, mean filter.', ' chisq, mean filter.', ' overall z-score, mean filter, round 2.']
+    labels = [' gains, mean filter.', ' chisq, mean filter.', ' overall z-score, median filter, round 2.']
     modes = ['gain', 'tot_chisq', None]
     filter_switches = [omnical_median_filter, omnical_chi2_mean_filter, omnical_zscore_filter]
     uvmetrics = ['uvf_og2', 'uvf_ox2', 'uvf_oz2']
@@ -2053,7 +2053,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     filter_switches = [omnivis_mean_filter, cross_mean_filter, auto_mean_filter]
     algs = ['detrend_meanfilt', 'detrend_meanfilt', 'detrend_meanfilt']
     for mf, ff, switch, alg, label, corr, input, uv, input, api in zip(uvmetrics, uvflags, filter_switches, algs, labels, correlations, input_uvs, uvs, input_uvs, apply_inits):
-            vdict[uv], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[uv], uv_files=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
+            vdict[uv], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[uv], uv_files=inputs_dict[input], alg=alg, kt_size=kt_size, kf_size=kf_size,
                                                                                xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                correlations=corr, reinitialize=True,
