@@ -1387,7 +1387,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                    calculate_uvf_apriori=False, reinitialize=True,
                    Nwf_per_load=None, apply_uvf_apriori=True,
                    dtype='uvcal', run_filter=True,
-                   metrics=None, flags=None,
+                   metrics=None, flags=None, modified_z_score=False,
                    run_check=True,
                    check_extra=True,
                    run_check_acceptability=True):
@@ -1485,6 +1485,10 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
     flags : list, optional
         optional list to append flags too.
         default is None.
+    modified_z_score : bool, optional
+        if True, calculate modified_z_score when computing overall z-score
+        (only used if alg='overall_z_score').
+        Default is False.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1637,7 +1641,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             if run_filter:
                 # if run_filter is true, perform chi_sq_pipe or xrfi_pipe
                 if alg in ['zscore_full_array']:
-                    uvf, uvf_f = chi_sq_pipe(uv, alg=alg, modified=True, sig_init=sig_init, sig_adj=sig_adj,
+                    uvf, uvf_f = chi_sq_pipe(uv, alg=alg, modified=modified_z_score, sig_init=sig_init, sig_adj=sig_adj,
                                              label=label, run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
                 else:
                     uvf, uvf_f = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
@@ -1893,7 +1897,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     # cal gains / chi-squares and last is zscore_full_array on chi-squares.
     cal_algs = ['detrend_medfilt', 'detrend_medfilt', 'zscore_full_array']
     # labels in flag / metric files.
-    labels = [' gains, median filter.', ' chisq, median filter.', ' overall modified z-score of chisq, round 1.']
+    labels = [' gains, median filter.', ' chisq, median filter.', ' overall modified z-score of chisq.']
     # gain modes for each iteration.
     modes = ['gain', 'tot_chisq', None] #calibration modes
     # This is a list of booleans determining whether a filter is to be run for each iteration.
@@ -1925,7 +1929,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method, reinitialize=False,
                                                                                      label='Omnical' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
-                                                                                     calculate_uvf_apriori=True,
+                                                                                     calculate_uvf_apriori=True, modified_z_score=True,
                                                                                      run_check=run_check, check_extra=check_extra,
                                                                                      run_check_acceptability=run_check_acceptability)
     # to do the abscal filters, just change
@@ -1939,7 +1943,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method, reinitialize=False,
                                                                                      label='Abscal' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
-                                                                                     calculate_uvf_apriori=True,
+                                                                                     calculate_uvf_apriori=True, modified_z_score=True,
                                                                                      run_check=run_check, check_extra=check_extra,
                                                                                      run_check_acceptability=run_check_acceptability)
     # now we perform first-round filters on our uvdata inputs.
@@ -1967,7 +1971,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                                   xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method, reinitialize=True,
                                                                                                   label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                                   run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
-                                                                                                  correlations=corr, calculate_uvf_apriori=True,
+                                                                                                  correlations=corr, calculate_uvf_apriori=True, modified_z_score=True,
                                                                                                   run_check=run_check, check_extra=check_extra,
                                                                                                   run_check_acceptability=run_check_acceptability)
     # Now that we've had a chance to load in all of the provided data products and
@@ -2014,7 +2018,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     flags = []
     # medfilt -> meanfilt.
     cal_algs = ['detrend_meanfilt', 'detrend_meanfilt', 'zscore_full_array']
-    labels = [' gains, mean filter.', ' chisq, mean filter.', ' overall modified z-score of chisq, round 2.']
+    labels = [' gains, mean filter.', ' chisq, mean filter.', ' overall z-score of chisq.']
     modes = ['gain', 'tot_chisq', None]
     filter_switches = [omnical_median_filter, omnical_chi2_mean_filter, omnical_zscore_filter]
     uvmetrics = ['uvf_og2', 'uvf_ox2', 'uvf_oz2']
