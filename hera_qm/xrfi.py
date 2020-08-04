@@ -1485,6 +1485,10 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
     flags : list, optional
         optional list to append flags too.
         default is None.
+    modified_z_score : bool, optional
+        if True, calculate modified_z_score when computing overall z-score
+        (only used if alg='overall_z_score').
+        Default is False.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
