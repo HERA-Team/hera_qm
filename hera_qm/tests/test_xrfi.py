@@ -1043,8 +1043,9 @@ def test_xrfi_run(tmpdir):
     freq_list = os.path.join(tmp_path, 'frequency_flags.txt')
     shutil.copyfile(test_apriori_freq_flags, freq_list)
     # check warnings
+    # don't include history to increase coverage.
     with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3)
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history=None, kt_size=3)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
     for i in range(len(record)):
