@@ -238,3 +238,11 @@ def test_strip_extension_return_ext_extension():
     path = 'goo/foo.boo/hoo/woo.two'
     root, ext = utils.strip_extension(path, return_ext=True)
     assert ext == path[-3:]
+
+def test_read_bounds_textfile():
+    ffile = os.path.join(DATA_PATH, 'upper_lower_flags.txt')
+    # cover functionality not tested by test_xrfi_run.
+    regions = utils.read_bounds_text_file(ffile)
+    assert len(regions) == 2
+    assert regions[0] == (-np.inf, 155e6)
+    assert regions[1] == (150e6, np.inf)

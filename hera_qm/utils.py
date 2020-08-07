@@ -633,7 +633,7 @@ def read_bounds_text_file(list_file=None):
                         lower = -np.inf
                     else:
                         lower = float(lower)
-                    if upper == '':
+                    if upper == '' or upper == '\n':
                         # if no upper is provided, set to infinity.
                         upper = np.inf
                     else:
