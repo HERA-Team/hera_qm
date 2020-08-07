@@ -1,0 +1,4 @@
+# this is a template file for frequency flags.
+# just include the upper and lower bounds of regions
+# that you want to pre-flag as comma separated lines
+150e6, 155e6

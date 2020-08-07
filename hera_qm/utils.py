@@ -601,3 +601,44 @@ def strip_extension(path, return_ext=False):
         return (root, ext[1:])
     else:
         return os.path.splitext(path)[0]
+
+def read_bounds_text_file(list_file=None):
+    """Read in apriori flags
+
+    This method reads in a plaintext comma-separated file
+    that lists lower and upper bounds on time or frequency regions
+    to flag apriori. Returns a list of 2-tuples with these lower / uppper bounds.
+
+    Parameters
+    ----------
+    list_file : str, optional
+        Path to list_file to parse.
+        Default, None. Returns empty list.
+
+    Returns
+    -------
+    region_list : list of 2-tuples indicating upper and lower bounds of regions retrieved from text file.
+    """
+    if list_file is not None:
+        with open(list_file, 'r') as input:
+            regions = []
+            lines = input.readlines()
+            for line in lines:
+                line = line.replace(' ', '')
+                line = line.replace('\t', '')
+                if line[0] != '#':
+                    lower, upper = line.split(',')
+                    if lower == '':
+                        # if no lower bound is provided, set to negative infinity.
+                        lower = -np.inf
+                    else:
+                        lower = float(lower)
+                    if upper == '':
+                        # if no upper is provided, set to infinity.
+                        upper = np.inf
+                    else:
+                        upper = float(upper)
+                    regions.append((min(lower, upper), max(lower, upper)))
+        return regions
+    else:
+        return []

@@ -13,6 +13,7 @@ import hera_qm.utils as utils
 from hera_qm.data import DATA_PATH
 from pyuvdata import UVFlag
 import glob
+import hera_qm.utils as qm_utils
 
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
@@ -22,6 +23,7 @@ test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfit
 test_f_file = test_d_file + '.testuvflag.h5'
 test_f_file_flags = test_d_file + '.testuvflag.flags.h5'  # version in 'flag' mode
 test_outfile = os.path.join(DATA_PATH, 'test_output', 'uvflag_testout.h5')
+test_apriori_freq_flags = os.path.join(DATA_PATH, 'frequency_flags.txt')
 xrfi_path = os.path.join(DATA_PATH, 'test_output')
 
 test_uvh5_files = ['zen.2457698.40355191.xx.HH.uvh5',
@@ -1020,7 +1022,6 @@ def test_xrfi_run_step(tmpdir):
     with pytest.raises(ValueError):
         xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True, dtype='uvwhatever')
 
-
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -1039,10 +1040,11 @@ def test_xrfi_run(tmpdir):
     shutil.copyfile(test_uvh5_file, raw_dfile)
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-
+    freq_list = os.path.join(tmp_path, 'frequency_flags.txt')
+    shutil.copyfile(test_apriori_freq_flags, freq_list)
     # check warnings
     with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3)
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
     for i in range(len(record)):
@@ -1162,6 +1164,35 @@ def test_xrfi_run(tmpdir):
             assert np.all(np.isclose(uvf1.flag_array, uvf2.flag_array))
         elif uvf1.mode == 'metric':
             assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+
+    # now test apriori frequency flag file.
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
+                      freq_flag_file=freq_list, history='Just a test', kt_size=3)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
+    regions = qm_utils.read_bounds_text_file(freq_list)
+    for ext, label in ext_labels.items():
+        # by default, only cross median filter / mean filter is not performed.
+        if not ext in['cross_metrics1', 'cross_flags1']:
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+            # check that all flags in frequency regions are set to True.
+            if 'flag' in ext:
+                for region in regions:
+                    selection = (uvf.freq_array[0] >= region[0]) & (uvf.freq_array[0] <= region[-1])
+                    assert np.all(uvf.flag_array[:, selection, :])
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
     # test cross correlations.
     xrfi.xrfi_run(history='data cross corrs.', data_files=raw_dfile,
                   cross_median_filter=True, cross_mean_filter=True, auto_mean_filter=False, auto_median_filter=False)

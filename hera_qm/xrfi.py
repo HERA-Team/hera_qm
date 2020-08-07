@@ -1388,6 +1388,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                    Nwf_per_load=None, apply_uvf_apriori=True,
                    dtype='uvcal', run_filter=True,
                    metrics=None, flags=None, modified_z_score=False,
+                   freq_flag_list=None,
                    run_check=True,
                    check_extra=True,
                    run_check_acceptability=True):
@@ -1522,6 +1523,8 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
 
 
     """
+    if freq_flag_list is None:
+        freq_flag_list = []
     # flags and metrics are lists
     # that computed flags and metrics can be appended too.
     if flags is None:
@@ -1572,6 +1575,11 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             for loadnum in range(nloads):
                 # read in chunk
                 uv.read(uv_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                # apply frequency flags before apriori flags.
+                for freq_region in freq_flag_list:
+                    for spw in range(uv.Nspws):
+                        selection = (uv.freq_array[spw] >= freq_region[0]) & (uv.freq_array[spw] <= freq_region[1])
+                        uv.flag_array[:, spw, selection, :] = True
                 # if no uvf apriori was provided.
                 if no_uvf_apriori:
                     # and we want to calculate it
@@ -1625,6 +1633,11 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                                          run_check_acceptability=run_check_acceptability)
         # the following code is for when uv is a UVCal object.
         elif issubclass(uv.__class__, UVCal):
+            # apply frequency flags before apriori flags.
+            for freq_region in freq_flag_list:
+                for spw in range(uv.Nspws):
+                    selection = (uv.freq_array[spw] >= freq_region[0]) & (uv.freq_array[spw] <= freq_region[1])
+                    uv.flag_array[:, spw, selection, :, :] = True
             # if uvf_apriori is not provided and we wish to derive it from uv
             # do so here.
             if uvf_apriori is None:
@@ -1675,6 +1688,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
 
 
 def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_files=None,
+             freq_flag_file=None,
              omnical_median_filter=True, omnical_mean_filter=True,
              omnical_chi2_median_filter=True, omnical_chi2_mean_filter=True,
              omnical_zscore_filter=True,
@@ -1713,6 +1727,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         THe model visibility file to flag on.
     data_files : str or list of strings, optional
         The raw visibility data file to flag.
+    freq_flag_file : str, optional
+        text file containing lists of frequency chunks to
+        flag apriori.
     omnical_median_filter : bool, optional
         If true, run a median filter on omnical gains.
         Mean filters are run after median filters.
@@ -1875,7 +1892,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         history = ''
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
-
+    # read in frequency flags.
+    freq_flag_list = qm_utils.read_bounds_text_file(freq_flag_file)
     # Initial run on cal data products
     # Calculate metric on abscal data
     metrics = [] # this list stores metrics for median filters
@@ -1929,7 +1947,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method, reinitialize=False,
                                                                                      label='Omnical' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
-                                                                                     calculate_uvf_apriori=True, modified_z_score=True,
+                                                                                     calculate_uvf_apriori=True, modified_z_score=True, freq_flag_list=freq_flag_list,
                                                                                      run_check=run_check, check_extra=check_extra,
                                                                                      run_check_acceptability=run_check_acceptability)
     # to do the abscal filters, just change
@@ -1943,7 +1961,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                      xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method, reinitialize=False,
                                                                                      label='Abscal' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
-                                                                                     calculate_uvf_apriori=True, modified_z_score=True,
+                                                                                     calculate_uvf_apriori=True, modified_z_score=True, freq_flag_list=freq_flag_list,
                                                                                      run_check=run_check, check_extra=check_extra,
                                                                                      run_check_acceptability=run_check_acceptability)
     # now we perform first-round filters on our uvdata inputs.
@@ -1971,7 +1989,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                                   xants=xants, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method, reinitialize=True,
                                                                                                   label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_apriori'],
                                                                                                   run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
-                                                                                                  correlations=corr, calculate_uvf_apriori=True, modified_z_score=True,
+                                                                                                  correlations=corr, calculate_uvf_apriori=True, modified_z_score=True, freq_flag_list=freq_flag_list,
                                                                                                   run_check=run_check, check_extra=check_extra,
                                                                                                   run_check_acceptability=run_check_acceptability)
     # Now that we've had a chance to load in all of the provided data products and
@@ -2031,7 +2049,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                     xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                     label='Omnical' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                     run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
-                                                                                    calculate_uvf_apriori=False,
+                                                                                    calculate_uvf_apriori=False, freq_flag_list=freq_flag_list,
                                                                                     run_check=run_check, check_extra=check_extra,
                                                                                     run_check_acceptability=run_check_acceptability)
     # Meanfilter abscal. Note that init flags are pased as apriori_flags.
@@ -2043,7 +2061,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                     xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                                                                     label='Abscal' + label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                     run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
-                                                                                    calculate_uvf_apriori=False,
+                                                                                    calculate_uvf_apriori=False, freq_flag_list=freq_flag_list,
                                                                                     run_check=run_check, check_extra=check_extra,
                                                                                     run_check_acceptability=run_check_acceptability)
     # mean filter omnivis and data files.
@@ -2062,7 +2080,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
                                                                                label=label, metrics=metrics, flags=flags, uvf_apriori=vdict['uvf_init'],
                                                                                correlations=corr, reinitialize=True,
                                                                                run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
-                                                                               calculate_uvf_apriori=False,
+                                                                               calculate_uvf_apriori=False, freq_flag_list=freq_flag_list,
                                                                                run_check=run_check, check_extra=check_extra,
                                                                                run_check_acceptability=run_check_acceptability)
     if len(metrics) > 0:
