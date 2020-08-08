@@ -4,6 +4,7 @@
 """Tests for metrics_io module."""
 
 import pytest
+import yaml
 import numpy as np
 import os
 import h5py
@@ -540,3 +541,33 @@ def test_boolean_read_write_hdf5():
     assert test_dict['good_sol'], input_dict['good_sol']
     assert isinstance(input_dict['good_sol'], (np.bool_, bool))
     os.remove(test_file)
+
+
+def test_read_a_priori_ant_flags():
+    apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_sample.yaml')
+
+    # Test normal operation
+    apaf = metrics_io.read_a_priori_ant_flags(apf_yaml)
+    expected = [0, (1, 'Jee'), 10, (3, 'Jnn')]
+    assert set(expected) == set(apaf)
+
+    # Test operation in by_ant_pol mode
+    apaf = metrics_io.read_a_priori_ant_flags(apf_yaml, by_ant_pol=True, ant_pols=['Jee', 'Jnn'])
+    expected = [(0, 'Jee'), (0, 'Jnn'), (1, 'Jee'), (3, 'Jnn'), (10, 'Jee'), (10, 'Jnn')]
+    assert set(expected) == set(apaf)
+
+    # Test error: missing ant_pols
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_ant_flags(apf_yaml, by_ant_pol=True)
+
+    # Test error: ant_pol mismatch
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_ant_flags(apf_yaml, ant_pols=['Jxx'])
+        
+    # Test error: malformated ex_ants
+    for ex_ants in [['Jee'], [[0, 1, 2]], [1.0]]:
+        out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+        yaml.dump({'ex_ants': ex_ants}, open(out_yaml, 'w'))
+        with pytest.raises(TypeError):
+            metrics_io.read_a_priori_ant_flags(out_yaml)
+        os.remove(out_yaml)
