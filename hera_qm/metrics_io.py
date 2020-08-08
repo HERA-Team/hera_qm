@@ -971,3 +971,60 @@ def process_ex_ants(ex_ants=None, metrics_file=None):
                 if ant_num not in xants:
                     xants.append(int(ant_num))
         return xants
+
+
+def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
+    '''Parse an a priori flag YAML file for a priori channel flags.
+
+    Parameters
+    ----------
+    a_priori_flags_yaml : str
+        Path to YAML file with a priori channel and/or frequency flags
+    freqs : ndarray, optional
+        1D numpy array containing all frequencies in Hz, required in freq_flags is not empty in the YAML
+
+    Returns
+    -------
+    a_priori_channel_flags : ndarray
+        Numpy array of integer a priori channel index flags.
+    '''
+    apcf = []
+    apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
+    
+    # Load channel flags
+    if 'channel_flags' in apf:
+        for cf in apf['channel_flags']:
+            # add single channel flag
+            if type(cf) == int:
+                apcf.append(cf)
+            # add range of channel flags
+            elif (type(cf) == list) and (len(cf) == 2) and (type(cf[0]) == type(cf[1]) == int):
+                if cf[0] > cf[1]:
+                    raise ValueError(f'Channel flag ranges must be increasing. {cf} is not.')
+                apcf += list(range(cf[0], cf[1] + 1))
+            else:
+                raise TypeError(f'channel_flags entries must be integers or len-2 lists of integers. {cf} is not.')
+
+    # Load frequency flags
+    if 'freq_flags' in apf:
+        # check for presense of freqs
+        if (len(apf['freq_flags']) > 0) and (freqs is None):
+            raise ValueError('If freq_flags is present in the YAML and not empty, freqs must be specified.')
+
+        for ff in apf['freq_flags']:
+            # validate each frequency pair
+            if (len(ff) != 2):
+                raise ValueError(f'freq_flags entires must be len-2 lists of floats. {ff} is not.')
+            try:
+                ff = [float(ff[0]), float(ff[1])]
+            except ValueError:
+                raise TypeError(f'Both entries in freq_flags = {ff} must be convertable to floats.')
+            if ff[0] > ff[1]:
+                raise ValueError(f'Frequency flags ranges must be increasing. {ff} is not.')
+            
+            # add flagged channels
+            apcf += list(np.argwhere((freqs >= ff[0]) & (freqs <= ff[1])).flatten())
+
+    # Return unique channel indices
+    return np.array(sorted(set(apcf)))
+
