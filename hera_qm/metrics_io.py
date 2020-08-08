@@ -1028,3 +1028,87 @@ def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
     # Return unique channel indices
     return np.array(sorted(set(apcf)))
 
+
+def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
+    '''Parse an a priori flag YAML file for a priori integration flags.
+
+    Parameters
+    ----------
+    a_priori_flags_yaml : str
+        Path to YAML file with a priori JD, LST, or integration flags
+    times : ndarray, optional
+        1D numpy array containing all JDs in units of days, required in JD_flags is not empty in the YAML
+    lsts : ndarray, optional
+        1D numpy array containing all lsts in units of hours, required in LST_flags is not empty in the YAML
+        
+    Returns
+    -------
+    a_priori_int_flags : ndarray
+        Numpy array of integer a priori integration index flags.
+    '''
+    apif = []
+    apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
+    
+    # Load integration flags
+    if 'integration_flags' in apf:
+        for intf in apf['integration_flags']:
+            if type(intf) == int:
+                apif.append(intf)
+            elif (type(intf) == list) and (len(intf) == 2) and (type(intf[0]) == type(intf[1]) == int):
+                if intf[0] > intf[1]:
+                    raise ValueError(f'Integration flag ranges must be increasing. {cf} is not.')
+                apif += list(range(intf[0], intf[1] + 1))
+            else:
+                raise TypeError(f'integration_flags entries must be integers or len-2 lists of integers. {intf} is not.')
+
+    if (times is not None) and (lsts is not None) and (len(times) != len(lsts)):
+        raise ValueError(f'Length of times ({len(times)}) != length of lsts ({len(lsts)}).')
+      
+    # Load time flags
+    if 'JD_flags' in apf:
+        # check that times exists
+        if (len(apf['JD_flags']) > 0) and (times is None):
+            raise ValueError('If JD_flags is present in the YAML and not empty, times must be specified.')
+        
+        for tf in apf['JD_flags']:
+            # validate time flag ranges
+            if (len(tf) != 2):
+                raise ValueError(f'JD_flags entires must be len-2 lists of floats. {tf} is not.')
+            try:
+                tf = [float(tf[0]), float(tf[1])]
+            except ValueError:
+                raise TypeError(f'Both entries in JD_flags = {tf} must be convertable to floats.')
+            if tf[0] > tf[1]:
+                raise ValueError(f'JD flag ranges must be increasing. {tf} is not.')
+
+            # add integration flag indices
+            apif += list(np.argwhere((times >= tf[0]) & (times <= tf[1])).flatten())
+
+    # Load LST flags
+    if 'LST_flags' in apf:
+        # Check that lsts exists and is valid
+        if (len(apf['LST_flags']) > 0) and (lsts is None):
+            raise ValueError('If LST_flags is present in the YAML and not empty, lsts must be specified.')
+        elif not (np.all(lsts >= 0) and np.all(lsts <= 24)):
+            raise ValueError(f'All lsts must be between 0 and 24. This is violated in lsts = {lsts}.')
+
+        for lf in apf['LST_flags']:
+            # validate LST flag ranges
+            if (len(lf) != 2):
+                raise ValueError(f'LST_flags entires must be len-2 lists of floats. {lf} is not.')
+            try:
+                lf = [float(lf[0]), float(lf[1])]
+            except ValueError:
+                raise TypeError(f'Both entries in JD_flags = {lf} must be convertable to floats.')
+            if (lf[0] < 0) or (lf[0] > 24) or (lf[1] < 0) or (lf[1] > 24):
+                raise ValueError(f'Both entries in LST_flags must be between 0 and 24 hours. {lf} is not.')
+
+            # add integration flag indices
+            if lf[0] <= lf[1]: # normal LST range
+                apif += list(np.argwhere((lsts >= lf[0]) & (lsts <= lf[1])).flatten())
+            else: # LST range that spans the 24-hour branch cut
+                apif += list(np.argwhere((lsts >= lf[0]) | (lsts <= lf[1])).flatten())
+             
+    # Return unique frequency indices
+    return np.array(sorted(set(apif)))
+
