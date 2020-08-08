@@ -1112,3 +1112,53 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
     # Return unique frequency indices
     return np.array(sorted(set(apif)))
 
+
+def read_a_priori_ant_flags(a_priori_flags_yaml, by_ant_pol=False, ant_pols=None):
+    '''Parse an a priori flag YAML file for a priori antenna flags.
+
+    Parameters
+    ----------
+    a_priori_flags_yaml : str
+        Path to YAML file with a priori antenna flags
+    by_ant_pol : bool
+        If True, expand all integer antenna indices into per-antpol entries using ant_pols 
+    ant_pols : list of str
+        List of antenna polarizations strings e.g. 'Jee'. If not empty, strings in
+        the YAML must be in here or an error is raised. Required if by_ant_pol is True.
+
+    Returns
+    -------
+    a_priori_antenna_flags : list
+         List of a priori antenna flags, either integers or ant-pol tuples e.g. (0, 'Jee')
+    '''
+    apaf = []
+    apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
+
+    # Load antenna flags
+    if 'ex_ants' in apf:
+        for ant in apf['ex_ants']:
+            # flag antenna number
+            if type(ant) == int:
+                apaf.append(ant)
+            # flag single antpol
+            elif (type(ant) == list) and (len(ant) == 2) and (type(ant[0]) == int) and (type(ant[1]) == str):
+                # check that antpol string is valid if ant_pols is not empty
+                if (ant_pols is not None) and (ant[1] not in ant_pols):
+                    raise ValueError(f'{ant[1]} is not a valid ant_pol in {ant_pols}.')
+                apaf += [tuple(ant)]
+            else:
+                raise TypeError(f'ex_ants entires must be integers or a list of one int and one str. {ant} is not.')
+
+        # Expand all integer antenna flags into antpol pairs
+        if by_ant_pol:
+            if ant_pols is None:
+                raise ValueError('If by_ant_pol is True, then ant_pols must be specified.')
+            apapf = []
+            for ant in apaf:
+                if type(ant) == int:
+                    apapf += [(ant, pol) for pol in ant_pols]
+                else: # then it's already and antpol tuple
+                    apapf.append(ant)
+            return sorted(set(apapf))
+
+    return list(set(apaf))
