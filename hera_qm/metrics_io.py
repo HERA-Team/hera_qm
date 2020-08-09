@@ -991,7 +991,7 @@ def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
     '''
     apcf = []
     apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
-    
+
     # Load channel flags
     if 'channel_flags' in apf:
         for cf in apf['channel_flags']:
@@ -1022,7 +1022,7 @@ def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
                 raise TypeError(f'Both entries in freq_flags = {ff} must be convertable to floats.')
             if ff[0] > ff[1]:
                 raise ValueError(f'Frequency flags ranges must be increasing. {ff} is not.')
-            
+
             # add flagged channels
             apcf += list(np.argwhere((freqs >= ff[0]) & (freqs <= ff[1])).flatten())
 
@@ -1041,7 +1041,7 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
         1D numpy array containing all JDs in units of days, required if JD_flags is not empty in the YAML
     lsts : ndarray, optional
         1D numpy array containing all lsts in units of hours, required if LST_flags is not empty in the YAML
-        
+
     Returns
     -------
     a_priori_int_flags : ndarray
@@ -1049,7 +1049,7 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
     '''
     apif = []
     apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
-    
+
     # Load integration flags
     if 'integration_flags' in apf:
         for intf in apf['integration_flags']:
@@ -1064,13 +1064,13 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
 
     if (times is not None) and (lsts is not None) and (len(times) != len(lsts)):
         raise ValueError(f'Length of times ({len(times)}) != length of lsts ({len(lsts)}).')
-      
+
     # Load time flags
     if 'JD_flags' in apf:
         # check that times exists
         if (len(apf['JD_flags']) > 0) and (times is None):
             raise ValueError('If JD_flags is present in the YAML and not empty, times must be specified.')
-        
+
         for tf in apf['JD_flags']:
             # validate time flag ranges
             if (type(tf) != list) or (len(tf) != 2):
@@ -1109,7 +1109,7 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
                 apif += list(np.argwhere((lsts >= lf[0]) & (lsts <= lf[1])).flatten())
             else:  # LST range that spans the 24-hour branch cut
                 apif += list(np.argwhere((lsts >= lf[0]) | (lsts <= lf[1])).flatten())
-             
+
     # Return unique frequency indices
     return np.array(sorted(set(apif)))
 
@@ -1124,7 +1124,7 @@ def read_a_priori_ant_flags(a_priori_flags_yaml, ant_indices_only=False, by_ant_
     ant_indices_only : bool
         If True, ignore polarizations and flag entire antennas when they appear, e.g. (1, 'Jee') --> 1.
     by_ant_pol : bool
-        If True, expand all integer antenna indices into per-antpol entries using ant_pols 
+        If True, expand all integer antenna indices into per-antpol entries using ant_pols
     ant_pols : list of str
         List of antenna polarizations strings e.g. 'Jee'. If not empty, strings in
         the YAML must be in here or an error is raised. Required if by_ant_pol is True.

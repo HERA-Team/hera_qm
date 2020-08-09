@@ -1389,6 +1389,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                    Nwf_per_load=None, apply_uvf_apriori=True,
                    dtype='uvcal', run_filter=True,
                    metrics=None, flags=None, modified_z_score=False,
+                   flagging_yaml=None,
                    run_check=True,
                    check_extra=True,
                    run_check_acceptability=True):
@@ -1675,7 +1676,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
 #############################################################################
 
 
-def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, 
+def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
              data_files=None, a_priori_flag_yaml=None,
              omnical_median_filter=True, omnical_mean_filter=True,
              omnical_chi2_median_filter=True, omnical_chi2_mean_filter=True,
