@@ -1114,13 +1114,15 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
     return np.array(sorted(set(apif)))
 
 
-def read_a_priori_ant_flags(a_priori_flags_yaml, by_ant_pol=False, ant_pols=None):
+def read_a_priori_ant_flags(a_priori_flags_yaml, ant_indices_only=False, by_ant_pol=False, ant_pols=None):
     '''Parse an a priori flag YAML file for a priori antenna flags.
 
     Parameters
     ----------
     a_priori_flags_yaml : str
         Path to YAML file with a priori antenna flags
+    ant_indices_only : bool
+        If True, ignore polarizations and flag entire antennas when they appear, e.g. (1, 'Jee') --> 1.
     by_ant_pol : bool
         If True, expand all integer antenna indices into per-antpol entries using ant_pols 
     ant_pols : list of str
@@ -1132,6 +1134,9 @@ def read_a_priori_ant_flags(a_priori_flags_yaml, by_ant_pol=False, ant_pols=None
     a_priori_antenna_flags : list
          List of a priori antenna flags, either integers or ant-pol tuples e.g. (0, 'Jee')
     '''
+
+    if ant_indices_only and by_ant_pol:
+        raise ValueError("ant_indices_only and by_ant_pol can't both be True.")
     apaf = []
     apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
 
@@ -1146,7 +1151,10 @@ def read_a_priori_ant_flags(a_priori_flags_yaml, by_ant_pol=False, ant_pols=None
                 # check that antpol string is valid if ant_pols is not empty
                 if (ant_pols is not None) and (ant[1] not in ant_pols):
                     raise ValueError(f'{ant[1]} is not a valid ant_pol in {ant_pols}.')
-                apaf += [tuple(ant)]
+                if ant_indices_only:
+                    apaf.append(ant[0])
+                else:
+                    apaf += [tuple(ant)]
             else:
                 raise TypeError(f'ex_ants entires must be integers or a list of one int and one str. {ant} is not.')
 
