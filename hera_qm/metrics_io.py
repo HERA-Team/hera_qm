@@ -982,7 +982,7 @@ def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
     a_priori_flags_yaml : str
         Path to YAML file with a priori channel and/or frequency flags
     freqs : ndarray, optional
-        1D numpy array containing all frequencies in Hz, required in freq_flags is not empty in the YAML
+        1D numpy array containing all frequencies in Hz, required if freq_flags is not empty in the YAML
 
     Returns
     -------
@@ -1038,9 +1038,9 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
     a_priori_flags_yaml : str
         Path to YAML file with a priori JD, LST, or integration flags
     times : ndarray, optional
-        1D numpy array containing all JDs in units of days, required in JD_flags is not empty in the YAML
+        1D numpy array containing all JDs in units of days, required if JD_flags is not empty in the YAML
     lsts : ndarray, optional
-        1D numpy array containing all lsts in units of hours, required in LST_flags is not empty in the YAML
+        1D numpy array containing all lsts in units of hours, required if LST_flags is not empty in the YAML
         
     Returns
     -------
