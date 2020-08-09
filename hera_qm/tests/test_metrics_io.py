@@ -685,7 +685,7 @@ def test_read_a_priori_ant_flags():
     with pytest.raises(ValueError):
         metrics_io.read_a_priori_ant_flags(apf_yaml, ant_pols=['Jxx'])
         
-    # Test error: malformated ex_ants
+    # Test error: malformatted ex_ants
     for ex_ants in [['Jee'], [[0, 1, 2]], [1.0]]:
         out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
         yaml.dump({'ex_ants': ex_ants}, open(out_yaml, 'w'))
