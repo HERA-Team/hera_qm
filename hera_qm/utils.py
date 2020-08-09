@@ -51,6 +51,9 @@ def get_metrics_ArgumentParser(method_name):
                         help='4-pol visibility files used to compute antenna metrics')
         ap.add_argument('--apriori_xants', type=int, nargs='*', default=[],
                         help='space-delimited list of integer antenna numbers to exclude apriori.')
+        ap.add_argument('--a_priori_xants_yaml', type=str, default=None,
+                        help=('path to a priori flagging YAML with xant information parsable by '
+                              'hera_qm.metrics_io.read_a_priori_ant_flags()'))
         ap.add_argument('--crossCut', default=5.0, type=float,
                         help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
         ap.add_argument('--deadCut', default=5.0, type=float,

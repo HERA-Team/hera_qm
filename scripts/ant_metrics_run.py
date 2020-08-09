@@ -12,6 +12,7 @@ args = ap.parse_args()
 history = ' '.join(sys.argv)
 ant_metrics.ant_metrics_run(args.data_files,
                             apriori_xants=args.apriori_xants,
+                            a_priori_xants_yaml=args.a_priori_xants_yaml,
                             crossCut=args.crossCut,
                             deadCut=args.deadCut,
                             run_cross_pols=args.run_cross_pols,
