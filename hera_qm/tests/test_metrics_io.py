@@ -543,6 +543,50 @@ def test_boolean_read_write_hdf5():
     os.remove(test_file)
 
 
+def test_read_a_priori_chan_flags():
+    apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_sample.yaml')
+
+    # Test normal operation
+    freqs = np.linspace(100e6, 200e6, 64)
+    apcf = metrics_io.read_a_priori_chan_flags(apf_yaml, freqs=freqs)
+    expected = np.array([0, 1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 14, 15, 16, 17, 
+                         18, 19, 20, 32, 33, 34, 57, 58, 59, 60, 61, 62, 63])
+    np.testing.assert_array_equal(apcf, expected)
+            
+    # Test error: channel ranges out of order
+    out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+    yaml.dump({'channel_flags': [[10, 5]]}, open(out_yaml, 'w'))
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_chan_flags(out_yaml)
+    os.remove(out_yaml)
+    
+    # Test error: malformatted channel_flags
+    for channel_flags in [['Jee'], [[0, 1, 2]], [1.0]]:
+        out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+        yaml.dump({'channel_flags': channel_flags}, open(out_yaml, 'w'))
+        with pytest.raises(TypeError):
+            metrics_io.read_a_priori_chan_flags(out_yaml)
+        os.remove(out_yaml)
+
+    # Test error: missing freqs
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_chan_flags(apf_yaml)
+
+    # Test error: malformatted freq_flags
+    for freq_flags in [['Jee'], [[0, 1, 2]], [1.0], ['Jee', 'Jnn']]:
+        out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+        yaml.dump({'freq_flags': freq_flags}, open(out_yaml, 'w'))
+        with pytest.raises(TypeError):
+            metrics_io.read_a_priori_chan_flags(out_yaml, freqs=freqs)
+        os.remove(out_yaml)
+    
+    # Test error: freq ranges out of order
+    out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+    yaml.dump({'freq_flags': [[200e6, 100e6]]}, open(out_yaml, 'w'))
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_chan_flags(out_yaml, freqs=freqs)
+    os.remove(out_yaml)
+
 def test_read_a_priori_ant_flags():
     apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_sample.yaml')
 
