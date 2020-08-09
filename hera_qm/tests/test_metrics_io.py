@@ -658,7 +658,7 @@ def test_read_a_priori_int_flags():
     
     # Test error: LST_flags out of range
     out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
-    yaml.dump({'LST_flags': [[[0, 100]]]}, open(out_yaml, 'w'))
+    yaml.dump({'LST_flags': [[0, 100]]}, open(out_yaml, 'w'))
     with pytest.raises(ValueError):
         metrics_io.read_a_priori_int_flags(out_yaml, lsts=lsts)
     os.remove(out_yaml)
