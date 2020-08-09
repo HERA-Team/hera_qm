@@ -1014,8 +1014,8 @@ def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
 
         for ff in apf['freq_flags']:
             # validate each frequency pair
-            if (len(ff) != 2):
-                raise ValueError(f'freq_flags entires must be len-2 lists of floats. {ff} is not.')
+            if (type(ff) != list) or (len(ff) != 2):
+                raise TypeError(f'freq_flags entires must be len-2 lists of floats. {ff} is not.')
             try:
                 ff = [float(ff[0]), float(ff[1])]
             except ValueError:
@@ -1073,8 +1073,8 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
         
         for tf in apf['JD_flags']:
             # validate time flag ranges
-            if (len(tf) != 2):
-                raise ValueError(f'JD_flags entires must be len-2 lists of floats. {tf} is not.')
+            if (type(tf) != list) or (len(tf) != 2):
+                raise TypeError(f'JD_flags entires must be len-2 lists of floats. {tf} is not.')
             try:
                 tf = [float(tf[0]), float(tf[1])]
             except ValueError:
@@ -1095,8 +1095,8 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
 
         for lf in apf['LST_flags']:
             # validate LST flag ranges
-            if (len(lf) != 2):
-                raise ValueError(f'LST_flags entires must be len-2 lists of floats. {lf} is not.')
+            if (type(lf) != list) or (len(lf) != 2):
+                raise TypeError(f'LST_flags entires must be len-2 lists of floats. {lf} is not.')
             try:
                 lf = [float(lf[0]), float(lf[1])]
             except ValueError:
