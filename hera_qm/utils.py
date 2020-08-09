@@ -260,6 +260,9 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--data_file', default=None, type=str, help='Raw visibility '
                         'data files to flag on.',
                         nargs='+')
+        ap.add_argument('--a_priori_flag_yaml', default=None, type=str,
+                        help=('Path to a priori flagging YAML with frequency, time, and/or '
+                              'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,
@@ -289,6 +292,9 @@ def get_metrics_ArgumentParser(method_name):
         ap.prog = 'xrfi_run_data_only.py'
         ap.add_argument('--data_files', default=None, type=str, help='Raw visibility '
                         'data files to flag on.', nargs='+')
+        ap.add_argument('--a_priori_flag_yaml', default=None, type=str,
+                        help=('Path to a priori flagging YAML with frequency, time, and/or '
+                              'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))        
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,
