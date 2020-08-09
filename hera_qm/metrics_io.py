@@ -999,7 +999,7 @@ def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
             if type(cf) == int:
                 apcf.append(cf)
             # add range of channel flags
-            elif (type(cf) == list) and (len(cf) == 2) and (type(cf[0]) == type(cf[1]) == int):
+            elif (type(cf) == list) and (len(cf) == 2) and isinstance(cf[0], int) and isinstance(cf[1], int):
                 if cf[0] > cf[1]:
                     raise ValueError(f'Channel flag ranges must be increasing. {cf} is not.')
                 apcf += list(range(cf[0], cf[1] + 1))
@@ -1055,7 +1055,7 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
         for intf in apf['integration_flags']:
             if type(intf) == int:
                 apif.append(intf)
-            elif (type(intf) == list) and (len(intf) == 2) and (type(intf[0]) == type(intf[1]) == int):
+            elif (type(intf) == list) and (len(intf) == 2) and isinstance(intf[0], int) and isinstance(intf[1], int):
                 if intf[0] > intf[1]:
                     raise ValueError(f'Integration flag ranges must be increasing. {intf} is not.')
                 apif += list(range(intf[0], intf[1] + 1))
@@ -1105,9 +1105,9 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
                 raise ValueError(f'Both entries in LST_flags must be between 0 and 24 hours. {lf} is not.')
 
             # add integration flag indices
-            if lf[0] <= lf[1]: # normal LST range
+            if lf[0] <= lf[1]:  # normal LST range
                 apif += list(np.argwhere((lsts >= lf[0]) & (lsts <= lf[1])).flatten())
-            else: # LST range that spans the 24-hour branch cut
+            else:  # LST range that spans the 24-hour branch cut
                 apif += list(np.argwhere((lsts >= lf[0]) | (lsts <= lf[1])).flatten())
              
     # Return unique frequency indices
@@ -1158,7 +1158,7 @@ def read_a_priori_ant_flags(a_priori_flags_yaml, by_ant_pol=False, ant_pols=None
             for ant in apaf:
                 if type(ant) == int:
                     apapf += [(ant, pol) for pol in ant_pols]
-                else: # then it's already and antpol tuple
+                else:  # then it's already and antpol tuple
                     apapf.append(ant)
             return sorted(set(apapf))
 

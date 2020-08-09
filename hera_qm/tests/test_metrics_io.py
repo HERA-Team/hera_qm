@@ -593,14 +593,14 @@ def test_read_a_priori_int_flags():
 
     # Test normal operation
     times = np.linspace(2458838.0, 2458838.1, 60)
-    lsts = np.linspace(5, 6, 60) # for this test, it doesn't matter if this doesn't match the above
+    lsts = np.linspace(5, 6, 60)  # for this test, it doesn't matter if this doesn't match the above
     apif = metrics_io.read_a_priori_int_flags(apf_yaml, times=times, lsts=lsts)
-    expected = np.array([0, 1, 6, 7, 8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 59])
+    expected = np.array([0, 1, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 59])
     np.testing.assert_array_equal(apif, expected)
 
     # Test normal operation with LST flags that span the 24-hour branch cut
     times = np.linspace(2458838.1, 2458838.2, 60)
-    lsts = np.linspace(22, 24, 60) # for this test, it doesn't matter if this doesn't match the above
+    lsts = np.linspace(22, 24, 60)  # for this test, it doesn't matter if this doesn't match the above
     apif = metrics_io.read_a_priori_int_flags(apf_yaml, times=times, lsts=lsts)
     expected = np.array([0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 42, 43, 44,
                         45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59])
