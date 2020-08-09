@@ -630,7 +630,7 @@ def test_read_a_priori_int_flags():
         metrics_io.read_a_priori_int_flags(apf_yaml, lsts=lsts)
 
     # Test error: malformatted JD_flags
-    for JD_flags in [['Jee'], [[0, 1, 2]], [1.0], ['Jee', 'Jnn']]:
+    for JD_flags in [['Jee'], [[0, 1, 2]], [1.0], [['Jee', 'Jnn']]]:
         out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
         yaml.dump({'JD_flags': JD_flags}, open(out_yaml, 'w'))
         with pytest.raises(TypeError):
@@ -647,6 +647,12 @@ def test_read_a_priori_int_flags():
     # Test error: missing lsts
     with pytest.raises(ValueError):
         metrics_io.read_a_priori_int_flags(apf_yaml, times=times)
+
+    # Test error: lsts out or range
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_int_flags(apf_yaml, times=times, lsts=np.linspace(23, 25, 60))
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_int_flags(apf_yaml, times=times, lsts=np.linspace(-1, 1, 60))
 
     # Test error: malformatted LST_flags  
     for LST_flags in [['Jee'], [[0, 1, 2]], [1.0], [['Jee', 'Jnn']]]:
