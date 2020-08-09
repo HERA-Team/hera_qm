@@ -573,7 +573,7 @@ def test_read_a_priori_chan_flags():
         metrics_io.read_a_priori_chan_flags(apf_yaml)
 
     # Test error: malformatted freq_flags
-    for freq_flags in [['Jee'], [[0, 1, 2]], [1.0], ['Jee', 'Jnn']]:
+    for freq_flags in [['Jee'], [[0, 1, 2]], [1.0], [['Jee', 'Jnn']]]:
         out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
         yaml.dump({'freq_flags': freq_flags}, open(out_yaml, 'w'))
         with pytest.raises(TypeError):
@@ -614,7 +614,7 @@ def test_read_a_priori_int_flags():
     os.remove(out_yaml)
     
     # Test error: malformatted integration_flags:
-    for integration_flags in [['Jee'], [[0, 1, 2]], [1.0], ['Jee', 'Jnn']]:
+    for integration_flags in [['Jee'], [[0, 1, 2]], [1.0], [['Jee', 'Jnn']]]:
         out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
         yaml.dump({'integration_flags': integration_flags}, open(out_yaml, 'w'))
         with pytest.raises(TypeError):
@@ -649,7 +649,7 @@ def test_read_a_priori_int_flags():
         metrics_io.read_a_priori_int_flags(apf_yaml, times=times)
 
     # Test error: malformatted LST_flags  
-    for LST_flags in [['Jee'], [[0, 1, 2]], [1.0], ['Jee', 'Jnn']]:
+    for LST_flags in [['Jee'], [[0, 1, 2]], [1.0], [['Jee', 'Jnn']]]:
         out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
         yaml.dump({'LST_flags': LST_flags}, open(out_yaml, 'w'))
         with pytest.raises(TypeError):
@@ -658,7 +658,7 @@ def test_read_a_priori_int_flags():
     
     # Test error: LST_flags out of range
     out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
-    yaml.dump({'LST_flags': [[0, 100]]}, open(out_yaml, 'w'))
+    yaml.dump({'LST_flags': [[[0, 100]]]}, open(out_yaml, 'w'))
     with pytest.raises(ValueError):
         metrics_io.read_a_priori_int_flags(out_yaml, lsts=lsts)
     os.remove(out_yaml)
