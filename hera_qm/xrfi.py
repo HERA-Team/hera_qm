@@ -13,6 +13,7 @@ from . import utils as qm_utils
 from pyuvdata import utils as uvutils
 from .version import hera_qm_version_str
 from .metrics_io import process_ex_ants
+from . import metrics_io
 import warnings
 import glob
 import re
@@ -1674,7 +1675,8 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
 #############################################################################
 
 
-def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_files=None,
+def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, 
+             data_files=None, a_priori_flag_yaml=None,
              omnical_median_filter=True, omnical_mean_filter=True,
              omnical_chi2_median_filter=True, omnical_chi2_mean_filter=True,
              omnical_zscore_filter=True,
@@ -1713,6 +1715,10 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
         THe model visibility file to flag on.
     data_files : str or list of strings, optional
         The raw visibility data file to flag.
+    a_priori_flag_yaml : str, optional
+        Path to file containing a priori frequency, time, or antenna flags.
+        Antenna flags will include all polarizations, even if only one pol is listed.
+        See hera_qm.metrics_io.read_a_priori_[chan/int/ant]_flags() for details.
     omnical_median_filter : bool, optional
         If true, run a median filter on omnical gains.
         Mean filters are run after median filters.
@@ -1874,7 +1880,11 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None, data_fi
     if history is None:
         history = ''
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+
+    # Combine excluded antenna indices from ex_ants, metrics_file, and a_priori_flag_yaml
     xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+    if a_priori_flag_yaml is not None:
+        xants = list(set(list(xants) + metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=True)))
 
     # Initial run on cal data products
     # Calculate metric on abscal data
