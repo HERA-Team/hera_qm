@@ -678,10 +678,19 @@ def test_read_a_priori_ant_flags():
     expected = [0, (1, 'Jee'), 10, (3, 'Jnn')]
     assert set(expected) == set(apaf)
 
+    # Test operation in ant_indices_only mode
+    apaf = metrics_io.read_a_priori_ant_flags(apf_yaml, ant_indices_only=True)
+    expected = [0, 1, 10, 3]
+    assert set(expected) == set(apaf)
+
     # Test operation in by_ant_pol mode
     apaf = metrics_io.read_a_priori_ant_flags(apf_yaml, by_ant_pol=True, ant_pols=['Jee', 'Jnn'])
     expected = [(0, 'Jee'), (0, 'Jnn'), (1, 'Jee'), (3, 'Jnn'), (10, 'Jee'), (10, 'Jnn')]
     assert set(expected) == set(apaf)
+
+    # Test error: inconsistent options
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_ant_flags(apf_yaml, ant_indices_only=True, by_ant_pol=True)
 
     # Test error: missing ant_pols
     with pytest.raises(ValueError):
