@@ -1057,7 +1057,7 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
                 apif.append(intf)
             elif (type(intf) == list) and (len(intf) == 2) and (type(intf[0]) == type(intf[1]) == int):
                 if intf[0] > intf[1]:
-                    raise ValueError(f'Integration flag ranges must be increasing. {cf} is not.')
+                    raise ValueError(f'Integration flag ranges must be increasing. {intf} is not.')
                 apif += list(range(intf[0], intf[1] + 1))
             else:
                 raise TypeError(f'integration_flags entries must be integers or len-2 lists of integers. {intf} is not.')
