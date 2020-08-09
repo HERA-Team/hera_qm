@@ -587,6 +587,83 @@ def test_read_a_priori_chan_flags():
         metrics_io.read_a_priori_chan_flags(out_yaml, freqs=freqs)
     os.remove(out_yaml)
 
+
+def test_read_a_priori_int_flags():
+    apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_sample.yaml')
+
+    # Test normal operation
+    times = np.linspace(2458838.0, 2458838.1, 60)
+    lsts = np.linspace(5, 6, 60) # for this test, it doesn't matter if this doesn't match the above
+    apif = metrics_io.read_a_priori_int_flags(apf_yaml, times=times, lsts=lsts)
+    expected = np.array([0, 1, 6, 7, 8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 59])
+    np.testing.assert_array_equal(apif, expected)
+
+    # Test normal operation with LST flags that span the 24-hour branch cut
+    times = np.linspace(2458838.1, 2458838.2, 60)
+    lsts = np.linspace(22, 24, 60) # for this test, it doesn't matter if this doesn't match the above
+    apif = metrics_io.read_a_priori_int_flags(apf_yaml, times=times, lsts=lsts)
+    expected = np.array([0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 42, 43, 44,
+                        45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59])
+    np.testing.assert_array_equal(apif, expected)
+
+    # Test error: integration flag ranges out of order
+    out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+    yaml.dump({'integration_flags': [[10, 5]]}, open(out_yaml, 'w'))
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_int_flags(out_yaml)
+    os.remove(out_yaml)
+    
+    # Test error: malformatted integration_flags:
+    for integration_flags in [['Jee'], [[0, 1, 2]], [1.0], ['Jee', 'Jnn']]:
+        out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+        yaml.dump({'integration_flags': integration_flags}, open(out_yaml, 'w'))
+        with pytest.raises(TypeError):
+            metrics_io.read_a_priori_int_flags(out_yaml)
+        os.remove(out_yaml)
+    
+    # Test error: time and freq flag lengths don't match
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_int_flags(apf_yaml, times=np.arange(2), lsts=np.arange(3))
+
+    # Test error: missing times
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_int_flags(apf_yaml, lsts=lsts)
+
+    # Test error: malformatted JD_flags
+    for JD_flags in [['Jee'], [[0, 1, 2]], [1.0], ['Jee', 'Jnn']]:
+        out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+        yaml.dump({'JD_flags': JD_flags}, open(out_yaml, 'w'))
+        with pytest.raises(TypeError):
+            metrics_io.read_a_priori_int_flags(out_yaml, times=times)
+        os.remove(out_yaml)    
+    
+    # Test error: JD_flags out of order
+    out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+    yaml.dump({'JD_flags': [[2458838.1, 2458838.0]]}, open(out_yaml, 'w'))
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_int_flags(out_yaml, times=times)
+    os.remove(out_yaml)
+                
+    # Test error: missing lsts
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_int_flags(apf_yaml, times=times)
+
+    # Test error: malformatted LST_flags  
+    for LST_flags in [['Jee'], [[0, 1, 2]], [1.0], ['Jee', 'Jnn']]:
+        out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+        yaml.dump({'LST_flags': LST_flags}, open(out_yaml, 'w'))
+        with pytest.raises(TypeError):
+            metrics_io.read_a_priori_int_flags(out_yaml, lsts=lsts)
+        os.remove(out_yaml)    
+    
+    # Test error: LST_flags out of range
+    out_yaml = os.path.join(DATA_PATH, 'test_output', 'erroring.yaml')
+    yaml.dump({'LST_flags': [[0, 100]]}, open(out_yaml, 'w'))
+    with pytest.raises(ValueError):
+        metrics_io.read_a_priori_int_flags(out_yaml, lsts=lsts)
+    os.remove(out_yaml)
+
+
 def test_read_a_priori_ant_flags():
     apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_sample.yaml')
 
