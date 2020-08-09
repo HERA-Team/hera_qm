@@ -1042,7 +1042,7 @@ def test_xrfi_run(tmpdir):
 
     # check warnings
     with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=3)
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
     for i in range(len(record)):
@@ -1364,7 +1364,7 @@ def test_xrfi_run_edgeflag(tmpdir):
     shutil.copyfile(test_uvh5_file, model_file)
     # check warnings
     with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, 'Just a test', kt_size=2)
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=2)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
     for i in range(len(record)):
@@ -1456,7 +1456,7 @@ def test_xrfi_run_edgeflag(tmpdir):
         shutil.copyfile(uvf, model_file)
         model_files.append(model_file)
     with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles, 'Just a test', kt_size=1)
+        xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles, history='Just a test', kt_size=1)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
     for i in range(len(record)):
@@ -1506,7 +1506,7 @@ def test_xrfi_run_multifile(tmpdir):
     # check warnings
     with pytest.warns(None) as record:
         xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles,
-                      'Just a test', kt_size=3, cross_median_filter=True)
+                      history='Just a test', kt_size=3, cross_median_filter=True)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
     for i in range(len(record)):
@@ -1573,7 +1573,7 @@ def test_xrfi_run_multifile(tmpdir):
     # check warnings
     with pytest.warns(None) as record:
         xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles,
-                      'Just a test', kt_size=3, cross_median_filter=True,
+                      history='Just a test', kt_size=3, cross_median_filter=True,
                       throw_away_edges=False, clobber=True)
     assert len(record) >= len(messages)
     n_matched_warnings = 0
@@ -1654,7 +1654,7 @@ def test_day_threshold_run(tmpdir):
             n_matched_warnings += 1
     assert n_matched_warnings == 8
 
-    xrfi.day_threshold_run(data_files, 'just a test')
+    xrfi.day_threshold_run(data_files, history='just a test')
     types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
              'abscal_chi_sq_renormed', 'combined', 'total']
     for type in types:
@@ -1686,7 +1686,7 @@ def test_day_threshold_run_data_only(tmpdir):
     data_files = [raw_dfile]
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    xrfi.xrfi_run(None, None, None, raw_dfile, 'Just a test', kt_size=3, throw_away_edges=False)
+    xrfi.xrfi_run(None, None, None, raw_dfile, history='Just a test', kt_size=3, throw_away_edges=False)
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
@@ -1706,9 +1706,9 @@ def test_day_threshold_run_data_only(tmpdir):
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
     # only perform median filter on autocorrs to hit lines where only first round exists.
-    xrfi.xrfi_run(None, None, None, data_files[1], 'Just a test', kt_size=3, auto_mean_filter=False, throw_away_edges=False)
+    xrfi.xrfi_run(None, None, None, data_files[1], history='Just a test', kt_size=3, auto_mean_filter=False, throw_away_edges=False)
 
-    xrfi.day_threshold_run(data_files, 'just a test')
+    xrfi.day_threshold_run(data_files, history='just a test')
     types = ['cross', 'auto', 'combined', 'total']
     for t in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
@@ -1740,7 +1740,7 @@ def test_day_threshold_run_cal_only(tmpdir):
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
-                                         None, 'Just a test'], {'kt_size': 3, 'output_prefixes': raw_dfile, 'throw_away_edges':False},
+                                         None], {'history': 'Just a test', 'kt_size': 3, 'output_prefixes': raw_dfile, 'throw_away_edges':False},
                          nwarnings=len(messages), message=messages, category=categories)
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
@@ -1761,10 +1761,10 @@ def test_day_threshold_run_cal_only(tmpdir):
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
     uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
-                                         None, 'Just a test'], {'kt_size': 3, 'output_prefixes': data_files[1], 'throw_away_edges':False},
+                                         None], {'history': 'Just a test', 'kt_size': 3, 'output_prefixes': data_files[1], 'throw_away_edges':False},
                          nwarnings=len(messages), message=messages, category=categories)
 
-    xrfi.day_threshold_run(data_files, 'just a test')
+    xrfi.day_threshold_run(data_files, history='just a test')
     types = ['ox', 'og', 'ax', 'ag', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed',
              'combined', 'total']
     for t in types:
@@ -1796,7 +1796,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     data_files = [raw_dfile]
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    xrfi.xrfi_run(None, None, model_file, None, 'Just a test', kt_size=3, output_prefixes=raw_dfile, throw_away_edges=False)
+    xrfi.xrfi_run(None, None, model_file, None, history='Just a test', kt_size=3, output_prefixes=raw_dfile, throw_away_edges=False)
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
@@ -1816,7 +1816,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
     xrfi.xrfi_run(None, None, model_file, None, history='Just a test', kt_size=3, output_prefixes=data_files[1], throw_away_edges=False)
-    xrfi.day_threshold_run(data_files, 'just a test')
+    xrfi.day_threshold_run(data_files, history='just a test')
     types = ['v', 'combined']
     for t in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + t + '_threshold_flags.h5'
@@ -1865,7 +1865,7 @@ def test_xrfi_h1c_run_filename_not_string():
     uvd = UVData()
     uvd.read_miriad(test_d_file)
     pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd,
-                  'Just a test.', filename=5)
+                  history='Just a test.', filename=5)
 
 
 def test_xrfi_h1c_run_uvfits_no_xrfi_path():
@@ -1944,7 +1944,7 @@ def test_xrfi_h1c_run_incorrect_model():
     uvd = UVData()
     uvd.read_miriad(test_d_file)
     bad_uvfits_test = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA.uvfits')
-    pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd, 'Just a test.',
+    pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd, history='Just a test.',
                   filename=test_d_file, model_file=bad_uvfits_test,
                   model_file_format='uvfits', xrfi_path=xrfi_path, kt_size=3)
 
@@ -1974,13 +1974,13 @@ def test_xrfi_h1c_run_incorrect_calfits():
     uvd = UVData()
     uvd.read_miriad(test_d_file)
     bad_calfits = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
-    pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd, 'Just a test.',
+    pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd, history='Just a test.',
                   filename=test_d_file, calfits_file=bad_calfits,
                   xrfi_path=xrfi_path, kt_size=3)
 
 
 def test_xrfi_h1c_run_indata_string_filename_not_string():
-    pytest.raises(ValueError, xrfi.xrfi_h1c_run, 'foo', 'Just a test.',
+    pytest.raises(ValueError, xrfi.xrfi_h1c_run, 'foo', history='Just a test.',
                   filename=3)
 
 

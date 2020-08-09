@@ -598,8 +598,8 @@ class AntennaMetrics():
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
 
-def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
-                    run_cross_pols=True, run_cross_pols_only=False,
+def ant_metrics_run(data_files, apriori_xants=[], a_priori_xants_yaml=None,
+                    crossCut=5.0, deadCut=5.0, run_cross_pols=True, run_cross_pols_only=False,
                     metrics_path='', extension='.ant_metrics.hdf5',
                     overwrite=False, Nbls_per_load=None, history='', verbose=True):
     """
@@ -619,6 +619,10 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
         List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
         as excluded apriori. These are included in self.xants, but not
         self.dead_ants or self.crossed_ants when writing results to disk.
+    a_priori_xants_yaml : string, optional
+        Path to a priori flagging YAML with antenna flagging information.
+        See hera_qm.metrics_io.read_a_priori_ant_flags() for details.
+        Frequency and time flags in the YAML are ignored.
     crossCut : float, optional
             Modified Z-Score limit to cut cross-polarized antennas. Default is 5.0.
     deadCut : float, optional
@@ -643,6 +647,11 @@ def ant_metrics_run(data_files, apriori_xants=[], crossCut=5.0, deadCut=5.0,
     verbose : bool, optional
         If True, print out statements during iterative flagging. Default is True.
     """
+
+    # load a priori exants from YAML and append to apriori_xants
+    if a_priori_xants_yaml is not None:
+        apaf = metrics_io.read_a_priori_ant_flags(a_priori_xants_yaml)
+        apriori_xants = list(set(list(apriori_xants) + apaf))
 
     # run ant metrics
     am = AntennaMetrics(data_files,

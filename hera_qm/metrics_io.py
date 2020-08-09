@@ -11,6 +11,7 @@ import numpy as np
 import pickle as pkl
 import copy
 import re
+import yaml
 from collections import OrderedDict
 from .version import hera_qm_version_str
 from . import utils as qm_utils
@@ -971,3 +972,202 @@ def process_ex_ants(ex_ants=None, metrics_file=None):
                 if ant_num not in xants:
                     xants.append(int(ant_num))
         return xants
+
+
+def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
+    '''Parse an a priori flag YAML file for a priori channel flags.
+
+    Parameters
+    ----------
+    a_priori_flags_yaml : str
+        Path to YAML file with a priori channel and/or frequency flags
+    freqs : ndarray, optional
+        1D numpy array containing all frequencies in Hz, required if freq_flags is not empty in the YAML
+
+    Returns
+    -------
+    a_priori_channel_flags : ndarray
+        Numpy array of integer a priori channel index flags.
+    '''
+    apcf = []
+    apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
+    
+    # Load channel flags
+    if 'channel_flags' in apf:
+        for cf in apf['channel_flags']:
+            # add single channel flag
+            if type(cf) == int:
+                apcf.append(cf)
+            # add range of channel flags
+            elif (type(cf) == list) and (len(cf) == 2) and isinstance(cf[0], int) and isinstance(cf[1], int):
+                if cf[0] > cf[1]:
+                    raise ValueError(f'Channel flag ranges must be increasing. {cf} is not.')
+                apcf += list(range(cf[0], cf[1] + 1))
+            else:
+                raise TypeError(f'channel_flags entries must be integers or len-2 lists of integers. {cf} is not.')
+
+    # Load frequency flags
+    if 'freq_flags' in apf:
+        # check for presense of freqs
+        if (len(apf['freq_flags']) > 0) and (freqs is None):
+            raise ValueError('If freq_flags is present in the YAML and not empty, freqs must be specified.')
+
+        for ff in apf['freq_flags']:
+            # validate each frequency pair
+            if (type(ff) != list) or (len(ff) != 2):
+                raise TypeError(f'freq_flags entires must be len-2 lists of floats. {ff} is not.')
+            try:
+                ff = [float(ff[0]), float(ff[1])]
+            except ValueError:
+                raise TypeError(f'Both entries in freq_flags = {ff} must be convertable to floats.')
+            if ff[0] > ff[1]:
+                raise ValueError(f'Frequency flags ranges must be increasing. {ff} is not.')
+            
+            # add flagged channels
+            apcf += list(np.argwhere((freqs >= ff[0]) & (freqs <= ff[1])).flatten())
+
+    # Return unique channel indices
+    return np.array(sorted(set(apcf)))
+
+
+def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
+    '''Parse an a priori flag YAML file for a priori integration flags.
+
+    Parameters
+    ----------
+    a_priori_flags_yaml : str
+        Path to YAML file with a priori JD, LST, or integration flags
+    times : ndarray, optional
+        1D numpy array containing all JDs in units of days, required if JD_flags is not empty in the YAML
+    lsts : ndarray, optional
+        1D numpy array containing all lsts in units of hours, required if LST_flags is not empty in the YAML
+        
+    Returns
+    -------
+    a_priori_int_flags : ndarray
+        Numpy array of integer a priori integration index flags.
+    '''
+    apif = []
+    apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
+    
+    # Load integration flags
+    if 'integration_flags' in apf:
+        for intf in apf['integration_flags']:
+            if type(intf) == int:
+                apif.append(intf)
+            elif (type(intf) == list) and (len(intf) == 2) and isinstance(intf[0], int) and isinstance(intf[1], int):
+                if intf[0] > intf[1]:
+                    raise ValueError(f'Integration flag ranges must be increasing. {intf} is not.')
+                apif += list(range(intf[0], intf[1] + 1))
+            else:
+                raise TypeError(f'integration_flags entries must be integers or len-2 lists of integers. {intf} is not.')
+
+    if (times is not None) and (lsts is not None) and (len(times) != len(lsts)):
+        raise ValueError(f'Length of times ({len(times)}) != length of lsts ({len(lsts)}).')
+      
+    # Load time flags
+    if 'JD_flags' in apf:
+        # check that times exists
+        if (len(apf['JD_flags']) > 0) and (times is None):
+            raise ValueError('If JD_flags is present in the YAML and not empty, times must be specified.')
+        
+        for tf in apf['JD_flags']:
+            # validate time flag ranges
+            if (type(tf) != list) or (len(tf) != 2):
+                raise TypeError(f'JD_flags entires must be len-2 lists of floats. {tf} is not.')
+            try:
+                tf = [float(tf[0]), float(tf[1])]
+            except ValueError:
+                raise TypeError(f'Both entries in JD_flags = {tf} must be convertable to floats.')
+            if tf[0] > tf[1]:
+                raise ValueError(f'JD flag ranges must be increasing. {tf} is not.')
+
+            # add integration flag indices
+            apif += list(np.argwhere((times >= tf[0]) & (times <= tf[1])).flatten())
+
+    # Load LST flags
+    if 'LST_flags' in apf:
+        # Check that lsts exists and is valid
+        if (len(apf['LST_flags']) > 0) and (lsts is None):
+            raise ValueError('If LST_flags is present in the YAML and not empty, lsts must be specified.')
+        elif not (np.all(lsts >= 0) and np.all(lsts <= 24)):
+            raise ValueError(f'All lsts must be between 0 and 24. This is violated in lsts = {lsts}.')
+
+        for lf in apf['LST_flags']:
+            # validate LST flag ranges
+            if (type(lf) != list) or (len(lf) != 2):
+                raise TypeError(f'LST_flags entires must be len-2 lists of floats. {lf} is not.')
+            try:
+                lf = [float(lf[0]), float(lf[1])]
+            except ValueError:
+                raise TypeError(f'Both entries in JD_flags = {lf} must be convertable to floats.')
+            if (lf[0] < 0) or (lf[0] > 24) or (lf[1] < 0) or (lf[1] > 24):
+                raise ValueError(f'Both entries in LST_flags must be between 0 and 24 hours. {lf} is not.')
+
+            # add integration flag indices
+            if lf[0] <= lf[1]:  # normal LST range
+                apif += list(np.argwhere((lsts >= lf[0]) & (lsts <= lf[1])).flatten())
+            else:  # LST range that spans the 24-hour branch cut
+                apif += list(np.argwhere((lsts >= lf[0]) | (lsts <= lf[1])).flatten())
+             
+    # Return unique frequency indices
+    return np.array(sorted(set(apif)))
+
+
+def read_a_priori_ant_flags(a_priori_flags_yaml, ant_indices_only=False, by_ant_pol=False, ant_pols=None):
+    '''Parse an a priori flag YAML file for a priori antenna flags.
+
+    Parameters
+    ----------
+    a_priori_flags_yaml : str
+        Path to YAML file with a priori antenna flags
+    ant_indices_only : bool
+        If True, ignore polarizations and flag entire antennas when they appear, e.g. (1, 'Jee') --> 1.
+    by_ant_pol : bool
+        If True, expand all integer antenna indices into per-antpol entries using ant_pols 
+    ant_pols : list of str
+        List of antenna polarizations strings e.g. 'Jee'. If not empty, strings in
+        the YAML must be in here or an error is raised. Required if by_ant_pol is True.
+
+    Returns
+    -------
+    a_priori_antenna_flags : list
+         List of a priori antenna flags, either integers or ant-pol tuples e.g. (0, 'Jee')
+    '''
+
+    if ant_indices_only and by_ant_pol:
+        raise ValueError("ant_indices_only and by_ant_pol can't both be True.")
+    apaf = []
+    apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
+
+    # Load antenna flags
+    if 'ex_ants' in apf:
+        for ant in apf['ex_ants']:
+            # flag antenna number
+            if type(ant) == int:
+                apaf.append(ant)
+            # flag single antpol
+            elif (type(ant) == list) and (len(ant) == 2) and (type(ant[0]) == int) and (type(ant[1]) == str):
+                # check that antpol string is valid if ant_pols is not empty
+                if (ant_pols is not None) and (ant[1] not in ant_pols):
+                    raise ValueError(f'{ant[1]} is not a valid ant_pol in {ant_pols}.')
+                if ant_indices_only:
+                    apaf.append(ant[0])
+                else:
+                    apaf += [tuple(ant)]
+            else:
+                raise TypeError(f'ex_ants entires must be integers or a list of one int and one str. {ant} is not.')
+
+        # Expand all integer antenna flags into antpol pairs
+        if by_ant_pol:
+            if ant_pols is None:
+                raise ValueError('If by_ant_pol is True, then ant_pols must be specified.')
+            apapf = []
+            for ant in apaf:
+                if type(ant) == int:
+                    apapf += [(ant, pol) for pol in ant_pols]
+                else:  # then it's already and antpol tuple
+                    apapf.append(ant)
+            return sorted(set(apapf))
+
+    return list(set(apaf))

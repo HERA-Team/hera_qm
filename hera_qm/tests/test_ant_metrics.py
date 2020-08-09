@@ -342,4 +342,12 @@ def test_ant_metrics_run_and_load_antenna_metrics():
     assert qmtest.recursive_compare_dicts(am.final_mod_z_scores, am_hdf5['final_mod_z_scores'])
     assert qmtest.recursive_compare_dicts(am.all_mod_z_scores, am_hdf5['all_mod_z_scores'])
 
+    # test a priori flagging via YAML
+    apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_old_pols.yaml')
+    ant_metrics.ant_metrics_run(four_pol_uvh5, overwrite=True, a_priori_xants_yaml=apf_yaml, verbose=True)
+    am_hdf5 = ant_metrics.load_antenna_metrics(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
+    for ant in [(0, 'Jxx'), (0, 'Jyy'), (10, 'Jxx'), (10, 'Jyy'), (1, 'Jxx'), (3, 'Jyy')]:
+        assert ant in am_hdf5['xants']
+        assert am_hdf5['removal_iteration'][ant] == -1
+
     os.remove(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
