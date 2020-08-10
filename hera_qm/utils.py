@@ -645,7 +645,7 @@ def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml):
     flagged_time_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, times=uv.time_array)
     flagged_lst_integrations = metrics_io.read_aprioi_int_flags(a_priori_flag_yaml, lsts=uv.lst_array)
     flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml)
-    integrations_to_flag = np.unique(np.hstack([flagged_time_integrations, flagged_lst_integrations, flagged_integrations)]))
+    integrations_to_flag = np.unique(np.hstack([flagged_time_integrations, flagged_lst_integrations, flagged_integrations]))
     if issubclass(uv.__class__, UVData):
         uv.flag_array[integrations_to_flag, :, :, :] = True
     elif issubclass(uv.__class_, UVCal):

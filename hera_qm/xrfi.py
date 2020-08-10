@@ -1,4 +1,4 @@
-qm_utils.apply_yaml_freq_time_flags# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """Module for performing RFI identification and excision."""
