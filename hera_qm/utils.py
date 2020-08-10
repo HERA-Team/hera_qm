@@ -20,7 +20,9 @@ def _bytes_to_str(inbyte):
 def _str_to_bytes(instr):
     return instr.encode('utf8')
 
-
+HERA_TELESCOPE_LOCATION = np.array([5109325.855210627429187297821044921875,
+                                    2005235.091429826803505420684814453125,
+                                    -3239928.424753960222005844116210937500])
 # argument-generating function for *_run wrapper functions
 def get_metrics_ArgumentParser(method_name):
     """Get an ArgumentParser instance for working with metrics wrappers.
@@ -613,7 +615,7 @@ def strip_extension(path, return_ext=False):
         return os.path.splitext(path)[0]
 
 
-def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml, lst_array=None):
+def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name='HERA'):
     """Apply frequency and time flags to a UVData or UVCal object
 
     This function takes in a uvdata or uvcal object and applies
@@ -625,28 +627,52 @@ def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml, lst_array=None):
         uvdata or uvcal to apply frequency / time flags to.
     a_priori_flag_yaml : str
         path to yaml file with frequeny / time flags.
-    lst_array : array-like, optional
-        list of lsts (hour units)
+    lat_lon_alt_degrees : list, optional
+        list of latitude, longitude, and altitude for telescope.
+    telescope_name : str, optional
+        string with name of telescope.
+        Default is HERA
 
     Returns
     -------
         uv : UVData or UVCal object
             input uvdata / uvcal but now with flags applied
     """
-    if issubclass(uv.__class__, UVData):
-        lst_array = uv.lst_array * 12 / np.pi
+    # if UVCal provided, get lst_array from times.
+    # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
+    if issubclass(uv.__class__, UVCal):
+        if lat_lon_alt_degrees is None:
+            if telescope_name.upper() == 'HERA':
+                lat_lon_alt_degrees = np.array(uvutils.LatLonAlt_from_XYZ(HERA_TELESCOPE_LOCATION))
+                lat_lon_alt_degrees *= [180 / np.pi, 180 / np.pi, 1]
+            else:
+                raise NotImplementedError(f'No known position for telescope {telescope_name}. lat_lon_alt_degrees must be specified.')
+
+        # calculate LST grid in hours from time grid and lat_lon_alt
+        lst_array = uvutils.get_lst_for_time(uv.time_array, *lat_lon_alt_degrees) * 12 / np.pi
+    elif issubclass(uv.__class__, UVData):
+        lst_array = np.unique(uv.lst_array) * 12  / np.pi
+    else:
+        raise ValueError("uv must be a UVData or UVCal object.")
+    time_array = np.unique(uv.time_array)
     # loop over spws to apply frequency flags.
     for spw in range(uv.Nspws):
         flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[spw])
+        flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
         if issubclass(uv.__class__, UVData):
             uv.flag_array[:, spw, flagged_channels, :] = True
         elif issubclass(uv.__class__, UVCal):
             uv.flag_array[:, spw, flagged_channels, :, :] = True
     # now do times.
-    flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, lsts=lst_array, times=uv.time_array)
-    if issubclass(uv.__class__, UVData):
-        uv.flag_array[flagged_integrations, :, :, :] = True
-    elif issubclass(uv.__class__, UVCal):
-        uv.flag_array[:, :, :, flagged_integrations, :] = True
+    # get the integrations to flag
+    flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, lsts=lst_array, times=time_array)
+    # ony select integrations less then Ntimes
+    flagged_integrations = flagged_integrations[(flagged_integrations>=0) & (flagged_integrations<=uv.Ntimes)]
+    flagged_times = time_array[flagged_integrations]
+    for time in flagged_times:
+        if issubclass(uv.__class__, UVData):
+            uv.flag_array[uv.time_array == time, :, :, :] = True
+        elif issubclass(uv.__class__, UVCal):
+            uv.flag_array[:, :, :, uv.time_array == time, :] = True
     # return uv with flags applied.
     return uv

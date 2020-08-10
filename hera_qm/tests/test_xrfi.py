@@ -1023,10 +1023,8 @@ def test_xrfi_run_step(tmpdir):
     with pytest.raises(ValueError):
         xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True, dtype='uvwhatever')
 
-
-def test_xrfi_run(tmpdir):
-    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
-    # This doesn't hurt anything, and lets us streamline the pipe
+def test_xrfi_run_yaml_flags(tmpdir):
+    # test xrfi_run with yaml pre-flagging.
     mess1 = ['This object is already a waterfall']
     messages = 8 * mess1
     cat1 = [UserWarning]
@@ -1048,6 +1046,110 @@ def test_xrfi_run(tmpdir):
     shutil.copyfile(test_flag_jds, a_priori_flag_jds)
     a_priori_flag_lsts = os.path.join(tmp_path, 'a_priori_flags_lsts.yaml')
     shutil.copyfile(test_flag_lsts, a_priori_flag_lsts)
+    outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
+    ext_labels = {'ag_flags1': 'Abscal gains, median filter. Flags.',
+                  'ag_flags2': 'Abscal gains, mean filter. Flags.',
+                  'ag_metrics1': 'Abscal gains, median filter.',
+                  'ag_metrics2': 'Abscal gains, mean filter.',
+                  'apriori_flags': 'A priori flags.',
+                  'ax_flags1': 'Abscal chisq, median filter. Flags.',
+                  'ax_flags2': 'Abscal chisq, mean filter. Flags.',
+                  'ax_metrics1': 'Abscal chisq, median filter.',
+                  'ax_metrics2': 'Abscal chisq, mean filter.',
+                  'omnical_chi_sq_flags1': 'Omnical overall modified z-score of chisq. Flags.',
+                  'omnical_chi_sq_flags2': 'Omnical overall z-score of chisq. Flags.',
+                  'omnical_chi_sq_renormed_metrics1': 'Omnical overall modified z-score of chisq.',
+                  'omnical_chi_sq_renormed_metrics2': 'Omnical overall z-score of chisq.',
+                  'abscal_chi_sq_flags1': 'Abscal overall modified z-score of chisq. Flags.',
+                  'abscal_chi_sq_flags2': 'Abscal overall z-score of chisq. Flags.',
+                  'abscal_chi_sq_renormed_metrics1': 'Abscal overall modified z-score of chisq.',
+                  'abscal_chi_sq_renormed_metrics2': 'Abscal overall z-score of chisq.',
+                  'combined_flags1': 'Flags from combined metrics, round 1.',
+                  'combined_flags2': 'Flags from combined metrics, round 2.',
+                  'combined_metrics1': 'Combined metrics, round 1.',
+                  'combined_metrics2': 'Combined metrics, round 2.',
+                  'cross_flags1': 'Crosscorr, median filter. Flags.',
+                  'cross_flags2': 'Crosscorr, mean filter. Flags.',
+                  'auto_flags1': 'Autocorr, median filter. Flags.',
+                  'auto_flags2': 'Autocorr, mean filter. Flags.',
+                  'auto_metrics2': 'Autocorr, mean filter.',
+                  'auto_metrics1': 'Autocorr, median filter.',
+                  'cross_metrics2': 'Crosscorr, mean filter.',
+                  'cross_metrics1': 'Crosscorr, median filter.',
+                  'flags1': 'ORd flags, round 1.',
+                  'flags2': 'ORd flags, round 2.',
+                  'og_flags1': 'Omnical gains, median filter. Flags.',
+                  'og_flags2': 'Omnical gains, mean filter. Flags.',
+                  'og_metrics1': 'Omnical gains, median filter.',
+                  'og_metrics2': 'Omnical gains, mean filter.',
+                  'ox_flags1': 'Omnical chisq, median filter. Flags.',
+                  'ox_flags2': 'Omnical chisq, mean filter. Flags.',
+                  'ox_metrics1': 'Omnical chisq, median filter.',
+                  'ox_metrics2': 'Omnical chisq, mean filter.',
+                  'v_flags1': 'Omnical visibility solutions, median filter. Flags.',
+                  'v_flags2': 'Omnical visibility solutions, mean filter. Flags.',
+                  'v_metrics1': 'Omnical visibility solutions, median filter.',
+                  'v_metrics2': 'Omnical visibility solutions, mean filter.'}
+    freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
+    channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
+    integration_flags = [0, 1] # integrations from yaml file that should be flagged.
+
+    # now test apriori flag file.
+    # test for different integrations modes (lsts, jds, integrations)
+    for test_flag in [a_priori_flag_integrations, a_priori_flag_jds, a_priori_flag_lsts]:
+        with pytest.warns(None) as record:
+            xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
+                          a_priori_flag_yaml=test_flag, history='Just a test', kt_size=3, throw_away_edges=False)
+        assert len(record) >= len(messages)
+        n_matched_warnings = 0
+        for i in range(len(record)):
+            if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+                n_matched_warnings += 1
+        assert n_matched_warnings == 8
+        for ext, label in ext_labels.items():
+            # by default, only cross median filter / mean filter is not performed.
+            if not ext in['cross_metrics1', 'cross_flags1']:
+                out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+                assert os.path.exists(out)
+                uvf = UVFlag(out)
+                assert uvf.label == label
+                # check that all flags in frequency regions are set to True.
+                # only check init flags, apriori flags, and round 2 flags.
+                # other round 1 flags are derived from metrics and won't necessarily
+                # have data /cal flags in them.
+                if 'flag' in ext and ('apriori' in ext or '2' in ext or 'flags1' == ext):
+                    for region in freq_regions:
+                        selection = (uvf.freq_array[0] >= region[0]) & (uvf.freq_array[0] <= region[-1])
+                        assert np.all(uvf.flag_array[:, selection, :])
+                    for chan in channel_flags:
+                        assert np.all(uvf.flag_array[:, chan, :])
+                    for integration in integration_flags:
+                        assert np.all(uvf.flag_array[integration, :, :])
+        # cleanup
+        for ext, label in ext_labels.items():
+            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+            if os.path.exists(out):
+                os.remove(out)
+
+def test_xrfi_run(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    messages = 8 * mess1
+    cat1 = [UserWarning]
+    categories = 8 * cat1
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    tmp_path = tmpdir.strpath
+    fake_obs = 'zen.2457698.40355.HH'
+    ocal_file = os.path.join(tmp_path, fake_obs + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+
     # check warnings
     with pytest.warns(None) as record:
         xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3)
@@ -1114,108 +1216,6 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
-    freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
-    channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
-    integration_flags = [0, 1] # integrations from yaml file that should be flagged.
-    # now test apriori flag file.
-    # test for integrations mode.
-    # disable throw away edges so that we test integration flagging.
-    with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
-                      a_priori_flag_yaml=a_priori_flag_integrations, history='Just a test', kt_size=3, throw_away_edges=False)
-    assert len(record) >= len(messages)
-    n_matched_warnings = 0
-    for i in range(len(record)):
-        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
-            n_matched_warnings += 1
-    assert n_matched_warnings == 8
-    for ext, label in ext_labels.items():
-        # by default, only cross median filter / mean filter is not performed.
-        if not ext in['cross_metrics1', 'cross_flags1']:
-            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-            assert os.path.exists(out)
-            uvf = UVFlag(out)
-            assert uvf.label == label
-            # check that all flags in frequency regions are set to True.
-            if 'flag' in ext:
-                for region in freq_regions:
-                    selection = (uvf.freq_array[0] >= region[0]) & (uvf.freq_array[0] <= region[-1])
-                    assert np.all(uvf.flag_array[:, selection, :])
-                for chan in channel_flags:
-                    assert np.all(uvf.flag_array[:, chan, :])
-                for integration in integration_flags:
-                    assert np.all(uvf.flag_array[integration, :, :])
-        # cleanup
-        for ext, label in ext_labels.items():
-            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-            if os.path.exists(out):
-                os.remove(out)
-
-    # test for jd time flagging mode.
-    # disable throw away edges so that we test integration flagging.
-    with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
-                      a_priori_flag_yaml=a_priori_flag_jds, history='Just a test', kt_size=3, throw_away_edges=False)
-    assert len(record) >= len(messages)
-    n_matched_warnings = 0
-    for i in range(len(record)):
-        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
-            n_matched_warnings += 1
-    assert n_matched_warnings == 8
-    for ext, label in ext_labels.items():
-        # by default, only cross median filter / mean filter is not performed.
-        if not ext in['cross_metrics1', 'cross_flags1']:
-            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-            assert os.path.exists(out)
-            uvf = UVFlag(out)
-            assert uvf.label == label
-            # check that all flags in frequency regions are set to True.
-            if 'flag' in ext:
-                for region in freq_regions:
-                    selection = (uvf.freq_array[0] >= region[0]) & (uvf.freq_array[0] <= region[-1])
-                    assert np.all(uvf.flag_array[:, selection, :])
-                for chan in channel_flags:
-                    assert np.all(uvf.flag_array[:, chan, :])
-                for integration in integration_flags:
-                    assert np.all(uvf.flag_array[integration, :, :])
-        # cleanup
-        for ext, label in ext_labels.items():
-            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-            if os.path.exists(out):
-                os.remove(out)
-
-    # test for lst time flagging mode.
-    # disable throw away edges so that we test integration flagging.
-    with pytest.warns(None) as record:
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
-                      a_priori_flag_yaml=a_priori_flag_jds, history='Just a test', kt_size=3, throw_away_edges=False)
-    assert len(record) >= len(messages)
-    n_matched_warnings = 0
-    for i in range(len(record)):
-        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
-            n_matched_warnings += 1
-    assert n_matched_warnings == 8
-    for ext, label in ext_labels.items():
-        # by default, only cross median filter / mean filter is not performed.
-        if not ext in['cross_metrics1', 'cross_flags1']:
-            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-            assert os.path.exists(out)
-            uvf = UVFlag(out)
-            assert uvf.label == label
-            # check that all flags in frequency regions are set to True.
-            if 'flag' in ext:
-                for region in freq_regions:
-                    selection = (uvf.freq_array[0] >= region[0]) & (uvf.freq_array[0] <= region[-1])
-                    assert np.all(uvf.flag_array[:, selection, :])
-                for chan in channel_flags:
-                    assert np.all(uvf.flag_array[:, chan, :])
-                for integration in integration_flags:
-                    assert np.all(uvf.flag_array[integration, :, :])
-        # cleanup
-        for ext, label in ext_labels.items():
-            out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
-            if os.path.exists(out):
-                os.remove(out)
 
     # now really do everything.
     uvf_list1 = []

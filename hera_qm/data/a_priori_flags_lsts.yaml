@@ -26,7 +26,8 @@ JD_flags: []
 
 # LST_flags are an array of length-2 arrays of floats in units of hours (time ranges, inclusive).
 # If LST_1 > LST_2, it's assumed to span the 24 branch cut.
-LST_flags: [[0.7463981 , 0.74938889]]
+#LST_flags: [[2.1500187, 2.15300963]]
+LST_flags: [[2.1500187, 2.15300963]]
 
 # integration_flags are an array of ints or length-2 arrays of ints (integration ranges, inclusive)
 integration_flags: []

@@ -12,6 +12,8 @@ from hera_qm.firstcal_metrics import get_firstcal_metrics_dict
 from hera_qm.omnical_metrics import get_omnical_metrics_dict
 from hera_qm.utils import get_metrics_dict
 import numpy as np
+from pyuvdata import UVData
+from pyuvdata import UVCal
 
 
 def test_get_metrics_ArgumentParser_ant_metrics():
@@ -238,3 +240,41 @@ def test_strip_extension_return_ext_extension():
     path = 'goo/foo.boo/hoo/woo.two'
     root, ext = utils.strip_extension(path, return_ext=True)
     assert ext == path[-3:]
+
+def test_apply_yaml_freq_time_flags():
+    test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
+    test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvh5')
+    test_flag_integrations= os.path.join(DATA_PATH, 'a_priori_flags_integrations.yaml')
+    test_flag_jds= os.path.join(DATA_PATH, 'a_priori_flags_jds.yaml')
+    test_flag_lsts= os.path.join(DATA_PATH, 'a_priori_flags_lsts.yaml')
+    # first test flagging uvdata object
+    freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
+    channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
+    integration_flags = [0, 1] # integrations from yaml file that should be flagged.
+    for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts]:
+        uvd = UVData()
+        uvd.read(test_d_file)
+        uvd = utils.apply_yaml_freq_time_flags(uvd, test_flag)
+        for tind in integration_flags:
+            time = sorted(np.unique(uvd.time_array))[tind]
+            assert np.all(uvd.flag_array[uvd.time_array == time, :, :, :])
+        for region in freq_regions:
+            selection = (uvd.freq_array[0] >= region[0]) & (uvd.freq_array[0] <= region[-1])
+            assert np.all(uvd.flag_array[:, :, selection, :])
+        for chan in channel_flags:
+            assert np.all(uvd.flag_array[:, :, chan, :])
+    # next test flagging on a uvcal object
+    for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts]:
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvc = utils.apply_yaml_freq_time_flags(uvc, test_flag)
+        for tind in integration_flags:
+            time = sorted(np.unique(uvc.time_array))[tind]
+            assert np.all(uvc.flag_array[:, :, :, uvc.time_array == time, :])
+        for region in freq_regions:
+            selection = (uvc.freq_array[0] >= region[0]) & (uvc.freq_array[0] <= region[-1])
+            assert np.all(uvc.flag_array[:, :, selection, :, :])
+        for chan in channel_flags:
+            assert np.all(uvc.flag_array[:, :, chan, :, :])
+    # check NotImplementedError
+    pytest.raises(NotImplementedError, utils.apply_yaml_freq_time_flags, 'uvdata', test_flag_jds)
