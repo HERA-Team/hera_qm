@@ -613,7 +613,7 @@ def strip_extension(path, return_ext=False):
         return os.path.splitext(path)[0]
 
 
-def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml):
+def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml, lst_array=None):
     """Apply frequency and time flags to a UVData or UVCal object
 
     This function takes in a uvdata or uvcal object and applies
@@ -625,29 +625,28 @@ def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml):
         uvdata or uvcal to apply frequency / time flags to.
     a_priori_flag_yaml : str
         path to yaml file with frequeny / time flags.
+    lst_array : array-like, optional
+        list of lsts (hour units)
 
     Returns
     -------
         uv : UVData or UVCal object
             input uvdata / uvcal but now with flags applied
     """
-    # load flags from yaml file
-    # apply yaml flags.
-    flagged_chans = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml)
-    for spw in range(uv.Nspws):
-        flagged_freq_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[spw])
-        flagged_chans_overlap = [chan for chan in flagged_chans if chan >= 0 and chan < uv.Nfreqs]
-        chans_to_flag = np.unique(np.hstack([flagged_freq_channels,flagged_chans_overlap]))
-        if issubclass(uv.__class__, UVData):
-            uv.flag_array[:, spw, chans_to_flag, :] = True
-        elif issubclass(uv.__class__, UVCal):
-            uv.flag_array[:, spw, chans_to_flag, :, :]
-    flagged_time_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, times=uv.time_array)
-    flagged_lst_integrations = metrics_io.read_aprioi_int_flags(a_priori_flag_yaml, lsts=uv.lst_array)
-    flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml)
-    integrations_to_flag = np.unique(np.hstack([flagged_time_integrations, flagged_lst_integrations, flagged_integrations]))
     if issubclass(uv.__class__, UVData):
-        uv.flag_array[integrations_to_flag, :, :, :] = True
-    elif issubclass(uv.__class_, UVCal):
-        uv.flag_array[:, :, :, integrations_to_flag, :] = True
+        lst_array = uv.lst_array * 12 / np.pi
+    # loop over spws to apply frequency flags.
+    for spw in range(uv.Nspws):
+        flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[spw])
+        if issubclass(uv.__class__, UVData):
+            uv.flag_array[:, spw, flagged_channels, :] = True
+        elif issubclass(uv.__class__, UVCal):
+            uv.flag_array[:, spw, flagged_channels, :, :] = True
+    # now do times.
+    flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, lsts=lst_array, times=uv.time_array)
+    if issubclass(uv.__class__, UVData):
+        uv.flag_array[flagged_integrations, :, :, :] = True
+    elif issubclass(uv.__class__, UVCal):
+        uv.flag_array[:, :, :, flagged_integrations, :] = True
+    # return uv with flags applied.
     return uv
