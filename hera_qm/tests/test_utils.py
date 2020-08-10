@@ -304,3 +304,9 @@ def test_apply_yaml_flags():
     uvc.read_calfits(test_c_file)
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds, None, 'MITEOR')
+    # check warning for negative integrations
+    for warn_yaml in ['a_priori_flags_maximum_channels.yaml', 'a_priori_flags_maximum_integrations.yaml',
+                      'a_priori_flags_negative_channels.yaml', 'a_priori_flags_negative_integrations.yaml']:
+        yaml_path = os.path.join(DATA_PATH, warn_yaml)
+        with pytest.warns(None) as record:
+            utils.apply_yaml_flags(uvc, yaml_path)

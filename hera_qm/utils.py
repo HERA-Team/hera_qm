@@ -630,9 +630,18 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
         list of latitude, longitude, and altitude for telescope.
         latitude and longitude should be in degrees.
         altitude should be in meters.
+        Default is None.
+        If None, will determine location from uv.telescope_name
     telescope_name : str, optional
         string with name of telescope.
-        Default is HERA
+        Default is None. If None, will use uv.telescope_name
+    ant_indices_only : bool
+        If True, ignore polarizations and flag entire antennas when they appear, e.g. (1, 'Jee') --> 1.
+    by_ant_pol : bool
+        If True, expand all integer antenna indices into per-antpol entries using ant_pols
+    ant_pols : list of str
+        List of antenna polarizations strings e.g. 'Jee'. If not empty, strings in
+        the YAML must be in here or an error is raised. Required if by_ant_pol is True.
 
     Returns
     -------
@@ -665,6 +674,10 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     # loop over spws to apply frequency flags.
     for spw in range(uv.Nspws):
         flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[spw])
+        if np.any(flagged_channels >= uv.Nfreqs):
+            warnings.warn("Flagged channels were provided that exceed the maximum channel index. These flags are being dropped!")
+        if np.any(flagged_channels < 0):
+            warnings.warn("Flagged channels were provided with a negative channel index. These flags are being dropped!")
         flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
         if issubclass(uv.__class__, UVData):
             uv.flag_array[:, spw, flagged_channels, :] = True
@@ -674,6 +687,10 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     # get the integrations to flag
     flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, lsts=lst_array, times=time_array)
     # ony select integrations less then Ntimes
+    if np.any(flagged_integrations >= uv.Ntimes):
+        warnings.warn("Flagged integrations were provided that exceed the maximum integration index. These flags are being dropped!")
+    if np.any(flagged_integrations < 0):
+        warnings.warn("Flagged integrations were provided with a negative integration index. These flags are being dropped!")
     flagged_integrations = flagged_integrations[(flagged_integrations>=0) & (flagged_integrations<=uv.Ntimes)]
     flagged_times = time_array[flagged_integrations]
     for time in flagged_times:
