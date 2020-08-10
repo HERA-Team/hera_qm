@@ -653,7 +653,7 @@ def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None,
     elif issubclass(uv.__class__, UVData):
         lst_array = np.unique(uv.lst_array) * 12  / np.pi
     else:
-        raise ValueError("uv must be a UVData or UVCal object.")
+        raise NotImplementedError("uv must be a UVData or UVCal object.")
     time_array = np.unique(uv.time_array)
     # loop over spws to apply frequency flags.
     for spw in range(uv.Nspws):

@@ -277,4 +277,7 @@ def test_apply_yaml_freq_time_flags():
         for chan in channel_flags:
             assert np.all(uvc.flag_array[:, :, chan, :, :])
     # check NotImplementedError
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
     pytest.raises(NotImplementedError, utils.apply_yaml_freq_time_flags, 'uvdata', test_flag_jds)
+    pytest.raises(NotImplementedError, utils.apply_yaml_freq_time_flags, uvc, test_flag_jds, None, 'MWA')
