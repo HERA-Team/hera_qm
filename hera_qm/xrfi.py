@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+qm_utils.apply_yaml_freq_time_flags# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """Module for performing RFI identification and excision."""
@@ -1389,7 +1389,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                    Nwf_per_load=None, apply_uvf_apriori=True,
                    dtype='uvcal', run_filter=True,
                    metrics=None, flags=None, modified_z_score=False,
-                   flagging_yaml=None,
+                   a_priori_flag_yaml=None,
                    run_check=True,
                    check_extra=True,
                    run_check_acceptability=True):
@@ -1491,6 +1491,8 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
         if True, calculate modified_z_score when computing overall z-score
         (only used if alg='overall_z_score').
         Default is False.
+    a_priori_flag_yaml : str, optional
+        path to yaml file with frequency and time flags.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1541,6 +1543,8 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 uv = UVCal()
                 # No partial i/o for uvcal yet.
                 uv.read_calfits(uv_files)
+                if a_priori_flag_yaml is not None:
+                    uv = qm_utils.apply_yaml_freq_time_flags(uv, a_priori_flag_yaml)
             elif dtype=='uvdata':
                 uv = UVData()
                 uv.read(uv_files, read_data=False)
@@ -1556,6 +1560,8 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                     uv.read(uv_files, read_data=False)
                 else:
                     uv.read_calfits(uv_files)
+                    if a_priori_flag_yaml is not None:
+                        uv = qm_utils.apply_yaml_freq_time_flags(uv, a_priori_flag_yaml)
         # The following code applies if uv is a UVData object.
         if issubclass(uv.__class__, UVData):
             bls = uv.get_antpairpols()
@@ -1574,6 +1580,8 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             for loadnum in range(nloads):
                 # read in chunk
                 uv.read(uv_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                if a_priori_flag_yaml is not None:
+                    uv = qm_utils.apply_yaml_freq_time_flags(uv, a_priori_flag_yaml)
                 # if no uvf apriori was provided.
                 if no_uvf_apriori:
                     # and we want to calculate it
