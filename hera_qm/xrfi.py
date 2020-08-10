@@ -1546,7 +1546,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 # No partial i/o for uvcal yet.
                 uv.read_calfits(uv_files)
                 if a_priori_flag_yaml is not None:
-                    uv = qm_utils.apply_yaml_freq_time_flags(uv, a_priori_flag_yaml)
+                    uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
             elif dtype=='uvdata':
                 uv = UVData()
                 uv.read(uv_files, read_data=False)
@@ -1563,7 +1563,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 else:
                     uv.read_calfits(uv_files)
                     if a_priori_flag_yaml is not None:
-                        uv = qm_utils.apply_yaml_freq_time_flags(uv, a_priori_flag_yaml)
+                        uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
         # The following code applies if uv is a UVData object.
         if issubclass(uv.__class__, UVData):
             bls = uv.get_antpairpols()
@@ -1583,7 +1583,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 # read in chunk
                 uv.read(uv_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
                 if a_priori_flag_yaml is not None:
-                    uv = qm_utils.apply_yaml_freq_time_flags(uv, a_priori_flag_yaml)
+                    uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
                 # if no uvf apriori was provided.
                 if no_uvf_apriori:
                     # and we want to calculate it

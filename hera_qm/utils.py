@@ -615,20 +615,23 @@ def strip_extension(path, return_ext=False):
         return os.path.splitext(path)[0]
 
 
-def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name='HERA'):
+def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name='HERA',
+                     ant_indices_only=False, by_ant_pol=False, ant_pols=None):
     """Apply frequency and time flags to a UVData or UVCal object
 
     This function takes in a uvdata or uvcal object and applies
-    frequency and time flags as appropriate.
+    frequency, time, and antenna flags as appropriate.
 
     Parameters
     ----------
-    uv : UVData or UVCal object
+    uv : UVData or UVCal object or subclass thereof.
         uvdata or uvcal to apply frequency / time flags to.
     a_priori_flag_yaml : str
         path to yaml file with frequeny / time flags.
     lat_lon_alt_degrees : list, optional
         list of latitude, longitude, and altitude for telescope.
+        latitude and longitude should be in degrees.
+        altitude should be in meters.
     telescope_name : str, optional
         string with name of telescope.
         Default is HERA
@@ -674,5 +677,31 @@ def apply_yaml_freq_time_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None,
             uv.flag_array[uv.time_array == time, :, :, :] = True
         elif issubclass(uv.__class__, UVCal):
             uv.flag_array[:, :, :, uv.time_array == time, :] = True
+    # now do antennas.
+    flagged_ants = metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=ant_indices_only,
+                                                      by_ant_pol=by_ant_pol, ant_pols=ant_pols)
+    npols = uv.flag_array.shape[-1]
+    if issubclass(uv.__class__, UVData):
+        pol_array = uv.polarization_array
+    elif issubclass(uv.__class__, UVCal):
+        pol_array = uv.jones_array
+    for ant in flagged_ants:
+        if isinstance(ant, int):
+            pol_selection = np.ones(npols, dtype=bool)
+            antnum = ant
+        elif isinstance(ant, (list, tuple, np.ndarray)):
+            pol_num = uvutils.jstr2num(ant[1], x_orientation=uv.x_orientation)
+            if pol_num in pol_array:
+                pol_selection = np.where(pol_array == pol_num)[0]
+            else:
+                pol_selection = np.zeros(npols, dtype=bool)
+            antnum = ant[0]
+        if issubclass(uv.__class__, UVData):
+            blt_selection = np.logical_or(uv.ant_1_array == antnum, uv.ant_2_array == antnum)
+            uv.flag_array[blt_selection, :, :, pol_selection] = True
+        elif issubclass(uv.__class__, UVCal):
+            ant_selection = uv.ant_array == antnum
+            uv.flag_array[ant_selection, :, :, :, pol_selection] = True
+
     # return uv with flags applied.
     return uv

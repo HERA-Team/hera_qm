@@ -14,7 +14,7 @@ from hera_qm.utils import get_metrics_dict
 import numpy as np
 from pyuvdata import UVData
 from pyuvdata import UVCal
-
+import pyuvdata.utils as uvutils
 
 def test_get_metrics_ArgumentParser_ant_metrics():
     a = utils.get_metrics_ArgumentParser('ant_metrics')
@@ -241,7 +241,7 @@ def test_strip_extension_return_ext_extension():
     root, ext = utils.strip_extension(path, return_ext=True)
     assert ext == path[-3:]
 
-def test_apply_yaml_freq_time_flags():
+def test_apply_yaml_flags():
     test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
     test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvh5')
     test_flag_integrations= os.path.join(DATA_PATH, 'a_priori_flags_integrations.yaml')
@@ -251,10 +251,11 @@ def test_apply_yaml_freq_time_flags():
     freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
     channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
     integration_flags = [0, 1] # integrations from yaml file that should be flagged.
+    ant_flags = [0, 10, [1, 'Jee'], [3, 'Jnn']]
     for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts]:
         uvd = UVData()
         uvd.read(test_d_file)
-        uvd = utils.apply_yaml_freq_time_flags(uvd, test_flag)
+        uvd = utils.apply_yaml_flags(uvd, test_flag)
         for tind in integration_flags:
             time = sorted(np.unique(uvd.time_array))[tind]
             assert np.all(uvd.flag_array[uvd.time_array == time, :, :, :])
@@ -263,11 +264,22 @@ def test_apply_yaml_freq_time_flags():
             assert np.all(uvd.flag_array[:, :, selection, :])
         for chan in channel_flags:
             assert np.all(uvd.flag_array[:, :, chan, :])
+        for ant in ant_flags:
+            if isinstance(ant, int):
+                antnum = ant
+                pol_selection = np.ones(uvd.Npols, dtype=bool)
+            elif isinstance(ant, (list, tuple)):
+                antnum = ant[0]
+                pol_num = uvutils.jstr2num(ant[1], x_orientation=uvd.x_orientation)
+                pol_selection = np.where(uvd.polarization_array == pol_num)[0]
+            blt_selection = np.logical_or(uvd.ant_1_array == antnum, uvd.ant_2_array == antnum)
+            assert np.all(uvd.flag_array[blt_selection, :, :, pol_selection])
+
     # next test flagging on a uvcal object
     for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts]:
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
-        uvc = utils.apply_yaml_freq_time_flags(uvc, test_flag)
+        uvc = utils.apply_yaml_flags(uvc, test_flag)
         for tind in integration_flags:
             time = sorted(np.unique(uvc.time_array))[tind]
             assert np.all(uvc.flag_array[:, :, :, uvc.time_array == time, :])
@@ -276,8 +288,19 @@ def test_apply_yaml_freq_time_flags():
             assert np.all(uvc.flag_array[:, :, selection, :, :])
         for chan in channel_flags:
             assert np.all(uvc.flag_array[:, :, chan, :, :])
-    # check NotImplementedError
+        # check flagged antennas
+        for ant in ant_flags:
+            if isinstance(ant, int):
+                antnum = ant
+                pol_selection = np.ones(uvc.Njones, dtype=bool)
+            elif isinstance(ant, (list, tuple)):
+                antnum = ant[0]
+                pol_num = uvutils.jstr2num(ant[1], x_orientation=uvc.x_orientation)
+                pol_selection = np.where(uvc.jones_array == pol_num)[0]
+            ant_selection = uvc.ant_array == antnum
+            assert np.all(uvc.flag_array[ant_selection, :, :, :, pol_selection])
+    # check NotImplementedErrors
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
-    pytest.raises(NotImplementedError, utils.apply_yaml_freq_time_flags, 'uvdata', test_flag_jds)
-    pytest.raises(NotImplementedError, utils.apply_yaml_freq_time_flags, uvc, test_flag_jds, None, 'MWA')
+    pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
+    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds, None, 'MWA')
