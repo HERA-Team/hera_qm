@@ -12,6 +12,7 @@ from pyuvdata import UVData
 from pyuvdata import UVCal
 from pyuvdata import utils as uvutils
 from . import metrics_io
+from pyuvdata.telescopes import KNOWN_TELESCOPES
 
 def _bytes_to_str(inbyte):
     return inbyte.decode('utf8')
@@ -20,9 +21,6 @@ def _bytes_to_str(inbyte):
 def _str_to_bytes(instr):
     return instr.encode('utf8')
 
-HERA_TELESCOPE_LOCATION = np.array([5109325.855210627429187297821044921875,
-                                    2005235.091429826803505420684814453125,
-                                    -3239928.424753960222005844116210937500])
 # argument-generating function for *_run wrapper functions
 def get_metrics_ArgumentParser(method_name):
     """Get an ArgumentParser instance for working with metrics wrappers.
@@ -615,7 +613,7 @@ def strip_extension(path, return_ext=False):
         return os.path.splitext(path)[0]
 
 
-def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name='HERA',
+def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name=None,
                      ant_indices_only=False, by_ant_pol=False, ant_pols=None):
     """Apply frequency and time flags to a UVData or UVCal object
 
@@ -641,22 +639,28 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
         uv : UVData or UVCal object
             input uvdata / uvcal but now with flags applied
     """
+    # check that uv is UVData or UVCal
+    if not issubclass(uv.__class__, (UVData, UVCal)):
+        raise NotImplementedError("uv must be a UVData or UVCal object.")
     # if UVCal provided, get lst_array from times.
     # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
-    if issubclass(uv.__class__, UVCal):
+    if not hasattr(uv, 'lst_array'):
         if lat_lon_alt_degrees is None:
-            if telescope_name.upper() == 'HERA':
-                lat_lon_alt_degrees = np.array(uvutils.LatLonAlt_from_XYZ(HERA_TELESCOPE_LOCATION))
-                lat_lon_alt_degrees *= [180 / np.pi, 180 / np.pi, 1]
+            if telescope_name is None:
+                telescope_name = uv.telescope_name
+            if telescope_name.upper() in KNOWN_TELESCOPES:
+                lat = KNOWN_TELESCOPES[telescope_name.upper()]['latitude'] * 180 / np.pi
+                lon = KNOWN_TELESCOPES[telescope_name.upper()]['longitude'] * 180 / np.pi
+                alt = KNOWN_TELESCOPES[telescope_name.upper()]['altitude']
+                lat_lon_alt_degrees = np.asarray([lat, lon, alt])
             else:
                 raise NotImplementedError(f'No known position for telescope {telescope_name}. lat_lon_alt_degrees must be specified.')
 
         # calculate LST grid in hours from time grid and lat_lon_alt
         lst_array = uvutils.get_lst_for_time(uv.time_array, *lat_lon_alt_degrees) * 12 / np.pi
-    elif issubclass(uv.__class__, UVData):
-        lst_array = np.unique(uv.lst_array) * 12  / np.pi
     else:
-        raise NotImplementedError("uv must be a UVData or UVCal object.")
+        lst_array = np.unique(uv.lst_array) * 12  / np.pi
+
     time_array = np.unique(uv.time_array)
     # loop over spws to apply frequency flags.
     for spw in range(uv.Nspws):

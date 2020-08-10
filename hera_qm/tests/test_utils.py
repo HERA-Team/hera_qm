@@ -303,4 +303,4 @@ def test_apply_yaml_flags():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
-    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds, None, 'MWA')
+    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds, None, 'MITEOR')
