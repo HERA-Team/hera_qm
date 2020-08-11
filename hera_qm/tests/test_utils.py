@@ -12,7 +12,9 @@ from hera_qm.firstcal_metrics import get_firstcal_metrics_dict
 from hera_qm.omnical_metrics import get_omnical_metrics_dict
 from hera_qm.utils import get_metrics_dict
 import numpy as np
-
+from pyuvdata import UVData
+from pyuvdata import UVCal
+import pyuvdata.utils as uvutils
 
 def test_get_metrics_ArgumentParser_ant_metrics():
     a = utils.get_metrics_ArgumentParser('ant_metrics')
@@ -238,3 +240,80 @@ def test_strip_extension_return_ext_extension():
     path = 'goo/foo.boo/hoo/woo.two'
     root, ext = utils.strip_extension(path, return_ext=True)
     assert ext == path[-3:]
+
+def test_apply_yaml_flags():
+    test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
+    test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvh5')
+    test_flag_integrations= os.path.join(DATA_PATH, 'a_priori_flags_integrations.yaml')
+    test_flag_jds= os.path.join(DATA_PATH, 'a_priori_flags_jds.yaml')
+    test_flag_lsts= os.path.join(DATA_PATH, 'a_priori_flags_lsts.yaml')
+    # first test flagging uvdata object
+    freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
+    channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
+    integration_flags = [0, 1] # integrations from yaml file that should be flagged.
+    ant_flags = [0, 10, [1, 'Jee'], [3, 'Jnn']]
+    for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts]:
+        uvd = UVData()
+        uvd.read(test_d_file)
+        uvd = utils.apply_yaml_flags(uvd, test_flag)
+        for tind in integration_flags:
+            time = sorted(np.unique(uvd.time_array))[tind]
+            assert np.all(uvd.flag_array[uvd.time_array == time, :, :, :])
+        for region in freq_regions:
+            selection = (uvd.freq_array[0] >= region[0]) & (uvd.freq_array[0] <= region[-1])
+            assert np.all(uvd.flag_array[:, :, selection, :])
+        for chan in channel_flags:
+            assert np.all(uvd.flag_array[:, :, chan, :])
+        for ant in ant_flags:
+            if isinstance(ant, int):
+                antnum = ant
+                pol_selection = np.ones(uvd.Npols, dtype=bool)
+            elif isinstance(ant, (list, tuple)):
+                antnum = ant[0]
+                pol_num = uvutils.jstr2num(ant[1], x_orientation=uvd.x_orientation)
+                pol_selection = np.where(uvd.polarization_array == pol_num)[0]
+            blt_selection = np.logical_or(uvd.ant_1_array == antnum, uvd.ant_2_array == antnum)
+            assert np.all(uvd.flag_array[blt_selection, :, :, pol_selection])
+
+    # next test flagging on a uvcal object
+    for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts]:
+        uvc = UVCal()
+        uvc.read_calfits(test_c_file)
+        uvc = utils.apply_yaml_flags(uvc, test_flag)
+        for tind in integration_flags:
+            time = sorted(np.unique(uvc.time_array))[tind]
+            assert np.all(uvc.flag_array[:, :, :, uvc.time_array == time, :])
+        for region in freq_regions:
+            selection = (uvc.freq_array[0] >= region[0]) & (uvc.freq_array[0] <= region[-1])
+            assert np.all(uvc.flag_array[:, :, selection, :, :])
+        for chan in channel_flags:
+            assert np.all(uvc.flag_array[:, :, chan, :, :])
+        # check flagged antennas
+        for ant in ant_flags:
+            if isinstance(ant, int):
+                antnum = ant
+                pol_selection = np.ones(uvc.Njones, dtype=bool)
+            elif isinstance(ant, (list, tuple)):
+                antnum = ant[0]
+                pol_num = uvutils.jstr2num(ant[1], x_orientation=uvc.x_orientation)
+                pol_selection = np.where(uvc.jones_array == pol_num)[0]
+            ant_selection = uvc.ant_array == antnum
+            assert np.all(uvc.flag_array[ant_selection, :, :, :, pol_selection])
+    # check NotImplementedErrors
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    # check that setting uv to an object that is not a subclass of UVCal or UVData throws a NotImplementedError
+    pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
+    # check that not providing lat_lon_alt_degrees and a telescope location that is not in the pyuvdata.KNOWN_TELESCOPES dict
+    # throws a NotImplementedError
+    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds, None, 'MITEOR')
+    # check that more then a single spw throws a NotImplementedError
+    uvc.Nspws = 2
+    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds)
+    uvc.Nspws = 1
+    # check warning for negative integrations
+    for warn_yaml in ['a_priori_flags_maximum_channels.yaml', 'a_priori_flags_maximum_integrations.yaml',
+                      'a_priori_flags_negative_channels.yaml', 'a_priori_flags_negative_integrations.yaml']:
+        yaml_path = os.path.join(DATA_PATH, warn_yaml)
+        with pytest.warns(None) as record:
+            utils.apply_yaml_flags(uvc, yaml_path)

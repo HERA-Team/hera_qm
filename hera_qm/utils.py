@@ -9,8 +9,10 @@ import warnings
 import argparse
 import numpy as np
 from pyuvdata import UVData
+from pyuvdata import UVCal
 from pyuvdata import utils as uvutils
-
+from . import metrics_io
+from pyuvdata.telescopes import KNOWN_TELESCOPES
 
 def _bytes_to_str(inbyte):
     return inbyte.decode('utf8')
@@ -18,7 +20,6 @@ def _bytes_to_str(inbyte):
 
 def _str_to_bytes(instr):
     return instr.encode('utf8')
-
 
 # argument-generating function for *_run wrapper functions
 def get_metrics_ArgumentParser(method_name):
@@ -294,7 +295,7 @@ def get_metrics_ArgumentParser(method_name):
                         'data files to flag on.', nargs='+')
         ap.add_argument('--a_priori_flag_yaml', default=None, type=str,
                         help=('Path to a priori flagging YAML with frequency, time, and/or '
-                              'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))        
+                              'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,
@@ -610,3 +611,121 @@ def strip_extension(path, return_ext=False):
         return (root, ext[1:])
     else:
         return os.path.splitext(path)[0]
+
+
+def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name=None,
+                     ant_indices_only=False, by_ant_pol=False, ant_pols=None):
+    """Apply frequency and time flags to a UVData or UVCal object
+
+    This function takes in a uvdata or uvcal object and applies
+    frequency, time, and antenna flags as appropriate.
+
+    Parameters
+    ----------
+    uv : UVData or UVCal object or subclass thereof.
+        uvdata or uvcal to apply frequency / time flags to.
+    a_priori_flag_yaml : str
+        path to yaml file with frequeny / time flags.
+    lat_lon_alt_degrees : list, optional
+        list of latitude, longitude, and altitude for telescope.
+        latitude and longitude should be in degrees.
+        altitude should be in meters.
+        Default is None.
+        If None, will determine location from uv.telescope_name
+    telescope_name : str, optional
+        string with name of telescope.
+        Default is None. If None, will use uv.telescope_name
+    ant_indices_only : bool
+        If True, ignore polarizations and flag entire antennas when they appear, e.g. (1, 'Jee') --> 1.
+    by_ant_pol : bool
+        If True, expand all integer antenna indices into per-antpol entries using ant_pols
+    ant_pols : list of str
+        List of antenna polarizations strings e.g. 'Jee'. If not empty, strings in
+        the YAML must be in here or an error is raised. Required if by_ant_pol is True.
+
+    Returns
+    -------
+        uv : UVData or UVCal object
+            input uvdata / uvcal but now with flags applied
+    """
+    # check that uv is UVData or UVCal
+    if not issubclass(uv.__class__, (UVData, UVCal)):
+        raise NotImplementedError("uv must be a UVData or UVCal object.")
+    # only support single spw right now.
+    if uv.Nspws > 1:
+        raise NotImplementedError("apply_yaml_flags does not support multiple spws at this time.")
+    # if UVCal provided, get lst_array from times.
+    # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
+    if not hasattr(uv, 'lst_array'):
+        if lat_lon_alt_degrees is None:
+            if telescope_name is None:
+                telescope_name = uv.telescope_name
+            if telescope_name.upper() in KNOWN_TELESCOPES:
+                lat = KNOWN_TELESCOPES[telescope_name.upper()]['latitude'] * 180 / np.pi
+                lon = KNOWN_TELESCOPES[telescope_name.upper()]['longitude'] * 180 / np.pi
+                alt = KNOWN_TELESCOPES[telescope_name.upper()]['altitude']
+                lat_lon_alt_degrees = np.asarray([lat, lon, alt])
+            else:
+                raise NotImplementedError(f'No known position for telescope {telescope_name}. lat_lon_alt_degrees must be specified.')
+
+        # calculate LST grid in hours from time grid and lat_lon_alt
+        lst_array = uvutils.get_lst_for_time(uv.time_array, *lat_lon_alt_degrees) * 12 / np.pi
+    else:
+        lst_array = np.unique(uv.lst_array) * 12  / np.pi
+
+    time_array = np.unique(uv.time_array)
+    # loop over spws to apply frequency flags.
+    for spw in range(uv.Nspws):
+        flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[spw])
+        if np.any(flagged_channels >= uv.Nfreqs):
+            warnings.warn("Flagged channels were provided that exceed the maximum channel index. These flags are being dropped!")
+        if np.any(flagged_channels < 0):
+            warnings.warn("Flagged channels were provided with a negative channel index. These flags are being dropped!")
+        flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
+        if issubclass(uv.__class__, UVData):
+            uv.flag_array[:, spw, flagged_channels, :] = True
+        elif issubclass(uv.__class__, UVCal):
+            uv.flag_array[:, spw, flagged_channels, :, :] = True
+    # now do times.
+    # get the integrations to flag
+    flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, lsts=lst_array, times=time_array)
+    # ony select integrations less then Ntimes
+    if np.any(flagged_integrations >= uv.Ntimes):
+        warnings.warn("Flagged integrations were provided that exceed the maximum integration index. These flags are being dropped!")
+    if np.any(flagged_integrations < 0):
+        warnings.warn("Flagged integrations were provided with a negative integration index. These flags are being dropped!")
+    flagged_integrations = flagged_integrations[(flagged_integrations>=0) & (flagged_integrations<=uv.Ntimes)]
+    flagged_times = time_array[flagged_integrations]
+    for time in flagged_times:
+        if issubclass(uv.__class__, UVData):
+            uv.flag_array[uv.time_array == time, :, :, :] = True
+        elif issubclass(uv.__class__, UVCal):
+            uv.flag_array[:, :, :, uv.time_array == time, :] = True
+    # now do antennas.
+    flagged_ants = metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=ant_indices_only,
+                                                      by_ant_pol=by_ant_pol, ant_pols=ant_pols)
+    npols = uv.flag_array.shape[-1]
+    if issubclass(uv.__class__, UVData):
+        pol_array = uv.polarization_array
+    elif issubclass(uv.__class__, UVCal):
+        pol_array = uv.jones_array
+    for ant in flagged_ants:
+        if isinstance(ant, int):
+            pol_selection = np.ones(npols, dtype=bool)
+            antnum = ant
+        elif isinstance(ant, (list, tuple, np.ndarray)):
+            pol_num = uvutils.jstr2num(ant[1], x_orientation=uv.x_orientation)
+            if pol_num in pol_array:
+                pol_selection = np.where(pol_array == pol_num)[0]
+            else:
+                pol_selection = np.zeros(npols, dtype=bool)
+            antnum = ant[0]
+        if issubclass(uv.__class__, UVData):
+            blt_selection = np.logical_or(uv.ant_1_array == antnum, uv.ant_2_array == antnum)
+            uv.flag_array[blt_selection, :, :, pol_selection] = True
+        elif issubclass(uv.__class__, UVCal):
+            ant_selection = uv.ant_array == antnum
+            uv.flag_array[ant_selection, :, :, :, pol_selection] = True
+
+    # return uv with flags applied.
+    return uv
