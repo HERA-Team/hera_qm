@@ -913,7 +913,8 @@ def test_xrfi_run_step(tmpdir):
     shutil.copyfile(test_uvh5_file, raw_dfile)
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-
+    a_priori_flag_integrations = os.path.join(tmp_path, 'a_priori_flags_integrations.yaml')
+    shutil.copyfile(test_flag_integrations, a_priori_flag_integrations)
     # if run_filter is false, then uv should not be None but everything else should be None
     uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile, run_filter=False, dtype='uvdata')
     assert issubclass(uv1.__class__, UVData)
@@ -1017,8 +1018,8 @@ def test_xrfi_run_step(tmpdir):
     assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
     assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
     assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
-    # hit one line involving uvcal reinitialization.
-    xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True)
+    # hit one line involving uvcal reinitialization and include yaml file.
+    xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True, a_priori_flag_yaml=a_priori_flag_integrations)
     # test invalid data type error
     with pytest.raises(ValueError):
         xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True, dtype='uvwhatever')
