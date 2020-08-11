@@ -302,8 +302,15 @@ def test_apply_yaml_flags():
     # check NotImplementedErrors
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    # check that setting uv to an object that is not a subclass of UVCal or UVData throws a NotImplementedError
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
+    # check that not providing lat_lon_alt_degrees and a telescope location that is not in the pyuvdata.KNOWN_TELESCOPES dict
+    # throws a NotImplementedError
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds, None, 'MITEOR')
+    # check that more then a single spw throws a NotImplementedError
+    uvc.Nspws = 2
+    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds)
+    uvc.Nspws = 1
     # check warning for negative integrations
     for warn_yaml in ['a_priori_flags_maximum_channels.yaml', 'a_priori_flags_maximum_integrations.yaml',
                       'a_priori_flags_negative_channels.yaml', 'a_priori_flags_negative_integrations.yaml']:

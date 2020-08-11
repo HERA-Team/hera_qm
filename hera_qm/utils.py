@@ -651,6 +651,9 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     # check that uv is UVData or UVCal
     if not issubclass(uv.__class__, (UVData, UVCal)):
         raise NotImplementedError("uv must be a UVData or UVCal object.")
+    # only support single spw right now.
+    if uv.Nspws > 1:
+        raise NotImplementedError("apply_yaml_flags does not support multiple spws at this time.")
     # if UVCal provided, get lst_array from times.
     # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
     if not hasattr(uv, 'lst_array'):
