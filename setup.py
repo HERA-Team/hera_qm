@@ -54,6 +54,7 @@ setup_args = {
     'install_requires': [
         'astropy>=3.2.3',
         'h5py',
+        'pyyaml',
         'numpy>=1.10',
         'pyuvdata',
     ],
