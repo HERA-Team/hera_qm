@@ -56,6 +56,7 @@ setup_args = {
         'h5py',
         'numpy>=1.10',
         'pyuvdata',
+        'pyyaml'
     ],
     'tests_require': ['pytest'],
     'zip_safe': False,
