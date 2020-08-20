@@ -1853,7 +1853,10 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         deconvolution kernel. Used in a chunked analysis where stride length is
         shorter than the chunk size (i.e. overlapping times to avoid edge effects).
         If True, files at the beginning and end of the night that might exhibit edge
-        effects are written, but fully flagged.
+        effects are written, but fully flagged. The "night" is determined by looking
+        for all files in the same folder as the inputs that have the same decimal JD.
+        (This might cause problems with observations that span noon UTC, since 
+        that's when JD increments.)
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
     run_check : bool
@@ -2190,7 +2193,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     bname = os.path.basename(uvlist[0])
     # Because we don't necessarily know the filename structure, search for
     # files that are the same except different numbers (JDs)
-    search_str = os.path.join(datadir, re.sub('[0-9]', '?', bname))
+    decimal_JD = re.search('[0-9]+.[0-9]+', bname)[0]
+    search_JD = decimal_JD.split('.')[0] + '.' +  len(decimal_JD.split('.')[1]) * '?'
+    search_str = os.path.join(datadir, bname.replace(decimal_JD, search_JD))
     all_files = sorted(glob.glob(search_str))
     if os.path.basename(uvlist[0]) == os.path.basename(all_files[0]) or not throw_away_edges:
         # This is the first job, store the early edge.
