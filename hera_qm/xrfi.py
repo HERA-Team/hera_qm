@@ -2192,7 +2192,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     datadir = os.path.dirname(os.path.abspath(uvlist[0]))
     bname = os.path.basename(uvlist[0])
     # Because we don't necessarily know the filename structure, search for
-    # files that are the same except different numbers (JDs)
+    # files that are the same except integer JD but different decimals
     decimal_JD = re.search('[0-9]+.[0-9]+', bname)[0]
     search_JD = decimal_JD.split('.')[0] + '.' +  len(decimal_JD.split('.')[1]) * '?'
     search_str = os.path.join(datadir, bname.replace(decimal_JD, search_JD))
