@@ -1657,7 +1657,10 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             # we need to iterate over.
             if Nwf_per_load is None:
                 Nwf_per_load = nbls
-            nloads = int(np.ceil(nbls / Nwf_per_load))
+            if nloads >= 0:
+                nloads = int(np.ceil(nbls / Nwf_per_load))
+            else:
+                nloads = 0
             # iterate over baseline chunks
             for loadnum in range(nloads):
                 # read in chunk
@@ -1704,7 +1707,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                     else:
                         uvf.combine_metrics(uvft, method=wf_method, run_check=run_check,
                                            check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-            if run_filter:
+            if run_filter and nloads > 0:
                 # now that we have a uvf that includes the combined metric of all the baselines, we can
                 # run one last round of xrfi_pipe with flagging enabled, centering the metric enabled, and resetting
                 # the weights enabled to perform these final steps which are run on the full collapsed metric.
@@ -1717,6 +1720,8 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                                          center_metric=True, reset_weights=True,
                                          label=label, run_check=run_check, check_extra=check_extra,
                                          run_check_acceptability=run_check_acceptability)
+            else:
+                uvf = None; uvf_f = None
         # the following code is for when uv is a UVCal object.
         elif issubclass(uv.__class__, UVCal):
             # if uvf_apriori is not provided and we wish to derive it from uv
@@ -1744,7 +1749,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                                            label=label, run_check=run_check, check_extra=check_extra,
                                            run_check_acceptability=run_check_acceptability)
         # append uvf and flags if calculated.
-        if run_filter:
+        if run_filter and uvf is not None and uvf_f is not None:
             metrics += [uvf]
             flags += [uvf_f]
         # otherwise instantiate them to None
