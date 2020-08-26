@@ -1657,7 +1657,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             # we need to iterate over.
             if Nwf_per_load is None:
                 Nwf_per_load = nbls
-            if nloads >= 0:
+            if nbls > 0:
                 nloads = int(np.ceil(nbls / Nwf_per_load))
             else:
                 nloads = 0
