@@ -280,7 +280,7 @@ def test_apply_yaml_flags():
                     pol_num = uvutils.jstr2num(ant[1], x_orientation=uvd.x_orientation)
                     pol_selection = np.where(uvd.polarization_array == pol_num)[0]
                 blt_selection = np.logical_or(uvd.ant_1_array == antnum, uvd.ant_2_array == antnum)
-                assert np.all(uvd.flag_array[blt_selection, :, :, pol_selection])
+                assert np.all(uvd.flag_array[blt_selection][: , :, :, pol_selection])
 
     # next test flagging on a uvcal object
     for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts,
@@ -309,7 +309,9 @@ def test_apply_yaml_flags():
                     pol_num = uvutils.jstr2num(ant[1], x_orientation=uvc.x_orientation)
                     pol_selection = np.where(uvc.jones_array == pol_num)[0]
                 ant_selection = uvc.ant_array == antnum
-                assert np.all(uvc.flag_array[ant_selection, :, :, :, pol_selection])
+                print(np.count_nonzero(ant_selection))
+                print(np.count_nonzero(pol_selection))
+                assert np.all(uvc.flag_array[ant_selection][:, :, :, :, pol_selection])
     # check NotImplementedErrors
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
