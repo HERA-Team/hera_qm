@@ -695,12 +695,13 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     if np.any(flagged_integrations < 0):
         warnings.warn("Flagged integrations were provided with a negative integration index. These flags are being dropped!")
     flagged_integrations = flagged_integrations[(flagged_integrations>=0) & (flagged_integrations<=uv.Ntimes)]
-    flagged_times = time_array[flagged_integrations]
-    for time in flagged_times:
-        if issubclass(uv.__class__, UVData):
-            uv.flag_array[uv.time_array == time, :, :, :] = True
-        elif issubclass(uv.__class__, UVCal):
-            uv.flag_array[:, :, :, uv.time_array == time, :] = True
+    if len(flagged_integrations) > 0:
+        flagged_times = time_array[flagged_integrations]
+        for time in flagged_times:
+            if issubclass(uv.__class__, UVData):
+                uv.flag_array[np.isclose(uv.time_array, time), :, :, :] = True
+            elif issubclass(uv.__class__, UVCal):
+                uv.flag_array[:, :, :, np.isclose(uv.time_array, time), :] = True
     # now do antennas.
     flagged_ants = metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=ant_indices_only,
                                                       by_ant_pol=by_ant_pol, ant_pols=ant_pols)

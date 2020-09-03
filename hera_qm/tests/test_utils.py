@@ -244,15 +244,19 @@ def test_strip_extension_return_ext_extension():
 def test_apply_yaml_flags():
     test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
     test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvh5')
-    test_flag_integrations= os.path.join(DATA_PATH, 'a_priori_flags_integrations.yaml')
-    test_flag_jds= os.path.join(DATA_PATH, 'a_priori_flags_jds.yaml')
-    test_flag_lsts= os.path.join(DATA_PATH, 'a_priori_flags_lsts.yaml')
+    test_flag_integrations = os.path.join(DATA_PATH, 'a_priori_flags_integrations.yaml')
+    test_flag_jds = os.path.join(DATA_PATH, 'a_priori_flags_jds.yaml')
+    test_flag_lsts = os.path.join(DATA_PATH, 'a_priori_flags_lsts.yaml')
+    test_flag_no_integrations = os.path.join(DATA_PATH, 'a_priori_flags_no_integrations.yaml')
+    test_flag_no_chans = os.path.join(DATA_PATH, 'a_priori_flags_no_chans.yaml')
+    test_flag_no_ants = os.path.join(DATA_PATH, 'a_priori_flags_no_ants.yaml')
     # first test flagging uvdata object
     freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
     channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
     integration_flags = [0, 1] # integrations from yaml file that should be flagged.
     ant_flags = [0, 10, [1, 'Jee'], [3, 'Jnn']]
-    for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts]:
+    for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts,
+                      test_flag_no_integrations, test_flag_no_chans, test_flag_no_ants]:
         uvd = UVData()
         uvd.read(test_d_file)
         uvd = utils.apply_yaml_flags(uvd, test_flag)
@@ -276,7 +280,8 @@ def test_apply_yaml_flags():
             assert np.all(uvd.flag_array[blt_selection, :, :, pol_selection])
 
     # next test flagging on a uvcal object
-    for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts]:
+    for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts,
+                      test_flag_no_integrations, test_flag_no_chans, test_flag_no_ants]:
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
         uvc = utils.apply_yaml_flags(uvc, test_flag)
