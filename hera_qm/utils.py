@@ -725,11 +725,11 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
         if issubclass(uv.__class__, UVData):
             blt_selection = np.logical_or(uv.ant_1_array == antnum, uv.ant_2_array == antnum)
             if np.count_nonzero(blt_selection) > 0:
-                uv.flag_array[blt_selection, :, :, pol_selection] = True
+                uv.flag_array[blt_selection][:, :, :, pol_selection] = True
         elif issubclass(uv.__class__, UVCal):
             ant_selection = uv.ant_array == antnum
             if np.count_nonzero(ant_selection) > 0:
-                uv.flag_array[ant_selection, :, :, :, pol_selection] = True
+                uv.flag_array[ant_selection][:, :, :, :, pol_selection] = True
 
     # return uv with flags applied.
     return uv
