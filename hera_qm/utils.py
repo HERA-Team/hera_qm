@@ -682,10 +682,11 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
         if np.any(flagged_channels < 0):
             warnings.warn("Flagged channels were provided with a negative channel index. These flags are being dropped!")
         flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
-        if issubclass(uv.__class__, UVData):
-            uv.flag_array[:, spw, flagged_channels, :] = True
-        elif issubclass(uv.__class__, UVCal):
-            uv.flag_array[:, spw, flagged_channels, :, :] = True
+        if len(flagged_channels) > 0:
+            if issubclass(uv.__class__, UVData):
+                uv.flag_array[:, spw, flagged_channels, :] = True
+            elif issubclass(uv.__class__, UVCal):
+                uv.flag_array[:, spw, flagged_channels, :, :] = True
     # now do times.
     # get the integrations to flag
     flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, lsts=lst_array, times=time_array)

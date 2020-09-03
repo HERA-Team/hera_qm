@@ -260,24 +260,27 @@ def test_apply_yaml_flags():
         uvd = UVData()
         uvd.read(test_d_file)
         uvd = utils.apply_yaml_flags(uvd, test_flag)
-        for tind in integration_flags:
-            time = sorted(np.unique(uvd.time_array))[tind]
-            assert np.all(uvd.flag_array[uvd.time_array == time, :, :, :])
-        for region in freq_regions:
-            selection = (uvd.freq_array[0] >= region[0]) & (uvd.freq_array[0] <= region[-1])
-            assert np.all(uvd.flag_array[:, :, selection, :])
-        for chan in channel_flags:
-            assert np.all(uvd.flag_array[:, :, chan, :])
-        for ant in ant_flags:
-            if isinstance(ant, int):
-                antnum = ant
-                pol_selection = np.ones(uvd.Npols, dtype=bool)
-            elif isinstance(ant, (list, tuple)):
-                antnum = ant[0]
-                pol_num = uvutils.jstr2num(ant[1], x_orientation=uvd.x_orientation)
-                pol_selection = np.where(uvd.polarization_array == pol_num)[0]
-            blt_selection = np.logical_or(uvd.ant_1_array == antnum, uvd.ant_2_array == antnum)
-            assert np.all(uvd.flag_array[blt_selection, :, :, pol_selection])
+        if 'no_integrations' not in test_flag:
+            for tind in integration_flags:
+                time = sorted(np.unique(uvd.time_array))[tind]
+                assert np.all(uvd.flag_array[uvd.time_array == time, :, :, :])
+        if 'no_chans' not in test_flag:
+            for region in freq_regions:
+                selection = (uvd.freq_array[0] >= region[0]) & (uvd.freq_array[0] <= region[-1])
+                assert np.all(uvd.flag_array[:, :, selection, :])
+            for chan in channel_flags:
+                assert np.all(uvd.flag_array[:, :, chan, :])
+        if 'no_ants' not in test_flag:
+            for ant in ant_flags:
+                if isinstance(ant, int):
+                    antnum = ant
+                    pol_selection = np.ones(uvd.Npols, dtype=bool)
+                elif isinstance(ant, (list, tuple)):
+                    antnum = ant[0]
+                    pol_num = uvutils.jstr2num(ant[1], x_orientation=uvd.x_orientation)
+                    pol_selection = np.where(uvd.polarization_array == pol_num)[0]
+                blt_selection = np.logical_or(uvd.ant_1_array == antnum, uvd.ant_2_array == antnum)
+                assert np.all(uvd.flag_array[blt_selection, :, :, pol_selection])
 
     # next test flagging on a uvcal object
     for test_flag in [test_flag_integrations, test_flag_jds, test_flag_lsts,
@@ -285,25 +288,28 @@ def test_apply_yaml_flags():
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
         uvc = utils.apply_yaml_flags(uvc, test_flag)
-        for tind in integration_flags:
-            time = sorted(np.unique(uvc.time_array))[tind]
-            assert np.all(uvc.flag_array[:, :, :, uvc.time_array == time, :])
-        for region in freq_regions:
-            selection = (uvc.freq_array[0] >= region[0]) & (uvc.freq_array[0] <= region[-1])
-            assert np.all(uvc.flag_array[:, :, selection, :, :])
-        for chan in channel_flags:
-            assert np.all(uvc.flag_array[:, :, chan, :, :])
+        if 'no_integrations' not in test_flag:
+            for tind in integration_flags:
+                time = sorted(np.unique(uvc.time_array))[tind]
+                assert np.all(uvc.flag_array[:, :, :, uvc.time_array == time, :])
+        if 'no_chans' not in test_flag:
+            for region in freq_regions:
+                selection = (uvc.freq_array[0] >= region[0]) & (uvc.freq_array[0] <= region[-1])
+                assert np.all(uvc.flag_array[:, :, selection, :, :])
+            for chan in channel_flags:
+                assert np.all(uvc.flag_array[:, :, chan, :, :])
         # check flagged antennas
-        for ant in ant_flags:
-            if isinstance(ant, int):
-                antnum = ant
-                pol_selection = np.ones(uvc.Njones, dtype=bool)
-            elif isinstance(ant, (list, tuple)):
-                antnum = ant[0]
-                pol_num = uvutils.jstr2num(ant[1], x_orientation=uvc.x_orientation)
-                pol_selection = np.where(uvc.jones_array == pol_num)[0]
-            ant_selection = uvc.ant_array == antnum
-            assert np.all(uvc.flag_array[ant_selection, :, :, :, pol_selection])
+        if 'no_ants' not in test_flag:
+            for ant in ant_flags:
+                if isinstance(ant, int):
+                    antnum = ant
+                    pol_selection = np.ones(uvc.Njones, dtype=bool)
+                elif isinstance(ant, (list, tuple)):
+                    antnum = ant[0]
+                    pol_num = uvutils.jstr2num(ant[1], x_orientation=uvc.x_orientation)
+                    pol_selection = np.where(uvc.jones_array == pol_num)[0]
+                ant_selection = uvc.ant_array == antnum
+                assert np.all(uvc.flag_array[ant_selection, :, :, :, pol_selection])
     # check NotImplementedErrors
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
