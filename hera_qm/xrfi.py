@@ -1648,7 +1648,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             # if uvf_apriori is not None and we wish to apply it to uv, do so here.
             elif apply_uvf_apriori:
                 flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check,
-                           check_extra=check_extra,
+                           check_extra=check_extra, force_pol=True,
                            run_check_acceptability=run_check_acceptability)
             if run_filter:
                 # if run_filter is true, perform chi_sq_pipe or xrfi_pipe
@@ -1855,7 +1855,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         If True, files at the beginning and end of the night that might exhibit edge
         effects are written, but fully flagged. The "night" is determined by looking
         for all files in the same folder as the inputs that have the same decimal JD.
-        (This might cause problems with observations that span noon UTC, since 
+        (This might cause problems with observations that span noon UTC, since
         that's when JD increments.)
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
