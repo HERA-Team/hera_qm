@@ -258,7 +258,7 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--model_files', default=None, type=str, help='Model visibility '
                         'files to flag on.',
                         nargs='+')
-        ap.add_argument('--data_file', default=None, type=str, help='Raw visibility '
+        ap.add_argument('--data_files', default=None, type=str, help='Raw visibility '
                         'data files to flag on.',
                         nargs='+')
         ap.add_argument('--a_priori_flag_yaml', default=None, type=str,
