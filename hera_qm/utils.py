@@ -682,10 +682,11 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
         if np.any(flagged_channels < 0):
             warnings.warn("Flagged channels were provided with a negative channel index. These flags are being dropped!")
         flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
-        if issubclass(uv.__class__, UVData):
-            uv.flag_array[:, spw, flagged_channels, :] = True
-        elif issubclass(uv.__class__, UVCal):
-            uv.flag_array[:, spw, flagged_channels, :, :] = True
+        if len(flagged_channels) > 0:
+            if issubclass(uv.__class__, UVData):
+                uv.flag_array[:, spw, flagged_channels, :] = True
+            elif issubclass(uv.__class__, UVCal):
+                uv.flag_array[:, spw, flagged_channels, :, :] = True
     # now do times.
     # get the integrations to flag
     flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, lsts=lst_array, times=time_array)
@@ -695,12 +696,13 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     if np.any(flagged_integrations < 0):
         warnings.warn("Flagged integrations were provided with a negative integration index. These flags are being dropped!")
     flagged_integrations = flagged_integrations[(flagged_integrations>=0) & (flagged_integrations<=uv.Ntimes)]
-    flagged_times = time_array[flagged_integrations]
-    for time in flagged_times:
-        if issubclass(uv.__class__, UVData):
-            uv.flag_array[uv.time_array == time, :, :, :] = True
-        elif issubclass(uv.__class__, UVCal):
-            uv.flag_array[:, :, :, uv.time_array == time, :] = True
+    if len(flagged_integrations) > 0:
+        flagged_times = time_array[flagged_integrations]
+        for time in flagged_times:
+            if issubclass(uv.__class__, UVData):
+                uv.flag_array[np.isclose(uv.time_array, time), :, :, :] = True
+            elif issubclass(uv.__class__, UVCal):
+                uv.flag_array[:, :, :, np.isclose(uv.time_array, time), :] = True
     # now do antennas.
     flagged_ants = metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=ant_indices_only,
                                                       by_ant_pol=by_ant_pol, ant_pols=ant_pols)
@@ -722,10 +724,13 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
             antnum = ant[0]
         if issubclass(uv.__class__, UVData):
             blt_selection = np.logical_or(uv.ant_1_array == antnum, uv.ant_2_array == antnum)
-            uv.flag_array[blt_selection, :, :, pol_selection] = True
+            if np.any(blt_selection):
+                for bltind in np.where(blt_selection)[0]:
+                    uv.flag_array[bltind, :, :, pol_selection] = True
         elif issubclass(uv.__class__, UVCal):
             ant_selection = uv.ant_array == antnum
-            uv.flag_array[ant_selection, :, :, :, pol_selection] = True
-
+            if np.any(ant_selection):
+                for antind in np.where(ant_selection)[0]:
+                    uv.flag_array[antind, :, :, :, pol_selection] =True
     # return uv with flags applied.
     return uv
