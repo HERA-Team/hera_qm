@@ -289,6 +289,16 @@ def get_metrics_ArgumentParser(method_name):
                         'of the time chunk being analyzed.')
         ap.add_argument("--Nwf_per_load", type=int, default=None,
                         help="Number of uvdata waterfalls to load simultaneously. Default, load all simultaneously.")
+        ap.add_argument("--ignore_omnical_median_filter", default=False, action="store_true", help="Do not perform omnical median filter.")
+        ap.add_argument("--ignore_omnical_mean_filter", default=False, action="store_true", help="Do not perform omnical mean filter.")
+        ap.add_argument("--ignore_omnical_chi2_mean_filter", default=False, action="store_true", help="Do not perform omnical chi2 mean filter.")
+        ap.add_argument("--ignore_omnical_chi2_median_filter", default=False, action="store_true", help="Do not perform omnical chi2 median filter.")
+        ap.add_argument("--omnical_zscore_filter", default=False, action="store_true", help="Do not perform omnical zscore filters (mean/median).")
+        ap.add_argument("--ignore_abscal_median_filter", default=False, action="store_true", help="Do not perform abscal median filter.")
+        ap.add_argument("--ignore_abscal_mean_filter", default=False, action="store_true", help="Do not perform abscal mean filter.")
+        ap.add_argument("--ignore_abscal_chi2_mean_filter", default=False, action="store_true", help="Do not perform abscal chi2 mean filter.")
+        ap.add_argument("--ignore_abscal_chi2_median_filter", default=False, action="store_true", help="Do not perform abscal chi2 median filter.")
+        ap.add_argument("--abscal_zscore_filter", default=False, action="store_true", help="Do not perform abscal zscore filters (mean/median).")
     elif method_name == 'xrfi_run_data_only':
         ap.prog = 'xrfi_run_data_only.py'
         ap.add_argument('--data_files', default=None, type=str, help='Raw visibility '
