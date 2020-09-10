@@ -790,6 +790,150 @@ def xrfi_waterfall(data, flags=None, Kt=8, Kf=8, nsig_init=6., nsig_adj=2.,
     return new_flags
 
 
+def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_percentile_time=99., flag_percentile_freq=99., niters=5,
+                     f_collapse_mode="max", t_collapse_mode="max"):
+    """A helper function for roto_flag.
+
+    Parameters
+    ----------
+
+    metric_waterfall : array-like
+        Ntimes x Nfreqs waterfall to perform roto-flagging on.
+    time_flags_init : array-like
+        Nfreqs array of boolean flags in time.
+    freq_flags_init : array-like
+        Ntimes array of boolean flags in freq.
+    flag_percentile_time : optional float
+        percentile of integration metrics collapsed along the freq axis to flag
+        in each iteration.
+        Default is 99. (99th percentile).
+    flag_percentile_freq : optional float
+        percentile of channel metrics collapsed along the time axis to flag
+        in each iteration
+        Default is 99. (99th percentile)
+    niters : optional int
+        Number of flagging iterations.
+    f_collapse_mode : optional str
+        Method to collapse frequency axis when flagging integrations
+        can be "absmean, quadmean, max"
+        Default is "max"
+    t_collapse_mode : optional str
+        Method to collapse the time axis when flagging channels
+        can be "absmean, quadmean, max"
+        default is "max"
+    fflags_init : optional array-like bool
+        vector of
+
+    Returns
+    -------
+        Ntimes x Nfreqs array of bool flags.
+    """
+    nt = metric_waterfall.shape[0]
+    nf = metric_waterfall.shape[1]
+    tflags = [time_flags_init]
+    fflags = [freq_flags_init]
+    tstats = []
+    fstats = []
+    for iter in range(1, niters + 1):
+        t_collapse = np.zeros(nt)
+        f_collapse = np.zeros(nt)
+        # flag integrations
+        for integ, wrow in enumerate(metric_waterfall):
+            w2avg = wrow[~fflags[step-1]]
+            if len(w2avg) > 0:
+                if t_collapse_mode.lower() == 'max':
+                    t_collapse[integ] = np.max(w2avg)
+                elif t_collapse_mode.lower() == 'mean':
+                    t_collapse[integ] = np.mean(w2avg)
+                elif t_collapse_mode.lower() == 'quadmean':
+                    t_collapse[integ] = np.linalg.norm(w2avg)
+
+        flagged_times = (t_collapse > np.percentile(t_collapse[~tflags[iter - 1]]))
+        # flag channels
+        for chan, wcol in enumerate(metric_waterfall.T):
+            w2avg = wcol[~tflags[step-1]]
+            if len(w2avg) > 0:
+                if f_collapse_mode.lower() == 'max':
+                    f_collapse[chan] = np.max(w2avg)
+                elif f_collapse_mode.lower() == 'mean':
+                    f_collapse_mode[chan] = np.mean(w2avg)
+                elif f_collapse_mode.lwer() == 'quadmean':
+                    f_collapse_mode[chan] = np.linalg.norm(w2avg)
+        flagged_freqs = (f_collapse > np.percentile(f_collapse[~fflags[iter-1]]))
+
+        tflags.append(flagged_times)
+        fflags.append(flagged_freqs)
+        fstats.append(f_collapse)
+        tstats.append(t_collapse)
+
+    return ~(np.outer((~tflags[-1]).astype(float), (~fflags[-1]).astype(float)).astype(bool))
+
+
+def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=99., flag_percentile_freq=99., niters=5,
+              wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max'):
+    """An iterative method for producing separable flags.
+
+    A flagging algorithm that flags iteratively rotates the data array by 90
+    degrees and alternately flags channels and times that fall within some percentile
+    after being collapsed across time and frequency.
+
+    Parameters
+    ----------
+    uvf_m : UVFlag object
+        A UVFlag object in 'metric' mode (i.e., number of sigma data is from middle).
+    uvf_apriori : UVFlag object
+        A UVFlag object with apriori flags.
+    flag_percentile_time : optional float
+        percentile of integration metrics collapsed along the freq axis to flag
+        in each iteration.
+        Default is 99. (99th percentile).
+    flag_percentile_freq : optional float
+        percentile of channel metrics collapsed along the time axis to flag
+        in each iteration
+        Default is 99. (99th percentile)
+    niters : optional int
+        Number of flagging iterations.
+    f_collapse_mode : optional str
+        Method to collapse frequency axis when flagging integrations
+        can be "absmean, quadmean, max"
+        Default is "max"
+    t_collapse_mode : optional str
+        Method to collapse the time axis when flagging channels
+        can be "absmean, quadmean, max"
+        default is "max"
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
+     """
+     if not uvf_m.type == 'waterfall':
+         uvf_m.to_waterfall(method=wf_method, keep_pol=False, run_check=run_check,
+                            check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+     if not uvf_f.type == 'waterfall':
+         uvf_f.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                            check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+
+     # check that uvf_apriori is separable
+     if not np.all(np.isclose(~uvf_f.flag_array[:, :, 0].squeeze(), np.outer((~uvf_f.flag_array[0, :, 0]).squeeze().astype(float),
+                                                                             (~uvf_f.flag_array[:, 0, 0]).squeeze().astype(float)).astype(bool))):
+            raise ValueError("Must provide separable initial flags!")
+
+     uvf_f = uvf_m.copy()
+     uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
+                   run_check_acceptability=run_check_acceptability)
+
+         uvf_f.flag_array[:, :, 0] = roto_flag_helper(metric_waterfall=uvf_m.metric_array[:, :, 0].squeeze(), time_flags_init=uvf_f.flag_array[:, 0, 0].squeeze(),
+                                                      freq_flags_init=uvf_f.flag_array[0, :, 0].squeeze(), flag_percentile_time=flag_percentile_time,
+                                                      flag_percentile_freq=flag_percentile_freq)
+
+     return uvf_f
+
+#def roto_flag_run(uv, )
+
 def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean',
          run_check=True, check_extra=True, run_check_acceptability=True):
     """Create a set of flags based on a "metric" type UVFlag object.
