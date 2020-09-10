@@ -1807,7 +1807,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     cross_median_filter : bool, optional
         If True, flag on data median filter statistic.
         Mean filters are run after median filters.
-        Default is True.
+        Default is False. N.B. This option is generally quite expensive.
     cross_mean_filter : bool, optional
         If True, flag on data mean filter statistic.
         Mean filters are run after median filters.
