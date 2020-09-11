@@ -928,9 +928,9 @@ def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=99., flag_percentile_freq
     uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
                   run_check_acceptability=run_check_acceptability)
 
-        uvf_f.flag_array[:, :, 0] = roto_flag_helper(metric_waterfall=uvf_m.metric_array[:, :, 0].squeeze(), time_flags_init=uvf_f.flag_array[:, 0, 0].squeeze(),
-                                                      freq_flags_init=uvf_f.flag_array[0, :, 0].squeeze(), flag_percentile_time=flag_percentile_time,
-                                                      flag_percentile_freq=flag_percentile_freq)
+    uvf_f.flag_array[:, :, 0] = roto_flag_helper(metric_waterfall=uvf_m.metric_array[:, :, 0].squeeze(), time_flags_init=uvf_f.flag_array[:, 0, 0].squeeze(),
+                                                  freq_flags_init=uvf_f.flag_array[0, :, 0].squeeze(), flag_percentile_time=flag_percentile_time,
+                                                  flag_percentile_freq=flag_percentile_freq)
 
     return uvf_f
 
