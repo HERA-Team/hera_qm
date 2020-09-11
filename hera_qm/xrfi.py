@@ -998,6 +998,9 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
       Option to check acceptable range of the values of parameters
       on UVFlag Object.
     """
+    if flag_files is not None:
+        uvf_apriori = UVFlag(flag_files)
+
     if isinstance(data_files, list):
         uv = UVData()
         uv.read(data_files, read_data=False)
@@ -1016,8 +1019,6 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
             uv.read(data_files)
         bls = uv.get_antpairpols()
         # apply yamls.
-        if flag_files is not None:
-            uvf = UVFlag(flag_files)
         for loadnum in range(nloads):
             uv.read(data_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
             if not use_data_flags:
@@ -1026,6 +1027,8 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                 uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
             if flag_files is not None:
                 flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
+            _uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+            _uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check)
 
             # calculate metric.
             _uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method,
@@ -1033,21 +1036,29 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                                   run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
             if loadnum == 0:
                 uvf_m = _uvf_m
+                uvf_data = _uvf_data
             else:
                 uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
                                       check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                uvf_data &= _uvf_data
 
             uvf_m, _ = xrfi_pipe(uvf_m, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg, center_metric=True, reset_weights=True,
                                 run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-
-
     else:
         if not use_data_flags:
+            uv.flag_array[:] = False
+        if flag_files is not None:
+                flag_apply(uvf_apriori, uv, keep_existing=use_data_flags, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
+
+        if a_ariori_flag_yaml is not None:
             uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
         uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg, center_metric=True, reset_weights=True,
                              run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+        uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+        uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check, 
+                              check_extra=check_extra, run_check_acceptability=run_check_acceptability)        
     # now perform roto_flag
-    uvf_f = roto_flag(uvf_m, uvf_apriori, flag_percentile_time=flag_percentile_time,
+    uvf_f = roto_flag(uvf_m, uvf_data, flag_percentile_time=flag_percentile_time,
                       flag_percentile_freq=flag_percentile_freq, niters=niters,
                       wf_method=wf_method, f_collapse_mode=f_collapse_mode, t_collapse_mode=t_collapse_mode,
                       run_check=run_check, check_extra=check_extra,
