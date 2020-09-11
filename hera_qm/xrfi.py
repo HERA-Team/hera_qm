@@ -911,28 +911,28 @@ def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=99., flag_percentile_freq
     run_check_acceptability : bool
         Option to check acceptable range of the values of parameters
         on UVFlag Object.
-     """
-     if not uvf_m.type == 'waterfall':
-         uvf_m.to_waterfall(method=wf_method, keep_pol=False, run_check=run_check,
-                            check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-     if not uvf_f.type == 'waterfall':
-         uvf_f.to_waterfall(method='and', keep_pol=False, run_check=run_check,
-                            check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+    """
+    if not uvf_m.type == 'waterfall':
+     uvf_m.to_waterfall(method=wf_method, keep_pol=False, run_check=run_check,
+                        check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+    if not uvf_f.type == 'waterfall':
+        uvf_f.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                        check_extra=check_extra, run_check_acceptability=run_check_acceptability)
 
-     # check that uvf_apriori is separable
-     if not np.all(np.isclose(~uvf_f.flag_array[:, :, 0].squeeze(), np.outer((~uvf_f.flag_array[0, :, 0]).squeeze().astype(float),
-                                                                             (~uvf_f.flag_array[:, 0, 0]).squeeze().astype(float)).astype(bool))):
-            raise ValueError("Must provide separable initial flags!")
+    # check that uvf_apriori is separable
+    if not np.all(np.isclose(~uvf_f.flag_array[:, :, 0].squeeze(), np.outer((~uvf_f.flag_array[0, :, 0]).squeeze().astype(float),
+                                                                            (~uvf_f.flag_array[:, 0, 0]).squeeze().astype(float)).astype(bool))):
+        raise ValueError("Must provide separable initial flags!")
 
-     uvf_f = uvf_m.copy()
-     uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
-                   run_check_acceptability=run_check_acceptability)
+    uvf_f = uvf_m.copy()
+    uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
+                  run_check_acceptability=run_check_acceptability)
 
-         uvf_f.flag_array[:, :, 0] = roto_flag_helper(metric_waterfall=uvf_m.metric_array[:, :, 0].squeeze(), time_flags_init=uvf_f.flag_array[:, 0, 0].squeeze(),
+        uvf_f.flag_array[:, :, 0] = roto_flag_helper(metric_waterfall=uvf_m.metric_array[:, :, 0].squeeze(), time_flags_init=uvf_f.flag_array[:, 0, 0].squeeze(),
                                                       freq_flags_init=uvf_f.flag_array[0, :, 0].squeeze(), flag_percentile_time=flag_percentile_time,
                                                       flag_percentile_freq=flag_percentile_freq)
 
-     return uvf_f
+    return uvf_f
 
 def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, alg='detrend_medfilt',
                   flag_percentile_time=99., flag_percentile_freq=99., niters=5, Nwf_per_load=None,
