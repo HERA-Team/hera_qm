@@ -871,8 +871,8 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
 
 def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=99., flag_percentile_freq=99., niters=5,
               wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max',
-              run_check=run_check, check_extra=check_extra,
-              run_check_acceptability=run_check_acceptability):
+              run_check=True, check_extra=True,
+              run_check_acceptability=True):
     """An iterative method for producing separable flags.
 
     A flagging algorithm that flags iteratively rotates the data array by 90
@@ -938,7 +938,7 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                   flag_percentile_time=99., flag_percentile_freq=99., niters=5, Nwf_per_load=None,
                   wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max',
                   kt_size=8, kf_size=8, use_data_flags=True, write_output=True,
-                  output_label='roto_flags',
+                  output_label='roto_flags', correlations='both',
                   run_check=True, check_extra=True, run_check_acceptability=True):
     """
     Driver for roto-flag
@@ -999,13 +999,19 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
       on UVFlag Object.
     """
     if isinstance(data_files, list):
-      if dtype == 'uvdata':
-          uv = UVData()
-          uv.read(data_files, read_data=False)
-    if isinstance(data_files, list):
+        uv = UVData()
+        uv.read(data_files, read_data=False)
+        bls = uv.get_antpairpols()
+        if correlations == 'cross':
+            bls = [app for app in bls if app[1] != app[0]]
+        elif correlations == 'auto':
+            bls = [app for app in bls if app[1] == app[0]]
+        nbls = len(bls)
+        if nbls == 0:
+            raise ValueError("No baselines selected!")
         if Nwf_per_load is None:
             Nwf_per_load = nbls
-            nloads = int(np.ceil(nbls / Nwf_per_load))
+        nloads = int(np.ceil(nbls / Nwf_per_load))
         for loadnum in range(nloads):
             uv.read(data_files)
         bls = uv.get_antpairpols()
@@ -1050,8 +1056,10 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
     basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
     outdir = resolve_xrfi_path('', data_files[0])
     if write_output:
-        outpath = os.path.join(outdir, basename, f'.{output_label}.h5')
-    uvf_f.write(outpath, clobber=clobber)
+        outpath = os.path.join(outdir, basename, f'.{output_label}.flags.h5')
+        uvf_f.write(outpath, clobber=clobber)
+        outpath = os.path.join(outdir, basename, f'.{output_label}.metrics.h5')
+        uvf_m.write(output, clobber=clobber)
     return uvf_f
 
 
