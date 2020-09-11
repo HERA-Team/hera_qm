@@ -870,7 +870,9 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
 
 
 def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=99., flag_percentile_freq=99., niters=5,
-              wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max'):
+              wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max',
+              run_check=run_check, check_extra=check_extra,
+              run_check_acceptability=run_check_acceptability):
     """An iterative method for producing separable flags.
 
     A flagging algorithm that flags iteratively rotates the data array by 90
@@ -932,7 +934,131 @@ def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=99., flag_percentile_freq
 
      return uvf_f
 
-#def roto_flag_run(uv, )
+def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, alg='detrend_medfilt',
+                  flag_percentile_time=99., flag_percentile_freq=99., niters=5, Nwf_per_load=None,
+                  wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max',
+                  kt_size=8, kf_size=8, use_data_flags=True, write_output=True,
+                  output_label='roto_flags',
+                  run_check=True, check_extra=True, run_check_acceptability=True):
+    """
+    Driver for roto-flag
+    data_files: list of strings or UVData
+        strings for paths to data_files.
+    flag_files: list of strings or UVFlag object
+        strings for paths to flag files.
+    a_priori_flag_yaml: str
+        path to a priori yaml file.
+    flag_percentile_time : optional float
+      percentile of integration metrics collapsed along the freq axis to flag
+      in each iteration.
+      Default is 99. (99th percentile).
+    flag_percentile_freq : optional float
+      percentile of channel metrics collapsed along the time axis to flag
+      in each iteration
+      Default is 99. (99th percentile)
+    niters : optional int
+      Number of flagging iterations.
+    Nwf_per_load : int, optional
+      number of waterfalls to load simultaneously for flagging. This provides
+      support for partial i/o whereby a net waterfall metric is computed by
+      loading in small numbers of waterfalls from uv, computing a waterfall
+      metric for each chunk, and combining them to form the waterfall for the
+      entire dataset.
+      CURRENTLY ONLY WORKS FOR UVDATA OBJECTS. UVCAL OBJECTS STILL HAVE ALL
+      WATERFALLS LOADED SIMULTANEOUSLY.
+      default (none) sets Nwf_per_load = Number of waterfalls in uvdata that
+      are of the type specified by the correlation argument above.
+    f_collapse_mode : optional str
+      Method to collapse frequency axis when flagging integrations
+      can be "absmean, quadmean, max"
+      Default is "max"
+    t_collapse_mode : optional str
+      Method to collapse the time axis when flagging channels
+      can be "absmean, quadmean, max"
+      default is "max"
+    kt_size : int, optional
+      The size of kernel in time dimension for detrending in the xrfi algorithm.
+      Default is 8.
+    kf_size : int, optional
+      The size of kernel in frequency dimension for detrending in the xrfi
+      algorithm. Default is 8.
+    use_data_flags : bool, optional
+      Use flags in data files.
+    write_output : bool, optional
+      If True, write output to file specified by xrfi_path
+      Default is True.
+    output_label : str, optional
+      An identifying string.
+    run_check : bool
+      Option to check for the existence and proper shapes of parameters
+      on UVFlag Object.
+    check_extra : bool
+      Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+      Option to check acceptable range of the values of parameters
+      on UVFlag Object.
+    """
+    if isinstance(data_files, list):
+      if dtype == 'uvdata':
+          uv = UVData()
+          uv.read(data_files, read_data=False)
+    if isinstance(data_files, list):
+        if Nwf_per_load is None:
+            Nwf_per_load = nbls
+            nloads = int(np.ceil(nbls / Nwf_per_load))
+        for loadnum in range(nloads):
+            uv.read(data_files)
+        bls = uv.get_antpairpols()
+        # apply yamls.
+        if flag_files is not None:
+            uvf = UVFlag(flag_files)
+        for loadnum in range(nloads):
+            uv.read(data_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+            if not use_data_flags:
+                uv.flag_array[:] = False
+            if a_priori_flag_yaml is not None:
+                uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
+            if flag_files is not None:
+                flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
+
+            # calculate metric.
+            _uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method,
+                                  alg=alg, center_metric=False, reset_weights=False,
+                                  run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+            if loadnum == 0:
+                uvf_m = _uvf_m
+            else:
+                uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
+                                      check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+
+            uvf_m, _ = xrfi_pipe(uvf_m, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg, center_metric=True, reset_weights=True,
+                                run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+
+
+    else:
+        if not use_data_flags:
+            uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
+        uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg, center_metric=True, reset_weights=True,
+                             run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+    # now perform roto_flag
+    uvf_f = roto_flag(uvf_m, uvf_apriori, flag_percentile_time=flag_percentile_time,
+                      flag_percentile_freq=flag_percentile_freq, niters=niters,
+                      wf_method=wf_method, f_collapse_mode=f_collapse_mode, t_collapse_mode=t_collapse_mode,
+                      run_check=run_check, check_extra=check_extra,
+                      run_check_acceptability=run_check_acceptability)
+    # now write out flags
+    basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
+    outdir = resolve_xrfi_path('', data_files[0])
+    if write_output:
+        outpath = os.path.join(outdir, basename, f'.{output_label}.h5')
+    uvf_f.write(outpath, clobber=clobber)
+    return uvf_f
+
+
+
+
+
+
 
 def flag(uvf_m, nsig_p=6., nsig_f=None, nsig_t=None, avg_method='quadmean',
          run_check=True, check_extra=True, run_check_acceptability=True):
