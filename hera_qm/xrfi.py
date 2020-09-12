@@ -560,7 +560,8 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
 algorithm_dict = {'medmin': medmin, 'medminfilt': medminfilt, 'detrend_deriv': detrend_deriv,
                   'detrend_medminfilt': detrend_medminfilt, 'detrend_medfilt': detrend_medfilt,
                   'detrend_meanfilt': detrend_meanfilt, 'zscore_full_array': zscore_full_array,
-                  'modzscore_1d': modzscore_1d}
+                  'modzscore_1d': modzscore_1d, 'abs': lambda data, flags, Kt, Kf: np.abs(data),
+                  'none': lambda data, flags, Kt, Kf: data}
 
 #############################################################################
 # RFI flagging algorithms
@@ -790,7 +791,7 @@ def xrfi_waterfall(data, flags=None, Kt=8, Kf=8, nsig_init=6., nsig_adj=2.,
     return new_flags
 
 
-def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_percentile_time=99., flag_percentile_freq=99., niters=5,
+def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_percentile_time=95., flag_percentile_freq=85., niters=2,
                      f_collapse_mode="max", t_collapse_mode="max"):
     """A helper function for roto_flag.
 
@@ -823,7 +824,6 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
         default is "max"
     fflags_init : optional array-like bool
         vector of
-
     Returns
     -------
         Ntimes x Nfreqs array of bool flags.
@@ -834,12 +834,13 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
     fflags = [freq_flags_init]
     tstats = []
     fstats = []
-    for iter in range(1, niters + 1):
+    for iteration in range(1, niters + 1):
         t_collapse = np.zeros(nt)
-        f_collapse = np.zeros(nt)
+        f_collapse = np.zeros(nf)
         # flag integrations
         for integ, wrow in enumerate(metric_waterfall):
-            w2avg = wrow[~fflags[step-1]]
+            w2avg = wrow[~fflags[iteration-1]]
+            w2avg = w2avg[np.isfinite(w2avg)]
             if len(w2avg) > 0:
                 if t_collapse_mode.lower() == 'max':
                     t_collapse[integ] = np.max(w2avg)
@@ -848,10 +849,11 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
                 elif t_collapse_mode.lower() == 'quadmean':
                     t_collapse[integ] = np.linalg.norm(w2avg)
 
-        flagged_times = (t_collapse > np.percentile(t_collapse[~tflags[iter - 1]]))
+        flagged_times = (t_collapse > np.percentile(t_collapse[~tflags[iteration - 1]], flag_percentile_time))
         # flag channels
         for chan, wcol in enumerate(metric_waterfall.T):
-            w2avg = wcol[~tflags[step-1]]
+            w2avg = wcol[~tflags[iteration-1]]
+            w2avg = w2avg[np.isfinite(w2avg)]
             if len(w2avg) > 0:
                 if f_collapse_mode.lower() == 'max':
                     f_collapse[chan] = np.max(w2avg)
@@ -859,7 +861,7 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
                     f_collapse_mode[chan] = np.mean(w2avg)
                 elif f_collapse_mode.lwer() == 'quadmean':
                     f_collapse_mode[chan] = np.linalg.norm(w2avg)
-        flagged_freqs = (f_collapse > np.percentile(f_collapse[~fflags[iter-1]]))
+        flagged_freqs = (f_collapse > np.percentile(f_collapse[~fflags[iteration - 1]], flag_percentile_freq))
 
         tflags.append(flagged_times)
         fflags.append(flagged_freqs)
@@ -869,7 +871,7 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
     return ~(np.outer((~tflags[-1]).astype(float), (~fflags[-1]).astype(float)).astype(bool))
 
 
-def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=99., flag_percentile_freq=99., niters=5,
+def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=95., flag_percentile_freq=85., niters=5,
               wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max',
               run_check=True, check_extra=True,
               run_check_acceptability=True):
@@ -915,13 +917,13 @@ def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=99., flag_percentile_freq
     if not uvf_m.type == 'waterfall':
      uvf_m.to_waterfall(method=wf_method, keep_pol=False, run_check=run_check,
                         check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-    if not uvf_f.type == 'waterfall':
-        uvf_f.to_waterfall(method='and', keep_pol=False, run_check=run_check,
-                        check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+    if not uvf_apriori.type == 'waterfall':
+        uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                                 check_extra=check_extra, run_check_acceptability=run_check_acceptability)
 
     # check that uvf_apriori is separable
-    if not np.all(np.isclose(~uvf_f.flag_array[:, :, 0].squeeze(), np.outer((~uvf_f.flag_array[0, :, 0]).squeeze().astype(float),
-                                                                            (~uvf_f.flag_array[:, 0, 0]).squeeze().astype(float)).astype(bool))):
+    if not np.all(np.isclose(~uvf_apriori.flag_array[:, :, 0].squeeze(), np.outer((~uvf_apriori.flag_array[:, 0, 0]).squeeze().astype(float),
+                                                                                  (~uvf_apriori.flag_array[0, :, 0]).squeeze().astype(float)).astype(bool))):
         raise ValueError("Must provide separable initial flags!")
 
     uvf_f = uvf_m.copy()
@@ -998,6 +1000,8 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
       Option to check acceptable range of the values of parameters
       on UVFlag Object.
     """
+    if not correlations in ['cross', 'auto', 'both']:
+        raise ValueError("correlations %s not valid. Must bin in ['cross', 'auto', 'both']")
     if flag_files is not None:
         uvf_apriori = UVFlag(flag_files)
 
@@ -1045,18 +1049,26 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
             uvf_m, _ = xrfi_pipe(uvf_m, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg, center_metric=True, reset_weights=True,
                                 run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
     else:
+        uv = copy.deepcopy(data_files)
+        if correlations != 'both':
+            bls = uv.get_antpairpols()
+            if correlations == 'cross':
+                bls = [bl for bl in bls if bl[0] != bl[1]]
+            elif correlations == 'auto':
+                bls = [bl for bl in bls if bl[0] == bl[1]]
+            uv.select(bls=bls)
         if not use_data_flags:
             uv.flag_array[:] = False
         if flag_files is not None:
                 flag_apply(uvf_apriori, uv, keep_existing=use_data_flags, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
 
-        if a_ariori_flag_yaml is not None:
+        if a_priori_flag_yaml is not None:
             uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
         uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg, center_metric=True, reset_weights=True,
                              run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
         uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
-        uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check, 
-                              check_extra=check_extra, run_check_acceptability=run_check_acceptability)        
+        uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                              check_extra=check_extra, run_check_acceptability=run_check_acceptability)
     # now perform roto_flag
     uvf_f = roto_flag(uvf_m, uvf_data, flag_percentile_time=flag_percentile_time,
                       flag_percentile_freq=flag_percentile_freq, niters=niters,
@@ -1064,14 +1076,14 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                       run_check=run_check, check_extra=check_extra,
                       run_check_acceptability=run_check_acceptability)
     # now write out flags
-    basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
-    outdir = resolve_xrfi_path('', data_files[0])
-    if write_output:
+    if write_output and isinstance(data_files, list):
+        outdir = resolve_xrfi_path('', data_files[0])
+        basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
         outpath = os.path.join(outdir, basename, f'.{output_label}.flags.h5')
         uvf_f.write(outpath, clobber=clobber)
         outpath = os.path.join(outdir, basename, f'.{output_label}.metrics.h5')
         uvf_m.write(output, clobber=clobber)
-    return uvf_f
+    return uvf_f, uvf_m
 
 
 
