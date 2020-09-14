@@ -1065,6 +1065,7 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                                           check_extra=check_extra, run_check_acceptability=run_check_acceptability)
                     uvf_data &= _uvf_data
         else:
+            uvf_data = uvf_apriori
             for filenumber, filename in data_files:
                 _uvf_m = UVFlag(filename)
                 if filenumber == 0:
@@ -1072,7 +1073,6 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                 else:
                     uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
                                           check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-
 
         uvf_m, _ = xrfi_pipe(uvf_m, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg,
                             center_metric=not(metric_only_mode), reset_weights=not(metric_only_mode),
@@ -1098,7 +1098,8 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
             uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
             uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check,
                                   check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-
+        else:
+            uvf_data = uvf_apriori
         uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg,
                              center_metric=not(metric_only_mode), reset_weights=not(metric_only_mode),
                              run_check=run_check, check_extra=check_extra,
@@ -1112,7 +1113,7 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                           run_check=run_check, check_extra=check_extra,
                           run_check_acceptability=run_check_acceptability)
     else:
-        uvf_f = uvf_apriori
+        uvf_f = uvf_data
     # now write out flags
     if write_output and isinstance(data_files, list):
         outdir = resolve_xrfi_path('', data_files[0])
