@@ -30,7 +30,7 @@ def get_metrics_ArgumentParser(method_name):
     ----------
     method_name : {"ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_run",
                    "xrfi_apply", "xrfi_h1c_run", "delay_xrfi_h1c_idr2_1_run",
-                   "xrfi_h3c_idr2_1_run"}
+                   "xrfi_h3c_idr2_1_run", "roto_flag_run"}
         The target wrapper desired.
 
     Returns
@@ -41,7 +41,7 @@ def get_metrics_ArgumentParser(method_name):
     """
     methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_h1c_run",
                "delay_xrfi_h1c_idr2_1_run", "xrfi_run", "xrfi_apply", "day_threshold_run",
-               "xrfi_h3c_idr2_1_run", "xrfi_run_data_only"]
+               "xrfi_h3c_idr2_1_run", "xrfi_run_data_only", "roto_flag_run"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
