@@ -25,5 +25,5 @@ xrfi.roto_flag_run(data_files=args.data_files, flag_files=args.flag_files,
                    Nwf_per_load=args.Nwf_per_load,
                    niters=args.niters, correlations=correlations,
                    kt_size=args.kt_size, kf_size=args.kf_size,
-                   output_label=args.output_label
+                   output_label=args.output_label, clobber=args.clobber,
                    )

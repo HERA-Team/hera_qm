@@ -139,6 +139,8 @@ def get_metrics_ArgumentParser(method_name):
                         help='integer size of convolution kernel in frequency.')
         ap.add_argument('--niters', default=6, type=int,
                         help='number of rotational flagging iterations.')
+        ap.add_argument('--clobber', default=False, action='store_true',
+                        help='overwrite outputs.')
     elif method_name == 'xrfi_h1c_run':
         ap.prog = 'xrfi_h1c_run.py'
         ap.add_argument('--infile_format', default='miriad', type=str,

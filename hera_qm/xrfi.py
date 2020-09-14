@@ -940,7 +940,7 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                   flag_percentile_time=95., flag_percentile_freq=95., niters=6, Nwf_per_load=None,
                   wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max',
                   kt_size=32, kf_size=8, use_data_flags=True, write_output=True,
-                  output_label='roto_flags', correlations='cross',
+                  output_label='roto_flags', correlations='cross', clobber=False,
                   run_check=True, check_extra=True, run_check_acceptability=True):
     """
     Driver for roto-flag
@@ -991,6 +991,8 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
       Default is True.
     output_label : str, optional
       An identifying string.
+    clobber : bool, optional
+      Overwrite outputs.
     run_check : bool
       Option to check for the existence and proper shapes of parameters
       on UVFlag Object.
