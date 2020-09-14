@@ -143,7 +143,7 @@ def get_metrics_ArgumentParser(method_name):
                         help='overwrite outputs.')
         ap.add_argument('--metric_only', default=False, action='store_true',
                         help='if true, only compute metric. do not perform any flagging.')
-        ap.add_argument('--flag_only', default=False, action='store_ture',
+        ap.add_argument('--flag_only', default=False, action='store_true',
                         help='if true, only compute flags, data files are metrics.')
     elif method_name == 'xrfi_h1c_run':
         ap.prog = 'xrfi_h1c_run.py'
