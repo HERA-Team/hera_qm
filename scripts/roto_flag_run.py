@@ -15,6 +15,9 @@ correlations='cross'
 if args.use_autos:
     correlations='both'
 
+if args.flag_files == 'none':
+    args.flag_files = None
+
 xrfi.roto_flag_run(data_files=args.data_files, flag_files=args.flag_files,
                    a_priori_flag_yaml=args.a_priori_flag_yaml,
                    flag_percentile_freq=args.flag_percentile_freq,
