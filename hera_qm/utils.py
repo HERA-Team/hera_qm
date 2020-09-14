@@ -115,6 +115,30 @@ def get_metrics_ArgumentParser(method_name):
                         help='Path to save metrics file to. Default is same directory as file.')
         ap.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                         help='*.omni.calfits files for which to calculate omnical_metrics.')
+    elif method_name == 'roto_flag':
+        ap.prog = 'roto_flag_run.py'
+        ap.add_argument('--data_files', type=str, nargs='+',
+                        help='list of data files to run roto-flag on.')
+        ap.add_argument('--flag_files', type=str, nargs='+', default=None,
+                        help='list of flag files to apply before running roto-flag.')
+        ap.add_argument('--a_priori_flag_yaml', type=str, default=None,
+                        help='a priori flagging yaml to use with roto-flag.')
+        ap.add_argument('--flag_percentile_freq', type=float, default=95.,
+                        help='percentile in frequency direction to flag.')
+        ap.add_argument('--flag_percentile_time', type=float, default=95.,
+                        help='percentile in time direction to filag.')
+        ap.add_argument('--Nwf_per_load', type=int, default=None,
+                        help='number of waterfalls to load simultaneously.')
+        ap.add_argument('--use_autos', default=False, action='store_true',
+                        help='if true, include autos (not just crosses) in the metric.')
+        ap.add_argument('--output_label', default='roto_flags', type=str,
+                        help='an optional identifying label.')
+        ap.add_argument('--kt_size', default=32, type=int,
+                        help='integer size of convolution kernel in time.')
+        ap.add_argument('--kf_size', default=8, type=int,
+                        help='integer size of convolution kernel in frequency.')
+        ap.add_argument('--niters', default=6, type=int,
+                        help='number of rotational flagging iterations.')
     elif method_name == 'xrfi_h1c_run':
         ap.prog = 'xrfi_h1c_run.py'
         ap.add_argument('--infile_format', default='miriad', type=str,
