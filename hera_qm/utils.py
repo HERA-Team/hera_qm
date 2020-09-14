@@ -115,7 +115,7 @@ def get_metrics_ArgumentParser(method_name):
                         help='Path to save metrics file to. Default is same directory as file.')
         ap.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                         help='*.omni.calfits files for which to calculate omnical_metrics.')
-    elif method_name == 'roto_flag':
+    elif method_name == 'roto_flag_run':
         ap.prog = 'roto_flag_run.py'
         ap.add_argument('--data_files', type=str, nargs='+',
                         help='list of data files to run roto-flag on.')
