@@ -1068,6 +1068,7 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                                           check_extra=check_extra, run_check_acceptability=run_check_acceptability)
                     uvf_data &= _uvf_data
         else:
+            # if we are in flag_only_mode, data_files are expected to be metrics.
             uvf_data = uvf_apriori
             for filenumber, filename in data_files:
                 _uvf_m = UVFlag(filename)
@@ -1081,8 +1082,8 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                             center_metric=not(metric_only_mode), reset_weights=not(metric_only_mode),
                             run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
     else:
+        uv = copy.deepcopy(data_files)
         if not flag_only_mode:
-            uv = copy.deepcopy(data_files)
             if correlations != 'both':
                 bls = uv.get_antpairpols()
                 if correlations == 'cross':
