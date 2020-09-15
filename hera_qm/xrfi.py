@@ -1018,13 +1018,16 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
         if flag_file_type == 'uvflag':
             if isinstance(flag_files, list):
                 for fnum, flag_file in enumerate(flag_files):
-                    if isinstance(flag_file.__subclass__, UVFlag):
+                    if isinstance(flag_file, str):
                         _uvf_apriori = UVFlag(flag_file)
-                        if fnum == 0:
-                            uvf_apriori = _uvf_apriori
-                        else:
-                            uvf_apriori &= _uvf_apriori                
-            uvf_apriori = UVFlag(flag_files)
+                    elif isinstance(flag_file.__subclass__, UVFlag):
+                        _uvf_apriori = flag_file
+                    if fnum == 0:
+                        uvf_apriori = _uvf_apriori
+                    else:
+                        uvf_apriori &= _uvf_apriori
+            elif isinstance(flag_files, str):
+                uvf_apriori = UVFlag(flag_files)
         elif flag_file_type == 'uvcal':
             uvf_apriori = UVCal()
             uvf_apriori.read(flag_files)
