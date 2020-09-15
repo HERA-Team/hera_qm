@@ -942,6 +942,7 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                   kt_size=32, kf_size=8, use_data_flags=True, write_output=True,
                   output_label='roto_flags', correlations='cross', clobber=False,
                   metric_only_mode=False, flag_only_mode=False, flag_file_type='uvflag',
+                  flag_kernel=True,
                   run_check=True, check_extra=True, run_check_acceptability=True):
     """
     Driver for roto-flag
@@ -1000,6 +1001,8 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
     flag_only_mode : bool, optional
       In flag mode, data_files are metric files. Only combines them
       and performs roto-flagging.
+    flag_kernel : bool, optional
+      If True, flag edge effects from kernel.
     run_check : bool
       Option to check for the existence and proper shapes of parameters
       on UVFlag Object.
