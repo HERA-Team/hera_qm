@@ -863,8 +863,8 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
                     f_collapse_mode[chan] = np.linalg.norm(w2avg)
         flagged_freqs = (f_collapse > np.percentile(f_collapse[~fflags[iteration - 1]], flag_percentile_freq))
 
-        tflags.append(flagged_times)
-        fflags.append(flagged_freqs)
+        tflags.append(flagged_times | tflags[-1])
+        fflags.append(flagged_freqs | fflags[-1])
         fstats.append(f_collapse)
         tstats.append(t_collapse)
 
