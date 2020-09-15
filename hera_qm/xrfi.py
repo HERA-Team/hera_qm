@@ -1108,11 +1108,21 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                              run_check=run_check, check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
     if flag_kernel:
-        # flag edge effects.
-        uvf_data.flag_array[:kt_size] = True
-        uvf_data.flag_array[-kt_size:] = True
-        uvf_data.flag_array[:, :kf_size] = True
-        uvf_data.flag_array[:, -kf_size] = True
+        # flag edge effects including edge flags.
+        # find min and max unflagged channel
+        unflagged_integ = np.where(~np.all(uvf_data.flag_array[:, :, 0], axis=1))[0]
+        unflagged_chans = np.where(~np.all(uvf_data.flag_array[:, :, 0], axis=0))[0]
+        if len(unflagged_chans) > 0:
+            max_unflagged_chan = np.max(unflagged_chans)
+            min_unflagged_chan = np.min(unflagged_chans)
+            uvf_data.flag_array[:, :min_unflagged_chan + kf_size] = True
+            uvf_data.flag_array[:, max_unflagged_chan + 1 -kf_size] = True
+        if len(unflagged_integ) > 0:
+            max_unflagged_integ = np.max(unflagged_integ)
+            min_unflagged_integ = np.min(unflagged_integ)
+            uvf_data.flag_array[:min_unflagged_integ + kt_size] = True
+            uvf_data.flag_array[max_unflagged_integ + 1 -kt_size:] = True
+
     # now perform roto_flag
     if not metric_only_mode:
         uvf_f = roto_flag(uvf_m, uvf_data, flag_percentile_time=flag_percentile_time,
