@@ -925,7 +925,7 @@ def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=95., flag_percentile_freq
     flagged_channels = np.all(uvf_apriori.flag_array[:,:,0], axis=0)
     flagged_times = np.all(uvf_apriori.flag_array[:, :, 0], axis=1)
     if not np.all(np.isclose(~uvf_apriori.flag_array[:, :, 0].squeeze(), np.outer((~flagged_times).astype(float),
-                                                                                  (~flagged_freqs).astype(float)))):
+                                                                                  (~flagged_channels).astype(float)))):
         raise ValueError("Must provide separable initial flags!")
 
     uvf_f = uvf_m.copy()
