@@ -1130,7 +1130,7 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
             max_unflagged_chan = np.max(unflagged_chans)
             min_unflagged_chan = np.min(unflagged_chans)
             uvf_data.flag_array[:, :min_unflagged_chan + kf_size] = True
-            uvf_data.flag_array[:, max_unflagged_chan + 1 -kf_size] = True
+            uvf_data.flag_array[:, max_unflagged_chan + 1 -kf_size:] = True
         if len(unflagged_integ) > 0:
             max_unflagged_integ = np.max(unflagged_integ)
             min_unflagged_integ = np.min(unflagged_integ)
