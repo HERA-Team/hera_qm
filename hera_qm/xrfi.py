@@ -1025,7 +1025,7 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                     if fnum == 0:
                         uvf_apriori = _uvf_apriori
                     else:
-                        uvf_apriori &= _uvf_apriori
+                        uvf_apriori.flag_array &= _uvf_apriori.flag_array
             elif isinstance(flag_files, str):
                 uvf_apriori = UVFlag(flag_files)
         elif flag_file_type == 'uvcal':
@@ -1077,7 +1077,7 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                 else:
                     uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
                                           check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-                    uvf_data &= _uvf_data
+                    uvf_data.flag_array &= _uvf_data.flag_array
         else:
             # if we are in flag_only_mode, data_files are expected to be metrics.
             uvf_data = uvf_apriori
