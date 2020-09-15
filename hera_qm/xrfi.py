@@ -1016,6 +1016,14 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
         raise ValueError("correlations %s not valid. Must bin in ['cross', 'auto', 'both']")
     if flag_files is not None:
         if flag_file_type == 'uvflag':
+            if isinstance(flag_files, list):
+                for fnum, flag_file in enumerate(flag_files):
+                    if isinstance(flag_file.__subclass__, UVFlag):
+                        _uvf_apriori = UVFlag(flag_file)
+                        if fnum == 0:
+                            uvf_apriori = _uvf_apriori
+                        else:
+                            uvf_apriori &= _uvf_apriori                
             uvf_apriori = UVFlag(flag_files)
         elif flag_file_type == 'uvcal':
             uvf_apriori = UVCal()
