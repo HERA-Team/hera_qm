@@ -1104,7 +1104,12 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
                              center_metric=not(metric_only_mode), reset_weights=not(metric_only_mode),
                              run_check=run_check, check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
-
+    if flag_kernel:
+        # flag edge effects.
+        uvf_data.flag_array[:kt_size] = True
+        uvf_data.flag_array[-kt_size:] = True
+        uvf_data.flag_array[:, :kf_size] = True
+        uvf_data.flag_array[:, -kf_size] = True
     # now perform roto_flag
     if not metric_only_mode:
         uvf_f = roto_flag(uvf_m, uvf_data, flag_percentile_time=flag_percentile_time,
