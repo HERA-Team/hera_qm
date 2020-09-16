@@ -1085,7 +1085,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
         else:
             # if we are in flag_only_mode, data_files are expected to be metrics.
             uvf_data = uvf_apriori
-            for filenumber, filename in data_files:
+            for filenumber, filename enumerate(in data_files):
                 _uvf_m = UVFlag(filename)
                 if filenumber == 0:
                     uvf_m = _uvf_m
@@ -1151,7 +1151,10 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
     # now write out flags
     if write_output and isinstance(data_files, list):
         outdir = resolve_xrfi_path('', data_files[0])
-        basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:3])
+        if not flag_only_mode:
+            basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:3])
+        else:
+            basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
         outpath = os.path.join(outdir, basename + f'.{output_label}.flags.h5')
         if uvf_f is not None:
             uvf_f.write(outpath, clobber=clobber)
