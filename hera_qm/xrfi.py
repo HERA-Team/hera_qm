@@ -1161,14 +1161,17 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
             if cal_files is not None:
                 uvc_a = UVCal()
                 # write flags to calibration files.
-                for cfile in cal_files:
+                for cnum, cfile in enumerate(cal_files):
                     uvc_a.read_calfits(cfile)
-                    uvf_file = uvf_f.select(times=uvc_a.time_array, inplace=False)
+                    ntimes = uvc_a.Ntimes
+                    assert np.all(np.isclose(uvf_f.time_array[cnum*ntimes:(1+cnum)*ntimes], uvc_a.time_array, rtol=1e-15))
+                    uvf_file = uvf_f.select(times=uvf_f.time_array[cnum*ntimes:(1+cnum)*ntimes], inplace=False)
+                    history = 'flaggind derived from roto_flag.'
                     flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
                                run_check=run_check, check_extra=check_extra,
                                run_check_acceptability=run_check_acceptability)
                     output_file = cfile.replace('.calfits', f'.{output_label}.calfits')
-                    uvc_a.write_calfits(clobber=True)
+                    uvc_a.write_calfits(filename=output_file, clobber=True)
 
         outpath = os.path.join(outdir, basename + f'.{output_label}.metrics.h5')
         if uvf_m is not None:
