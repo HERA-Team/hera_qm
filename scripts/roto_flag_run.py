@@ -18,13 +18,14 @@ if args.use_autos:
 if args.flag_files == 'none':
     args.flag_files = None
 
-xrfi.roto_flag_run(data_files=args.data_files, flag_files=args.flag_files,
-                   a_priori_flag_yaml=args.a_priori_flag_yaml,
-                   flag_percentile_freq=args.flag_percentile_freq,
-                   flag_percentile_time=args.flag_percentile_time,
-                   Nwf_per_load=args.Nwf_per_load,
-                   niters=args.niters, correlations=correlations,
-                   kt_size=args.kt_size, kf_size=args.kf_size,
-                   output_label=args.output_label, clobber=args.clobber,
-                   flag_kernel=True, cal_files=args.cal_files,
-                   metric_only_mode=args.metric_only, flag_only_mode=args.flag_only)
+if not args.flag_only or args.fname == args.data_files[0]:
+    xrfi.roto_flag_run(data_files=args.data_files, flag_files=args.flag_files,
+                       a_priori_flag_yaml=args.a_priori_flag_yaml,
+                       flag_percentile_freq=args.flag_percentile_freq,
+                       flag_percentile_time=args.flag_percentile_time,
+                       Nwf_per_load=args.Nwf_per_load,
+                       niters=args.niters, correlations=correlations,
+                       kt_size=args.kt_size, kf_size=args.kf_size,
+                       output_label=args.output_label, clobber=args.clobber,
+                       flag_kernel=True, cal_files=args.cal_files,
+                       metric_only_mode=args.metric_only, flag_only_mode=args.flag_only)
