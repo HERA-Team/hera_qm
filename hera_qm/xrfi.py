@@ -938,7 +938,7 @@ def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=95., flag_percentile_freq
 
     return uvf_f
 
-def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, alg='detrend_medfilt',
+def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_flag_yaml=None, alg='detrend_medfilt',
                   flag_percentile_time=95., flag_percentile_freq=95., niters=6, Nwf_per_load=None,
                   wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max',
                   kt_size=32, kf_size=8, use_data_flags=True, write_output=True,
@@ -954,6 +954,8 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
         strings for paths to flag files.
     a_priori_flag_yaml: str
         path to a priori yaml file.
+    cal_files: str
+        list of calibration files to write flags too.
     flag_percentile_time : optional float
       percentile of integration metrics collapsed along the freq axis to flag
       in each iteration.
@@ -1153,6 +1155,18 @@ def roto_flag_run(data_files=None, flag_files=None,  a_priori_flag_yaml=None, al
         outpath = os.path.join(outdir, basename + f'.{output_label}.flags.h5')
         if uvf_f is not None:
             uvf_f.write(outpath, clobber=clobber)
+            if cal_files is not None:
+                uvc_a = UVCal()
+                # write flags to calibration files.
+                for cfile in cal_files:
+                    uvc_a.read_calfits(cfile)
+                    uvf_file = uvf_f.select(times=uvc_a.time_array, inplace=False)
+                    flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
+                               run_check=run_check, check_extra=check_extra,
+                               run_check_acceptability=run_check_acceptability)
+                    output_file = cfile.replace('.calfits', f'.{output_label}.calfits')
+                    uvc_a.write_calfits(clobber=True)
+
         outpath = os.path.join(outdir, basename + f'.{output_label}.metrics.h5')
         if uvf_m is not None:
             uvf_m.write(outpath, clobber=clobber)

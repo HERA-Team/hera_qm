@@ -121,6 +121,8 @@ def get_metrics_ArgumentParser(method_name):
                         help='list of data files to run roto-flag on.')
         ap.add_argument('--flag_files', type=str, nargs='+', default=None,
                         help='list of flag files to apply before running roto-flag.')
+        ap.add_argument('--cal_files', type=str, nargs='+', default=None,
+                        help='list of calibration files to add flags too.')
         ap.add_argument('--a_priori_flag_yaml', type=str, default=None,
                         help='a priori flagging yaml to use with roto-flag.')
         ap.add_argument('--flag_percentile_freq', type=float, default=95.,
