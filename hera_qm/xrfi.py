@@ -932,8 +932,8 @@ def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=95., flag_percentile_freq
     uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
                   run_check_acceptability=run_check_acceptability)
 
-    uvf_f.flag_array[:, :, 0] = roto_flag_helper(metric_waterfall=uvf_m.metric_array[:, :, 0].squeeze(), time_flags_init=uvf_f.flag_array[:, 0, 0].squeeze(),
-                                                  freq_flags_init=uvf_f.flag_array[0, :, 0].squeeze(), flag_percentile_time=flag_percentile_time,
+    uvf_f.flag_array[:, :, 0] = roto_flag_helper(metric_waterfall=uvf_m.metric_array[:, :, 0].squeeze(), time_flags_init=flagged_times,
+                                                  freq_flags_init=flagged_channels, flag_percentile_time=flag_percentile_time,
                                                   flag_percentile_freq=flag_percentile_freq)
 
     return uvf_f
@@ -1036,6 +1036,8 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
             uvf_apriori = UVCal()
             uvf_apriori.read(flag_files)
             uvf_apriori = UVFlag(uvf_apriori, mode='flag', copy_flags=True, label='A priori flags.')
+            uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
+                                     check_extra=check_extra, run_check_acceptability=run_check_acceptability)
         else:
             raise ValueError("flag files must either by uvcal or uvflag files.")
     else:
