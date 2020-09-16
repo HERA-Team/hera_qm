@@ -1085,7 +1085,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
         else:
             # if we are in flag_only_mode, data_files are expected to be metrics.
             uvf_data = uvf_apriori
-            for filenumber, filename enumerate(in data_files):
+            for filenumber, filename in enumerate(data_files):
                 _uvf_m = UVFlag(filename)
                 if filenumber == 0:
                     uvf_m = _uvf_m
