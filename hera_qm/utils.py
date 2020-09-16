@@ -147,7 +147,7 @@ def get_metrics_ArgumentParser(method_name):
                         help='if true, only compute metric. do not perform any flagging.')
         ap.add_argument('--flag_only', default=False, action='store_true',
                         help='if true, only compute flags, data files are metrics.')
-        ap.add_argument('--fname', default=None, type='str', help='file name used to determine whether roto_flag will be run in flag_only mode.')
+        ap.add_argument('--fname', default=None, type=str, help='file name used to determine whether roto_flag will be run in flag_only mode.')
     elif method_name == 'xrfi_h1c_run':
         ap.prog = 'xrfi_h1c_run.py'
         ap.add_argument('--infile_format', default='miriad', type=str,
