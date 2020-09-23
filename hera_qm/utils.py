@@ -135,6 +135,8 @@ def get_metrics_ArgumentParser(method_name):
                         help='if true, include autos (not just crosses) in the metric.')
         ap.add_argument('--output_label', default='roto_flags', type=str,
                         help='an optional identifying label.')
+        ap.add_argument('--cal_label', default='roto_flags', type=str,
+                        help='an optional identifying label for cal solutions.')
         ap.add_argument('--kt_size', default=32, type=int,
                         help='integer size of convolution kernel in time.')
         ap.add_argument('--kf_size', default=8, type=int,

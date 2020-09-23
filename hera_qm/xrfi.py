@@ -942,7 +942,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                   flag_percentile_time=95., flag_percentile_freq=95., niters=6, Nwf_per_load=None,
                   wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max',
                   kt_size=32, kf_size=8, use_data_flags=True, write_output=True,
-                  output_label='roto_flags', correlations='cross', clobber=False,
+                  output_label='roto_flags', cal_label='roto_flags', correlations='cross', clobber=False,
                   metric_only_mode=False, flag_only_mode=False, flag_file_type='uvflag',
                   flag_kernel=True,
                   run_check=True, check_extra=True, run_check_acceptability=True):
@@ -997,6 +997,8 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
       Default is True.
     output_label : str, optional
       An identifying string.
+    cal_label : str, optional
+      label string to add to cal files.
     clobber : bool, optional
       Overwrite outputs.
     metric_only_mode : bool, optional
@@ -1172,7 +1174,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                     flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
                                run_check=run_check, check_extra=check_extra,
                                run_check_acceptability=run_check_acceptability)
-                    output_file = cfile.replace('.calfits', f'.{output_label}.calfits')
+                    output_file = cfile.replace('.calfits', f'.{cal_label}.calfits')
                     uvc_a.write_calfits(filename=output_file, clobber=True)
 
         outpath = os.path.join(outdir, basename + f'.{output_label}.metrics.h5')

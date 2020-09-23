@@ -28,4 +28,5 @@ if not args.flag_only or args.fname == args.data_files[0]:
                        kt_size=args.kt_size, kf_size=args.kf_size,
                        output_label=args.output_label, clobber=args.clobber,
                        flag_kernel=True, cal_files=args.cal_files,
+                       cal_label=args.cal_label,
                        metric_only_mode=args.metric_only, flag_only_mode=args.flag_only)
