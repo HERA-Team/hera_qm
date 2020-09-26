@@ -944,7 +944,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                   kt_size=32, kf_size=8, use_data_flags=True, write_output=True,
                   output_label='roto_flags', cal_label='roto_flags', correlations='cross', clobber=False,
                   metric_only_mode=False, flag_only_mode=False, flag_file_type='uvflag',
-                  flag_kernel=True,
+                  flag_kernel=True, modified_z_score=False,
                   run_check=True, check_extra=True, run_check_acceptability=True):
     """
     Driver for roto-flag
@@ -1026,7 +1026,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                 for fnum, flag_file in enumerate(flag_files):
                     if isinstance(flag_file, str):
                         _uvf_apriori = UVFlag(flag_file)
-                    elif isinstance(flag_file.__class__, UVFlag):
+                    elif issubclass(flag_file.__class__, UVFlag):
                         _uvf_apriori = flag_file
                     if fnum == 0:
                         uvf_apriori = _uvf_apriori
@@ -1090,16 +1090,23 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
             # if we are in flag_only_mode, data_files are expected to be metrics.
             uvf_data = uvf_apriori
             for filenumber, filename in enumerate(data_files):
-                _uvf_m = UVFlag(filename)
+                if isinstance(filename, str):
+                    _uvf_m = UVFlag(filename)
+                elif issubclass(filename.__class__, UVFlag):
+                    _uvf_m = filename
                 if filenumber == 0:
                     uvf_m = _uvf_m
                 else:
                     uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
                                           check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-
-        uvf_m, _ = xrfi_pipe(uvf_m, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg,
-                            center_metric=not(metric_only_mode), reset_weights=not(metric_only_mode),
-                            run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+        if alg == 'zscore_full_array':
+            uvf_m, _ = chi_sq_pipe(uvf_m, alg=alg, modified=modified_z_score, skip_flags=True, reset_weights=not(metric_only_mode),
+                                   center_metric=not(metric_only_mode), run_check=run_check, check_extra=check_extra,
+                                   run_check_acceptability=run_check_acceptability)
+        else:
+            uvf_m, _ = xrfi_pipe(uvf_m, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg,
+                                center_metric=not(metric_only_mode), reset_weights=not(metric_only_mode),
+                                run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
     else:
         uv = copy.deepcopy(data_files)
         if not flag_only_mode:
@@ -1727,8 +1734,9 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
 
 
 def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
-                sig_adj=2.0, label='', run_check=True,
-                check_extra=True, run_check_acceptability=True):
+                sig_adj=2.0, label='',wf_method='quadmean',
+                center_metric=False, skip_flags=False, reset_weights=False,
+                run_check=True, check_extra=True, run_check_acceptability=True):
     """Zero-center and normalize the full total chi squared array, flag, and watershed.
 
     Parameters
@@ -1748,6 +1756,8 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
+    wf_method :  str, {"quadmean", "absmean", "mean", "or", "and"}
+        How to collapse the dimension(s) to form a single waterfall.
     check_extra : bool
         Option to check optional parameters as well as required ones.
     run_check_acceptability : bool
@@ -1763,28 +1773,36 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
         A UVFlag object with flags after watershed.
 
     """
-    uvf_m = calculate_metric(uv, alg, cal_mode='tot_chisq', modified=modified,
-                             run_check=run_check, check_extra=check_extra,
-                             run_check_acceptability=run_check_acceptability)
-    uvf_m.label = label
-    uvf_m.to_waterfall(keep_pol=False, run_check=run_check,
-                       check_extra=check_extra,
-                       run_check_acceptability=run_check_acceptability)
+    if not issubclass(uv.__class__, UVFlag):
+        uvf_m = calculate_metric(uv, alg, cal_mode='tot_chisq', modified=modified,
+                                 run_check=run_check, check_extra=check_extra,
+                                 run_check_acceptability=run_check_acceptability)
+        uvf_m.label = label
+        uvf_m.to_waterfall(keep_pol=False, run_check=run_check,
+                           check_extra=check_extra, wf_method=wf_method,
+                           run_check_acceptability=run_check_acceptability)
+    else:
+        uvf_m = uv
     # This next line resets the weights to 1 (with data) or 0 (no data) to equally
     # combine with the other metrics.
-    uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
+    if reset_weights:
+        uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
     alg_func = algorithm_dict[alg]
     # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
-    uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
-                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
+    if center_metric:
+        uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
+                                               flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
     # Flag and watershed on waterfall
-    uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
-                 check_extra=check_extra,
-                 run_check_acceptability=run_check_acceptability)
-    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False,
-                             run_check=run_check, check_extra=check_extra,
-                             run_check_acceptability=run_check_acceptability)
-    uvf_fws.label += ' Flags.'
+    if not skip_flags:
+        uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
+                     check_extra=check_extra,
+                     run_check_acceptability=run_check_acceptability)
+        uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False,
+                                 run_check=run_check, check_extra=check_extra,
+                                 run_check_acceptability=run_check_acceptability)
+        uvf_fws.label += ' Flags.'
+    else:
+        uvf_fws = None
     return uvf_m, uvf_fws
 
 def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
