@@ -1026,7 +1026,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                 for fnum, flag_file in enumerate(flag_files):
                     if isinstance(flag_file, str):
                         _uvf_apriori = UVFlag(flag_file)
-                    elif isinstance(flag_file.__subclass__, UVFlag):
+                    elif isinstance(flag_file.__class__, UVFlag):
                         _uvf_apriori = flag_file
                     if fnum == 0:
                         uvf_apriori = _uvf_apriori
