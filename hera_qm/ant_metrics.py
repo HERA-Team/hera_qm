@@ -431,7 +431,7 @@ class AntennaMetrics():
 
         self.abs_vis_stats = {}
         for blg in bl_load_groups:
-            data, flags, _ = self.hd.read(bls=blg)
+            data, flags, _ = self.hd.read(bls=blg, axis='blt')
             self.abs_vis_stats.update(time_freq_abs_vis_stats(data, flags))
 
     def _find_totally_dead_ants(self, verbose=False):
