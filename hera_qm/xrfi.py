@@ -1581,7 +1581,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             # iterate over baseline chunks
             for loadnum in range(nloads):
                 # read in chunk
-                uv.read(uv_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                uv.read(uv_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load], axis='blt')
                 if a_priori_flag_yaml is not None:
                     uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
                 # if no uvf apriori was provided.
