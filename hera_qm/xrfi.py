@@ -1182,11 +1182,11 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                                run_check=run_check, check_extra=check_extra,
                                run_check_acceptability=run_check_acceptability)
                     output_file = cfile.replace('.calfits', f'.{cal_label}.calfits')
-                    uvc_a.write_calfits(filename=output_file, clobber=True)
+                    uvc_a.write_calfits(filename=output_file, clobber=clobber)
                     # write a flag file along with calfits.
                     basename_file = '.'.join(os.path.basename(cfile).split('.')[0:3])
                     outpath_file = os.path.join(outdir, basename_file + f'.{output_label}.flags.h5')
-                    uvf_file.write(outpath_file, clobber=True)
+                    uvf_file.write(outpath_file, clobber=clobber)
 
         outpath = os.path.join(outdir, basename + f'.{output_label}.metrics.h5')
         if uvf_m is not None:
