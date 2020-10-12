@@ -1174,6 +1174,13 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                 # write flags to calibration files.
                 for cnum, cfile in enumerate(cal_files):
                     uvc_a.read_calfits(cfile)
+                    # select frequencies
+                    freqs_to_load = []
+                    times_to_load = []
+                    for f in uvc_a.freqs:
+                        if np.any(np.isclose(f, uvf_f.freq_array))
+                        freqs_to_load.append(f)
+                    uvc_a.select(freqs=freqs_to_load)
                     ntimes = uvc_a.Ntimes
                     assert np.all(np.isclose(uvf_f.time_array[cnum*ntimes:(1+cnum)*ntimes], uvc_a.time_array, rtol=1e-15))
                     uvf_file = uvf_f.select(times=uvf_f.time_array[cnum*ntimes:(1+cnum)*ntimes], inplace=False)
