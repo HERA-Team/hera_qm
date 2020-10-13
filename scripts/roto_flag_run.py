@@ -30,3 +30,5 @@ if not args.flag_only or args.fname == args.data_files[0]:
                        flag_kernel=True, cal_files=args.cal_files,
                        cal_label=args.cal_label,
                        metric_only_mode=args.metric_only, flag_only_mode=args.flag_only)
+else:
+    print("File not the first in list. Skipping!")

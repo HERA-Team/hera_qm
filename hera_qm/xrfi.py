@@ -18,6 +18,7 @@ import warnings
 import glob
 import re
 import copy
+import sys
 
 #############################################################################
 # Utility functions
@@ -1056,36 +1057,38 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                 bls = [app for app in bls if app[1] == app[0]]
             nbls = len(bls)
             if nbls == 0:
-                raise ValueError("No baselines selected!")
-            if Nwf_per_load is None:
-                Nwf_per_load = nbls
-            nloads = int(np.ceil(nbls / Nwf_per_load))
-            for loadnum in range(nloads):
-                uv.read(data_files)
-            bls = uv.get_antpairpols()
-            # apply yamls.
-            for loadnum in range(nloads):
-                uv.read(data_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
-                if not use_data_flags:
-                    uv.flag_array[:] = False
-                if a_priori_flag_yaml is not None:
-                    uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
-                if flag_files is not None:
-                    flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
-                _uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
-                _uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check)
+                warnings.warn("No baselines selected!")
+                sys.exit(0)
+            else:
+                if Nwf_per_load is None:
+                    Nwf_per_load = nbls
+                nloads = int(np.ceil(nbls / Nwf_per_load))
+                for loadnum in range(nloads):
+                    uv.read(data_files)
+                bls = uv.get_antpairpols()
+                # apply yamls.
+                for loadnum in range(nloads):
+                    uv.read(data_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                    if not use_data_flags:
+                        uv.flag_array[:] = False
+                    if a_priori_flag_yaml is not None:
+                        uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
+                    if flag_files is not None:
+                        flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
+                    _uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+                    _uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check)
 
-                # calculate metric.
-                _uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method,
-                                      alg=alg, center_metric=False, reset_weights=False,
-                                      run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-                if loadnum == 0:
-                    uvf_m = _uvf_m
-                    uvf_data = _uvf_data
-                else:
-                    uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
-                                          check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-                    uvf_data.flag_array &= _uvf_data.flag_array
+                    # calculate metric.
+                    _uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method,
+                                          alg=alg, center_metric=False, reset_weights=False,
+                                          run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                    if loadnum == 0:
+                        uvf_m = _uvf_m
+                        uvf_data = _uvf_data
+                    else:
+                        uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
+                                              check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                        uvf_data.flag_array &= _uvf_data.flag_array
         else:
             # if we are in flag_only_mode, data_files are expected to be metrics.
             uvf_data = uvf_apriori
@@ -1189,11 +1192,12 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                                run_check=run_check, check_extra=check_extra,
                                run_check_acceptability=run_check_acceptability)
                     output_file = cfile.replace('.calfits', f'.{cal_label}.calfits')
+                    output_file = output_file.replace('.sum.', f'.sum.%s.'%(output_label.split('.')[0]))
                     uvc_a.write_calfits(filename=output_file, clobber=clobber)
                     # write a flag file along with calfits.
                     basename_file = '.'.join(os.path.basename(cfile).split('.')[0:3])
                     outpath_file = os.path.join(outdir, basename_file + f'.{output_label}.flags.h5')
-                    uvf_file.write(outpath_file, clobber=clobber)
+                    #uvf_file.write(outpath_file, clobber=clobber)
 
         outpath = os.path.join(outdir, basename + f'.{output_label}.metrics.h5')
         if uvf_m is not None:
