@@ -945,7 +945,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                   kt_size=32, kf_size=8, use_data_flags=True, write_output=True,
                   output_label='roto_flags', cal_label='roto_flags', correlations='cross', clobber=False,
                   metric_only_mode=False, flag_only_mode=False, flag_file_type='uvflag',
-                  flag_kernel=True, modified_z_score=False,
+                  flag_kernel=True, modified_z_score=False, flag_zero_times=True,
                   run_check=True, check_extra=True, run_check_acceptability=True):
     """
     Driver for roto-flag
@@ -1010,6 +1010,9 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
       and performs roto-flagging.
     flag_kernel : bool, optional
       If True, flag edge effects from kernel.
+    flag_zero_times : bool, optional
+        If True, flag times that are all zero in the data.
+        default is True.
     run_check : bool
       Option to check for the existence and proper shapes of parameters
       on UVFlag Object.
@@ -1073,10 +1076,16 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                         uv.flag_array[:] = False
                     if a_priori_flag_yaml is not None:
                         uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
+                    if flag_zero_times:
+                        # flag all times that are completely zero in uv
+                        for tind in range(uv.Ntimes):
+                            if np.all(np.isclose(uv.data_array[tind*uv.Nbls:tind*(uv.Nbls+1)], 0.0)):
+                                uv.flag_array[tind*uv.Nbls:tind*(uv.Nbls+1)] = True
                     if flag_files is not None:
                         flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
                     _uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
                     _uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check)
+
 
                     # calculate metric.
                     _uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method,
