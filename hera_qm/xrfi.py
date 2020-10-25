@@ -1079,8 +1079,8 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                     if flag_zero_times:
                         # flag all times that are completely zero in uv
                         for tind in range(uv.Ntimes):
-                            if np.all(np.isclose(uv.data_array[tind*uv.Nbls:tind*(uv.Nbls+1)], 0.0)):
-                                uv.flag_array[tind*uv.Nbls:tind*(uv.Nbls+1)] = True
+                            if np.all(np.isclose(uv.data_array[tind * uv.Nbls:(1 + tind)* uv.Nbls], 0.0)):
+                                uv.flag_array[tind * uv.Nbls:(1 + tind) * uv.Nbls] = True
                     if flag_files is not None:
                         flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
                     _uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
