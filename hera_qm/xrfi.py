@@ -899,6 +899,8 @@ def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3.,
 
     Use median to collapses to one dimension, thresholds, then broadcasts back to waterfall.
     Uses the 1D watershed algorithm to look for moderate outliers adjacent to stronger outliers.
+    Non-finite metric values (e.g. from a priori flags) are excluded using np.nanmedian from
+    the collapse to 1D, but treated as flagged for the purpose of adjacency-based flagging.
 
     Parameters
     ----------
@@ -946,17 +948,23 @@ def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3.,
     uvf_f = uvf_m.copy()
     uvf_f.to_flag(run_check=run_check, check_extra=check_extra,
                   run_check_acceptability=run_check_acceptability)
-    # Mask invalid values. Masked medians are slow, but these are done only on waterfalls.
-    data = np.ma.masked_array(uvf_m.metric_array, ~np.isfinite(uvf_m.metric_array))
+
+    # handle a priori flags as nans and use nanmedians
+    data = copy.deepcopy(uvf_m.metric_array)
+    data[~np.isfinite(data)] = np.nan
+
     # Collapse to 1D and calculate z scores
-    spec = np.ma.median(data, axis=(0, 2))
-    # NB: The zscore calculation does not recognize the masked above.
+    spec = np.nanmedian(data, axis=(0, 2))
     zspec = modzscore_1d(spec, detrend=detrend)
-    tseries = np.ma.median(data, axis=(1, 2))
+    tseries = np.nanmedian(data, axis=(1, 2))
     ztseries = modzscore_1d(tseries, detrend=detrend)
-    # Flag based on zscores and thresholds
+
+    # Flag based on zscores and thresholds, treating a priori flags as triggering nsig_f/nsig_t
+    zspec[~np.isfinite(zspec)] = nsig_f
     f_flags = _ws_flag_waterfall(np.abs(zspec), np.abs(zspec) >= nsig_f, nsig=nsig_f_adj)
     uvf_f.flag_array[:, f_flags, :] = True
+
+    tseries[~np.isfinite(tseries)] = nsig_t
     t_flags = _ws_flag_waterfall(np.abs(ztseries), np.abs(ztseries) >= nsig_t, nsig=nsig_t_adj)
     uvf_f.flag_array[t_flags, :, :] = True
 
