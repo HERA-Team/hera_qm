@@ -1932,7 +1932,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     # gain modes for each iteration.
     modes = ['gain', 'tot_chisq', None] #calibration modes
     # This is a list of booleans determining whether a filter is to be run for each iteration.
-    filter_switches = [omnical_median_filter, omnical_chi2_mean_filter, omnical_zscore_filter]
+    filter_switches = [omnical_median_filter, omnical_chi2_median_filter, omnical_zscore_filter]
     # Here are the names of omnical metric objects to be iterated over during median filter
     uvmetrics = ['uvf_og', 'uvf_ox', 'uvf_oz']
     # Names of omnical flag objects.
@@ -1969,7 +1969,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     uvmetrics = ['uvf_ag', 'uvf_ax', 'uvf_az']
     uvflags = ['uvf_agf', 'uvf_axf', 'uvf_azf']
     input_uvs = ['uvc_a', 'uvc_a', 'uvc_a']
-    filter_switches = [abscal_median_filter, abscal_chi2_mean_filter, abscal_zscore_filter]
+    filter_switches = [abscal_median_filter, abscal_chi2_median_filter, abscal_zscore_filter]
     # iterate through abscal median filters.
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
             vdict['uvc_a'], vdict[mf], vdict[ff], vdict['uvf_apriori'], metrics, flags = xrfi_run_step(uv=vdict[input], uv_files=inputs_dict['acalfits_files'], alg=alg, kt_size=kt_size, kf_size=kf_size,
@@ -2055,7 +2055,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     cal_algs = ['detrend_meanfilt', 'detrend_meanfilt', 'zscore_full_array']
     labels = [' gains, mean filter.', ' chisq, mean filter.', ' overall z-score of chisq.']
     modes = ['gain', 'tot_chisq', None]
-    filter_switches = [omnical_median_filter, omnical_chi2_mean_filter, omnical_zscore_filter]
+    filter_switches = [omnical_mean_filter, omnical_chi2_mean_filter, omnical_zscore_filter]
     uvmetrics = ['uvf_og2', 'uvf_ox2', 'uvf_oz2']
     uvflags = ['uvf_ogf2', 'uvf_oxf2', 'uvf_ozf2']
     input_uvs = ['uvc_o', 'uvc_o', 'uvc_o']
@@ -2074,7 +2074,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     uvmetrics = ['uvf_ag2', 'uvf_ax2', 'uvf_az2']
     uvflags = ['uvf_agf2', 'uvf_axf2', 'uvf_azf2']
     input_uvs = ['uvc_a', 'uvc_a', 'uvc_a']
-    filter_switches = [abscal_median_filter, abscal_chi2_mean_filter, abscal_zscore_filter]
+    filter_switches = [abscal_mean_filter, abscal_chi2_mean_filter, abscal_zscore_filter]
     for mf, ff, switch, alg, label, mode, input, api in zip(uvmetrics, uvflags, filter_switches, cal_algs, labels, modes, input_uvs, apply_inits):
             vdict['uvc_a'], vdict[mf], vdict[ff], _, metrics, flags = xrfi_run_step(uv=vdict[input], alg=alg, kt_size=kt_size, kf_size=kf_size, reinitialize=False,
                                                                                     xants=xants, cal_mode=mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
