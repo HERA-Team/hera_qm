@@ -829,6 +829,11 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
     -------
         Ntimes x Nfreqs array of bool flags.
     """
+    if t_collapse_mode not in ['max', 'mean', 'quadmean']:
+        raise ValueError("t_collapse_mode must be in ['mean', 'quadmean', 'max']")
+    if f_collapse_mode not in ['max', 'mean', 'quadmean']:
+        raise ValueError("f_collapse_mode must be in ['mean', 'quadmean', 'max']")
+
     nt = metric_waterfall.shape[0]
     nf = metric_waterfall.shape[1]
     tflags = [time_flags_init]
@@ -859,9 +864,9 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
                 if f_collapse_mode.lower() == 'max':
                     f_collapse[chan] = np.max(w2avg)
                 elif f_collapse_mode.lower() == 'mean':
-                    f_collapse_mode[chan] = np.mean(w2avg)
-                elif f_collapse_mode.lwer() == 'quadmean':
-                    f_collapse_mode[chan] = np.linalg.norm(w2avg)
+                    f_collapse[chan] = np.mean(w2avg)
+                elif f_collapse_mode.lower() == 'quadmean':
+                    f_collapse[chan] = np.linalg.norm(w2avg)
         flagged_freqs = (f_collapse > np.percentile(f_collapse[~fflags[iteration - 1]], flag_percentile_freq))
 
         tflags.append(flagged_times | tflags[-1])

@@ -420,6 +420,27 @@ def test_modzscore_1d():
     assert np.isclose(out[50], 500, rtol=.2)
     assert np.isclose(np.median(np.abs(out)), .67, rtol=.1)
 
+def test_roto_flag_helper():
+    waterfall = np.random.randn(100,100) * 1e-6
+    waterfall[:, 50] += 1000
+    waterfall[:, 10] += 100
+    waterfall[53, :] += 50
+    freq_flags_init = np.zeros(100, dtype=bool)
+    freq_flags_init[50] = True
+    time_flags_init = np.zeros(100, dtype=bool)
+    for coll in ['max', 'mean', 'quadmean']:
+        test_flags = xrfi.roto_flag_helper(waterfall, time_flags_init=time_flags_init,
+                                           freq_flags_init=freq_flags_init,
+                                           f_collapse_mode=coll, t_collapse_mode=coll)
+        assert np.all(test_flags[53, :])
+        assert np.all(test_flags[:, 50])
+        assert np.all(test_flags[:, 10])
+    # test collapse mode sanitation.
+    pytest.raises(ValueError, xrfi.roto_flag_helper, waterfall, time_flags_init, freq_flags_init,
+                  95, 85, 2, 'quadmeant')
+    pytest.raises(ValueError, xrfi.roto_flag_helper, waterfall, time_flags_init, freq_flags_init,
+                  95, 85, 2, 'quadmeant')
+
 
 def test_watershed_flag():
     # generate a metrics and flag UVFlag object
