@@ -13,6 +13,7 @@ history = ' '.join(sys.argv)
 
 xrfi.xrfi_run(args.ocalfits_files, args.acalfits_files, args.model_files,
               args.data_files, a_priori_flag_yaml=args.a_priori_flag_yaml,
+              a_priori_ants_only=args.a_priori_ants_only,
               history=history, xrfi_path=args.xrfi_path, throw_away_edges=not(args.keep_edge_times),
               kt_size=args.kt_size, kf_size=args.kf_size, sig_init=args.sig_init,
               sig_adj=args.sig_adj, ex_ants=args.ex_ants,

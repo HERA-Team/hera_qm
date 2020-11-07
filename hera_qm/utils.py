@@ -264,6 +264,8 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--a_priori_flag_yaml', default=None, type=str,
                         help=('Path to a priori flagging YAML with frequency, time, and/or '
                               'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))
+        ap.add_argument('--a_apriori_ants_only', default=False, action="store_true",
+                        help="If True, ignore frequeny and time flags in apriori yaml file (only use ant flags).")
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,
@@ -630,7 +632,8 @@ def strip_extension(path, return_ext=False):
 
 
 def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name=None,
-                     ant_indices_only=False, by_ant_pol=False, ant_pols=None):
+                     ant_indices_only=False, by_ant_pol=False, ant_pols=None,
+                     flag_ants=True, flag_freqs=True, flag_times=True):
     """Apply frequency and time flags to a UVData or UVCal object
 
     This function takes in a uvdata or uvcal object and applies
@@ -658,7 +661,15 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     ant_pols : list of str
         List of antenna polarizations strings e.g. 'Jee'. If not empty, strings in
         the YAML must be in here or an error is raised. Required if by_ant_pol is True.
-
+    flag_ants : bool, optional
+        specify whether or not to flag on antennas.
+        default is True.
+    flag_freqs : bool, optional
+        specify whether or not to flag frequencies.
+        default is True.
+    flag_times : bool, optional
+        specify whether or not to flag times
+        default is True.
     Returns
     -------
         uv : UVData or UVCal object
@@ -691,62 +702,70 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
 
     time_array = np.unique(uv.time_array)
     # loop over spws to apply frequency flags.
-    for spw in range(uv.Nspws):
-        flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[spw])
-        if np.any(flagged_channels >= uv.Nfreqs):
-            warnings.warn("Flagged channels were provided that exceed the maximum channel index. These flags are being dropped!")
-        if np.any(flagged_channels < 0):
-            warnings.warn("Flagged channels were provided with a negative channel index. These flags are being dropped!")
-        flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
-        if len(flagged_channels) > 0:
-            if issubclass(uv.__class__, UVData):
-                uv.flag_array[:, spw, flagged_channels, :] = True
-            elif issubclass(uv.__class__, UVCal):
-                uv.flag_array[:, spw, flagged_channels, :, :] = True
-    # now do times.
-    # get the integrations to flag
-    flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, lsts=lst_array, times=time_array)
-    # ony select integrations less then Ntimes
-    if np.any(flagged_integrations >= uv.Ntimes):
-        warnings.warn("Flagged integrations were provided that exceed the maximum integration index. These flags are being dropped!")
-    if np.any(flagged_integrations < 0):
-        warnings.warn("Flagged integrations were provided with a negative integration index. These flags are being dropped!")
-    flagged_integrations = flagged_integrations[(flagged_integrations>=0) & (flagged_integrations<=uv.Ntimes)]
-    if len(flagged_integrations) > 0:
-        flagged_times = time_array[flagged_integrations]
-        for time in flagged_times:
-            if issubclass(uv.__class__, UVData):
-                uv.flag_array[np.isclose(uv.time_array, time), :, :, :] = True
-            elif issubclass(uv.__class__, UVCal):
-                uv.flag_array[:, :, :, np.isclose(uv.time_array, time), :] = True
-    # now do antennas.
-    flagged_ants = metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=ant_indices_only,
-                                                      by_ant_pol=by_ant_pol, ant_pols=ant_pols)
-    npols = uv.flag_array.shape[-1]
-    if issubclass(uv.__class__, UVData):
-        pol_array = uv.polarization_array
-    elif issubclass(uv.__class__, UVCal):
-        pol_array = uv.jones_array
-    for ant in flagged_ants:
-        if isinstance(ant, int):
-            pol_selection = np.ones(npols, dtype=bool)
-            antnum = ant
-        elif isinstance(ant, (list, tuple, np.ndarray)):
-            pol_num = uvutils.jstr2num(ant[1], x_orientation=uv.x_orientation)
-            if pol_num in pol_array:
-                pol_selection = np.where(pol_array == pol_num)[0]
-            else:
-                pol_selection = np.zeros(npols, dtype=bool)
-            antnum = ant[0]
+    if flag_freqs:
+        for spw in range(uv.Nspws):
+            flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[spw])
+            if np.any(flagged_channels >= uv.Nfreqs):
+                warnings.warn("Flagged channels were provided that exceed the maximum channel index. These flags are being dropped!")
+            if np.any(flagged_channels < 0):
+                warnings.warn("Flagged channels were provided with a negative channel index. These flags are being dropped!")
+            flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
+            if len(flagged_channels) > 0:
+                if issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline'):
+                    uv.flag_array[:, spw, flagged_channels, :] = True
+                elif issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
+                    uv.flag_array[:, spw, flagged_channels, :, :] = True
+                elif isinstance(uv, UVFlag) and uv.type == 'waterfall':
+                    uv.flag_array[:, flagged_channels] = True
+    if flag_times:
+        # now do times.
+        # get the integrations to flag
+        flagged_integrations = metrics_io.read_a_priori_int_flags(a_priori_flag_yaml, lsts=lst_array, times=time_array)
+        # ony select integrations less then Ntimes
+        if np.any(flagged_integrations >= uv.Ntimes):
+            warnings.warn("Flagged integrations were provided that exceed the maximum integration index. These flags are being dropped!")
+        if np.any(flagged_integrations < 0):
+            warnings.warn("Flagged integrations were provided with a negative integration index. These flags are being dropped!")
+        flagged_integrations = flagged_integrations[(flagged_integrations>=0) & (flagged_integrations<=uv.Ntimes)]
+        if len(flagged_integrations) > 0:
+            flagged_times = time_array[flagged_integrations]
+            for time in flagged_times:
+                if issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline'):
+                    uv.flag_array[np.isclose(uv.time_array, time), :, :, :] = True
+                elif issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
+                    uv.flag_array[:, :, :, np.isclose(uv.time_array, time), :] = True
+            if isinstance(uv, UVFlag) and uv.type == 'waterfall':
+                uv.flag_array[flagged_integrations, :] = True
+
+    if flag_ants:
+        # now do antennas.
+        flagged_ants = metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=ant_indices_only,
+                                                          by_ant_pol=by_ant_pol, ant_pols=ant_pols)
+        npols = uv.flag_array.shape[-1]
         if issubclass(uv.__class__, UVData):
-            blt_selection = np.logical_or(uv.ant_1_array == antnum, uv.ant_2_array == antnum)
-            if np.any(blt_selection):
-                for bltind in np.where(blt_selection)[0]:
-                    uv.flag_array[bltind, :, :, pol_selection] = True
+            pol_array = uv.polarization_array
         elif issubclass(uv.__class__, UVCal):
-            ant_selection = uv.ant_array == antnum
-            if np.any(ant_selection):
-                for antind in np.where(ant_selection)[0]:
-                    uv.flag_array[antind, :, :, :, pol_selection] =True
+            pol_array = uv.jones_array
+        for ant in flagged_ants:
+            if isinstance(ant, int):
+                pol_selection = np.ones(npols, dtype=bool)
+                antnum = ant
+            elif isinstance(ant, (list, tuple, np.ndarray)):
+                pol_num = uvutils.jstr2num(ant[1], x_orientation=uv.x_orientation)
+                if pol_num in pol_array:
+                    pol_selection = np.where(pol_array == pol_num)[0]
+                else:
+                    pol_selection = np.zeros(npols, dtype=bool)
+                antnum = ant[0]
+            if issubclass(uv.__class__, UVData):
+                blt_selection = np.logical_or(uv.ant_1_array == antnum, uv.ant_2_array == antnum)
+                if np.any(blt_selection):
+                    for bltind in np.where(blt_selection)[0]:
+                        uv.flag_array[bltind, :, :, pol_selection] = True
+            elif issubclass(uv.__class__, UVCal):
+                ant_selection = uv.ant_array == antnum
+                if np.any(ant_selection):
+                    for antind in np.where(ant_selection)[0]:
+                        uv.flag_array[antind, :, :, :, pol_selection] =True
     # return uv with flags applied.
     return uv

@@ -1398,6 +1398,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                    dtype='uvcal', run_filter=True,
                    metrics=None, flags=None, modified_z_score=False,
                    a_priori_flag_yaml=None,
+                   a_priori_ants_only=False,
                    run_check=True,
                    check_extra=True,
                    run_check_acceptability=True):
@@ -1503,6 +1504,8 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
         Path to file containing a priori frequency, time, or antenna flags.
         Antenna flags will include all polarizations, even if only one pol is listed.
         See hera_qm.metrics_io.read_a_priori_[chan/int/ant]_flags() for details.
+    a_priori_ants_only : bool, optional
+        if True, only apply antenna flags from apriori yaml.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1554,7 +1557,9 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 # No partial i/o for uvcal yet.
                 uv.read_calfits(uv_files)
                 if a_priori_flag_yaml is not None:
-                    uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
+                    uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
+                                                   flag_times=not(a_priori_ants_only),
+                                                   flag_freqs=not(a_priori_ants_only))
             elif dtype=='uvdata':
                 uv = UVData()
                 uv.read(uv_files, read_data=False)
@@ -1571,7 +1576,9 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 else:
                     uv.read_calfits(uv_files)
                     if a_priori_flag_yaml is not None:
-                        uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
+                        uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
+                                                       flag_times=not(a_priori_ants_only),
+                                                       flag_freqs=not(a_priori_ants_only))
         # The following code applies if uv is a UVData object.
         if issubclass(uv.__class__, UVData):
             bls = uv.get_antpairpols()
@@ -1591,7 +1598,9 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 # read in chunk
                 uv.read(uv_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load], axis='blt')
                 if a_priori_flag_yaml is not None:
-                    uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
+                    uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
+                                                   flag_times=not(a_priori_ants_only),
+                                                   flag_freqs=not(a_priori_ants_only))
                 # if no uvf apriori was provided.
                 if no_uvf_apriori:
                     # and we want to calculate it
@@ -1696,6 +1705,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
 
 def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
              data_files=None, a_priori_flag_yaml=None,
+             a_priori_ants_only=False,
              omnical_median_filter=True, omnical_mean_filter=True,
              omnical_chi2_median_filter=True, omnical_chi2_mean_filter=True,
              omnical_zscore_filter=True,
@@ -1738,6 +1748,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         Path to file containing a priori frequency, time, or antenna flags.
         Antenna flags will include all polarizations, even if only one pol is listed.
         See hera_qm.metrics_io.read_a_priori_[chan/int/ant]_flags() for details.
+    a_priori_ants_only : bool, optional
+        If True, only apply apriori flags from ants but don't apply apriori
+        time and frequency flags.
     omnical_median_filter : bool, optional
         If true, run a median filter on omnical gains.
         Mean filters are run after median filters.
@@ -1962,6 +1975,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
                                                                                      calculate_uvf_apriori=True, modified_z_score=True,
                                                                                      a_priori_flag_yaml=a_priori_flag_yaml,
+                                                                                     a_priori_ants_only=a_priori_ants_only,
                                                                                      run_check=run_check, check_extra=check_extra,
                                                                                      run_check_acceptability=run_check_acceptability)
     # to do the abscal filters, just change
@@ -1978,6 +1992,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                      run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
                                                                                      calculate_uvf_apriori=True, modified_z_score=True,
                                                                                      a_priori_flag_yaml=a_priori_flag_yaml,
+                                                                                     a_priori_ants_only=a_priori_ants_only,
                                                                                      run_check=run_check, check_extra=check_extra,
                                                                                      run_check_acceptability=run_check_acceptability)
     # now we perform first-round filters on our uvdata inputs.
@@ -2007,6 +2022,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                                   run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
                                                                                                   correlations=corr, calculate_uvf_apriori=True, modified_z_score=True,
                                                                                                   a_priori_flag_yaml=a_priori_flag_yaml,
+                                                                                                  a_priori_ants_only=a_priori_ants_only,
                                                                                                   run_check=run_check, check_extra=check_extra,
                                                                                                   run_check_acceptability=run_check_acceptability)
     # Now that we've had a chance to load in all of the provided data products and
@@ -2068,6 +2084,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                     run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
                                                                                     calculate_uvf_apriori=False,
                                                                                     a_priori_flag_yaml=a_priori_flag_yaml,
+                                                                                    a_priori_ants_only=a_priori_ants_only,
                                                                                     run_check=run_check, check_extra=check_extra,
                                                                                     run_check_acceptability=run_check_acceptability)
     # Meanfilter abscal. Note that init flags are pased as apriori_flags.
@@ -2082,6 +2099,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                     run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvcal', apply_uvf_apriori=api,
                                                                                     calculate_uvf_apriori=False,
                                                                                     a_priori_flag_yaml=a_priori_flag_yaml,
+                                                                                    a_priori_ants_only=a_priori_ants_only,
                                                                                     run_check=run_check, check_extra=check_extra,
                                                                                     run_check_acceptability=run_check_acceptability)
     # mean filter omnivis and data files.
@@ -2102,6 +2120,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                run_filter=switch, Nwf_per_load=Nwf_per_load, dtype='uvdata', apply_uvf_apriori=api,
                                                                                calculate_uvf_apriori=False,
                                                                                a_priori_flag_yaml=a_priori_flag_yaml,
+                                                                               a_priori_ants_only=a_priori_ants_only,
                                                                                run_check=run_check, check_extra=check_extra,
                                                                                run_check_acceptability=run_check_acceptability)
     if len(metrics) > 0:
@@ -2531,7 +2550,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
 
 def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
                       nsig_f_adj=3., nsig_t_adj=3., flag_abscal=True,
-                      clobber=False,
+                      clobber=False, a_priori_flag_yaml=None,
                       run_check=True, check_extra=True,
                       run_check_acceptability=True):
     """Apply thresholding across all times/frequencies, using a full day of data.
@@ -2566,6 +2585,8 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
         If True, generate new abscal solutions with day thresholded flags.
     clobber : bool, optional
         If True, overwrite existing files. Default is False.
+    a_priori_flag_yaml : str, optional
+        string specifying apriori flagging yaml.
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -2647,7 +2668,11 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     outfile = '.'.join([basename, 'total_threshold_flags.h5'])
     outpath = os.path.join(outdir, outfile)
     uvf_total.write(outpath, clobber=clobber)
-
+    if a_priori_flag_yaml is not None:
+        uvf_total = apply_yaml_flags(uvf_total, a_priori_flag_yaml)
+        outfile = '.'.join([basename, 'total_threshold_flags_with_manual_flags.h5'])
+        outpath = os.path.join(outdir, outfile)
+    uvf_total.write(outpath, clobber=clobber)
     if flag_abscal:
         # Apply to abs calfits
         uvc_a = UVCal()
