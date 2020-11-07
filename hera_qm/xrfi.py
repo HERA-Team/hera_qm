@@ -2669,10 +2669,10 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     outpath = os.path.join(outdir, outfile)
     uvf_total.write(outpath, clobber=clobber)
     if a_priori_flag_yaml is not None:
-        uvf_total = apply_yaml_flags(uvf_total, a_priori_flag_yaml)
+        uvf_total = qm_utils.apply_yaml_flags(uvf_total, a_priori_flag_yaml)
         outfile = '.'.join([basename, 'total_with_manual_threshold_flags.h5'])
         outpath = os.path.join(outdir, outfile)
-    uvf_total.write(outpath, clobber=clobber)
+        uvf_total.write(outpath, clobber=clobber)
     if flag_abscal:
         # Apply to abs calfits
         uvc_a = UVCal()
