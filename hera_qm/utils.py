@@ -375,8 +375,9 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing files (default False)')
     elif method_name == 'day_threshold_run':
-        ap.prog = 'xrfi_day_threshold_run.py'
-        ap.add_argument('data_files', type=str, nargs='+', help='List of paths to \
+        ap.add_argument('--a_priori_xants_yaml', type=str, default=None,
+                        help=('path to a priori flagging YAML with xant information parsable by '
+                              'hera_qm.metrics_io.read_a_priori_ant_flags()'))        ap.add_argument('data_files', type=str, nargs='+', help='List of paths to \
                         the raw data files which have been used to calibrate and \
                         rfi flag so far.')
         ap.add_argument('--nsig_f', default=7.0, type=float,
@@ -396,6 +397,7 @@ def get_metrics_ArgumentParser(method_name):
                         list matches run_if_first (default None means always run)')
         ap.add_argument("--skip_making_flagged_abs_calfits", default=False, action="store_true",
                         help='If True, skip flagging the abscal files.')
+        ap.add_argument("--a_priori_flag_yaml", default=None, type=str, help="Flagging Y")
     elif method_name == 'xrfi_apply':
         ap.prog = 'xrfi_apply.py'
         ap.add_argument('--infile_format', default='miriad', type=str,
