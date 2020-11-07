@@ -10,6 +10,7 @@ import argparse
 import numpy as np
 from pyuvdata import UVData
 from pyuvdata import UVCal
+from pyuvdata import UVFlag
 from pyuvdata import utils as uvutils
 from . import metrics_io
 from pyuvdata.telescopes import KNOWN_TELESCOPES
@@ -264,7 +265,7 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--a_priori_flag_yaml', default=None, type=str,
                         help=('Path to a priori flagging YAML with frequency, time, and/or '
                               'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))
-        ap.add_argument('--a_apriori_ants_only', default=False, action="store_true",
+        ap.add_argument('--a_apriori_times_and_freqs', default=False, action="store_true",
                         help="If True, ignore frequeny and time flags in apriori yaml file (only use ant flags).")
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
@@ -676,10 +677,10 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
             input uvdata / uvcal but now with flags applied
     """
     # check that uv is UVData or UVCal
-    if not issubclass(uv.__class__, (UVData, UVCal)):
-        raise NotImplementedError("uv must be a UVData or UVCal object.")
+    if not issubclass(uv.__class__, (UVData, UVCal, UVFlag)):
+        raise NotImplementedError("uv must be a UVData, UVCal, or UVFlag object.")
     # only support single spw right now.
-    if uv.Nspws > 1:
+    if issubclass(uv.__class__, (UVData, UVCal)) and uv.Nspws > 1:
         raise NotImplementedError("apply_yaml_flags does not support multiple spws at this time.")
     # if UVCal provided, get lst_array from times.
     # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
@@ -703,20 +704,19 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     time_array = np.unique(uv.time_array)
     # loop over spws to apply frequency flags.
     if flag_freqs:
-        for spw in range(uv.Nspws):
-            flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[spw])
-            if np.any(flagged_channels >= uv.Nfreqs):
-                warnings.warn("Flagged channels were provided that exceed the maximum channel index. These flags are being dropped!")
-            if np.any(flagged_channels < 0):
-                warnings.warn("Flagged channels were provided with a negative channel index. These flags are being dropped!")
-            flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
-            if len(flagged_channels) > 0:
-                if issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline'):
-                    uv.flag_array[:, spw, flagged_channels, :] = True
-                elif issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
-                    uv.flag_array[:, spw, flagged_channels, :, :] = True
-                elif isinstance(uv, UVFlag) and uv.type == 'waterfall':
-                    uv.flag_array[:, flagged_channels] = True
+        flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[0])
+        if np.any(flagged_channels >= uv.Nfreqs):
+            warnings.warn("Flagged channels were provided that exceed the maximum channel index. These flags are being dropped!")
+        if np.any(flagged_channels < 0):
+            warnings.warn("Flagged channels were provided with a negative channel index. These flags are being dropped!")
+        flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
+        if len(flagged_channels) > 0:
+            if issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline'):
+                uv.flag_array[:, 0, flagged_channels, :] = True
+            elif issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
+                uv.flag_array[:, 0, flagged_channels, :, :] = True
+            elif isinstance(uv, UVFlag) and uv.type == 'waterfall':
+                uv.flag_array[:, flagged_channels] = True
     if flag_times:
         # now do times.
         # get the integrations to flag
@@ -746,6 +746,9 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
             pol_array = uv.polarization_array
         elif issubclass(uv.__class__, UVCal):
             pol_array = uv.jones_array
+        elif issubclass(uv.__class__, UVFlag):
+            pol_array = uv.polarization_array
+
         for ant in flagged_ants:
             if isinstance(ant, int):
                 pol_selection = np.ones(npols, dtype=bool)
