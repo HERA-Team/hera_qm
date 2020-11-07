@@ -1755,6 +1755,82 @@ def test_day_threshold_run(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
+    a_priori_flag_integrations = os.path.join(tmp_path, 'a_priori_flags_integrations.yaml')
+    shutil.copyfile(test_flag_integrations, a_priori_flag_integrations)
+
+    # check warnings
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], history='Just a test', kt_size=3, clobber=True,
+                      throw_away_edges=False, a_priori_flag_yaml=a_priori_flag_integrations, a_priori_ants_only=True)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
+
+    xrfi.day_threshold_run(data_files, history='just a test', a_priori_flag_yaml=a_priori_flag_integrations)
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
+             'abscal_chi_sq_renormed', 'combined', 'total', 'total_with_manual']
+    for type in types:
+        basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
+        outfile = os.path.join(tmp_path, basename)
+        assert os.path.exists(outfile)
+
+    for fake_obs in fake_obses:
+        calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
+        assert os.path.exists(calfile)
+
+
+def test_day_threshold_run_yaml(tmpdir):
+    # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
+    # This doesn't hurt anything, and lets us streamline the pipe
+    mess1 = ['This object is already a waterfall']
+    messages = 8 * mess1
+    cat1 = [UserWarning]
+    categories = 8 * cat1
+    # Spoof the files - run xrfi_run twice on spoofed files.
+    tmp_path = tmpdir.strpath
+    fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
+    # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
+    ocal_file = os.path.join(tmp_path, fake_obses[0] + '.omni.calfits')
+    shutil.copyfile(test_c_file, ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[0] + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    raw_dfile = os.path.join(tmp_path, fake_obses[0] + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    data_files = [raw_dfile]
+    model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
+    shutil.copyfile(test_uvh5_file, model_file)
+
+    # check warnings
+    with pytest.warns(None) as record:
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3, throw_away_edges=False)
+    assert len(record) >= len(messages)
+    n_matched_warnings = 0
+    for i in range(len(record)):
+        if mess1[0] in str(record[i].message) and cat1[0] == record[i].category:
+            n_matched_warnings += 1
+    assert n_matched_warnings == 8
+
+    # Need to adjust time arrays when duplicating files
+    uvd = UVData()
+    uvd.read_uvh5(data_files[0])
+    dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
+    uvd.time_array += dt
+    uvd.set_lsts_from_time_array()
+    data_files += [os.path.join(tmp_path, fake_obses[1] + '.uvh5')]
+    uvd.write_uvh5(data_files[1])
+    model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
+    uvd.write_uvh5(model_file)
+    uvc = UVCal()
+    uvc.read_calfits(ocal_file)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.time_array += dt
+    ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
+    uvc.write_calfits(ocal_file)
+    acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
+    uvc.write_calfits(acal_file)
 
     # check warnings
     with pytest.warns(None) as record:
@@ -1777,6 +1853,7 @@ def test_day_threshold_run(tmpdir):
     for fake_obs in fake_obses:
         calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
         assert os.path.exists(calfile)
+
 
 def test_day_threshold_run_data_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
