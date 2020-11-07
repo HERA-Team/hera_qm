@@ -421,14 +421,20 @@ def test_modzscore_1d():
     assert np.isclose(np.median(np.abs(out)), .67, rtol=.1)
 
 def test_roto_flag_helper():
+    # add low-level noise that is vanishingly unlikely to affect
+    # RFI flags.
     waterfall = np.random.randn(100,100) * 1e-6
+    # channel 50 and 10 have RFI
     waterfall[:, 50] += 1000
     waterfall[:, 10] += 100
+    # time 53 has RFI
     waterfall[53, :] += 50
     freq_flags_init = np.zeros(100, dtype=bool)
     freq_flags_init[50] = True
     time_flags_init = np.zeros(100, dtype=bool)
     for coll in ['max', 'mean', 'quadmean']:
+        # test that all RFI is caught in channel 53 and times 50 and 10
+        # for the various collapse modes.
         test_flags = xrfi.roto_flag_helper(waterfall, time_flags_init=time_flags_init,
                                            freq_flags_init=freq_flags_init,
                                            f_collapse_mode=coll, t_collapse_mode=coll)
@@ -440,6 +446,24 @@ def test_roto_flag_helper():
                   95, 85, 2, 'quadmeant')
     pytest.raises(ValueError, xrfi.roto_flag_helper, waterfall, time_flags_init, freq_flags_init,
                   95, 85, 2, 'quadmeant')
+
+def test_roto_flag(tmpdir):
+    # setup files in tmpdir.
+    tmp_path = tmpdir.strpath
+    fake_obs = 'zen.2457698.40355.HH'
+    raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    uv = UVData()
+    uv.read_uvh5(raw_dfile)
+    uvf_m, uvf_f = xrfi.xrfi_pipe(uv)
+    uvf_m.metric_array = np.random.randn(uvf_m.Ntimes, uvf_m.Nfreqs, 1) * 1e-6
+    uvf_f.flag_array[:] = False
+    uvf_m.metric_array[:, 32] += 1000
+    for coll in ['max', 'mean', 'quadmean']:
+        uvf_rf = xrfi.roto_flag(uvf_m, uvf_f, flag_percentile_time=(1-1e-9) * 100,
+                                f_collapse_mode=coll, t_collapse_mode=coll, niters=1)
+        assert np.all(uvf_rf.flag_array[:, 32, :])
+
 
 
 def test_watershed_flag():
