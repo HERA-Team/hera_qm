@@ -1795,7 +1795,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
                                  run_check_acceptability=run_check_acceptability)
         uvf_m.label = label
         uvf_m.to_waterfall(keep_pol=False, run_check=run_check,
-                           check_extra=check_extra, wf_method=wf_method,
+                           check_extra=check_extra, method=wf_method,
                            run_check_acceptability=run_check_acceptability)
     else:
         uvf_m = uv
