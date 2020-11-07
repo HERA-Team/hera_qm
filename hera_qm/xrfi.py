@@ -1751,6 +1751,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     a_priori_ants_only : bool, optional
         If True, only apply apriori flags from ants but don't apply apriori
         time and frequency flags.
+        Default is False.
+        WARNING: Default can cause excess flags in the vicinity the apriori regions
+        due to edge effects.
     omnical_median_filter : bool, optional
         If true, run a median filter on omnical gains.
         Mean filters are run after median filters.
