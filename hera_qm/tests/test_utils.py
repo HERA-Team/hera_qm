@@ -95,6 +95,19 @@ def test_get_metrics_ArgumentParser_xrfi_run():
     assert args.sig_adj == 3.0
 
 
+
+
+def test_get_metrics_ArgumentParser_roto_flag_run():
+    a = utils.get_metrics_ArgumentParser('roto_flag_run')
+    # First try defaults - test a few of them
+    args = a.parse_args('')
+    assert args.kt_size == 32
+    assert args.kf_size == 8
+    assert args.niters == 6
+
+
+
+
 def test_get_metrics_ArgumentParser_xrfi_run_data_only():
     a = utils.get_metrics_ArgumentParser('xrfi_run_data_only')
     # First try defaults - test a few of them
