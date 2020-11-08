@@ -377,7 +377,8 @@ def get_metrics_ArgumentParser(method_name):
     elif method_name == 'day_threshold_run':
         ap.add_argument('--a_priori_xants_yaml', type=str, default=None,
                         help=('path to a priori flagging YAML with xant information parsable by '
-                              'hera_qm.metrics_io.read_a_priori_ant_flags()'))        ap.add_argument('data_files', type=str, nargs='+', help='List of paths to \
+                              'hera_qm.metrics_io.read_a_priori_ant_flags()'))
+        ap.add_argument('data_files', type=str, nargs='+', help='List of paths to \
                         the raw data files which have been used to calibrate and \
                         rfi flag so far.')
         ap.add_argument('--nsig_f', default=7.0, type=float,
@@ -397,7 +398,9 @@ def get_metrics_ArgumentParser(method_name):
                         list matches run_if_first (default None means always run)')
         ap.add_argument("--skip_making_flagged_abs_calfits", default=False, action="store_true",
                         help='If True, skip flagging the abscal files.')
-        ap.add_argument("--a_priori_flag_yaml", default=None, type=str, help="Flagging Y")
+        ap.add_argument('--a_priori_flag_yaml', default=None, type=str,
+                        help=('Path to a priori flagging YAML with frequency, time, and/or '
+                              'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))
     elif method_name == 'xrfi_apply':
         ap.prog = 'xrfi_apply.py'
         ap.add_argument('--infile_format', default='miriad', type=str,
@@ -733,9 +736,9 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
             flagged_times = time_array[flagged_integrations]
             for time in flagged_times:
                 if issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline'):
-                    uv.flag_array[np.isclose(uv.time_array, time), :, :, :] = True
+                    uv.flag_array[uv.time_array == time, :, :, :] = True
                 elif issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
-                    uv.flag_array[:, :, :, np.isclose(uv.time_array, time), :] = True
+                    uv.flag_array[:, :, :, uv.time_array == time, :] = True
             if isinstance(uv, UVFlag) and uv.type == 'waterfall':
                 uv.flag_array[flagged_integrations, :] = True
 
