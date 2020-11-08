@@ -455,14 +455,34 @@ def test_roto_flag(tmpdir):
     shutil.copyfile(test_uvh5_file, raw_dfile)
     uv = UVData()
     uv.read_uvh5(raw_dfile)
+    # generate metric and flag objects
     uvf_m, uvf_f = xrfi.xrfi_pipe(uv)
+    # set metric equal to noise
     uvf_m.metric_array = np.random.randn(uvf_m.Ntimes, uvf_m.Nfreqs, 1) * 1e-6
+    # set all flags False
     uvf_f.flag_array[:] = False
+    # add some RFI.
     uvf_m.metric_array[:, 32] += 1000
+    for coll in ['max', 'mean', 'quadmean']:
+        # check whether we catch the RFI.
+        uvf_rf = xrfi.roto_flag(uvf_m, uvf_f, flag_percentile_time=(1-1e-9) * 100,
+                                f_collapse_mode=coll, t_collapse_mode=coll, niters=1)
+        assert np.all(uvf_rf.flag_array[:, 32, :])
+    uvf_f.flag_array[1, 32, 0] = True
+    # check error where flags aren't separable
+    pytest.raises(ValueError,  xrfi.roto_flag, uvf_m, uvf_f, (1-1e-9) * 100)
+    # cover non waterfall mode
+    uv.data_array[:] = np.random.randn(*uv.data_array.shape) * 1e-6
+    uv.flag_array[:] = False
+    uvf_m = xrfi.calculate_metric(uv, algorithm='detrend_medfilt')
+    uvf_f = xrfi.flag(uvf_m)
+    uvf_f.flag_array[:] = False
+    uvf_m.metric_array[:, :, 32, :] += 1000
     for coll in ['max', 'mean', 'quadmean']:
         uvf_rf = xrfi.roto_flag(uvf_m, uvf_f, flag_percentile_time=(1-1e-9) * 100,
                                 f_collapse_mode=coll, t_collapse_mode=coll, niters=1)
         assert np.all(uvf_rf.flag_array[:, 32, :])
+
 
 
 
