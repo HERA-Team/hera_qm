@@ -471,7 +471,8 @@ def test_roto_flag(tmpdir):
     uvf_f.flag_array[1, 32, 0] = True
     # check error where flags aren't separable
     pytest.raises(ValueError,  xrfi.roto_flag, uvf_m, uvf_f, (1-1e-9) * 100)
-    # cover non waterfall mode
+    # do the same as above but this time use metrics and flags that are not yet
+    # in waterfall mode to test waterfall collapsing.
     uv.data_array[:] = np.random.randn(*uv.data_array.shape) * 1e-6
     uv.flag_array[:] = False
     uvf_m = xrfi.calculate_metric(uv, algorithm='detrend_medfilt')
@@ -483,6 +484,7 @@ def test_roto_flag(tmpdir):
                                 f_collapse_mode=coll, t_collapse_mode=coll, niters=1)
         assert np.all(uvf_rf.flag_array[:, 32, :])
 
+def test_roto_flag_run(tmpdir):
 
 
 
