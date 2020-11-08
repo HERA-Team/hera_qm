@@ -948,9 +948,9 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                   flag_percentile_time=95., flag_percentile_freq=95., niters=6, Nwf_per_load=None,
                   wf_method='quadmean', f_collapse_mode='max', t_collapse_mode='max',
                   kt_size=32, kf_size=8, use_data_flags=True, write_output=True,
-                  output_label='roto_flags', cal_label='roto_flags', correlations='cross', clobber=False,
+                  output_label='roto_flag', cal_label='roto_flag', correlations='cross', clobber=False,
                   metric_only_mode=False, flag_only_mode=False, flag_file_type='uvflag',
-                  flag_kernel=True, modified_z_score=False,
+                  flag_kernel=True, modified_z_score=False, data_file_type='uvh5',
                   run_check=True, check_extra=True, run_check_acceptability=True):
     """
     Driver for roto-flag
@@ -1015,6 +1015,8 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
       and performs roto-flagging.
     flag_kernel : bool, optional
       If True, flag edge effects from kernel.
+    data_file_type : str, optional
+        specify data file type to read.
     run_check : bool
       Option to check for the existence and proper shapes of parameters
       on UVFlag Object.
@@ -1054,7 +1056,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
     if isinstance(data_files, list):
         if not flag_only_mode:
             uv = UVData()
-            uv.read(data_files, read_data=False)
+            uv.read(data_files, read_data=False, file_type=data_file_type)
             bls = uv.get_antpairpols()
             if correlations == 'cross':
                 bls = [app for app in bls if app[1] != app[0]]
@@ -1063,13 +1065,11 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
             nbls = len(bls)
             if nbls == 0:
                 warnings.warn("No baselines selected!")
-                sys.exit(0)
+                return
             else:
                 if Nwf_per_load is None:
                     Nwf_per_load = nbls
                 nloads = int(np.ceil(nbls / Nwf_per_load))
-                for loadnum in range(nloads):
-                    uv.read(data_files)
                 bls = uv.get_antpairpols()
                 # apply yamls.
                 for loadnum in range(nloads):

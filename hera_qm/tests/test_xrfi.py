@@ -26,7 +26,7 @@ xrfi_path = os.path.join(DATA_PATH, 'test_output')
 test_flag_integrations= os.path.join(DATA_PATH, 'a_priori_flags_integrations.yaml')
 test_flag_jds= os.path.join(DATA_PATH, 'a_priori_flags_jds.yaml')
 test_flag_lsts= os.path.join(DATA_PATH, 'a_priori_flags_lsts.yaml')
-
+test_flag_empty = os.path.join(DATA_PATH, 'a_priori_flags_no_integrations.yaml')
 test_uvh5_files = ['zen.2457698.40355191.xx.HH.uvh5',
                    'zen.2457698.40367619.xx.HH.uvh5',
                    'zen.2457698.40380046.xx.HH.uvh5']
@@ -485,8 +485,33 @@ def test_roto_flag(tmpdir):
         assert np.all(uvf_rf.flag_array[:, 32, :])
 
 def test_roto_flag_run(tmpdir):
-
-
+    # setup files in tmpdir.
+    tmp_path = tmpdir.strpath
+    fake_obs = 'zen.2457698.40355.HH'
+    raw_dfile = os.path.join(tmp_path, fake_obs + '.uvh5')
+    shutil.copyfile(test_uvh5_file, raw_dfile)
+    uv = UVData()
+    uv.read_uvh5(raw_dfile)
+    uv.flag_array[:] = False
+    uv.data_array = np.random.randn(*uv.data_array.shape) * 1e-6 + 0j
+    uv.write_uvh5(raw_dfile, clobber=True)
+    # generate a blank flag file.
+    uvm, uvf = xrfi.xrfi_pipe(uv)
+    uvm.metric_array = np.random.randn(*uvm.metric_array.shape) * 1e-6
+    uvf.flag_array[:] = False
+    uvf.write(tmp_path + '/flags.h5')
+    uvm.write(tmp_path + '/metrics.h5')
+    apriori_flags = os.path.join(tmp_path, 'no_integrations.yaml')
+    shutil.copyfile(test_flag_empty, apriori_flags)
+    acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
+    shutil.copyfile(test_c_file, acal_file)
+    # run metric mode.
+    xrfi.roto_flag_run(data_files=[raw_dfile], kt_size=1,
+                       flag_files=[tmp_path+'/flags.h5'],
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
 
 def test_watershed_flag():
     # generate a metrics and flag UVFlag object
