@@ -13,6 +13,7 @@ import hera_qm.utils as utils
 from hera_qm.data import DATA_PATH
 from pyuvdata import UVFlag
 import glob
+import copy
 
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
@@ -445,7 +446,7 @@ def test_roto_flag_helper():
     pytest.raises(ValueError, xrfi.roto_flag_helper, waterfall, time_flags_init, freq_flags_init,
                   95, 85, 2, 'quadmeant')
     pytest.raises(ValueError, xrfi.roto_flag_helper, waterfall, time_flags_init, freq_flags_init,
-                  95, 85, 2, 'quadmeant')
+                  95, 85, 2, 'quadmean', 'quadmeant')
 
 def test_roto_flag(tmpdir):
     # setup files in tmpdir.
@@ -505,13 +506,149 @@ def test_roto_flag_run(tmpdir):
     shutil.copyfile(test_flag_empty, apriori_flags)
     acal_file = os.path.join(tmp_path, fake_obs + '.abs.calfits')
     shutil.copyfile(test_c_file, acal_file)
-    # run metric mode.
+    uvc = UVCal()
+    uvc.read_calfits(acal_file)
+    uvc.flag_array[:] = False
+    uvc.write_calfits(acal_file, clobber=True)
+    # supply list for data_files and flag_files
+    xrfi.roto_flag_run(data_files=[raw_dfile], kt_size=1, Nwf_per_load=1,
+                       flag_files=[tmp_path+'/flags.h5'], cal_files=[acal_file],
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.HH.abs.roto_flag.calfits')
+    os.remove(tmp_path+'/zen.2457698.40355.HH.abs.roto_flag.calfits')
+
+    # no do autocorrelations
     xrfi.roto_flag_run(data_files=[raw_dfile], kt_size=1,
+                       flag_files=[tmp_path+'/flags.h5'], correlations='auto',
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+
+    # now do cross correlations.
+    xrfi.roto_flag_run(data_files=[raw_dfile], kt_size=1,
+                       flag_files=[tmp_path+'/flags.h5'], correlations='cross',
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+
+    # check raise value error for invalid correlations
+    pytest.raises(ValueError, xrfi.roto_flag_run, raw_dfile, tmp_path+'/flags.h5',
+                 correlations='huh', niters=1, flag_percentile_time=100*(1-1e-9))
+
+
+    # provide string instead of list for data_files
+    xrfi.roto_flag_run(data_files=raw_dfile, kt_size=1,
                        flag_files=[tmp_path+'/flags.h5'],
                        a_priori_flag_yaml=apriori_flags, use_data_flags=False,
                        niters=1, flag_percentile_time=(1-1e-9) * 100)
     assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
     assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+
+    # provide list of uvflag objects instead of strings for flag_files.
+    xrfi.roto_flag_run(data_files=raw_dfile, kt_size=1,
+                       flag_files=[uvf, uvf],
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+
+    # provide string for flag_files instead of list
+    xrfi.roto_flag_run(data_files=raw_dfile, kt_size=1,
+                       flag_files=tmp_path+'/flags.h5',
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+
+    # provide calibration file for flag file.
+    xrfi.roto_flag_run(data_files=raw_dfile, kt_size=1,
+                       flag_files=acal_file, flag_file_type='uvcal',
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+
+
+    # don't provide any flag file (get apriori flags from data).
+    xrfi.roto_flag_run(data_files=raw_dfile, kt_size=1,
+                       flag_file_type='uvcal',
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+
+    # test ValueError if no valid flag_file_type is supplied.
+    pytest.raises(ValueError, xrfi.roto_flag_run, data_files=raw_dfile, flag_files=acal_file,
+                  flag_file_type='huh')
+    # test case when no baselines are selected (should do nothing.)
+    uva = copy.deepcopy(uv)
+    ants = np.unique(np.hstack([uva.ant_1_array, uva.ant_2_array]))
+    uva.select(bls=[(a, a) for a in ants])
+    uva.write_uvh5(tmp_path+'/2457698.40355.auto.uvh5', clobber=True)
+    with pytest.warns(None) as record:
+        xrfi.roto_flag_run(data_files=tmp_path+'/2457698.40355.auto.uvh5', kt_size=1,
+                           flag_file_type='uvcal', correlations='cross',
+                           a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                           niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert len(glob.glob(tmp_path+'/*.roto_flag.flags.h5')) == 0
+    assert len(glob.glob(tmp_path+'/*.roto_flag.metrics.h5')) == 0
+    # do list with no baselines selected.
+    with pytest.warns(None) as record:
+        xrfi.roto_flag_run(data_files=[tmp_path+'/2457698.40355.auto.uvh5'], kt_size=1,
+                           flag_file_type='uvcal', correlations='cross',
+                           a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                           niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert len(glob.glob(tmp_path+'/*.roto_flag.flags.h5')) == 0
+    assert len(glob.glob(tmp_path+'/*.roto_flag.metrics.h5')) == 0
+
+    # do metric_only_mode
+    xrfi.roto_flag_run(data_files=[raw_dfile], kt_size=1, Nwf_per_load=1, metric_only_mode=True,
+                       flag_files=[tmp_path+'/flags.h5'],
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    # do flag_only_mode
+    xrfi.roto_flag_run(data_files=[tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5'], kt_size=1, Nwf_per_load=1,
+                       flag_only_mode=True,
+                       flag_files=[tmp_path+'/flags.h5'], cal_files=[acal_file],
+                       a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                       niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert os.path.exists(tmp_path+'/zen.2457698.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.roto_flag.flags.h5')
+    # do flag_only_mode with metrics instead of strings.
+    # also check warning because no strings provided to output files.
+    with pytest.warns(None) as record:
+        xrfi.roto_flag_run(data_files=[UVFlag(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5'),
+                                       UVFlag(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')],
+                           kt_size=1, Nwf_per_load=1,
+                           flag_only_mode=True,
+                           flag_files=[tmp_path+'/flags.h5'], cal_files=[acal_file],
+                           a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                           niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert not os.path.exists(tmp_path+'/zen.2457698.roto_flag.flags.h5')
 
 def test_watershed_flag():
     # generate a metrics and flag UVFlag object

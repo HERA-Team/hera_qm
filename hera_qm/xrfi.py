@@ -841,38 +841,40 @@ def roto_flag_helper(metric_waterfall, time_flags_init, freq_flags_init, flag_pe
     tstats = []
     fstats = []
     for iteration in range(1, niters + 1):
-        t_collapse = np.zeros(nt)
-        f_collapse = np.zeros(nf)
-        # flag integrations
-        for integ, wrow in enumerate(metric_waterfall):
-            w2avg = wrow[~fflags[iteration-1]]
-            w2avg = w2avg[np.isfinite(w2avg)]
-            if len(w2avg) > 0:
-                if t_collapse_mode.lower() == 'max':
-                    t_collapse[integ] = np.max(w2avg)
-                elif t_collapse_mode.lower() == 'mean':
-                    t_collapse[integ] = np.mean(w2avg)
-                elif t_collapse_mode.lower() == 'quadmean':
-                    t_collapse[integ] = np.linalg.norm(w2avg)
+        # only do anything if there is anything left to flag.
+        if not np.all(tflags[-1]) and not(np.all(fflags[-1])):
+            t_collapse = np.zeros(nt)
+            f_collapse = np.zeros(nf)
+            # flag integrations
+            for integ, wrow in enumerate(metric_waterfall):
+                w2avg = wrow[~fflags[iteration-1]]
+                w2avg = w2avg[np.isfinite(w2avg)]
+                if len(w2avg) > 0:
+                    if t_collapse_mode.lower() == 'max':
+                        t_collapse[integ] = np.max(w2avg)
+                    elif t_collapse_mode.lower() == 'mean':
+                        t_collapse[integ] = np.mean(w2avg)
+                    elif t_collapse_mode.lower() == 'quadmean':
+                        t_collapse[integ] = np.linalg.norm(w2avg)
 
-        flagged_times = (t_collapse > np.percentile(t_collapse[~tflags[iteration - 1]], flag_percentile_time))
-        # flag channels
-        for chan, wcol in enumerate(metric_waterfall.T):
-            w2avg = wcol[~tflags[iteration-1]]
-            w2avg = w2avg[np.isfinite(w2avg)]
-            if len(w2avg) > 0:
-                if f_collapse_mode.lower() == 'max':
-                    f_collapse[chan] = np.max(w2avg)
-                elif f_collapse_mode.lower() == 'mean':
-                    f_collapse[chan] = np.mean(w2avg)
-                elif f_collapse_mode.lower() == 'quadmean':
-                    f_collapse[chan] = np.linalg.norm(w2avg)
-        flagged_freqs = (f_collapse > np.percentile(f_collapse[~fflags[iteration - 1]], flag_percentile_freq))
+            flagged_times = (t_collapse > np.percentile(t_collapse[~tflags[iteration - 1]], flag_percentile_time))
+            # flag channels
+            for chan, wcol in enumerate(metric_waterfall.T):
+                w2avg = wcol[~tflags[iteration-1]]
+                w2avg = w2avg[np.isfinite(w2avg)]
+                if len(w2avg) > 0:
+                    if f_collapse_mode.lower() == 'max':
+                        f_collapse[chan] = np.max(w2avg)
+                    elif f_collapse_mode.lower() == 'mean':
+                        f_collapse[chan] = np.mean(w2avg)
+                    elif f_collapse_mode.lower() == 'quadmean':
+                        f_collapse[chan] = np.linalg.norm(w2avg)
+            flagged_freqs = (f_collapse > np.percentile(f_collapse[~fflags[iteration - 1]], flag_percentile_freq))
 
-        tflags.append(flagged_times | tflags[-1])
-        fflags.append(flagged_freqs | fflags[-1])
-        fstats.append(f_collapse)
-        tstats.append(t_collapse)
+            tflags.append(flagged_times | tflags[-1])
+            fflags.append(flagged_freqs | fflags[-1])
+            fstats.append(f_collapse)
+            tstats.append(t_collapse)
 
     return ~(np.outer((~tflags[-1]).astype(float), (~fflags[-1]).astype(float)).astype(bool))
 
@@ -1026,6 +1028,9 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
       Option to check acceptable range of the values of parameters
       on UVFlag Object.
     """
+    if not isinstance(data_files, list):
+        data_files = [data_files]
+
     if not correlations in ['cross', 'auto', 'both']:
         raise ValueError("correlations %s not valid. Must bin in ['cross', 'auto', 'both']")
     if flag_files is not None:
@@ -1044,7 +1049,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                 uvf_apriori = UVFlag(flag_files)
         elif flag_file_type == 'uvcal':
             uvf_apriori = UVCal()
-            uvf_apriori.read(flag_files)
+            uvf_apriori.read_calfits(flag_files)
             uvf_apriori = UVFlag(uvf_apriori, mode='flag', copy_flags=True, label='A priori flags.')
             uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
                                      check_extra=check_extra, run_check_acceptability=run_check_acceptability)
@@ -1053,96 +1058,68 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
     else:
         uvf_apriori = None
 
-    if isinstance(data_files, list):
-        if not flag_only_mode:
-            uv = UVData()
-            uv.read(data_files, read_data=False, file_type=data_file_type)
-            bls = uv.get_antpairpols()
-            if correlations == 'cross':
-                bls = [app for app in bls if app[1] != app[0]]
-            elif correlations == 'auto':
-                bls = [app for app in bls if app[1] == app[0]]
-            nbls = len(bls)
-            if nbls == 0:
-                warnings.warn("No baselines selected!")
-                return
-            else:
-                if Nwf_per_load is None:
-                    Nwf_per_load = nbls
-                nloads = int(np.ceil(nbls / Nwf_per_load))
-                bls = uv.get_antpairpols()
-                # apply yamls.
-                for loadnum in range(nloads):
-                    uv.read(data_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
-                    if not use_data_flags:
-                        uv.flag_array[:] = False
-                    if a_priori_flag_yaml is not None:
-                        uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
-                    if flag_files is not None:
-                        flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
-                    _uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
-                    _uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check)
-
-
-                    # calculate metric.
-                    _uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method,
-                                          alg=alg, center_metric=False, reset_weights=False,
-                                          run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-                    if loadnum == 0:
-                        uvf_m = _uvf_m
-                        uvf_data = _uvf_data
-                    else:
-                        uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
-                                              check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-                        uvf_data.flag_array &= _uvf_data.flag_array
+    if not flag_only_mode:
+        if isinstance(data_files[0], str):
+            if data_file_type in ['uvh5', 'miriad', 'uvfits']:
+                uv = UVData()
+                uv.read(data_files, file_type=data_file_type, read_data=False)
         else:
-            # if we are in flag_only_mode, data_files are expected to be metrics.
-            uvf_data = uvf_apriori
-            for filenumber, filename in enumerate(data_files):
-                if isinstance(filename, str):
-                    _uvf_m = UVFlag(filename)
-                elif issubclass(filename.__class__, UVFlag):
-                    _uvf_m = filename
-                if filenumber == 0:
+            uv = copy.deepcopy(data_files[0])
+        bls = uv.get_antpairpols()
+        if correlations == 'cross':
+            bls = [app for app in bls if app[1] != app[0]]
+        elif correlations == 'auto':
+            bls = [app for app in bls if app[1] == app[0]]
+        nbls = len(bls)
+        if nbls == 0:
+            warnings.warn("No baselines selected!")
+            return
+        else:
+            if Nwf_per_load is None:
+                Nwf_per_load = nbls
+            nloads = int(np.ceil(nbls / Nwf_per_load))
+            bls = uv.get_antpairpols()
+            # apply yamls.
+            for loadnum in range(nloads):
+                uv.read(data_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                if not use_data_flags:
+                    uv.flag_array[:] = False
+                if a_priori_flag_yaml is not None:
+                    uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
+                if flag_files is not None:
+                    flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
+                _uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+                _uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check)
+
+
+                # calculate metric.
+                _uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method,
+                                      alg=alg, center_metric=False, reset_weights=False,
+                                      run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                if loadnum == 0:
                     uvf_m = _uvf_m
+                    uvf_data = _uvf_data
                 else:
                     uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
                                           check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-        if alg == 'zscore_full_array':
-            uvf_m, _ = chi_sq_pipe(uvf_m, alg=alg, modified=modified_z_score, skip_flags=True, reset_weights=not(metric_only_mode),
-                                   center_metric=not(metric_only_mode), run_check=run_check, check_extra=check_extra,
-                                   run_check_acceptability=run_check_acceptability)
-        else:
-            uvf_m, _ = xrfi_pipe(uvf_m, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg,
-                                center_metric=not(metric_only_mode), reset_weights=not(metric_only_mode),
-                                run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+                    uvf_data.flag_array &= _uvf_data.flag_array
     else:
-        uv = copy.deepcopy(data_files)
-        if not flag_only_mode:
-            if correlations != 'both':
-                bls = uv.get_antpairpols()
-                if correlations == 'cross':
-                    bls = [bl for bl in bls if bl[0] != bl[1]]
-                elif correlations == 'auto':
-                    bls = [bl for bl in bls if bl[0] == bl[1]]
-                uv.select(bls=bls)
-            if not use_data_flags:
-                uv.flag_array[:] = False
-            if flag_files is not None:
-                    flag_apply(uvf_apriori, uv, keep_existing=use_data_flags, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
+        # if we are in flag_only_mode, data_files are expected to be metrics.
+        uvf_data = uvf_apriori
+        for filenumber, filename in enumerate(data_files):
+            if isinstance(filename, str):
+                _uvf_m = UVFlag(filename)
+            elif issubclass(filename.__class__, UVFlag):
+                _uvf_m = filename
+            if filenumber == 0:
+                uvf_m = _uvf_m
+            else:
+                uvf_m.combine_metrics(_uvf_m, method=wf_method, run_check=run_check,
+                                      check_extra=check_extra, run_check_acceptability=run_check_acceptability)
 
-            if a_priori_flag_yaml is not None:
-                uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml)
-
-            uvf_data = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
-            uvf_data.to_waterfall(method='and', keep_pol=False, run_check=run_check,
-                                  check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-        else:
-            uvf_data = uvf_apriori
-        uvf_m, _ = xrfi_pipe(uv, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg,
-                             center_metric=not(metric_only_mode), reset_weights=not(metric_only_mode),
-                             run_check=run_check, check_extra=check_extra,
-                             run_check_acceptability=run_check_acceptability)
+    uvf_m, _ = xrfi_pipe(uvf_m, Kt=kt_size, Kf=kf_size, skip_flags=True, wf_method=wf_method, alg=alg,
+                        center_metric=not(metric_only_mode), reset_weights=not(metric_only_mode),
+                        run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
     if flag_kernel:
         # flag edge effects including edge flags.
         # find min and max unflagged channel
@@ -1169,12 +1146,17 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
     else:
         uvf_f = uvf_data
     # now write out flags
-    if write_output and isinstance(data_files, list):
-        outdir = resolve_xrfi_path('', data_files[0])
-        if not flag_only_mode:
-            basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:3])
+    if write_output:
+        if isinstance(data_files[0], str):
+            template_str = data_files[0]
         else:
-            basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
+            warnings.warn("data_files was not supplied as a list of strings or string so no output written to disk.")
+            return uvf_f, uvf_m
+        outdir = resolve_xrfi_path('', template_str)
+        if not flag_only_mode:
+            basename = '.'.join(os.path.basename(template_str).split('.')[0:3])
+        else:
+            basename = '.'.join(os.path.basename(template_str).split('.')[0:2])
         outpath = os.path.join(outdir, basename + f'.{output_label}.flags.h5')
         if uvf_f is not None:
             uvf_f.write(outpath, clobber=clobber)
