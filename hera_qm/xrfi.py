@@ -1077,11 +1077,17 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
         else:
             if Nwf_per_load is None:
                 Nwf_per_load = nbls
-            nloads = int(np.ceil(nbls / Nwf_per_load))
+            if isinstance(data_files[0], str):
+                nloads = int(np.ceil(nbls / Nwf_per_load))
+            else:
+                # if we provided a pre-loaded uvdata object
+                # then we only want to execute loop once.
+                nloads = 1
             bls = uv.get_antpairpols()
             # apply yamls.
             for loadnum in range(nloads):
-                uv.read(data_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
+                if isinstance(data_files[0], str):
+                    uv.read(data_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load])
                 if not use_data_flags:
                     uv.flag_array[:] = False
                 if a_priori_flag_yaml is not None:

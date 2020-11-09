@@ -638,6 +638,7 @@ def test_roto_flag_run(tmpdir):
                        niters=1, flag_percentile_time=(1-1e-9) * 100)
     assert os.path.exists(tmp_path+'/zen.2457698.roto_flag.flags.h5')
     os.remove(tmp_path+'/zen.2457698.roto_flag.flags.h5')
+
     # do flag_only_mode with metrics instead of strings.
     # also check warning because no strings provided to output files.
     with pytest.warns(None) as record:
@@ -649,6 +650,17 @@ def test_roto_flag_run(tmpdir):
                            a_priori_flag_yaml=apriori_flags, use_data_flags=False,
                            niters=1, flag_percentile_time=(1-1e-9) * 100)
     assert not os.path.exists(tmp_path+'/zen.2457698.roto_flag.flags.h5')
+    os.remove(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+    # cover case with uvdata provided for data files. Should not write output.
+    with pytest.warns(None) as record:
+        xrfi.roto_flag_run(data_files=[uv],
+                           kt_size=1, Nwf_per_load=1,
+                           flag_files=[tmp_path+'/flags.h5'], cal_files=[acal_file],
+                           a_priori_flag_yaml=apriori_flags, use_data_flags=False,
+                           niters=1, flag_percentile_time=(1-1e-9) * 100)
+    assert not os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.flags.h5')
+    assert not os.path.exists(tmp_path+'/zen.2457698.40355.roto_flag.metrics.h5')
+
 
 def test_watershed_flag():
     # generate a metrics and flag UVFlag object
