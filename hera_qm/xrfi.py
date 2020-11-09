@@ -1744,7 +1744,6 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
 
 def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
                 sig_adj=2.0, label='',wf_method='quadmean',
-                center_metric=False, skip_flags=False, reset_weights=False,
                 run_check=True, check_extra=True, run_check_acceptability=True):
     """Zero-center and normalize the full total chi squared array, flag, and watershed.
 
@@ -1798,20 +1797,16 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
         uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
     alg_func = algorithm_dict[alg]
     # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
-    if center_metric:
-        uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
-                                               flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
+    uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
+                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
     # Flag and watershed on waterfall
-    if not skip_flags:
-        uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
-                     check_extra=check_extra,
-                     run_check_acceptability=run_check_acceptability)
-        uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False,
-                                 run_check=run_check, check_extra=check_extra,
-                                 run_check_acceptability=run_check_acceptability)
-        uvf_fws.label += ' Flags.'
-    else:
-        uvf_fws = None
+    uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
+                 check_extra=check_extra,
+                 run_check_acceptability=run_check_acceptability)
+    uvf_fws = watershed_flag(uvf_m, uvf_f, nsig_p=sig_adj, inplace=False,
+                             run_check=run_check, check_extra=check_extra,
+                             run_check_acceptability=run_check_acceptability)
+    uvf_fws.label += ' Flags.'
     return uvf_m, uvf_fws
 
 def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
