@@ -1793,8 +1793,7 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
         uvf_m = uv
     # This next line resets the weights to 1 (with data) or 0 (no data) to equally
     # combine with the other metrics.
-    if reset_weights:
-        uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
+    uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
     alg_func = algorithm_dict[alg]
     # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
     uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
