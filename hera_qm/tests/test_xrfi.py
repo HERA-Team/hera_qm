@@ -1771,12 +1771,16 @@ def test_day_threshold_run(tmpdir):
 
     xrfi.day_threshold_run(data_files, history='just a test', a_priori_flag_yaml=a_priori_flag_integrations)
     types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
-             'abscal_chi_sq_renormed', 'combined', 'total', 'total_with_manual']
+             'abscal_chi_sq_renormed', 'combined', 'total']
     for type in types:
         basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.' + type + '_threshold_flags.h5'
         outfile = os.path.join(tmp_path, basename)
         assert os.path.exists(outfile)
 
+    basename = .'.join(fake_obses[0].split('.')[0:-2]) + '.total_threshold_and_a_priori_flags.h5'
+    outfile = os.path.join(tmp_path, basename)
+    assert os.path.exists(outfile)
+        
     for fake_obs in fake_obses:
         calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
         assert os.path.exists(calfile)
