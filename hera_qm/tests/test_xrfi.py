@@ -1777,7 +1777,7 @@ def test_day_threshold_run(tmpdir):
         outfile = os.path.join(tmp_path, basename)
         assert os.path.exists(outfile)
 
-    basename = .'.join(fake_obses[0].split('.')[0:-2]) + '.total_threshold_and_a_priori_flags.h5'
+    basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.total_threshold_and_a_priori_flags.h5'
     outfile = os.path.join(tmp_path, basename)
     assert os.path.exists(outfile)
         
