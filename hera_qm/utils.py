@@ -709,7 +709,11 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     time_array = np.unique(uv.time_array)
     # loop over spws to apply frequency flags.
     if flag_freqs:
-        flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=uv.freq_array[0])
+        if len(uv.freq_array.shape) == 2:
+            freqs = uv.freq_array[0]
+        else:
+            freqs = uv.freq_array
+        flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=freqs)
         if np.any(flagged_channels >= uv.Nfreqs):
             warnings.warn("Flagged channels were provided that exceed the maximum channel index. These flags are being dropped!")
         if np.any(flagged_channels < 0):
@@ -765,12 +769,12 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
                 else:
                     pol_selection = np.zeros(npols, dtype=bool)
                 antnum = ant[0]
-            if issubclass(uv.__class__, UVData):
+            if issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline'):
                 blt_selection = np.logical_or(uv.ant_1_array == antnum, uv.ant_2_array == antnum)
                 if np.any(blt_selection):
                     for bltind in np.where(blt_selection)[0]:
                         uv.flag_array[bltind, :, :, pol_selection] = True
-            elif issubclass(uv.__class__, UVCal):
+            elif issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
                 ant_selection = uv.ant_array == antnum
                 if np.any(ant_selection):
                     for antind in np.where(ant_selection)[0]:
