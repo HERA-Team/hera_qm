@@ -1181,10 +1181,10 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                     ntimes = uvc_a.Ntimes
                     assert np.all(np.isclose(uvf_f.time_array[cnum*ntimes:(1+cnum)*ntimes], uvc_a.time_array))
                     uvf_file = uvf_f.select(times=uvf_f.time_array[cnum*ntimes:(1+cnum)*ntimes], inplace=False)
-                    history = 'flaggind derived from roto_flag.'
+                    history = 'flagging derived from roto_flag.'
                     flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
                                run_check=run_check, check_extra=check_extra,
-                               run_check_acceptability=run_check_acceptability)
+                               run_check_acceptability=run_check_acceptability, keep_existing=False)
                     output_file = cfile.replace('.calfits', f'.{cal_label}.calfits')
                     #output_file = output_file.replace('.sum.', f'.sum.%s.'%(output_label.split('.')[0]))
                     uvc_a.write_calfits(filename=output_file, clobber=clobber)
