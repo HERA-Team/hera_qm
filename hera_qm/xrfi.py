@@ -2239,7 +2239,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
 
     # Loop through the files to output, storing all the different data products.
     for ind in range(start_ind, end_ind):
-        night_index = all_files.index(uvlist[ind])
+        night_index = all_files.index(os.path.abspath(uvlist[ind]))
         # we need an absolute index for entire night to do edge flagging.
         dirname = resolve_xrfi_path(xrfi_path, output_prefixes[ind], jd_subdir=True)
         basename = qm_utils.strip_extension(os.path.basename(output_prefixes[ind]))
