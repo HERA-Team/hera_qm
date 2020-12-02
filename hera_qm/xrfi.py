@@ -952,7 +952,7 @@ def roto_flag_run(data_files=None, flag_files=None, cal_files=None, a_priori_fla
                   kt_size=32, kf_size=8, use_data_flags=True, write_output=True,
                   output_label='roto_flag', cal_label='roto_flag', correlations='cross', clobber=False,
                   metric_only_mode=False, flag_only_mode=False, flag_file_type='uvflag',
-                  flag_kernel=True, modified_z_score=False, data_file_type='uvh5',
+                  flag_kernel=False, modified_z_score=False, data_file_type='uvh5',
                   run_check=True, check_extra=True, run_check_acceptability=True):
     """
     Driver for roto-flag
