@@ -942,7 +942,7 @@ def roto_flag(uvf_m, uvf_apriori, flag_percentile_time=95., flag_percentile_freq
 
     uvf_f.flag_array[:, :, 0] = roto_flag_helper(metric_waterfall=uvf_m.metric_array[:, :, 0].squeeze(), time_flags_init=flagged_times,
                                                   freq_flags_init=flagged_channels, flag_percentile_time=flag_percentile_time,
-                                                  flag_percentile_freq=flag_percentile_freq)
+                                                  flag_percentile_freq=flag_percentile_freq, niters=niters)
 
     return uvf_f
 
