@@ -46,7 +46,8 @@ setup_args = {
                 'scripts/xrfi_day_threshold_run.py',
                 'scripts/xrfi_h3c_idr2_1_run.py',
                 'scripts/xrfi_h3ca_rtp_run.py',
-                'scripts/xrfi_run_data_only.py'
+                'scripts/xrfi_run_data_only.py',
+                'scripts/roto_flag_run.py',
                 ],
     'version': version.version,
     'package_data': {'hera_qm': data_files},

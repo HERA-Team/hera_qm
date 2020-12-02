@@ -30,7 +30,7 @@ def get_metrics_ArgumentParser(method_name):
     ----------
     method_name : {"ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_run",
                    "xrfi_apply", "xrfi_h1c_run", "delay_xrfi_h1c_idr2_1_run",
-                   "xrfi_h3c_idr2_1_run"}
+                   "xrfi_h3c_idr2_1_run", "roto_flag_run"}
         The target wrapper desired.
 
     Returns
@@ -41,7 +41,7 @@ def get_metrics_ArgumentParser(method_name):
     """
     methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_h1c_run",
                "delay_xrfi_h1c_idr2_1_run", "xrfi_run", "xrfi_apply", "day_threshold_run",
-               "xrfi_h3c_idr2_1_run", "xrfi_run_data_only"]
+               "xrfi_h3c_idr2_1_run", "xrfi_run_data_only", "roto_flag_run"]
     if method_name not in methods:
         raise AssertionError('method_name must be one of {}'.format(','.join(methods)))
 
@@ -115,6 +115,41 @@ def get_metrics_ArgumentParser(method_name):
                         help='Path to save metrics file to. Default is same directory as file.')
         ap.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                         help='*.omni.calfits files for which to calculate omnical_metrics.')
+    elif method_name == 'roto_flag_run':
+        ap.prog = 'roto_flag_run.py'
+        ap.add_argument('--data_files', type=str, nargs='+',
+                        help='list of data files to run roto-flag on.')
+        ap.add_argument('--flag_files', type=str, nargs='+', default=None,
+                        help='list of flag files to apply before running roto-flag.')
+        ap.add_argument('--cal_files', type=str, nargs='+', default=None,
+                        help='list of calibration files to add flags too.')
+        ap.add_argument('--a_priori_flag_yaml', type=str, default=None,
+                        help='a priori flagging yaml to use with roto-flag.')
+        ap.add_argument('--flag_percentile_freq', type=float, default=95.,
+                        help='percentile in frequency direction to flag.')
+        ap.add_argument('--flag_percentile_time', type=float, default=95.,
+                        help='percentile in time direction to filag.')
+        ap.add_argument('--Nwf_per_load', type=int, default=None,
+                        help='number of waterfalls to load simultaneously.')
+        ap.add_argument('--use_autos', default=False, action='store_true',
+                        help='if true, include autos (not just crosses) in the metric.')
+        ap.add_argument('--output_label', default='roto_flags', type=str,
+                        help='an optional identifying label.')
+        ap.add_argument('--cal_label', default='roto_flags', type=str,
+                        help='an optional identifying label for cal solutions.')
+        ap.add_argument('--kt_size', default=32, type=int,
+                        help='integer size of convolution kernel in time.')
+        ap.add_argument('--kf_size', default=8, type=int,
+                        help='integer size of convolution kernel in frequency.')
+        ap.add_argument('--niters', default=6, type=int,
+                        help='number of rotational flagging iterations.')
+        ap.add_argument('--clobber', default=False, action='store_true',
+                        help='overwrite outputs.')
+        ap.add_argument('--metric_only', default=False, action='store_true',
+                        help='if true, only compute metric. do not perform any flagging.')
+        ap.add_argument('--flag_only', default=False, action='store_true',
+                        help='if true, only compute flags, data files are metrics.')
+        ap.add_argument('--fname', default=None, type=str, help='file name used to determine whether roto_flag will be run in flag_only mode.')
     elif method_name == 'xrfi_h1c_run':
         ap.prog = 'xrfi_h1c_run.py'
         ap.add_argument('--infile_format', default='miriad', type=str,
