@@ -689,7 +689,7 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
         raise NotImplementedError("apply_yaml_flags does not support multiple spws at this time.")
     # if UVCal provided, get lst_array from times.
     # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
-    if not hasattr(uv, 'lst_array'):
+    if uv.lst_array is None:
         if lat_lon_alt_degrees is None:
             if telescope_name is None:
                 telescope_name = uv.telescope_name

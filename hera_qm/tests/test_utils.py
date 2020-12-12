@@ -16,6 +16,12 @@ from pyuvdata import UVData
 from pyuvdata import UVCal
 import pyuvdata.utils as uvutils
 
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:The uvw_array does not match the expected values given the antenna positions.",
+    "ignore:telescope_location is not set. Using known values for HERA.",
+    "ignore:antenna_positions is not set. Using known values for HERA."
+)
+
 def test_get_metrics_ArgumentParser_ant_metrics():
     a = utils.get_metrics_ArgumentParser('ant_metrics')
     # First try defaults - test a few of them
@@ -350,7 +356,10 @@ def test_apply_yaml_flags(tmpdir):
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
     # check that not providing lat_lon_alt_degrees and a telescope location that is not in the pyuvdata.KNOWN_TELESCOPES dict
     # throws a NotImplementedError
-    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds, None, 'MITEOR')
+    # must remove the `lst_array` from the cal object first to test this
+    uvc2 = uvc.copy()
+    uvc2.lst_array = None
+    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc2, test_flag_jds, None, 'MITEOR')
     # check that more then a single spw throws a NotImplementedError
     uvc.Nspws = 2
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds)

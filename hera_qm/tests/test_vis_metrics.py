@@ -12,6 +12,9 @@ import copy
 import pytest
 from scipy import stats
 
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:The uvw_array does not match the expected values given the antenna positions.",
+)
 
 @pytest.fixture(scope='function')
 def vismetrics_data():

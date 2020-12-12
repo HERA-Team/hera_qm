@@ -11,6 +11,9 @@ from hera_qm import metrics_io
 from hera_qm.data import DATA_PATH
 import hera_qm.tests as qmtest
 
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:The uvw_array does not match the expected values given the antenna positions.",
+)
 
 def test_per_antenna_modified_z_scores():
     metric = {(0, 'Jnn'): 1, (50, 'Jnn'): 0, (2, 'Jnn'): 2,
