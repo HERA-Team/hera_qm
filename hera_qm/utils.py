@@ -687,7 +687,7 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     # only support single spw right now.
     if issubclass(uv.__class__, (UVData, UVCal)) and uv.Nspws > 1:
         raise NotImplementedError("apply_yaml_flags does not support multiple spws at this time.")
-    # if UVCal provided, get lst_array from times.
+    # if UVCal provided and lst_array is None, get lst_array from times.
     # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
     if uv.lst_array is None:
         if lat_lon_alt_degrees is None:
