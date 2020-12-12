@@ -37,6 +37,11 @@ for cnum, cf, uvf in zip(range(3), test_c_files, test_uvh5_files):
     test_c_files[cnum] = os.path.join(DATA_PATH, cf)
     test_uvh5_files[cnum] = os.path.join(DATA_PATH, uvf)
 
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:The uvw_array does not match the expected values given the antenna positions.",
+    "ignore:telescope_location is not set. Using known values for HERA.",
+    "ignore:antenna_positions is not set. Using known values for HERA."
+)
 
 def test_uvdata():
     uv = UVData()
@@ -1915,10 +1920,14 @@ def test_day_threshold_run_data_only(tmpdir):
 def test_day_threshold_run_cal_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
+    metadata_messages = [
+        "telescope_location is not set. Using known values for HERA.",
+        "antenna_positions is not set. Using known values for HERA."
+    ]
     mess1 = ['This object is already a waterfall']
-    messages = 8 * mess1
+    messages = metadata_messages + 2 * mess1 + metadata_messages + 6 * mess1  + metadata_messages
     cat1 = [UserWarning]
-    categories = 8 * cat1
+    categories = 14 * cat1
     # Spoof the files - run xrfi_run twice on spoofed files.
     tmp_path = tmpdir.strpath
     fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
@@ -1953,6 +1962,8 @@ def test_day_threshold_run_cal_only(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
+    messages = mess1 * 8
+    categories = cat1 * 8
     uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
                                          None], {'history': 'Just a test', 'kt_size': 3, 'output_prefixes': data_files[1], 'throw_away_edges':False},
                          nwarnings=len(messages), message=messages, category=categories)

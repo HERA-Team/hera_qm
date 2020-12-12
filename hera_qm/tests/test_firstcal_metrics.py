@@ -15,6 +15,10 @@ from hera_qm import metrics_io
 import sys
 import pytest
 
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:telescope_location is not set. Using known values for HERA.",
+    "ignore:antenna_positions is not set. Using known values for HERA."
+)
 
 @pytest.fixture(scope='function')
 def firstcal_setup():
