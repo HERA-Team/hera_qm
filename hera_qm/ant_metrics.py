@@ -100,7 +100,7 @@ def per_antenna_modified_z_scores(metric):
     return zscores
 
 
-def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
+def time_freq_abs_vis_stats(data_sum, data_diff, sum_flags=None, diff_flags=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
     """Summarize visibility magnitudes as a single number for quick comparison to others.
 
     Parameters
@@ -126,22 +126,33 @@ def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np
         help catch completely dead antennas (this was observed in H1C).
 
     """
-    abs_vis_stats = {}
+    # abs_vis_stats = {}
+    corr_metric = {}
     for bl in data:
-        data_here = deepcopy(data[bl])
-        data_here[~np.isfinite(data_here)] = np.nan
-        if flags is not None:
-            data_here[flags[bl]] = np.nan
+        data_sum_here = deepcopy(data_sum[bl])
+        data_sum_here[~np.isfinite(data_sum_here)] = np.nan
+        data_diff_here = deepcopy(data_diff[bl])
+        data_diff_here[~np.isfinite(data_diff_here)] = np.nan
+        if sum_flags is not None:
+            data_sum_here[sum_flags[bl]] = np.nan
+        if diff_flags is not None:
+            data_diff_here[diff_flags[bl]] = np.nan
 
-        med_abs_vis = np.nanmedian(np.abs(data_here))
-        if med_abs_vis == 0:
-            abs_vis_stats[bl] = 0
-        else:
-            if time_alg == freq_alg:  # if they are the algorithm, do it globally
-                abs_vis_stats[bl] = time_alg(np.abs(data_here))
-            else:
-                abs_vis_stats[bl] = time_alg(freq_alg(np.abs(data_here), axis=1))
-    return abs_vis_stats
+        even = (data_sum_here + data_diff_here)/2
+        even = np.divide(even,np.abs(even))
+        odd = (data_sum_here - data_diff_here)/2
+        odd = np.divide(odd,np.abs(odd))
+        metric = np.abs(np.nanmean(np.multiply(even,np.conj(odd))))
+        corr_metric[bl] = metric
+        # med_abs_vis = np.nanmedian(np.abs(data_here))
+        # if med_abs_vis == 0:
+        #     abs_vis_stats[bl] = 0
+        # else:
+        #     if time_alg == freq_alg:  # if they are the algorithm, do it globally
+        #         abs_vis_stats[bl] = time_alg(np.abs(data_here))
+        #     else:
+        #         abs_vis_stats[bl] = time_alg(freq_alg(np.abs(data_here), axis=1))
+    return corr_metric
 
 
 def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
