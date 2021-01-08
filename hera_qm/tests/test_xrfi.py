@@ -280,10 +280,11 @@ def test_detrend_medminfilt(fake_data):
     assert np.allclose(ans, dm)
 
 
-def test_detrend_medfilt(fake_data):
+def test_detrend_medfilt():
     # make fake data
-    for i in range(fake_data.shape[1]):
-        fake_data[:, i] = i * np.ones_like(fake_data[:, i])
+    x = np.sin(np.linspace(0, 2.1 * np.pi, 100))
+    y = np.cos(np.linspace(0, 5.3 * np.pi, 100))
+    fake_data = np.outer(x,y)
     # run detrend medfilt
     Kt = 101
     Kf = 101
@@ -294,17 +295,17 @@ def test_detrend_medfilt(fake_data):
 
     # read in "answer" array
     # this is output that corresponds to .size==100, Kt==101, Kf==101
-    ans_fn = os.path.join(DATA_PATH, 'test_detrend_medfilt_ans.txt')
+    ans_fn = os.path.join(DATA_PATH, 'test_detrend_medfilt_ans_v2.txt')
     ans = np.loadtxt(ans_fn)
-    assert np.allclose(ans, dm)
+    np.testing.assert_array_almost_equal(ans, dm)
 
 
-def test_detrend_medfilt_complex(fake_data):
+def test_detrend_medfilt_complex():
     # use complex data
-    fake_data = np.zeros(fake_data.shape, dtype=np.complex)
-    for i in range(fake_data.shape[1]):
-        fake_data[:, i] = (np.sin(i) * np.ones_like(fake_data[:, i], dtype=np.float)
-                           + 1j * np.cos(i) * np.ones_like(fake_data[:, i], dtype=np.float))
+    x = np.sin(np.linspace(0, 2.1 * np.pi, 100)) + 1.0j * np.cos(np.linspace(0, 1.3 * np.pi, 100))
+    y = np.cos(np.linspace(0, 5.3 * np.pi, 100)) + 1.0j * np.sin(np.linspace(0, 2.9 * np.pi, 100))
+    fake_data = np.outer(x,y)
+
     # run detrend_medfilt
     Kt = 8
     Kf = 8
@@ -312,9 +313,9 @@ def test_detrend_medfilt_complex(fake_data):
 
     # read in "answer" array
     # this is output that corresponds to .size=100, Kt=8, Kf=8
-    ans_fn = os.path.join(DATA_PATH, 'test_detrend_medfilt_complex_ans.txt')
-    ans = np.genfromtxt(ans_fn, dtype=np.complex)
-    assert np.allclose(ans, dm)
+    ans_fn = os.path.join(DATA_PATH, 'test_detrend_medfilt_complex_ans_v2.txt')
+    ans = np.loadtxt(ans_fn).view('complex')
+    np.testing.assert_array_almost_equal(ans, dm)
 
 
 def test_detrend_medfilt_3d_error():
