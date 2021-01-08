@@ -399,24 +399,22 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
 
     """
     # Delay import so scipy is not required for any use of hera_qm
-    from scipy.signal import medfilt2d
+    from scipy.ndimage import median_filter
 
     Kt, Kf = _check_convolve_dims(data, Kt, Kf)
-    data = np.concatenate([data[Kt - 1::-1], data, data[:-Kt - 1:-1]], axis=0)
-    data = np.concatenate([data[:, Kf - 1::-1], data, data[:, :-Kf - 1:-1]], axis=1)
     if np.iscomplexobj(data):
-        d_sm_r = medfilt2d(data.real, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
-        d_sm_i = medfilt2d(data.imag, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+        d_sm_r = median_filter(data.real, size=(2 * Kt + 1, 2 * Kf + 1), mode='reflect')
+        d_sm_i = median_filter(data.imag, size=(2 * Kt + 1, 2 * Kf + 1), mode='reflect')
         d_sm = d_sm_r + 1j * d_sm_i
     else:
-        d_sm = medfilt2d(data, kernel_size=(2 * Kt + 1, 2 * Kf + 1))
+        d_sm = median_filter(data, size=(2 * Kt + 1, 2 * Kf + 1), mode='reflect')
     d_rs = data - d_sm
     d_sq = np.abs(d_rs)**2
     # Factor of .456 is to put mod-z scores on same scale as standard deviation.
-    sig = np.sqrt(medfilt2d(d_sq, kernel_size=(2 * Kt + 1, 2 * Kf + 1)) / .456)
+    sig = np.sqrt(median_filter(d_sq, size=(2 * Kt + 1, 2 * Kf + 1), mode='reflect') / .456)
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
-    return out[Kt:-Kt, Kf:-Kf]
+    return out
 
 
 def detrend_meanfilt(data, flags=None, Kt=8, Kf=8):
