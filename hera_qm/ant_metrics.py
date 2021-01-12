@@ -135,8 +135,8 @@ def time_freq_abs_vis_stats(data_sum, data_diff, flags_sum=None, flags_diff=None
         data_diff_here[~np.isfinite(data_diff_here)] = np.nan
         if flags_sum is not None:
             data_sum_here[flags_sum[bl]] = np.nan
-        #if flags_diff is not None:
-        #    data_diff_here[flags_diff[bl]] = np.nan
+        if flags_diff is not None:
+            data_diff_here[flags_diff[bl]] = np.nan
 
         even = (data_sum_here + data_diff_here)/2
         even = np.divide(even,np.abs(even))
@@ -452,8 +452,9 @@ class AntennaMetrics():
 
         self.abs_vis_stats = {}
         for blg in bl_load_groups:
-            data_sum, data_diff, flags_sum, _ = self.hd.read(bls=blg, axis='blt')
-            self.abs_vis_stats.update(time_freq_abs_vis_stats(data_sum, data_diff, flags_sum))
+            data_sum, flags_sum, _ = self.hd_sum.read(bls=blg, axis='blt')
+            data_diff, flags_diff, _ = self.hd_diff.read(bls=blg, axis='blt')
+            self.abs_vis_stats.update(time_freq_abs_vis_stats(data_sum, data_diff, flags_sum, flags_diff))
 
     def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median autoPower is 0.0.
