@@ -390,7 +390,7 @@ class AntennaMetrics():
         self.datafile_list_sum = sum_files
         self.hd_sum = HERAData(sum_files)
         if diff_files == None:
-            self.datafile_list = None
+            self.datafile_list_diff = None
             self.hd_diff = None
         else:
             self.datafile_list_diff = diff_files
@@ -620,7 +620,8 @@ class AntennaMetrics():
         out_dict['removal_iteration'] = self.removal_iteration
         out_dict['cross_pol_z_cut'] = self.crossCut
         out_dict['dead_ant_z_cut'] = self.deadCut
-        out_dict['datafile_list'] = self.datafile_list
+        out_dict['datafile_list_sum'] = self.datafile_list_sum
+        out_dict['datafile_list_diff'] = self.datafile_list_diff
         out_dict['history'] = self.history
 
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
