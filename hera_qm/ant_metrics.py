@@ -100,7 +100,7 @@ def per_antenna_modified_z_scores(metric):
     return zscores
 
 
-def time_freq_abs_vis_stats(data_sum, data_diff, flags_sum=None, flags_diff=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
+def time_freq_abs_vis_stats(data_sum, data_diff=None, flags_sum=None, flags_diff=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
     """Summarize visibility magnitudes as a single number for quick comparison to others.
 
     Parameters
@@ -130,16 +130,23 @@ def time_freq_abs_vis_stats(data_sum, data_diff, flags_sum=None, flags_diff=None
     for bl in data_sum:
         data_sum_here = deepcopy(data_sum[bl])
         data_sum_here[~np.isfinite(data_sum_here)] = np.nan
-        data_diff_here = deepcopy(data_diff[bl])
-        data_diff_here[~np.isfinite(data_diff_here)] = np.nan
+        if data_diff is not None:
+            data_diff_here = deepcopy(data_diff[bl])
+            data_diff_here[~np.isfinite(data_diff_here)] = np.nan
         if flags_sum is not None:
             data_sum_here[flags_sum[bl]] = np.nan
         if flags_diff is not None:
             data_diff_here[flags_diff[bl]] = np.nan
 
-        even = (data_sum_here + data_diff_here)/2
+        if data_diff is not None:
+            # Standard calculation
+            even = (data_sum_here + data_diff_here)/2
+            odd = (data_sum_here - data_diff_here)/2
+        else:
+            # If diff files are not provided, use interleaving sum files
+            even = data_sum_here[::2,:]
+            odd = data_sum_here[1::2,:]
         even = np.divide(even,np.abs(even))
-        odd = (data_sum_here - data_diff_here)/2
         odd = np.divide(odd,np.abs(odd))
         metric = np.abs(np.nanmean(np.multiply(even,np.conj(odd))))
         corr_metric[bl] = metric
@@ -329,7 +336,7 @@ class AntennaMetrics():
 
     """
 
-    def __init__(self, sum_files, diff_files, apriori_xants=[], Nbls_per_load=None):
+    def __init__(self, sum_files, diff_files=None, apriori_xants=[], Nbls_per_load=None):
         """Initilize an AntennaMetrics object and load mean visibility amplitudes.
 
         Parameters
@@ -382,8 +389,12 @@ class AntennaMetrics():
             diff_files = [diff_files]
         self.datafile_list_sum = sum_files
         self.hd_sum = HERAData(sum_files)
-        self.datafile_list_diff = diff_files
-        self.hd_diff = HERAData(diff_files)
+        if diff_files == None:
+            self.datafile_list = None
+            self.hd_diff = None
+        else:
+            self.datafile_list_diff = diff_files
+            self.hd_diff = HERAData(diff_files)
         if len(self.hd_sum.filepaths) > 1:
             # only load baselines in all files
             self.bls = sorted(set.intersection(*[set(bls) for bls in self.hd_sum.bls.values()]))
@@ -444,7 +455,11 @@ class AntennaMetrics():
         self.abs_vis_stats = {}
         for blg in bl_load_groups:
             data_sum, flags_sum, _ = self.hd_sum.read(bls=blg, axis='blt')
-            data_diff, flags_diff, _ = self.hd_diff.read(bls=blg, axis='blt')
+            if self.hd_diff == None:
+                data_diff = None
+                flags_diff = None
+            else:
+                data_diff, flags_diff, _ = self.hd_diff.read(bls=blg, axis='blt')
             self.abs_vis_stats.update(time_freq_abs_vis_stats(data_sum, data_diff, flags_sum, flags_diff))
 
     def _find_totally_dead_ants(self, verbose=False):
@@ -611,7 +626,7 @@ class AntennaMetrics():
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
 
 
-def ant_metrics_run(data_files, apriori_xants=[], a_priori_xants_yaml=None,
+def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants_yaml=None,
                     crossCut=5.0, deadCut=5.0, run_cross_pols=True, run_cross_pols_only=False,
                     metrics_path='', extension='.ant_metrics.hdf5',
                     overwrite=False, Nbls_per_load=None, history='', verbose=True):
@@ -626,8 +641,10 @@ def ant_metrics_run(data_files, apriori_xants=[], a_priori_xants_yaml=None,
 
     Parameters
     ----------
-    data_files : str or list of str
-        Path to file or files of raw data to calculate antenna metrics on.
+    sum_files : str or list of str
+        Path to file or files of raw sum data to calculate antenna metrics on.
+    diff_files : str or list of str
+        Path to file or files of raw diff data to calculate antenna metrics on.
     apriori_xants : list of integers or tuples, optional
         List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
         as excluded apriori. These are included in self.xants, but not
@@ -667,7 +684,7 @@ def ant_metrics_run(data_files, apriori_xants=[], a_priori_xants_yaml=None,
         apriori_xants = list(set(list(apriori_xants) + apaf))
 
     # run ant metrics
-    am = AntennaMetrics(data_files,
+    am = AntennaMetrics(sum_files, diff_files,
                         apriori_xants=apriori_xants,
                         Nbls_per_load=Nbls_per_load)
     am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
