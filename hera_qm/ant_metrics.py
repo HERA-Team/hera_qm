@@ -126,7 +126,6 @@ def time_freq_abs_vis_stats(data_sum, data_diff, flags_sum=None, flags_diff=None
         help catch completely dead antennas (this was observed in H1C).
 
     """
-    # abs_vis_stats = {}
     corr_metric = {}
     for bl in data_sum:
         data_sum_here = deepcopy(data_sum[bl])
@@ -144,14 +143,6 @@ def time_freq_abs_vis_stats(data_sum, data_diff, flags_sum=None, flags_diff=None
         odd = np.divide(odd,np.abs(odd))
         metric = np.abs(np.nanmean(np.multiply(even,np.conj(odd))))
         corr_metric[bl] = metric
-        # med_abs_vis = np.nanmedian(np.abs(data_here))
-        # if med_abs_vis == 0:
-        #     abs_vis_stats[bl] = 0
-        # else:
-        #     if time_alg == freq_alg:  # if they are the algorithm, do it globally
-        #         abs_vis_stats[bl] = time_alg(np.abs(data_here))
-        #     else:
-        #         abs_vis_stats[bl] = time_alg(freq_alg(np.abs(data_here), axis=1))
     return corr_metric
 
 
