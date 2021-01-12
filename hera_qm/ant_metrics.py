@@ -100,7 +100,7 @@ def per_antenna_modified_z_scores(metric):
     return zscores
 
 
-def time_freq_abs_vis_stats(data_sum, data_diff, sum_flags=None, diff_flags=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
+def time_freq_abs_vis_stats(data_sum, data_diff, flags_sum=None, flags_diff=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
     """Summarize visibility magnitudes as a single number for quick comparison to others.
 
     Parameters
@@ -128,15 +128,15 @@ def time_freq_abs_vis_stats(data_sum, data_diff, sum_flags=None, diff_flags=None
     """
     # abs_vis_stats = {}
     corr_metric = {}
-    for bl in data:
+    for bl in data_sum:
         data_sum_here = deepcopy(data_sum[bl])
         data_sum_here[~np.isfinite(data_sum_here)] = np.nan
         data_diff_here = deepcopy(data_diff[bl])
         data_diff_here[~np.isfinite(data_diff_here)] = np.nan
-        if sum_flags is not None:
-            data_sum_here[sum_flags[bl]] = np.nan
-        if diff_flags is not None:
-            data_diff_here[diff_flags[bl]] = np.nan
+        if flags_sum is not None:
+            data_sum_here[flags_sum[bl]] = np.nan
+        #if flags_diff is not None:
+        #    data_diff_here[flags_diff[bl]] = np.nan
 
         even = (data_sum_here + data_diff_here)/2
         even = np.divide(even,np.abs(even))
@@ -343,8 +343,10 @@ class AntennaMetrics():
 
         Parameters
         ----------
-        data_files : str or list of str
-            Path to file or files of raw data to calculate antenna metrics on
+        sum_files : str or list of str
+            Path to file or files of raw sum data to calculate antenna metrics on
+        diff_files : str or list of str
+            Path to file or files of raw diff data to calculate antenna metrics on
         apriori_xants : list of integers or tuples, optional
             List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
             as excluded apriori. These are included in self.xants, but not
@@ -355,8 +357,10 @@ class AntennaMetrics():
 
         Attributes
         ----------
-        hd : HERAData
-            HERAData object generated from datafile_list.
+        hd_sum : HERAData
+            HERAData object generated from datafile_list_sum.
+        hd_diff : HERAData
+            HERAData object generated from datafile_list_diff.
         ants : list of tuples
             List of antenna-polarization tuples to assess
         antnums : list of ints
@@ -365,8 +369,10 @@ class AntennaMetrics():
             List of antenna polarization strings. Typically ['Jee', 'Jnn']
         bls : list of ints
             List of baselines in HERAData object.
-        datafile_list : list of str
-            List of data filenames that went into this calculation.
+        datafile_list_sum : list of str
+            List of sum data filenames that went into this calculation.
+        datafile_list_diff : list of str
+            List of diff data filenames that went into this calculation.
         abs_vis_stats : dictionary
             Dictionary mapping baseline keys e.g. (0, 1, 'ee') to single floats
             representing visibility amplitudes.
@@ -379,15 +385,19 @@ class AntennaMetrics():
         """
         # Instantiate HERAData object and figure out baselines
         from hera_cal.io import HERAData
-        if isinstance(data_files, str):
-            data_files = [data_files]
-        self.datafile_list = data_files
-        self.hd = HERAData(data_files)
-        if len(self.hd.filepaths) > 1:
+        if isinstance(sum_files, str):
+            sum_files = [sum_files]
+        if isinstance(diff_files, str):
+            diff_files = [diff_files]
+        self.datafile_list_sum = sum_files
+        self.hd_sum = HERAData(sum_files)
+        self.datafile_list_diff = diff_files
+        self.hd_diff = HERAData(diff_files)
+        if len(self.hd_sum.filepaths) > 1:
             # only load baselines in all files
-            self.bls = sorted(set.intersection(*[set(bls) for bls in self.hd.bls.values()]))
+            self.bls = sorted(set.intersection(*[set(bls) for bls in self.hd_sum.bls.values()]))
         else:
-            self.bls = self.hd.bls
+            self.bls = self.hd_sum.bls
 
         # Figure out which antennas are in the data
         from hera_cal.utils import split_bl, comply_pol
@@ -442,8 +452,8 @@ class AntennaMetrics():
 
         self.abs_vis_stats = {}
         for blg in bl_load_groups:
-            data, flags, _ = self.hd.read(bls=blg, axis='blt')
-            self.abs_vis_stats.update(time_freq_abs_vis_stats(data, flags))
+            data_sum, data_diff, flags_sum, _ = self.hd.read(bls=blg, axis='blt')
+            self.abs_vis_stats.update(time_freq_abs_vis_stats(data_sum, data_diff, flags_sum))
 
     def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median autoPower is 0.0.
