@@ -329,7 +329,7 @@ class AntennaMetrics():
 
     """
 
-    def __init__(self, data_files, apriori_xants=[], Nbls_per_load=None):
+    def __init__(self, sum_files, diff_files, apriori_xants=[], Nbls_per_load=None):
         """Initilize an AntennaMetrics object and load mean visibility amplitudes.
 
         Parameters
