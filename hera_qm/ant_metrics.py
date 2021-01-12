@@ -695,7 +695,7 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
                                               run_cross_pols_only=run_cross_pols_only)
     am.history = am.history + history
 
-    for file in am.datafile_list:
+    for file in am.datafile_list_sum:
         metrics_basename = utils.strip_extension(os.path.basename(file)) + extension
         if metrics_path == '':
             # default path is same directory as file
