@@ -376,7 +376,7 @@ def detrend_medminfilt(data, flags=None, Kt=8, Kf=8):
 
 
 def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
-    """Detrend array using a median filter.
+    """Detrend array using a median filter of surrounding pixels (but not the center one).
 
     Parameters
     ----------
@@ -402,16 +402,18 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
     from scipy.ndimage import median_filter
 
     Kt, Kf = _check_convolve_dims(data, Kt, Kf)
+    footprint = np.ones((2 * Kt + 1, 2 * Kf + 1))
+    footprint[Kt, Kf] = 0    
     if np.iscomplexobj(data):
-        d_sm_r = median_filter(data.real, size=(2 * Kt + 1, 2 * Kf + 1), mode='reflect')
-        d_sm_i = median_filter(data.imag, size=(2 * Kt + 1, 2 * Kf + 1), mode='reflect')
+        d_sm_r = median_filter(data.real, footprint=footprint, mode='reflect')
+        d_sm_i = median_filter(data.imag, footprint=footprint, mode='reflect')
         d_sm = d_sm_r + 1j * d_sm_i
     else:
-        d_sm = median_filter(data, size=(2 * Kt + 1, 2 * Kf + 1), mode='reflect')
+        d_sm = median_filter(data, footprint=footprint, mode='reflect')
     d_rs = data - d_sm
     d_sq = np.abs(d_rs)**2
     # Factor of .456 is to put mod-z scores on same scale as standard deviation.
-    sig = np.sqrt(median_filter(d_sq, size=(2 * Kt + 1, 2 * Kf + 1), mode='reflect') / .456)
+    sig = np.sqrt(median_filter(d_sq, footprint=footprint, mode='reflect') / .456)
     # don't divide by zero, instead turn those entries into +inf
     out = robust_divide(d_rs, sig)
     return out
