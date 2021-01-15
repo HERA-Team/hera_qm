@@ -521,7 +521,7 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
         1D flag array to be interpretted as mask for d. NOT USED in this function,
         but kept for symmetry with other preprocessing functions.
     kern : int, optional
-        The box size to apply medfilt over. Default is 8 pixels.
+        The box size to apply medfilt over. Default is 8 pixels. Center pixel excluded.
     detrend : bool, optional
         Whether to detrend the data before calculating zscores. Default is True.
         Setting to False is equivalent to an infinite kernel, but the function
@@ -534,18 +534,19 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
     """
     if detrend:
         # Delay import so scipy is not required for use of hera_qm
-        from scipy.signal import medfilt
+        from scipy.ndimage import median_filter
 
-        kern = _check_convolve_dims(data, kern)
+        footprint = np.ones(2 * kern + 1)
+        footprint[kern] = 0
         data = np.concatenate([data[kern - 1::-1], data, data[:-kern - 1:-1]])
         # detrend in 1D. Do real/imag regardless of whether data are complex because it's cheap.
-        d_sm_r = medfilt(data.real, kernel_size=2 * kern + 1)
-        d_sm_i = medfilt(data.imag, kernel_size=2 * kern + 1)
+        d_sm_r = median_filter(data.real, footprint=footprint)
+        d_sm_i = median_filter(data.imag, footprint=footprint)
         d_sm = d_sm_r + 1j * d_sm_i
         d_rs = data - d_sm
         d_sq = np.abs(d_rs)**2
         # Factor of .456 is to put mod-z scores on same scale as standard deviation.
-        sig = np.sqrt(medfilt(d_sq, kernel_size=2 * kern + 1) / .456)
+        sig = np.sqrt(median_filter(d_sq, footprint=footprint) / .456)
         zscore = robust_divide(d_rs, sig)[kern:-kern]
     else:
         d_rs = data - np.nanmedian(data.real) - 1j * np.nanmedian(data.imag)
