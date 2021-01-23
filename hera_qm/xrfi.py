@@ -1066,7 +1066,7 @@ def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut
     Kf : int
         Frequency half-width of kernel for med/meanfilt.
     nsig_init : float
-        The number of sigma in the metric above which to flag pixels. Default is 6.
+        The number of sigma in the metric above which to flag pixels. Default is 5.
     nsig_adj : float
         The number of sigma to flag above for points near flagged points. Default is 2.
     edge_cut : integer
