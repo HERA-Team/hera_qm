@@ -141,3 +141,58 @@ def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedia
                                  if bl[0] not in ex_ants])
     mod_zs = {bl: 1.4826 * (diff_metrics[bl] - median_diff_metric) / mad_diff_metric for bl in auto_spectra}
     return mod_zs
+
+
+def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on_abs_modz=False, overall_spec_func=np.nanmedian, 
+                            metric_func=np.nanmedian, metric_power=1.0, metric_log=False, abs_diff=True):
+    '''Iteratively re-computes modified z-scores for aucorrelation spectra by excluding antennas and recalculating.
+    
+    Parameters
+    ----------
+    auto_spectra : dictionary
+        Dictionary mapping autocorrelation key e.g. (1, 1, 'ee') to (normalized) spectrum, e.g.
+        that produced by get_auto_spectra().
+    prior_ex_ants : list of integers
+        list of integer antenna numbers to exclude from the get-go
+    modz_cut : float
+        Modified z-score above which to cut the worst antenna and re-run the metrics.
+    cut_on_abs_modz : bool
+        If True, cut ants with z-scores that are larger than modz_cut or smaller than -modz_cut.
+    overall_spec_func : function
+        Function for averaging together all spectra of a given polarization.
+    metric_func : function
+        The function used to reduce differences between each spectrum and the overall spectrum to a float
+    metric_power : float
+        Take each entry in the abs diff to this power before using metric_func to collapse to a float
+    metric_log : bool
+        If True, take the log of both the spectrum and the overall spectrum before taking the abs diff
+    abs_diff : bool
+        If True, the metric uses the abs diff with the overall spectrum. Otherwise, it's just the diff.        
+
+    Returns
+    -------
+    ex_ants : list of integers
+        List of integer antenna numbers that were excluded on final iteration.
+    mod_zs : dictionary
+        Dictionary mapping autocorrelation keys e.g. (1, 1, 'ee') to float modified z-scores relative 
+        to all antennas not in ex_ants. Returns results for last iteration.
+    '''
+    ex_ants = copy.deepcopy(prior_ex_ants)
+    # add one antenna per loop to ex_ants
+    while not np.all([bl[0] in ex_ants for bl in auto_spectra]):
+        # compute metric for all autos compared to the distribution of non-ex_ant antennas
+        mod_zs = spectrum_modz_scores(auto_spectra, ex_ants=ex_ants, overall_spec_func=overall_spec_func, 
+                                      metric_func=metric_func, metric_power=metric_power, 
+                                      metric_log=metric_log, abs_diff=abs_diff)
+        
+        # figure out out worst antenna that's not already in ex_ants
+        mod_zs_no_exants = {k: [v, np.abs(v)][cut_on_abs_modz] for k, v in mod_zs.items() if k[0] not in ex_ants}
+        worst_ant, worst_z = max(mod_zs_no_exants.items(), key=operator.itemgetter(1))
+        
+        # cut worst antenna if it's bad enough
+        if (worst_z > modz_cut):
+            ex_ants.append(worst_ant[0])
+        else:
+            break
+    
+    return ex_ants, mod_zs
