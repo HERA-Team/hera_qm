@@ -96,7 +96,7 @@ def get_auto_spectra(autos, flag_wf=None, time_avg_func=np.nanmedian, scalar_nor
 
 def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedian, metric_func=np.nanmedian, 
                          metric_power=1.0, metric_log=False, abs_diff=True):
-    '''Computes a modified z-score of a autocorrelation spectrum compared to all others not in ex_ants.
+    '''Computes a modified Z-score of a autocorrelation spectrum compared to all others not in ex_ants.
     
     Parameters
     ----------
@@ -144,7 +144,7 @@ def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedia
     return mod_zs
 
 
-def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on_abs_modz=False, overall_spec_func=np.nanmedian, 
+def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on_abs_modz=False, overall_spec_func=np.nanmedian,
                             metric_func=np.nanmedian, metric_power=1.0, metric_log=False, abs_diff=True):
     '''Iteratively re-computes modified z-scores for aucorrelation spectra by excluding antennas and recalculating.
     
@@ -168,7 +168,7 @@ def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on
     metric_log : bool
         If True, take the log of both the spectrum and the overall spectrum before taking the abs diff
     abs_diff : bool
-        If True, the metric uses the abs diff with the overall spectrum. Otherwise, it's just the diff.        
+        If True, the metric uses the abs diff with the overall spectrum. Otherwise, it's just the diff.
 
     Returns
     -------
@@ -178,7 +178,7 @@ def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on
         Dictionary mapping autocorrelation keys e.g. (1, 1, 'ee') to float modified z-scores relative 
         to all antennas not in ex_ants. Returns results for last iteration.
     '''
-    ex_ants = copy.deepcopy(prior_ex_ants)
+    ex_ants = deepcopy(prior_ex_ants)
     # add one antenna per loop to ex_ants
     while not np.all([bl[0] in ex_ants for bl in auto_spectra]):
         # compute metric for all autos compared to the distribution of non-ex_ant antennas
