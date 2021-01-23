@@ -29,8 +29,9 @@ def nanmean_abs_diff(a, axis=0):
 
 def _check_only_auto_keys(data):
     '''Verify that keys in data are only autocorrelation keys of the form (ant, ant, pol).'''
+    from hera_cal.utils import split_pol  # delay import of hera_cal
     for bl in data:
-        ap0, ap1 = utils.split_pol(bl[2])
+        ap0, ap1 = split_pol(bl[2])
         if (bl[0] != bl[1]) or (ap0 != ap1):
             raise ValueError(f'{bl} is not an autocorrelation key.')
 
