@@ -1053,7 +1053,7 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
         return net_flags
 
 
-def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut=0):
+def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut=0, chan_thresh_frac=1.0):
     '''XRFI-lite: performs median and mean filtering on a single waterfall, with 
     watershed expansion of flags, and spectral and temporal thresholding.
     
@@ -1071,7 +1071,10 @@ def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut
         The number of sigma to flag above for points near flagged points. Default is 2.
     edge_cut : integer
         Number of channels at each band edge to flag automatically.
-            
+    chan_thresh_frac : float
+        Fraction of times flagged (excluding completely flagged integrations) above which
+         to flag an entire channel. Default 1.0 means no additional flags.
+
     Returns
     -------
     flags : 2D numpy array of booleans
@@ -1105,6 +1108,11 @@ def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut
     flags[:, :edge_cut] = True
     flags[:, -edge_cut:] = True
     
+    # Flag channels that are flagged more than chan_thresh_frac (excluding completely flagged times)
+    min_flags_per_chan = np.min(np.sum(flags, axis=0))
+    chan_thresh = min_flags_per_chan + chan_thresh_frac * (flags.shape[0] - min_flags_per_chan)
+    flags[:, np.sum(flags, axis=0) > chan_thresh] = True
+
     return flags
 
 
