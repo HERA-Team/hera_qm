@@ -6,6 +6,7 @@
 from . import xrfi  # noqa
 from . import vis_metrics  # noqa
 from . import ant_metrics  # noqa
+from . import auto_metrics  # noqa
 from . import firstcal_metrics  # noqa
 from . import omnical_metrics  # noqa  # noqa
 from . import metrics_io  # noqa
