@@ -1053,6 +1053,61 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
         return net_flags
 
 
+def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut=0):
+    '''XRFI-lite: performs median and mean filtering on a single waterfall, with 
+    watershed expansion of flags, and spectral and temporal thresholding.
+    
+    Parameters
+    ----------
+    data : 2D numpy array of floats or complex numbers
+        Waterfall to use to find and flag outliers.
+    Kt : int
+        Time half-width of kernel for med/meanfilt.
+    Kf : int
+        Frequency half-width of kernel for med/meanfilt.
+    nsig_init : float
+        The number of sigma in the metric above which to flag pixels. Default is 6.
+    nsig_adj : float
+        The number of sigma to flag above for points near flagged points. Default is 2.
+    edge_cut : integer
+        Number of channels at each band edge to flag automatically.
+            
+    Returns
+    -------
+    flags : 2D numpy array of booleans
+        Final waterfall of flags with the same shape as the data.
+        
+    '''
+    # Perform medfilt-based RFI excision with watershed growth of flags
+    medfilt_metric = detrend_medfilt(data, Kt=Kt, Kf=Kf)
+    medfilt_flags = (np.abs(medfilt_metric) > sig_init)
+    medfilt_flags |= _ws_flag_waterfall(medfilt_metric, medfilt_flags, nsig=sig_adj)
+    
+    # Perform meanfilt-based RFI excision with watershed growth of flags
+    meanfilt_metric = detrend_meanfilt(data, flags=medfilt_flags, Kt=Kt, Kf=Kf)
+    flags = medfilt_flags | (np.abs(meanfilt_metric) > sig_init) 
+    flags |= _ws_flag_waterfall(meanfilt_metric, flags, nsig=sig_adj)
+    
+    # Perform spectral thresholding 
+    combined_metric = np.where(medfilt_flags, medfilt_metric, meanfilt_metric)
+    spec = np.nanmedian(combined_metric, axis=0)
+    zspec = modzscore_1d(spec, detrend=False)
+    zspec[~np.isfinite(zspec)] = sig_init
+    flags[:, _ws_flag_waterfall(np.abs(zspec), np.abs(zspec) >= sig_init, nsig=sig_adj)] = True
+
+    # Perform temporal thresholding
+    tseries = np.nanmedian(combined_metric, axis=1)
+    ztseries = modzscore_1d(tseries, detrend=False)
+    tseries[~np.isfinite(tseries)] = sig_init
+    flags[_ws_flag_waterfall(np.abs(ztseries), np.abs(ztseries) >= sig_init, nsig=sig_adj), :] = True
+
+    # Flag edge channels
+    flags[:, :edge_cut] = True
+    flags[:, -edge_cut:] = True
+    
+    return flags
+
+
 #############################################################################
 # Higher level functions that loop through data to calculate metrics
 #############################################################################
