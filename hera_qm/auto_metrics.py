@@ -377,15 +377,10 @@ def auto_metrics_run(raw_auto_files, median_round_modz_cut=16., mean_round_modz_
                'median_abs_diff_spectra_normed': median_abs_diff_spectra_normed, 'median_spectra': median_spectra,
                'mean_spectra_normed': mean_spectra_normed, 'std_spectra_normed': std_spectra_normed,
                'mean_abs_diff_spectra_normed': mean_abs_diff_spectra_normed, 'mean_spectra': mean_spectra}
-    
-    r2_avg_good_autos = {pol: np.vstack([np.mean([np.abs(autos[bl][i, :])
-                                                  for bl in autos if (bl[0] not in r2_ex_ants) and (bl[2] == pol)], axis=0)
-                                         for i in range(wf_shape[0])]) for pol in pols}
-    avg_good_autos = {f'{r}_avg_good_auto_{pol}': eval(f'{r}_avg_good_auto') for r in ['r1', 'r2'] for pol in pols}
 
     # TODO write results
 
-    return ex_ants, modzs, spectra, avg_good_autos, flags
+    return ex_ants, modzs, spectra, flags
 
     # TODO: argparser
     # TODO: script
