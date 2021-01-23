@@ -89,5 +89,55 @@ def get_auto_spectra(autos, flag_wf=None, time_avg_func=np.nanmedian, scalar_nor
             auto /= wf_norm[bl[2]]
         auto_spectra[bl] = time_avg_func(auto, axis=0)
         if scalar_norm:
-            auto_spectra[bl] /= norm_func(auto)              
+            auto_spectra[bl] /= norm_func(auto)
     return auto_spectra
+
+
+def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedian, metric_func=np.nanmedian, 
+                         metric_power=1.0, metric_log=False, abs_diff=True):
+    '''Computes a modified z-score of a autocorrelation spectrum compared to all others not in ex_ants.
+    
+    Parameters
+    ----------
+    auto_spectra : dictionary
+        Dictionary mapping autocorrelation key e.g. (1, 1, 'ee') to (normalized) spectrum, e.g.
+        that produced by get_auto_spectra().
+    ex_ants : list of integers
+        list of integer antenna numbers to exclude from median and MAD when computing modified z-scores
+    overall_spec_func : function
+        Function for averaging together all spectra of a given polarization.
+    metric_func : function
+        The function used to reduce differences between each spectrum and the overall spectrum to a float
+    metric_power : float
+        Take each entry in the (abs) diff to this power before using metric_func to collapse to a float
+    metric_log : bool
+        If True, take the log of both the spectrum and the overall spectrum before taking the abs diff
+    abs_diff : bool
+        If True, the metric uses the abs diff with the overall spectrum. Otherwise, it's just the diff.
+
+
+    Returns
+    -------
+    mod_zs : dictionary
+        Dictionary mapping autocorrelation keys e.g. (1, 1, 'ee') to float modified z-scores relative 
+        to all antennas not in ex_ants.
+    '''
+    # Check if all keys are actually autocorrelations
+    _check_only_auto_keys(auto_spectra)
+    
+    # Get overall spectrum each polarization
+    pols = set([bl[2] for bl in auto_spectra])
+    overall_spectrum = {pol: overall_spec_func([spec for bl, spec in auto_spectra.items() if (bl[2] == pol) 
+                                                and (bl[0] not in ex_ants)], axis=0) for pol in pols}
+
+    # Calculate metric of distance between spectra and the mean/median spectrum
+    L = lambda x : np.log(x) if metric_log else x
+    A = lambda x : np.abs(x) if abs_diff else x
+    diff_metrics = {bl: metric_func(A(L(auto_spectra[bl]) - L(overall_spectrum[bl[2]]))**metric_power) for bl in auto_spectra}
+    
+    # Calculate the modified z-score of that metric
+    median_diff_metric = np.median([metric for bl, metric in diff_metrics.items() if bl[0] not in ex_ants])
+    mad_diff_metric = np.median([np.abs(metric - median_diff_metric) for bl, metric in diff_metrics.items() 
+                                 if bl[0] not in ex_ants])
+    mod_zs = {bl: 1.4826 * (diff_metrics[bl] - median_diff_metric) / mad_diff_metric for bl in auto_spectra}
+    return mod_zs
