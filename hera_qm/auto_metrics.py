@@ -23,3 +23,9 @@ def nanmean_abs_diff(a, axis=0):
     along that axis with the nanmean. Useful for studying temporal variability, e.g.'''
     return np.nanmean(np.abs(np.diff(a, axis=axis)), axis=axis)
 
+def _check_only_auto_keys(data):
+    '''Verify that keys in data are only autocorrelation keys of the form (ant, ant, pol).'''
+    for bl in data:
+        ap0, ap1 = utils.split_pol(bl[2])
+        if (bl[0] != bl[1]) or (ap0 != ap1):
+            raise ValueError(f'{bl} is not an autocorrelation key.')
