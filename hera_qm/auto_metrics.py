@@ -363,9 +363,9 @@ def auto_metrics_run(raw_auto_files, median_round_modz_cut=16., mean_round_modz_
         else:
             r2_ex_ants = updated_ex_ants
             # recompute statistics that depend on the overall waterfall, and thus on the other antennas
-            std_spectra_normed = get_auto_spectra(data, flag_wf=flags, time_avg_func=np.nanstd, scalar_norm=True, 
+            std_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanstd, scalar_norm=True, 
                                                   waterfall_norm=True, norm_func=np.nanmean, ex_ants=r2_ex_ants)
-            mean_abs_diff_spectra_normed = get_auto_spectra(data, flag_wf=flags, time_avg_func=nanmean_abs_diff, scalar_norm=True, 
+            mean_abs_diff_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=nanmean_abs_diff, scalar_norm=True, 
                                                             waterfall_norm=True, norm_func=np.nanmean, ex_ants=r2_ex_ants)
 
     ######################################################
