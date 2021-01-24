@@ -36,6 +36,7 @@ setup_args = {
     'packages': ['hera_qm'],
     'include_package_data': True,
     'scripts': ['scripts/ant_metrics_run.py',
+                'scripts/auto_metrics_run.py',
                 'scripts/xrfi_run.py',
                 'scripts/firstcal_metrics_run.py',
                 'scripts/auto_view.py',
