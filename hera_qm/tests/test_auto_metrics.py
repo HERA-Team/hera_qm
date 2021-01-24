@@ -37,3 +37,18 @@ def test_nanmean_abs_diff():
     test[1,0] = 2
     assert auto_metrics.nanmean_abs_diff(test)[0] == 7. / 8
     np.testing.assert_array_equal(auto_metrics.nanmean_abs_diff(test)[1:], np.ones(4))
+
+
+def test_check_only_auto_keys():
+    good_data = {(0, 0, 'ee'): np.zeros((10, 10)), (2, 2, 'nn'): np.zeros((10, 10))}
+    auto_metrics._check_only_auto_keys(good_data)
+
+    # test cross-correlation keys
+    bad_data = {(0, 0, 'ee'): np.zeros((10, 10)), (0, 2, 'nn'): np.zeros((10, 10))}
+    with pytest.raises(ValueError):
+        auto_metrics._check_only_auto_keys(bad_data)
+
+    # test cross-pol keys
+    bad_data = {(0, 0, 'ee'): np.zeros((10, 10)), (0, 0, 'ne'): np.zeros((10, 10))}
+    with pytest.raises(ValueError):
+        auto_metrics._check_only_auto_keys(bad_data)
