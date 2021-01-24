@@ -39,7 +39,7 @@ list_of_strings_keys = ['datafile_list']
 dict_of_dicts_keys = ['final_mod_z_scores', 'final_metrics']
 dict_of_dict_of_dicts_keys = ['all_metrics', 'all_mod_z_scores']
 dict_of_dict_of_tuple_keys = ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']
-dict_of_dict_of_tuple_keys += ['spectra', 'modzs']  # for auto_metrics
+dict_of_dict_of_bl_keys = ['spectra', 'modzs']  # for auto_metrics
 
 
 def _reds_list_to_dict(reds):
@@ -845,8 +845,8 @@ def _recursively_validate_dict(in_dict):
         aps = aps.replace(' ', '')
         aps = aps.replace("'", "")
         aps = aps.replace('"', '')
-        ant, antpol = aps.split(',')
-        return (int(ant), antpol)
+        split = aps.split(',')
+        return tuple([int(ant) for ant in split[0:-1]]) + (split[-1],)
 
     for key in in_dict:
         if key in ['history', 'version']:
