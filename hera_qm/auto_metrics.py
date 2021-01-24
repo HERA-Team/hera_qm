@@ -202,18 +202,18 @@ def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on
     return ex_ants, mod_zs
 
 
-def auto_metrics_run(raw_auto_files, metric_outfile, median_round_modz_cut=16., mean_round_modz_cut=8.,
+def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=16., mean_round_modz_cut=8.,
                      edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, chan_thresh_frac=.05, 
                      history='', overwrite=False):
     '''Computes 
 
     Parameters
     ----------
+    metric_outfile : str
+        Path to save metrics and associated metadata as a hdf5 file.
     raw_auto_files : str or list of str
         Path(s) to data files containing raw autocorrelations. Ideally these would be pre-selected to just
         include autocorrelations, but raw data files will work too (just more slowly)
-    metric_outfile : str
-        Path to save metrics and associated metadata as a hdf5 file.
     median_round_modz_cut : float
         Modified Z-score threshold above which to cut an antenna when either of its polarizations exceeds
         this cut. Used in Round 1 of antenna flagging, which is based on more robust median statistics. 
