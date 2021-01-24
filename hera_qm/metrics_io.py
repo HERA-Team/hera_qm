@@ -38,8 +38,8 @@ antpol_dict_keys = ['removal_iteration']
 list_of_strings_keys = ['datafile_list']
 dict_of_dicts_keys = ['final_mod_z_scores', 'final_metrics']
 dict_of_dict_of_dicts_keys = ['all_metrics', 'all_mod_z_scores']
-dict_of_dict_of_tuple_keys = ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol',
-                              'spectra', 'modzs']  # for auto_metrics
+dict_of_dict_of_tuple_keys = ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']
+dict_of_bl_dicts_keys = ['spectra', 'modzs']  # for auto_metrics
 
 
 def _reds_list_to_dict(reds):
@@ -871,6 +871,9 @@ def _recursively_validate_dict(in_dict):
 
         if key in dict_of_dict_of_tuple_keys:
             in_dict[key] = {_antpol_str_to_tuple(k): in_dict[key][k] for k in in_dict[key]}
+
+        if key in dict_of_bl_dicts_keys:
+            in_dict[key] = {k: {_antpols_str_to_tuple(k2): in_dict[key][k][k2] for k2 in in_dict[key][k]} for k in in_dict[key]}
 
         if key in known_string_keys and isinstance(in_dict[key], bytes):
             in_dict[key] = in_dict[key].decode()
