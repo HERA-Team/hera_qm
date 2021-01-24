@@ -38,8 +38,8 @@ antpol_dict_keys = ['removal_iteration']
 list_of_strings_keys = ['datafile_list']
 dict_of_dicts_keys = ['final_mod_z_scores', 'final_metrics']
 dict_of_dict_of_dicts_keys = ['all_metrics', 'all_mod_z_scores']
-dict_of_dict_of_tuple_keys = ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']
-dict_of_dict_of_bl_keys = ['spectra', 'modzs']  # for auto_metrics
+dict_of_dict_of_tuple_keys = ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol',
+                              'spectra', 'modzs']  # for auto_metrics
 
 
 def _reds_list_to_dict(reds):
