@@ -394,6 +394,3 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=16., 
                 'datafile_list': raw_auto_files, 'history': history}
     write_metric_file(metric_outfile, out_dict, overwrite=overwrite)
     return ex_ants, modzs, spectra, flags
-
-    # TODO: argparser
-    # TODO: script
