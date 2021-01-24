@@ -340,7 +340,7 @@ def auto_metrics_run(raw_auto_files, median_round_modz_cut=16., mean_round_modz_
                                                     waterfall_norm=True, norm_func=np.nanmean, ex_ants=r1_ex_ants)
     mean_spectra = get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanmean, scalar_norm=False, waterfall_norm=False)
 
-    r2_ex_ants = copy.deepcopy(r1_ex_ants)
+    r2_ex_ants = deepcopy(r1_ex_ants)
     while True:
         shape_ex_ants, r2_shape_mod_zs = iterative_spectrum_modz(mean_spectra_normed, r2_ex_ants, modz_cut=mean_round_modz_cut,
                                                                  overall_spec_func=np.nanmean, metric_func=np.nanmean,
