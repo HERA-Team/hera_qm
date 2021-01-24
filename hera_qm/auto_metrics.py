@@ -79,7 +79,7 @@ def get_auto_spectra(autos, flag_wf=None, time_avg_func=np.nanmedian, scalar_nor
             wf_norm[pol] = []
             for i in range(wf_shape[0]):
                 row_list = [np.where(flag_wf[i, :], np.nan, autos[bl][i, :].real)
-                            for bl in data if (bl[0] not in ex_ants) and (bl[2] == pol)]
+                            for bl in autos if (bl[0] not in ex_ants) and (bl[2] == pol)]
                 wf_norm[pol].append(norm_func(row_list))
             wf_norm[pol] = np.vstack(wf_norm[pol])
 
@@ -372,8 +372,10 @@ def auto_metrics_run(raw_auto_files, median_round_modz_cut=16., mean_round_modz_
     # Save results
     ######################################################
     ex_ants = {'r1_ex_ants': r1_ex_ants, 'r2_ex_ants': r2_ex_ants}
-    modzs = {'r1_shape_modzs': r1_shape_modzs, 'r1_temp_var_modzs': r1_temp_var_modzs, 'r1_temp_diff_modzs': r1_temp_diff_modzs, 'r1_power_modzs': r1_power_modzs,
-             'r2_shape_modzs': r2_shape_modzs, 'r2_temp_var_modzs': r2_temp_var_modzs, 'r2_temp_diff_modzs': r2_temp_diff_modzs, 'r2_power_modzs': r2_power_modzs}
+    modzs = {'r1_shape_modzs': r1_shape_modzs, 'r1_temp_var_modzs': r1_temp_var_modzs,
+             'r1_temp_diff_modzs': r1_temp_diff_modzs, 'r1_power_modzs': r1_power_modzs,
+             'r2_shape_modzs': r2_shape_modzs, 'r2_temp_var_modzs': r2_temp_var_modzs,
+             'r2_temp_diff_modzs': r2_temp_diff_modzs, 'r2_power_modzs': r2_power_modzs}
     spectra = {'median_spectra_normed': median_spectra_normed, 'mad_spectra_normed': mad_spectra_normed,
                'median_abs_diff_spectra_normed': median_abs_diff_spectra_normed, 'median_spectra': median_spectra,
                'mean_spectra_normed': mean_spectra_normed, 'std_spectra_normed': std_spectra_normed,
