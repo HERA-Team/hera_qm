@@ -4,7 +4,7 @@
 # Licensed under the MIT License
 
 from hera_qm import utils
-from hera_qm.auto_metrics_run import auto_metrics_run
+from hera_qm.auto_metrics import auto_metrics_run
 import sys
 
 ap = utils.get_metrics_ArgumentParser('auto_metrics')
