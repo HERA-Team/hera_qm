@@ -5,6 +5,7 @@
 """Class and algorithms to compute per Antenna metrics using day-long autocorrelations."""
 import numpy as np
 from copy import deepcopy
+import operator
 from .version import hera_qm_version_str
 from .xrfi import simple_flag_waterfall
 
