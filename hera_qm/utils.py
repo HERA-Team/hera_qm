@@ -39,7 +39,7 @@ def get_metrics_ArgumentParser(method_name):
         An argparse.ArgumentParser instance with the relevant options for the selected method
 
     """
-    methods = ["ant_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_h1c_run",
+    methods = ["ant_metrics", "auto_metrics", "firstcal_metrics", "omnical_metrics", "xrfi_h1c_run",
                "delay_xrfi_h1c_idr2_1_run", "xrfi_run", "xrfi_apply", "day_threshold_run",
                "xrfi_h3c_idr2_1_run", "xrfi_run_data_only"]
     if method_name not in methods:

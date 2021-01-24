@@ -33,6 +33,17 @@ def test_get_metrics_ArgumentParser_ant_metrics():
     args = a.parse_args(['--extension', 'foo'])
     assert args.extension == 'foo'
 
+def test_get_metrics_ArgumentParser_auto_metrics():
+    a = utils.get_metrics_ArgumentParser('auto_metrics')
+    # First try defaults - test a few of them
+    args = a.parse_args(['out.h5', 'auto1.uvh5', 'auto2.uvh5'])
+    assert args.metric_outfile == 'out.h5'
+    assert args.raw_auto_files == ['auto1.uvh5', 'auto2.uvh5']
+    assert args.median_round_modz_cut == 16.0
+    assert args.chan_thresh_frac == .05
+    # try to set something
+    args = a.parse_args(['out.h5', 'auto1.uvh5', 'auto2.uvh5', '--sig_init', '10.3'])
+    assert args.sig_init == 10.3
 
 def test_get_metrics_ArgumentParser_firstcal_metrics():
     a = utils.get_metrics_ArgumentParser('firstcal_metrics')
