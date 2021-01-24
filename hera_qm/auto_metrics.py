@@ -342,21 +342,21 @@ def auto_metrics_run(raw_auto_files, median_round_modz_cut=16., mean_round_modz_
 
     r2_ex_ants = deepcopy(r1_ex_ants)
     while True:
-        shape_ex_ants, r2_shape_mod_zs = iterative_spectrum_modz(mean_spectra_normed, r2_ex_ants, modz_cut=mean_round_modz_cut,
-                                                                 overall_spec_func=np.nanmean, metric_func=np.nanmean,
-                                                                 metric_power=1.0, metric_log=False)
+        shape_ex_ants, r2_shape_modzs = iterative_spectrum_modz(mean_spectra_normed, r2_ex_ants, modz_cut=mean_round_modz_cut,
+                                                                overall_spec_func=np.nanmean, metric_func=np.nanmean,
+                                                                metric_power=1.0, metric_log=False)
 
-        temp_var_ex_ants, r2_temp_var_mod_zs = iterative_spectrum_modz(std_spectra_normed, r2_ex_ants, modz_cut=mean_round_modz_cut,
-                                                                       abs_diff=False, overall_spec_func=np.nanmean, metric_func=np.nanmean,
-                                                                       metric_power=1.0, metric_log=False)
+        temp_var_ex_ants, r2_temp_var_modzs = iterative_spectrum_modz(std_spectra_normed, r2_ex_ants, modz_cut=mean_round_modz_cut,
+                                                                      abs_diff=False, overall_spec_func=np.nanmean, metric_func=np.nanmean,
+                                                                      metric_power=1.0, metric_log=False)
 
-        temp_diff_ex_ants, r2_temp_diff_mod_zs = iterative_spectrum_modz(mean_abs_diff_spectra_normed, r2_ex_ants, modz_cut=mean_round_modz_cut,
-                                                                         abs_diff=False, overall_spec_func=np.nanmean, metric_func=np.nanmean,
-                                                                         metric_power=1.0, metric_log=False)
+        temp_diff_ex_ants, r2_temp_diff_modzs = iterative_spectrum_modz(mean_abs_diff_spectra_normed, r2_ex_ants, modz_cut=mean_round_modz_cut,
+                                                                        abs_diff=False, overall_spec_func=np.nanmean, metric_func=np.nanmean,
+                                                                        metric_power=1.0, metric_log=False)
         
-        power_ex_ants, r2_power_mod_zs = iterative_spectrum_modz(mean_spectra, r2_ex_ants, modz_cut=mean_round_modz_cut,
-                                                                 overall_spec_func=np.nanmean, metric_func=np.nanmean,
-                                                                 metric_power=1.0, metric_log=True)
+        power_ex_ants, r2_power_modzs = iterative_spectrum_modz(mean_spectra, r2_ex_ants, modz_cut=mean_round_modz_cut,
+                                                                overall_spec_func=np.nanmean, metric_func=np.nanmean,
+                                                                metric_power=1.0, metric_log=True)
 
         updated_ex_ants = list(set(shape_ex_ants) | set(temp_var_ex_ants) | set(temp_diff_ex_ants) | set(power_ex_ants))
         if len(updated_ex_ants) == len(r2_ex_ants):
