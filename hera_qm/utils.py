@@ -79,6 +79,32 @@ def get_metrics_ArgumentParser(method_name):
                         help='Number of baselines to load simultaneously.')
         ap.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
                         help='Silence feedback to the command line.')
+
+    elif method_name == 'auto_metrics':
+        ap.prog = 'auto_metrics.py'
+        ap.add_argument('metric_outfile', type=str, 
+                        help='Path to save auto_metrics hdf5 file.')
+        ap.add_argument('raw_auto_files', type=str, nargs='+', 
+                        help='Paths to data files including autocorrelations.')
+        ap.add_argument('--median_round_modz_cut', default=16., type=float, 
+                        help='Round 1 (median-based) cut on antenna modified Z-score.')
+        ap.add_argument('--mean_round_modz_cut', default=8., type=float, 
+                        help='Round 2 (mean-based) cut on antenna modified Z-score.')
+        ap.add_argument('--edge_cut', default=100, type=int, 
+                        help='Number of channels on either end to flag (i.e. ignore) when looking for antenna outliers.')
+        ap.add_argument('--Kt', default=8, type=int,
+                        help='Time kernel half-width for RFI flagging.')
+        ap.add_argument('--Kf', default=8, type=int,
+                        help='Frequency kernel half-width for RFI flagging.')
+        ap.add_argument('--sig_init', default=5.0, type=float, 
+                        help='The number of sigmas above which to flag pixels.')
+        ap.add_argument('--sig_adj', default=2.0, type=float, 
+                        help='The number of sigmas above which to flag pixels adjacent to flags.')
+        ap.add_argument('--chan_thresh_frac', default=.05, type=float, 
+                        help='The fraction of flagged times (ignoring completely flagged times) above which to flag a whole channel.')
+        ap.add_argument("--clobber", default=False, action="store_true",
+                        help='Overwrites existing metric_outfile (default False).')
+
     elif method_name == 'firstcal_metrics':
         ap.prog = 'firstcal_metrics.py'
         ap.add_argument('--std_cut', default=0.5, type=float,
