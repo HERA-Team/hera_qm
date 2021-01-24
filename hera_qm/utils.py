@@ -74,7 +74,7 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--extension', default='.ant_metrics.json', type=str,
                         help='Extension to be appended to the file name. Default is ".ant_metrics.json"')
         ap.add_argument("--clobber", default=False, action="store_true",
-                        help='overwrites existing firstcal_metrics file (default False)')
+                        help='overwrites existing ant_metrics file (default False)')
         ap.add_argument('--Nbls_per_load', default=None, type=int,
                         help='Number of baselines to load simultaneously.')
         ap.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
@@ -93,6 +93,7 @@ def get_metrics_ArgumentParser(method_name):
                         help='overwrites existing firstcal_metrics file (default False)')
         ap.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                         help='*.calfits files for which to calculate firstcal_metrics.')
+
     elif method_name == 'omnical_metrics':
         ap.prog = 'omnical_metrics.py'
         ap.add_argument('--fc_files', metavar='fc_files', type=str, default=None,
@@ -115,6 +116,7 @@ def get_metrics_ArgumentParser(method_name):
                         help='Path to save metrics file to. Default is same directory as file.')
         ap.add_argument('files', metavar='files', type=str, nargs='*', default=[],
                         help='*.omni.calfits files for which to calculate omnical_metrics.')
+
     elif method_name == 'xrfi_h1c_run':
         ap.prog = 'xrfi_h1c_run.py'
         ap.add_argument('--infile_format', default='miriad', type=str,
@@ -175,6 +177,7 @@ def get_metrics_ArgumentParser(method_name):
                         'visibilities formed with these antennas will be set to True.')
         ap.add_argument('filename', metavar='filename', nargs='*', type=str, default=[],
                         help='file for which to flag RFI (only one file allowed).')
+
     elif method_name == 'delay_xrfi_h1c_idr2_1_run':
         ap.prog = 'delay_xrfi_h1c_idr2_1_run.py'
         ap.add_argument('filename', metavar='filename', nargs='?', type=str, default=None,
@@ -248,6 +251,7 @@ def get_metrics_ArgumentParser(method_name):
         dg.add_argument('--waterfalls', default=None, type=str, help='comma separated '
                         'list of npz files containing waterfalls of flags to broadcast '
                         'to full flag array and apply before delay filter.')
+
     elif method_name == 'xrfi_run':
         ap.prog = 'xrfi_run.py'
         ap.add_argument('--ocalfits_files', default=None, type=str, help='Omnical '
@@ -308,6 +312,7 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument("--skip_auto_mean_filter", default=False, action="store_true", help="Do not perform autocorrelations mean filter.")
         ap.add_argument("--use_cross_median_filter", default=False, action="store_true", help="Perform cross-correlations median filter (n.b. very expensive).")
         ap.add_argument("--skip_cross_mean_filter", default=False, action="store_true", help="Do not erform cross-correlations mean filter.")
+
     elif method_name == 'xrfi_run_data_only':
         ap.prog = 'xrfi_run_data_only.py'
         ap.add_argument('--data_files', default=None, type=str, help='Raw visibility '
@@ -344,6 +349,7 @@ def get_metrics_ArgumentParser(method_name):
                         'of the time chunk being analyzed.')
         ap.add_argument("--Nwf_per_load", type=int, default=None,
                         help="Number of uvdata waterfalls to load simultaneously. Default, load all simultaneously.")
+
     elif method_name == 'xrfi_h3c_idr2_1_run':
         ap.prog = 'xrfi_h3c_idr2_1_run.py'
         ap.add_argument('--ocalfits_files', nargs='+', type=str, help='Omnical '
@@ -374,6 +380,7 @@ def get_metrics_ArgumentParser(method_name):
                         'visibilities formed with these antennas will be set to True.')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing files (default False)')
+
     elif method_name == 'day_threshold_run':
         ap.add_argument('--a_priori_xants_yaml', type=str, default=None,
                         help=('path to a priori flagging YAML with xant information parsable by '
@@ -401,6 +408,7 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--a_priori_flag_yaml', default=None, type=str,
                         help=('Path to a priori flagging YAML with frequency, time, and/or '
                               'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))
+
     elif method_name == 'xrfi_apply':
         ap.prog = 'xrfi_apply.py'
         ap.add_argument('--infile_format', default='miriad', type=str,
