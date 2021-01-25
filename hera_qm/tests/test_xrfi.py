@@ -811,6 +811,22 @@ def test_flag_apply():
     pytest.raises(ValueError, xrfi.flag_apply, uvf, uv)
 
 
+def test_simple_flag_waterfall():
+    np.random.seed(21)
+    data = np.random.randn(100, 100)
+    data[3:, 10] += 200  # this tests spectral thresholding
+    data[70, 20:] += 100  # this tests temporal thresholding
+    data[50:55, 50] += 10  # this tests chanchan_thresh_frac
+    flags = xrfi.simple_flag_waterfall(data, edge_cut=2, chan_thresh_frac=.01)
+
+    assert not np.all(flags)
+    np.testing.assert_array_equal(flags[:, :2], True)
+    np.testing.assert_array_equal(flags[:, -2:], True)
+    np.testing.assert_array_equal(flags[70, :], True)
+    np.testing.assert_array_equal(flags[:, 10], True)
+    np.testing.assert_array_equal(flags[:, 50], True)
+
+
 def test_calculate_metric_vis():
     # setup
     uv = UVData()
