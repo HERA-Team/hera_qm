@@ -69,7 +69,7 @@ def get_auto_spectra(autos, flag_wf=None, time_avg_func=np.nanmedian, scalar_nor
         Dictionary mapping autocorrelation key e.g. (1, 1, 'ee') to (normalized) spectrum.
     ''' 
     # get wf_shape and make empty flags if not provided
-    _check_only_auto_keys(autos)                         
+    _check_only_auto_keys(autos)
     wf_shape = next(iter(autos.values())).shape
     if flag_wf is None:
         flag_wf = np.zeros(wf_shape, dtype=bool)
@@ -82,7 +82,7 @@ def get_auto_spectra(autos, flag_wf=None, time_avg_func=np.nanmedian, scalar_nor
             for i in range(wf_shape[0]):
                 row_list = [np.where(flag_wf[i, :], np.nan, autos[bl][i, :].real)
                             for bl in autos if (bl[0] not in ex_ants) and (bl[2] == pol)]
-                wf_norm[pol].append(norm_func(row_list))
+                wf_norm[pol].append(norm_func(row_list, axis=0))
             wf_norm[pol] = np.vstack(wf_norm[pol])
 
     # compute auto_spectra
