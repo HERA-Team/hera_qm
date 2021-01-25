@@ -1073,7 +1073,7 @@ def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut
         Number of channels at each band edge to flag automatically.
     chan_thresh_frac : float
         Fraction of times flagged (excluding completely flagged integrations) above which
-         to flag an entire channel. Default 1.0 means no additional flags.
+        to flag an entire channel. Default 1.0 means no additional flags.
 
     Returns
     -------
@@ -1105,8 +1105,9 @@ def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut
     flags[_ws_flag_waterfall(np.abs(ztseries), np.abs(ztseries) >= sig_init, nsig=sig_adj), :] = True
 
     # Flag edge channels
-    flags[:, :edge_cut] = True
-    flags[:, -edge_cut:] = True
+    if edge_cut > 0:
+        flags[:, :edge_cut] = True
+        flags[:, -edge_cut:] = True
     
     # Flag channels that are flagged more than chan_thresh_frac (excluding completely flagged times)
     min_flags_per_chan = np.min(np.sum(flags, axis=0))
