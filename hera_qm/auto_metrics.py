@@ -186,8 +186,8 @@ def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on
     while not np.all([bl[0] in ex_ants for bl in auto_spectra]):
         # compute metric for all autos compared to the distribution of non-ex_ant antennas
         modzs = spectrum_modz_scores(auto_spectra, ex_ants=ex_ants, overall_spec_func=overall_spec_func, 
-                                      metric_func=metric_func, metric_power=metric_power, 
-                                      metric_log=metric_log, abs_diff=abs_diff)
+                                     metric_func=metric_func, metric_power=metric_power, 
+                                     metric_log=metric_log, abs_diff=abs_diff)
         
         # figure out out worst antenna that's not already in ex_ants
         modzs_no_exants = {k: [v, np.abs(v)][cut_on_abs_modz] for k, v in modzs.items() if k[0] not in ex_ants}
