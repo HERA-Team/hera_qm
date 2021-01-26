@@ -216,7 +216,7 @@ def test_auto_metrics_run():
     auto_files = glob.glob(os.path.join(DATA_PATH, 'zen.2459122.*.sum.autos.downselected.uvh5'))
     metrics_outfile = os.path.join(DATA_PATH, 'unittest_auto_metrics.h5')
     ex_ants, modzs, spectra, flags = auto_metrics.auto_metrics_run(metrics_outfile, auto_files,
-                                                                   median_round_modz_cut=20., mean_round_modz_cut=10.,
+                                                                   median_round_modz_cut=150., mean_round_modz_cut=10.,
                                                                    edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, 
                                                                    chan_thresh_frac=.05, history='unittest', overwrite=True)
     metrics_in = metrics_io.load_metric_file(metrics_outfile)
@@ -228,7 +228,10 @@ def test_auto_metrics_run():
 
     # assert that all bad antennas are in the data and that all good antennas aren't
     for bad_ant in bad_ants:
-        assert bad_ant in ex_ants['r1_ex_ants']
+        if bad_ant != 123:  # median_round_modz_cut=150. was picked so this would only get cut on round 2
+            assert bad_ant in ex_ants['r1_ex_ants']
+        else:
+            assert bad_ant not in ex_ants['r1_ex_ants']
         assert bad_ant in ex_ants['r2_ex_ants']
     for good_ant in good_ants:
         assert good_ant not in ex_ants['r1_ex_ants']
