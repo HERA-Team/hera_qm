@@ -403,8 +403,10 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=16., 
                'median_abs_diff_spectra_normed': median_abs_diff_spectra_normed, 'median_spectra': median_spectra,
                'mean_spectra_normed': mean_spectra_normed, 'std_spectra_normed': std_spectra_normed,
                'mean_abs_diff_spectra_normed': mean_abs_diff_spectra_normed, 'mean_spectra': mean_spectra}
+    parameters = {'median_round_modz_cut': median_round_modz_cut, 'mean_round_modz_cut': mean_round_modz_cut,
+                  'edge_cut': edge_cut, 'Kt': Kt, 'Kf': Kf, 'sig_init': sig_init, 'sig_adj': sig_adj,'chan_thresh_frac': chan_thresh_frac}
 
     out_dict = {'ex_ants': ex_ants, 'modzs': modzs, 'spectra': spectra, 'flags': flags, 
-                'datafile_list': raw_auto_files, 'history': history}
+                'datafile_list': raw_auto_files, 'parameters': parameters, 'history': history}
     write_metric_file(metric_outfile, out_dict, overwrite=overwrite)
     return ex_ants, modzs, spectra, flags
