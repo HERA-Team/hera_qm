@@ -182,6 +182,8 @@ def test_spectrum_modz_scores():
 
 
 def test_iterative_spectrum_modz():
+    bls = [(a, a, 'ee') for a in np.arange(100)]
+
     # test that antennas get excluded in order of badness
     np.random.seed(21)
     auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
