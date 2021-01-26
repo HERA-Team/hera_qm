@@ -263,5 +263,16 @@ def test_auto_metrics_run():
     # test history
     assert metrics_in['history'] == 'unittest'
 
+    # test saved parameters
+    assert metrics_in['parameters']
+    assert metrics_in['parameters']['median_round_modz_cut'] == 150.
+    assert metrics_in['parameters']['mean_round_modz_cut'] == 10.
+    assert metrics_in['parameters']['edge_cut'] == 100
+    assert metrics_in['parameters']['Kt'] == 8 
+    assert metrics_in['parameters']['Kf'] == 8
+    assert metrics_in['parameters']['sig_init'] == 5.0
+    assert metrics_in['parameters']['sig_adj'] == 2.0
+    assert metrics_in['parameters']['chan_thresh_frac'] == .05
+
     # remove outfile
     os.remove(metrics_outfile)
