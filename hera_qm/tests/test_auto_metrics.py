@@ -6,6 +6,7 @@
 import pytest
 import numpy as np
 import os
+import glob
 from hera_qm import auto_metrics
 from hera_qm import metrics_io
 from hera_qm.data import DATA_PATH
@@ -209,3 +210,55 @@ def test_iterative_spectrum_modz():
     for bl in auto_spectra:
         assert modzs_2[bl] == modzs[bl]
 
+
+def test_auto_metrics_run():
+    # run main function on downselected H4C data, then read results
+    auto_files = glob.glob(os.path.join(DATA_PATH, 'zen.2459122.*.sum.autos.downselected.uvh5'))
+    metrics_outfile = os.path.join(DATA_PATH, 'unittest_auto_metrics.h5')
+    ex_ants, modzs, spectra, flags = auto_metrics.auto_metrics_run(metrics_outfile, auto_files,
+                                                                   median_round_modz_cut=20., mean_round_modz_cut=10.,
+                                                                   edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, 
+                                                                   chan_thresh_frac=.05, history='unittest', overwrite=True)
+    metrics_in = metrics_io.load_metric_file(metrics_outfile)
+
+    # what to expect
+    pols = ['ee', 'nn']
+    bad_ants = [123, 90, 93]
+    good_ants = [36, 50, 66, 83, 85, 91, 99, 109, 117, 118, 120, 127, 128, 129, 141, 143, 144, 160, 162, 163, 165, 176, 185]
+
+    # assert that all bad antennas are in the data and that all good antennas aren't
+    for bad_ant in bad_ants:
+        assert bad_ant in ex_ants['r1_ex_ants']
+        assert bad_ant in ex_ants['r2_ex_ants']
+    for good_ant in good_ants:
+        assert good_ant not in ex_ants['r1_ex_ants']
+        assert good_ant not in ex_ants['r2_ex_ants']
+
+    # check that all results have sensible shapes and types and bls
+    for ant in (bad_ants + good_ants):
+        for pol in pols:
+            bl = (ant, ant, pol)
+            for spec_type in spectra:
+                assert bl in spectra[spec_type]
+                assert spectra[spec_type][bl].shape == (1536,)
+                assert spectra[spec_type][bl].dtype == np.dtype('float64')
+            for metric in modzs:
+                assert bl in modzs[metric]
+                assert isinstance(modzs[metric][bl], float)
+
+    # test edge_cut and that not all flags are True
+    assert np.all(flags[:, 0:100])
+    assert np.all(flags[:, -100:])
+    assert not np.all(flags)
+
+    # test that file outputs match function outputs
+    qmtest.recursive_compare_dicts(ex_ants, metrics_in['ex_ants'])
+    qmtest.recursive_compare_dicts(modzs, metrics_in['modzs'])
+    qmtest.recursive_compare_dicts(spectra, metrics_in['spectra'])
+    np.testing.assert_array_equal(flags, metrics_in['flags'])
+
+    # test history
+    assert metrics_in['history'] == 'unittest'
+
+    # remove outfile
+    os.remove(metrics_outfile)
