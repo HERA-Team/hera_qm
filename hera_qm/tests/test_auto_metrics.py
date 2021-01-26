@@ -105,3 +105,79 @@ def test_get_auto_spectra():
     np.testing.assert_array_equal(spectra[1, 1, 'ee'], 10 * np.array([1., np.nan, 1., 1., 1.]))
 
 
+def test_spectrum_modz_scores():
+    np.random.seed(21)
+    bls = [(a, a, 'ee') for a in np.arange(100)]
+
+    # test normal operation with one high power antenna
+    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra[(0, 0, 'ee')] += 10
+    modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean)
+    for bl in auto_spectra:
+        if bl == (0, 0, 'ee'):
+            assert modzs[bl] > 10000
+        else:
+            assert np.abs(modzs[bl]) < 10
+            
+    # test with a nan
+    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra[(0, 0, 'ee')] += 10
+    auto_spectra[(1, 1, 'ee')][30] = np.nan
+    modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean)
+    for bl in auto_spectra:
+        if bl == (0, 0, 'ee'):
+            assert modzs[bl] > 10000
+        else:
+            assert np.abs(modzs[bl]) < 10
+
+    # test with single spectral channel outlier in median mode
+    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra[(0, 0, 'ee')][0] += 10
+    modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmedian, metric_func=np.nanmedian)
+    for bl in auto_spectra:
+        assert np.abs(modzs[bl]) < 10
+        
+    # test with single spectral channel outlier in mean mode
+    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra[(0, 0, 'ee')][0] += 10
+    modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, metric_func=np.nanmean)
+    for bl in auto_spectra:
+        if bl == (0, 0, 'ee'):
+            assert modzs[bl] > 100
+        else:
+            assert np.abs(modzs[bl]) < 10
+
+    # test abs_diff=False
+    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra[(0, 0, 'ee')] -= 10
+    modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, abs_diff=False)
+    for bl in auto_spectra:
+        if bl == (0, 0, 'ee'):
+            assert modzs[bl] < -10000
+        else:
+            assert np.abs(modzs[bl]) < 10
+
+    # test metric_log=True
+    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra[(0, 0, 'ee')] *= 10
+    auto_spectra[(1, 1, 'ee')] /= 10
+    modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, metric_log=True, ex_ants=[0, 1])
+    for bl in auto_spectra:
+        if bl == (0, 0, 'ee'):
+            assert modzs[bl] > 1000
+        elif bl == (1, 1, 'ee'):
+            assert modzs[bl] > 1000
+        else:
+            assert np.abs(modzs[bl]) < 10
+
+    # test both metric_log=True and abs_diff=False
+    modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, metric_log=True, abs_diff=False, ex_ants=[0, 1])
+    for bl in auto_spectra:
+        if bl == (0, 0, 'ee'):
+            assert modzs[bl] > 1000
+        elif bl == (1, 1, 'ee'):
+            assert modzs[bl] < -1000, modzs[bl]
+        else:
+            assert np.abs(modzs[bl]) < 10
+
+
