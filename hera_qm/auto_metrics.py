@@ -205,7 +205,14 @@ def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on
 def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=16., mean_round_modz_cut=8.,
                      edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, chan_thresh_frac=.05, 
                      history='', overwrite=False):
-    '''Computes 
+    '''Evaluates day-long autocorrelation waterfalls for "outlierness" in shape, power, temporal 
+    variability, and sharp temporal discontinuities. Each of these is assessed by collapsing each
+    waterfall to a single spectrum (might be an average, might be an STD, etc.). These are then
+    compared to an average spectrum and float difference is then converted into a modified Z-score
+    for each metric. Antennas above some given cut are iteratively excluded from the calculation
+    of the median and MAD. This process proceeds in two rounds, first by finding the worst antennas
+    via median-based statistics of shape, power, etc. and then, following a relatively simple
+    RFI flagging step, using more sensitive mean-based statistics.
 
     Parameters
     ----------
@@ -245,13 +252,20 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=16., 
     Returns
     -------
     ex_ants : dict
-        TODO
+        Dict with keys r1_ex_ants and r2_ex_ants, each to a list of integer values. These represent
+        antennas flagged in rounds 1 and 2 respectively. r1_ex_ants is always a subset of r2_ex_ants.
     modzs : dict
-        TODO
+        Dict (keys of the form r[1-2]_*_modzs) of dicts mapping baseline keys e.g. (0, 0, 'ee)) to floats.
+        These include the modified Z-scores for every autocorrelation for all four metrics for both round 1
+        (median-based) and round 2 (mean-based).
     spectra : dict
-        TODO
+        Dict (sting keys for each type) of dicts mapping baseline keys e.g. (0, 0, 'ee)) to 1D numpy arrays.
+        For shape, we use median_spectra_normed (round 1) and mean_spectra_normed (round 2). For temporal
+        variability, we use mad_spectra_normed (round 1) and std_spectra_normed (round 2). For temporal
+        discontinuitites we use median_abs_diff_spectra_normed (round 1) and mean_abs_diff_spectra_normed
+        (round 2). For power, we use median_spectra (round 1) and mean_spectra (round 2).
     flags : np.ndarray
-        TODO
+        Single boolean flag waterfall computed between rounds 1 and 2. Mostly useful for visualization.
     '''
 
     ######################################################
