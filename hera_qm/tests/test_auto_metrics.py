@@ -181,3 +181,29 @@ def test_spectrum_modz_scores():
             assert np.abs(modzs[bl]) < 10
 
 
+def test_iterative_spectrum_modz():
+    # test that antennas get excluded in order of badness
+    np.random.seed(21)
+    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra[(0, 0, 'ee')] += 1
+    auto_spectra[(1, 1, 'ee')] += 10
+    ex_ants, modzs = auto_metrics.iterative_spectrum_modz(auto_spectra, modz_cut=10., overall_spec_func=np.nanmean, metric_func=np.nanmean)
+    assert ex_ants == [1, 0]
+    for bl in auto_spectra:
+        if bl == (0, 0, 'ee'):
+            assert modzs[bl] > 1000
+        elif bl == (1, 1, 'ee'):
+            assert modzs[bl] > 10000
+        else:
+            assert np.abs(modzs[bl]) < 10
+
+    # test that order of exclusion doesn't matter for final modified Z scores
+    np.random.seed(21)
+    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra[(0, 0, 'ee')] += 1
+    auto_spectra[(1, 1, 'ee')] += 10
+    ex_ants, modzs_2 = auto_metrics.iterative_spectrum_modz(auto_spectra, modz_cut=10., prior_ex_ants=[0], overall_spec_func=np.nanmean, metric_func=np.nanmean)
+    assert ex_ants == [0, 1]
+    for bl in auto_spectra:
+        assert modzs_2[bl] == modzs[bl]
+
