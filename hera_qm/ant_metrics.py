@@ -36,14 +36,6 @@ def get_ant_metrics_dict():
                                                         'all visibilities '
                                                         'associated with an '
                                                         'antenna.',
-                    'ant_metrics_mod_z_scores_meanVijXPol': 'Modified z-score '
-                                                            'of the ratio of '
-                                                            'mean cross-pol '
-                                                            'visibilities '
-                                                            'to mean same-pol '
-                                                            'visibilities: '
-                                                            '(Vxy+Vyx)/'
-                                                            '(Vxx+Vyy).',
                     'ant_metrics_crossed_ants': 'Antennas deemed to be '
                                                 'cross-polarized by '
                                                 'hera_qm.ant_metrics.',
@@ -510,7 +502,7 @@ class AntennaMetrics():
                              'while run_cross_pols_only is True')
 
         if not run_cross_pols_only:
-            metNames.append('meanVij')
+            metNames.append('corr')
             meanVij = mean_Vij_metrics(self.abs_vis_stats, xants=self.xants, rawMetric=True)
             metVals.append(meanVij)
 
