@@ -541,7 +541,7 @@ class AntennaMetrics():
     def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=0.25,
                                                verbose=False, run_cross_pols=True,
                                                run_cross_pols_only=False):
-        """Run Mean Vij and Mean Vij crosspol metrics and stores results in self.
+        """Run corr metric and crosspol metrics and stores results in self.
 
         Parameters
         ----------
