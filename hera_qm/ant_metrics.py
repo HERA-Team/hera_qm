@@ -570,7 +570,7 @@ class AntennaMetrics():
                 crossMetrics = {ant: np.max(metric) for ant, metric
                                 in self.all_mod_z_scores[iteration]['corrXPol'].items()}
                 worstCrossAnt = min(crossMetrics, key=crossMetrics.get)
-                worstCrossCutDiff = crossMetrics[worstCrossAnt]) - crossCut
+                worstCrossCutDiff = crossMetrics[worstCrossAnt] - crossCut
 
             # Find the single worst antenna, remove it, log it, and run again
             if (worstCrossCutDiff <= worstDeadCutDiff) and (worstCrossCutDiff < 0):
