@@ -282,7 +282,7 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
         yy_xy = []
         yy_yx = []
         #Calculate all crosses, excluding ants in xants
-        for a2 in set([key[1] for key in corr_stats.keys() if key[1] not in xants])
+        for a2 in set([key[1] for key in corr_stats.keys() if key[1] not in xants]):
             xx_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[0])],corr_stats[(a1,a2,cross_pols[0])]))
             xx_yx.append(np.subtract(corr_stats[(a1,a2,same_pols[0])],corr_stats[(a1,a2,cross_pols[1])]))
             yy_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[0])]))
