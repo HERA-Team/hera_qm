@@ -636,8 +636,8 @@ class AntennaMetrics():
         out_dict['final_mod_z_scores'] = self.final_mod_z_scores
         out_dict['all_mod_z_scores'] = self.all_mod_z_scores
         out_dict['removal_iteration'] = self.removal_iteration
-        out_dict['cross_pol_z_cut'] = self.crossCut
-        out_dict['dead_ant_z_cut'] = self.deadCut
+        out_dict['cross_pol_cut'] = self.crossCut
+        out_dict['dead_ant_cut'] = self.deadCut
         out_dict['datafile_list_sum'] = self.datafile_list_sum
         out_dict['datafile_list_diff'] = self.datafile_list_diff
         out_dict['history'] = self.history
