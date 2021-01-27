@@ -550,7 +550,7 @@ class AntennaMetrics():
         self.all_metrics.update({self.iter: metrics})
         self.all_mod_z_scores.update({self.iter: modzScores})
 
-    def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=5,
+    def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=0.25,
                                                verbose=False, run_cross_pols=True,
                                                run_cross_pols_only=False):
         """Run Mean Vij and Mean Vij crosspol metrics and stores results in self.
@@ -584,7 +584,7 @@ class AntennaMetrics():
             if not run_cross_pols_only:
                 deadMetrics = {ant: np.abs(metric) for ant, metric
                                in self.all_mod_z_scores[iteration]['meanVij'].items()}
-                worstDeadAnt = max(deadMetrics, key=deadMetrics.get)
+                worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
                 worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt]) / deadCut
 
             # Find most likely cross-polarized antenna
