@@ -252,47 +252,6 @@ def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
         return per_antenna_modified_z_scores(per_ant_means)
 
 
-def antpol_metric_sum_ratio(cross_metrics, same_metrics):
-    """Compute ratio of two metrics summed over polarizations.
-
-    Takes the ratio of two antenna metrics, summed over both polarizations, and creates
-    a new antenna metric with the same value in both polarizations for each antenna.
-    For example, if we're looking a metric for antenna 1, m1[pol], this would be:
-    (m1['en'] + m1['ne']) / (m1['ee'] + m1['nn']) which would be inserted in both
-    cross_pol_ratio[1, 'Jee'] and cross_pol_ratio[1, 'Jnn'].
-
-    Parameters
-    ----------
-    cross_metrics : dict
-        Dict of a metrics computed with cross-polarizaed antennas. Keys are of
-        the form (ant, antpol) and must match same_metrics keys. Typically computed
-        with mean_Vij_metrics() with pols=['en', 'ne'].
-    same_metrics : dict
-        Dict of a metrics computed with non-cross-polarized antennas. Keys are of
-        the form (ant, antpol) and must match cross_metrics keys. Typically computed
-        with mean_Vij_metrics() with pols=['ee', 'nn'].
-
-    Returns
-    -------
-    cross_pol_ratio
-        Dictionary of the ratio between the sum of cross_metrics and sum of same_metrics
-        for each antenna provided in ants. Keys are of the form (ant, antpol) and will
-        be identical for both polarizations for a given antenna by construction
-
-    """
-    # figure out antenna numbers and polarizations in the metrics
-    antnums = set([ant[0] for metric in [cross_metrics, same_metrics] for ant in metric])
-    antpols = set([ant[1] for metric in [cross_metrics, same_metrics] for ant in metric])
-
-    # compute cross_pol_ratios
-    cross_pol_ratio = {}
-    for an in antnums:
-        cross_sum = np.sum([cross_metrics[(an, ap)] for ap in antpols])
-        same_sum = np.sum([same_metrics[(an, ap)] for ap in antpols])
-        for ap in antpols:
-            cross_pol_ratio[(an, ap)] = cross_sum / same_sum
-    return cross_pol_ratio
-
 
 def corr_cross_pol_metrics(corr_stats, xants=[]):
     """Calculate the differences in the correlation metric between polarizations.
