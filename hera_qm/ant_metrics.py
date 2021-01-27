@@ -546,9 +546,9 @@ class AntennaMetrics():
         Parameters
         ----------
         crossCut : float, optional
-            Modified z-score cut for most cross-polarized antennas. Default is 5 "sigmas".
+            Cut for most cross-polarized antennas. Default is 0.
         deadCut : float, optional
-            Modified z-score cut for most likely dead antennas. Default is 5 "sigmas".
+            Cut for most likely dead antennas. Default is 0.25.
         run_cross_pols : bool, optional
             Define if corr_cross_pol_metrics is executed. Default is True.
         run_cross_pols_only : bool, optional
@@ -565,8 +565,8 @@ class AntennaMetrics():
             self.iter = iteration
             self._run_all_metrics(run_cross_pols=run_cross_pols,
                                   run_cross_pols_only=run_cross_pols_only)
-            worstDeadCutRatio = -1
-            worstCrossCutRatio = -1
+            worstDeadCutDiff = 1
+            worstCrossCutDiff = 1
 
             # Find most likely dead antenna
             if not run_cross_pols_only:
@@ -634,7 +634,7 @@ class AntennaMetrics():
 
 
 def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants_yaml=None,
-                    crossCut=5.0, deadCut=5.0, run_cross_pols=True, run_cross_pols_only=False,
+                    crossCut=5.0, deadCut=0.25, run_cross_pols=True, run_cross_pols_only=False,
                     metrics_path='', extension='.ant_metrics.hdf5',
                     overwrite=False, Nbls_per_load=None, history='', verbose=True):
     """
@@ -661,9 +661,9 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
         See hera_qm.metrics_io.read_a_priori_ant_flags() for details.
         Frequency and time flags in the YAML are ignored.
     crossCut : float, optional
-            Modified Z-Score limit to cut cross-polarized antennas. Default is 5.0.
+        Limit below which to cut cross-polarized antennas. Default is 0.
     deadCut : float, optional
-        Modifized Z-Score limit to cut dead antennas. Default is 5.0.
+        Limit below which to cut dead antennas. Default is 0.25.
     run_cross_pols : bool, optional
         Define if corr_cross_pol_metrics is executed. Default is True.
     run_cross_pols_only : bool, optional
