@@ -585,17 +585,17 @@ class AntennaMetrics():
                 deadMetrics = {ant: np.abs(metric) for ant, metric
                                in self.all_mod_z_scores[iteration]['meanVij'].items()}
                 worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
-                worstDeadCutRatio = np.abs(deadMetrics[worstDeadAnt]) / deadCut
+                worstDeadCutDiff = np.abs(deadMetrics[worstDeadAnt]) - deadCut
 
             # Find most likely cross-polarized antenna
             if run_cross_pols:
                 crossMetrics = {ant: np.max(metric) for ant, metric
                                 in self.all_mod_z_scores[iteration]['corrXPol'].items()}
                 worstCrossAnt = min(crossMetrics, key=crossMetrics.get)
-                worstCrossCut = crossMetrics[worstCrossAnt]) - crossCut
+                worstCrossCutDiff = crossMetrics[worstCrossAnt]) - crossCut
 
             # Find the single worst antenna, remove it, log it, and run again
-            if (worstCrossCutRatio >= worstDeadCutRatio) and (worstCrossCutRatio >= 1.0):
+            if (worstCrossCutDiff <= worstDeadCutDiff) and (worstCrossCutDiff < 0):
                 for antpol in self.antpols:  # if crossed remove both polarizations
                     crossed_ant = (worstCrossAnt[0], antpol)
                     self.xants.append(crossed_ant)
@@ -603,7 +603,7 @@ class AntennaMetrics():
                     self.removal_iteration[crossed_ant] = iteration
                     if verbose:
                         print(f'On iteration {iteration} we flag {crossed_ant} with modified z of {crossMetrics[worstCrossAnt]}.')
-            elif (worstDeadCutRatio > worstCrossCutRatio) and (worstDeadCutRatio > 1.0):
+            elif (worstDeadCutDiff < worstCrossCutDiff) and (worstDeadCutDiff <= 0):
                 dead_ants = set([worstDeadAnt])
                 for dead_ant in dead_ants:
                     self.xants.append(dead_ant)
