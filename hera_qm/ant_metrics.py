@@ -294,7 +294,7 @@ def antpol_metric_sum_ratio(cross_metrics, same_metrics):
     return cross_pol_ratio
 
 
-def mean_Vij_cross_pol_metrics(corr_stats, xants=[]):
+def corr_cross_pol_metrics(corr_stats, xants=[]):
     """Calculate the differences in the correlation metric between polarizations.
 
     The four polarization combinations are xx-xy, yy-xy, xx-yx, and yy-yx. An
@@ -311,32 +311,49 @@ def mean_Vij_cross_pol_metrics(corr_stats, xants=[]):
     Returns
     -------
     cross_pol_metrics : dict
-        Dictionary indexed by (ant, antpol) keys. Contains the values of the
+        Dictionary indexed by ant number keys. Contains the values of the
         four polarization combinations.
 
     """
     pols = set([bl[2] for bl in corr_stats])
-    # cross_pols = [pol for pol in pols if pol[0] != pol[1]]
-    # same_pols = [pol for pol in pols if pol[0] == pol[1]]
-    if (len(cross_pols) != 2) or (len(same_pols) != 2):
+    cross_pols = [pol for pol in pols if pol[0] != pol[1]]
+    same_pols = [pol for pol in pols if pol[0] == pol[1]]
+    print(same_pols)
+    print(cross_pols)
+    if (len(pols) != 4) or (len(same_pols) != 2):
         raise ValueError('There must be precisely two "cross" visbility polarizations '
                          'and two "same" polarizations but we have instead '
                          f'{cross_pols} and {same_pols}')
 
     # Compute metrics and cross pols only and and same pols only
-    full_xants = set([ant[0] if isinstance(ant, tuple) else ant for ant in xants])
-    cross_metrics = mean_Vij_metrics(abs_vis_stats, xants=full_xants,
-                                     pols=cross_pols, rawMetric=True)
-    same_metrics = mean_Vij_metrics(abs_vis_stats, xants=full_xants,
-                                    pols=same_pols, rawMetric=True)
+    # full_xants = set([ant[0] if isinstance(ant, tuple) else ant for ant in xants])
+    # cross_metrics = mean_Vij_metrics(abs_vis_stats, xants=full_xants,
+    #                                  pols=cross_pols, rawMetric=True)
+    # same_metrics = mean_Vij_metrics(abs_vis_stats, xants=full_xants,
+    #                                 pols=same_pols, rawMetric=True)
+    cross_pol_metrics = {}
+    #Iterate through all antennas
+    for a1 in set([key[0] for key in corr_stats.keys()]):
+        xx_xy = []
+        xx_yx = []
+        yy_xy = []
+        yy_yx = []
+        #Calculate all crosses, excluding ants in xants
+        for a2 in set([key[1] for key in corr_stats.keys() if key[1] not in xants])
+            xx_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[0])],corr_stats[(a1,a2,cross_pols[0])]))
+            xx_yx.append(np.subtract(corr_stats[(a1,a2,same_pols[0])],corr_stats[(a1,a2,cross_pols[1])]))
+            yy_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[0])]))
+            yy_yx.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[1])]))
+        cross_pol_metrics[a1] = [np.nanmean(xx_xy),np.nanmean(xx_yx),np.nanmean(yy_xy),np.nanmean(yy_yx)]
 
     # Save the ratio of the cross/same metrics in both antpols
-    cross_pol_ratio = antpol_metric_sum_ratio(cross_metrics, same_metrics)
+    # cross_pol_ratio = antpol_metric_sum_ratio(cross_metrics, same_metrics)
 
-    if rawMetric:
-        return cross_pol_ratio
-    else:
-        return per_antenna_modified_z_scores(cross_pol_ratio)
+    # if rawMetric:
+    #     return cross_pol_ratio
+    # else:
+    #     return per_antenna_modified_z_scores(cross_pol_ratio)
+    return cross_pol_metrics
 
 
 def load_antenna_metrics(filename):
@@ -533,9 +550,9 @@ class AntennaMetrics():
         Parameters
         ----------
         run_cross_pols : bool, optional
-            Define if mean_Vij_cross_pol_metrics is executed. Default is True.
+            Define if corr_cross_pol_metrics is executed. Default is True.
         run_cross_pols_only : bool, optional
-            Define if mean_Vij_cross_pol_metrics is the *only* metric to be run.
+            Define if corr_pol_metrics is the *only* metric to be run.
             Default is False.
 
         """
