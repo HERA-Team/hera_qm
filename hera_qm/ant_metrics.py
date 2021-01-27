@@ -589,10 +589,10 @@ class AntennaMetrics():
 
             # Find most likely cross-polarized antenna
             if run_cross_pols:
-                crossMetrics = {ant: np.nanmean(metric) for ant, metric
+                crossMetrics = {ant: np.max(metric) for ant, metric
                                 in self.all_mod_z_scores[iteration]['corrXPol'].items()}
                 worstCrossAnt = min(crossMetrics, key=crossMetrics.get)
-                worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt]) / crossCut
+                worstCrossCut = crossMetrics[worstCrossAnt]) - crossCut
 
             # Find the single worst antenna, remove it, log it, and run again
             if (worstCrossCutRatio >= worstDeadCutRatio) and (worstCrossCutRatio >= 1.0):
