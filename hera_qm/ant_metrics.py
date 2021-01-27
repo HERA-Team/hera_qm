@@ -632,7 +632,7 @@ class AntennaMetrics():
             if run_cross_pols:
                 crossMetrics = {ant: np.abs(metric) for ant, metric
                                 in self.all_mod_z_scores[iteration]['meanVijXPol'].items()}
-                worstCrossAnt = max(crossMetrics, key=crossMetrics.get)
+                worstCrossAnt = min(crossMetrics, key=crossMetrics.get)
                 worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt]) / crossCut
 
             # Find the single worst antenna, remove it, log it, and run again
