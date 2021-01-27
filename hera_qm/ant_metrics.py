@@ -25,13 +25,11 @@ def get_ant_metrics_dict():
         Dictionary with metric names as keys and descriptions as values.
 
     """
-    metrics_dict = {'ant_metrics_corr': 'Mean of the absolute value of all '
-                                           'visibilities associated with an '
+    metrics_dict = {'ant_metrics_corr': 'Median value of the correlation matrix '
+                                           'across all values including an '
                                            'antenna.',
-                    'ant_metrics_corrXPol': 'Ratio of mean cross-pol '
-                                               'visibilities to mean same-pol '
-                                               'visibilities: '
-                                               '(Vxy+Vyx)/(Vxx+Vyy).',
+                    'ant_metrics_corrXPol': 'Max difference between same-pol '
+                                               'and cross-pol corr values ',
                     'ant_metrics_mod_z_scores_meanVij': 'Modified z-score of '
                                                         'the mean of the '
                                                         'absolute value of '
