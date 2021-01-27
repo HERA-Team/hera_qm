@@ -552,7 +552,7 @@ class AntennaMetrics():
         run_cross_pols : bool, optional
             Define if corr_cross_pol_metrics is executed. Default is True.
         run_cross_pols_only : bool, optional
-            Define if corr_pol_metrics is the *only* metric to be run.
+            Define if corr_cross_pol_metrics is the *only* metric to be run.
             Default is False.
 
         """
@@ -571,7 +571,7 @@ class AntennaMetrics():
 
         if run_cross_pols:
             metNames.append('meanVijXPol')
-            meanVijXPol = mean_Vij_cross_pol_metrics(self.abs_vis_stats,
+            meanVijXPol = corr_cross_pol_metrics(self.abs_vis_stats,
                                                      xants=self.xants, rawMetric=True)
             metVals.append(meanVijXPol)
 
@@ -603,9 +603,9 @@ class AntennaMetrics():
         deadCut : float, optional
             Modified z-score cut for most likely dead antennas. Default is 5 "sigmas".
         run_cross_pols : bool, optional
-            Define if mean_Vij_cross_pol_metrics is executed. Default is True.
+            Define if corr_cross_pol_metrics is executed. Default is True.
         run_cross_pols_only : bool, optional
-            Define if mean_Vij_cross_pol_metrics is the *only* metric to be run.
+            Define if corr_cross_pol_metrics is the *only* metric to be run.
             Default is False.
 
         """
@@ -718,9 +718,9 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
     deadCut : float, optional
         Modifized Z-Score limit to cut dead antennas. Default is 5.0.
     run_cross_pols : bool, optional
-        Define if mean_Vij_cross_pol_metrics is executed. Default is True.
+        Define if corr_cross_pol_metrics is executed. Default is True.
     run_cross_pols_only : bool, optional
-        Define if mean_Vij_cross_pol_metrics is the *only* metric to be run.
+        Define if corr_cross_pol_metrics is the *only* metric to be run.
         Default is False.
     metrics_path : str, optional
         Full path to directory to story output metric. Default is the same directory
