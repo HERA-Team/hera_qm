@@ -28,7 +28,7 @@ def get_ant_metrics_dict():
     metrics_dict = {'ant_metrics_meanVij': 'Mean of the absolute value of all '
                                            'visibilities associated with an '
                                            'antenna.',
-                    'ant_metrics_meanVijXPol': 'Ratio of mean cross-pol '
+                    'ant_metrics_corrXPol': 'Ratio of mean cross-pol '
                                                'visibilities to mean same-pol '
                                                'visibilities: '
                                                '(Vxy+Vyx)/(Vxx+Vyy).',
@@ -570,10 +570,10 @@ class AntennaMetrics():
             metVals.append(meanVij)
 
         if run_cross_pols:
-            metNames.append('meanVijXPol')
-            meanVijXPol = corr_cross_pol_metrics(self.abs_vis_stats,
+            metNames.append('corrXPol')
+            corrXPol = corr_cross_pol_metrics(self.abs_vis_stats,
                                                      xants=self.xants, rawMetric=True)
-            metVals.append(meanVijXPol)
+            metVals.append(corrXPol)
 
         # Save all metrics and zscores
         metrics, modzScores = {}, {}
@@ -591,7 +591,7 @@ class AntennaMetrics():
         self.all_metrics.update({self.iter: metrics})
         self.all_mod_z_scores.update({self.iter: modzScores})
 
-    def iterative_antenna_metrics_and_flagging(self, crossCut=5, deadCut=5,
+    def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=5,
                                                verbose=False, run_cross_pols=True,
                                                run_cross_pols_only=False):
         """Run Mean Vij and Mean Vij crosspol metrics and stores results in self.
@@ -630,8 +630,8 @@ class AntennaMetrics():
 
             # Find most likely cross-polarized antenna
             if run_cross_pols:
-                crossMetrics = {ant: np.abs(metric) for ant, metric
-                                in self.all_mod_z_scores[iteration]['meanVijXPol'].items()}
+                crossMetrics = {ant: np.nanmean(metric) for ant, metric
+                                in self.all_mod_z_scores[iteration]['corrXPol'].items()}
                 worstCrossAnt = min(crossMetrics, key=crossMetrics.get)
                 worstCrossCutRatio = np.abs(crossMetrics[worstCrossAnt]) / crossCut
 
