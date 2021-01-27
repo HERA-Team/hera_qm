@@ -284,12 +284,6 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
                          'and two "same" polarizations but we have instead '
                          f'{cross_pols} and {same_pols}')
 
-    # Compute metrics and cross pols only and and same pols only
-    # full_xants = set([ant[0] if isinstance(ant, tuple) else ant for ant in xants])
-    # cross_metrics = mean_Vij_metrics(abs_vis_stats, xants=full_xants,
-    #                                  pols=cross_pols, rawMetric=True)
-    # same_metrics = mean_Vij_metrics(abs_vis_stats, xants=full_xants,
-    #                                 pols=same_pols, rawMetric=True)
     cross_pol_metrics = {}
     #Iterate through all antennas
     for a1 in set([key[0] for key in corr_stats.keys()]):
@@ -303,15 +297,9 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
             xx_yx.append(np.subtract(corr_stats[(a1,a2,same_pols[0])],corr_stats[(a1,a2,cross_pols[1])]))
             yy_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[0])]))
             yy_yx.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[1])]))
-        cross_pol_metrics[a1] = [np.nanmean(xx_xy),np.nanmean(xx_yx),np.nanmean(yy_xy),np.nanmean(yy_yx)]
+        #If the max value is negative (indicating crossed), then all 4 values must be negative
+        cross_pol_metrics[a1] = np.max([np.nanmean(xx_xy),np.nanmean(xx_yx),np.nanmean(yy_xy),np.nanmean(yy_yx)])
 
-    # Save the ratio of the cross/same metrics in both antpols
-    # cross_pol_ratio = antpol_metric_sum_ratio(cross_metrics, same_metrics)
-
-    # if rawMetric:
-    #     return cross_pol_ratio
-    # else:
-    #     return per_antenna_modified_z_scores(cross_pol_ratio)
     return cross_pol_metrics
 
 
