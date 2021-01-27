@@ -25,7 +25,7 @@ def get_ant_metrics_dict():
         Dictionary with metric names as keys and descriptions as values.
 
     """
-    metrics_dict = {'ant_metrics_meanVij': 'Mean of the absolute value of all '
+    metrics_dict = {'ant_metrics_corr': 'Mean of the absolute value of all '
                                            'visibilities associated with an '
                                            'antenna.',
                     'ant_metrics_corrXPol': 'Ratio of mean cross-pol '
@@ -571,7 +571,7 @@ class AntennaMetrics():
             # Find most likely dead antenna
             if not run_cross_pols_only:
                 deadMetrics = {ant: np.abs(metric) for ant, metric
-                               in self.all_mod_z_scores[iteration]['meanVij'].items()}
+                               in self.all_mod_z_scores[iteration]['corr'].items()}
                 worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
                 worstDeadCutDiff = np.abs(deadMetrics[worstDeadAnt]) - deadCut
 
