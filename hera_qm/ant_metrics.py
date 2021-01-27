@@ -294,34 +294,30 @@ def antpol_metric_sum_ratio(cross_metrics, same_metrics):
     return cross_pol_ratio
 
 
-def mean_Vij_cross_pol_metrics(abs_vis_stats, xants=[], rawMetric=False):
-    """Calculate the ratio of cross-pol visibilities to same-pol visibilities.
+def mean_Vij_cross_pol_metrics(corr_stats, xants=[]):
+    """Calculate the differences in the correlation metric between polarizations.
 
-    Find which antennas are outliers based on the ratio of mean cross-pol
-    visibilities to mean same-pol visibilities:
-        (|Ven|+|Vne|)/(|Vee|+|Vnn|).
+    The four polarization combinations are xx-xy, yy-xy, xx-yx, and yy-yx. An
+    antenna is considered cross-polarized if all four of these metrics are less
+    than zero.
 
     Parameters
     ----------
-    abs_vis_stats : dictionary
+    corr_stats : dictionary
         Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to
-        mean absolute value of visibilites over time and frequency.
+        correlation metric value.
     xants : list of integers or tuples of antennas to exlcude, optional
-    rawMetric : bool, optional
-        If True, return the raw mean Vij cross pol metric instead of the
-        modified z-score. Default is False.
 
     Returns
     -------
-    mean_Vij_cross_pol_metrics : dict
-        Dictionary indexed by (ant, antpol) keys. Contains the modified z-scores
-        of the ratio of mean visibilities, (|Ven|+|Vne|)/(|Vee|+|Vnn|). Results are
-        duplicated in both antpols. Very large values are likely cross-polarized.
+    cross_pol_metrics : dict
+        Dictionary indexed by (ant, antpol) keys. Contains the values of the
+        four polarization combinations.
 
     """
-    pols = set([bl[2] for bl in abs_vis_stats])
-    cross_pols = [pol for pol in pols if pol[0] != pol[1]]
-    same_pols = [pol for pol in pols if pol[0] == pol[1]]
+    pols = set([bl[2] for bl in corr_stats])
+    # cross_pols = [pol for pol in pols if pol[0] != pol[1]]
+    # same_pols = [pol for pol in pols if pol[0] == pol[1]]
     if (len(cross_pols) != 2) or (len(same_pols) != 2):
         raise ValueError('There must be precisely two "cross" visbility polarizations '
                          'and two "same" polarizations but we have instead '
