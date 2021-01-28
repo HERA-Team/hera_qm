@@ -502,13 +502,16 @@ class AntennaMetrics():
                              'while run_cross_pols_only is True')
 
         if not run_cross_pols_only:
-            metNames.append('corr')
+            metNames.append('meanVij')
             meanVij = mean_Vij_metrics(self.abs_vis_stats, xants=self.xants, rawMetric=True)
             metVals.append(meanVij)
+            metNames.append('corr')
+            corr = self.corr_stats
+            metVals.append(corr)
 
         if run_cross_pols:
             metNames.append('corrXPol')
-            corrXPol = corr_cross_pol_metrics(self.abs_vis_stats,
+            corrXPol = corr_cross_pol_metrics(self.corr_stats,
                                                      xants=self.xants, rawMetric=True)
             metVals.append(corrXPol)
 
@@ -561,14 +564,14 @@ class AntennaMetrics():
             # Find most likely dead antenna
             if not run_cross_pols_only:
                 deadMetrics = {ant: np.abs(metric) for ant, metric
-                               in self.all_mod_z_scores[iteration]['corr'].items()}
+                               in self.all_metrics[iteration]['corr'].items()}
                 worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
                 worstDeadCutDiff = np.abs(deadMetrics[worstDeadAnt]) - deadCut
 
             # Find most likely cross-polarized antenna
             if run_cross_pols:
                 crossMetrics = {ant: np.max(metric) for ant, metric
-                                in self.all_mod_z_scores[iteration]['corrXPol'].items()}
+                                in self.all_metrics[iteration]['corrXPol'].items()}
                 worstCrossAnt = min(crossMetrics, key=crossMetrics.get)
                 worstCrossCutDiff = crossMetrics[worstCrossAnt] - crossCut
 
