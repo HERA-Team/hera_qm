@@ -279,7 +279,7 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=16., 
     # Figure out which baselines to load, if not all
     hd = HERAData(sorted(raw_auto_files))
     bls = hd.bls
-    if len(hd.filepaths) > 0:  # in this caes, hd.bls will be a dictionary mapping filename to baselines
+    if len(hd.filepaths) > 1:  # in this caes, hd.bls will be a dictionary mapping filename to baselines
         bls = set([bl for bls in bls.values() for bl in bls])
     auto_bls = sorted([bl for bl in bls if (bl[0] == bl[1]) and (split_pol(bl[2])[0] == split_pol(bl[2])[1])])
     pols = set([bl[2] for bl in auto_bls])
