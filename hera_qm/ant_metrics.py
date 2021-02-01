@@ -309,7 +309,7 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
     Returns
     -------
     cross_pol_metrics : dict
-        Dictionary indexed by ant number keys. Contains the values of the
+        Dictionary indexed by keys (ant,antpol). Contains the max value of the
         four polarization combinations.
 
     """
@@ -330,11 +330,12 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
     for bl in corr_stats:
         for ant in split_bl(bl):
             if (ant not in xants) and (ant[0] not in xants) and (ant[0] not in ants):
-                ants.add(ant[0])
+                ants.add(ant)
+    antpols = set([ant[1] for ant in ants])
 
     #Iterate through all antennas
     for a in ants:
-        keys = set([key for key in corr_stats.keys() if (a in key) and
+        keys = set([key for key in corr_stats.keys() if (a[0] in key) and
             (key[0] not in xants) and (key[1] not in xants)])
         xx_xy = []
         xx_yx = []
@@ -349,7 +350,8 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
             yy_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[0])]))
             yy_yx.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[1])]))
         #If the max value is negative (indicating crossed), then all 4 values must be negative
-        cross_pol_metrics[a1] = np.max([np.nanmean(xx_xy),np.nanmean(xx_yx),np.nanmean(yy_xy),np.nanmean(yy_yx)])
+        for pol in antpols:
+            cross_pol_metrics[(a[0],pol)] = np.max([np.nanmean(xx_xy),np.nanmean(xx_yx),np.nanmean(yy_xy),np.nanmean(yy_yx)])
 
     return cross_pol_metrics
 
