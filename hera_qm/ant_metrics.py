@@ -594,7 +594,7 @@ class AntennaMetrics():
         self.all_metrics.update({self.iter: metrics})
         self.all_mod_z_scores.update({self.iter: modzScores})
 
-    def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=0.25,
+    def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=0.4,
                                                verbose=False, run_cross_pols=True,
                                                run_cross_pols_only=False):
         """Run corr metric and crosspol metrics and stores results in self.
@@ -604,7 +604,7 @@ class AntennaMetrics():
         crossCut : float, optional
             Cut for most cross-polarized antennas. Default is 0.
         deadCut : float, optional
-            Cut for most likely dead antennas. Default is 0.25.
+            Cut for most likely dead antennas. Default is 0.4.
         run_cross_pols : bool, optional
             Define if corr_cross_pol_metrics is executed. Default is True.
         run_cross_pols_only : bool, optional
@@ -690,7 +690,7 @@ class AntennaMetrics():
 
 
 def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants_yaml=None,
-                    crossCut=5.0, deadCut=0.25, run_cross_pols=True, run_cross_pols_only=False,
+                    crossCut=5.0, deadCut=0.4, run_cross_pols=True, run_cross_pols_only=False,
                     metrics_path='', extension='.ant_metrics.hdf5',
                     overwrite=False, Nbls_per_load=None, history='', verbose=True):
     """
@@ -719,7 +719,7 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
     crossCut : float, optional
         Limit below which to cut cross-polarized antennas. Default is 0.
     deadCut : float, optional
-        Limit below which to cut dead antennas. Default is 0.25.
+        Limit below which to cut dead antennas. Default is 0.4.
     run_cross_pols : bool, optional
         Define if corr_cross_pol_metrics is executed. Default is True.
     run_cross_pols_only : bool, optional
