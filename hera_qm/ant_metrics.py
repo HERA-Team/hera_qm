@@ -316,8 +316,6 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
     pols = set([bl[2] for bl in corr_stats])
     cross_pols = [pol for pol in pols if pol[0] != pol[1]]
     same_pols = [pol for pol in pols if pol[0] == pol[1]]
-    print(same_pols)
-    print(cross_pols)
     if (len(pols) != 4) or (len(same_pols) != 2):
         raise ValueError('There must be precisely two "cross" visbility polarizations '
                          'and two "same" polarizations but we have instead '
@@ -561,7 +559,7 @@ class AntennaMetrics():
         if run_cross_pols:
             metNames.append('corrXPol')
             corrXPol = corr_cross_pol_metrics(self.corr_stats,
-                                                     xants=self.xants, rawMetric=True)
+                                                     xants=self.xants)
             metVals.append(corrXPol)
 
         # Save all metrics and zscores
