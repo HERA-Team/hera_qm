@@ -131,7 +131,7 @@ def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np
     return abs_vis_stats
 
 def calc_corr_stats(data_sum, data_diff=None, flags_sum=None, flags_diff=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
-    """Summarize visibility magnitudes as a single number for quick comparison to others.
+    """Calculate correlation values for all baselines.
 
     Parameters
     ----------
@@ -160,7 +160,7 @@ def calc_corr_stats(data_sum, data_diff=None, flags_sum=None, flags_diff=None, t
         of 0 indicates no correlation.
 
     """
-    corr_metric = {}
+    corr_stats = {}
     for bl in data_sum:
         data_sum_here = deepcopy(data_sum[bl])
         data_sum_here[~np.isfinite(data_sum_here)] = np.nan
@@ -183,8 +183,57 @@ def calc_corr_stats(data_sum, data_diff=None, flags_sum=None, flags_diff=None, t
         even = np.divide(even,np.abs(even))
         odd = np.divide(odd,np.abs(odd))
         metric = np.abs(np.nanmean(np.multiply(even,np.conj(odd))))
-        corr_metric[bl] = metric
-    return corr_metric
+        corr_stats[bl] = metric
+    return corr_stats
+
+def corr_metric(corr_stats, xants=[], pols=['ee','nn']):
+    """Calculate an antenna's mean correlation value.
+
+    Parameters
+    ----------
+    corr_stats : dictionary
+        Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to
+        correlation metric averaged over time and frequency.
+    xants : list of ints or tuples, optional
+        Antenna numbers or tuples e.g. (1, 'Jee') to exclude from metrics
+    pols : list of str, optional
+        List of visibility polarizations (e.g. ['ee','en','ne','nn']).
+        Defaults to ['ee','nn'], None means all visibility polarizations are used.
+
+    Returns
+    -------
+    meanMetrics : dict
+        Dictionary indexed by (ant, antpol) of the modified z-score of the
+        mean of the absolute value of all visibilities associated with an antenna.
+        Very small or very large numbers are probably bad antennas.
+
+    """
+
+    from hera_cal.utils import split_pol, split_bl
+
+    # figure out which antennas match pols and and are not in xants
+    if pols is not None:
+        antpols = set([ap for bl in corr_stats for ap in split_pol(bl[2])
+                       if ((pols is None) or (bl[2] in pols))])
+    ants = set()
+    for bl in corr_stats:
+        for ant in split_bl(bl):
+            if (ant not in xants) and (ant[0] not in xants):
+                if (pols is None) or (ant[1] in antpols):
+                    ants.add(ant)
+
+    # assign visibility means to each antenna in the baseline
+    per_ant_means = {ant: [] for ant in ants}
+    for bl, corr_mean in corr_stats.items():
+        if bl[0] == bl[1]:
+            continue  # ignore autocorrelations
+        if (pols is None) or (bl[2] in pols):
+            for ant in split_bl(bl):
+                if ant in ants:
+                    per_ant_means[ant].append(corr_mean)
+    per_ant_means = {ant: np.nanmean(per_ant_means[ant]) for ant in ants}
+
+    return per_ant_means
 
 
 def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
@@ -506,7 +555,7 @@ class AntennaMetrics():
             meanVij = mean_Vij_metrics(self.abs_vis_stats, xants=self.xants, rawMetric=True)
             metVals.append(meanVij)
             metNames.append('corr')
-            corr = self.corr_stats
+            corr = calc_corr_stats()
             metVals.append(corr)
 
         if run_cross_pols:
