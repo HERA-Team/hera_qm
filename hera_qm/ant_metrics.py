@@ -313,6 +313,9 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
         four polarization combinations.
 
     """
+
+    from hera_cal.utils import split_pol, split_bl
+
     pols = set([bl[2] for bl in corr_stats])
     cross_pols = [pol for pol in pols if pol[0] != pol[1]]
     same_pols = [pol for pol in pols if pol[0] == pol[1]]
@@ -322,14 +325,25 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
                          f'{cross_pols} and {same_pols}')
 
     cross_pol_metrics = {}
+
+    ants = set()
+    for bl in corr_stats:
+        for ant in split_bl(bl):
+            if (ant not in xants) and (ant[0] not in xants) and (ant[0] not in ants):
+                ants.add(ant[0])
+
     #Iterate through all antennas
-    for a1 in set([key[0] for key in corr_stats.keys()]):
+    for a in ants:
+        keys = set([key for key in corr_stats.keys() if (a in key) and
+            (key[0] not in xants) and (key[1] not in xants)])
         xx_xy = []
         xx_yx = []
         yy_xy = []
         yy_yx = []
         #Calculate all crosses, excluding ants in xants
-        for a2 in set([key[1] for key in corr_stats.keys() if key[1] not in xants]):
+        for k in keys:
+            a1 = k[0]
+            a2 = k[1]
             xx_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[0])],corr_stats[(a1,a2,cross_pols[0])]))
             xx_yx.append(np.subtract(corr_stats[(a1,a2,same_pols[0])],corr_stats[(a1,a2,cross_pols[1])]))
             yy_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[0])]))
