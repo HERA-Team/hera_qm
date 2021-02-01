@@ -555,7 +555,7 @@ class AntennaMetrics():
             meanVij = mean_Vij_metrics(self.abs_vis_stats, xants=self.xants, rawMetric=True)
             metVals.append(meanVij)
             metNames.append('corr')
-            corr = calc_corr_stats()
+            corr = corr_metric(self.corr_stats,xants=self.xants)
             metVals.append(corr)
 
         if run_cross_pols:
