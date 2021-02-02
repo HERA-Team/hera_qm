@@ -441,23 +441,17 @@ class AntennaMetrics():
                     self.final_metrics[metName] = {key: metric[key]}
         self.all_metrics.update({self.iter: metrics})
 
-    def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=0.4,
-                                               verbose=False, run_cross_pols=True,
-                                               run_cross_pols_only=False):
+    def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=0.4, verbose=False):
         """Run corr metric and crosspol metrics and stores results in self.
 
         Parameters
         ----------
         crossCut : float, optional
-            Cut for most cross-polarized antennas. Default is 0.
+            Cut in cross-pol correlation metric below which to flag antennas as cross-polarized.
+            Default is 0.
         deadCut : float, optional
-            Cut for most likely dead antennas. Default is 0.4.
-        run_cross_pols : bool, optional
-            Define if corr_cross_pol_metrics is executed. Default is True.
-        run_cross_pols_only : bool, optional
-            Define if corr_cross_pol_metrics is the *only* metric to be run.
-            Default is False.
-
+            Cut in correlation metric below which antennas are most likely dead / not correlating. 
+            Default is 0.4.
         """
         self._reset_summary_stats()
         self._find_totally_dead_ants(verbose=verbose)
