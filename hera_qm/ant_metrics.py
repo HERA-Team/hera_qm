@@ -207,52 +207,57 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
 
     Returns
     -------
-    cross_pol_metrics : dict
-        Dictionary indexed by keys (ant,antpol). Contains the max value of the
-        four polarization combinations.
-
+    per_ant_corr_cross_pol_metrics : dict
+        Dictionary indexed by keys (ant,antpol). Contains the max value over the
+        four polarization combinations of the average (over baselines) difference 
+        in correlation metrics (xx-xy, xx-yx, yy-xy, yy-yx).
     """
 
     from hera_cal.utils import split_pol, split_bl
 
+    # figure out pols om corr_stats and make sure they are sensible
     pols = set([bl[2] for bl in corr_stats])
-    cross_pols = [pol for pol in pols if pol[0] != pol[1]]
-    same_pols = [pol for pol in pols if pol[0] == pol[1]]
+    cross_pols = [pol for pol in pols if split_pol(pol)[0] != split_pol(pol)[1]]
+    same_pols = [pol for pol in pols if split_pol(pol)[0] == split_pol(pol)[1]]
     if (len(pols) != 4) or (len(same_pols) != 2):
         raise ValueError('There must be precisely two "cross" visbility polarizations '
                          'and two "same" polarizations but we have instead '
                          f'{cross_pols} and {same_pols}')
 
-    cross_pol_metrics = {}
-
+    # get ants, antnums, and antpols
     ants = set()
     for bl in corr_stats:
         for ant in split_bl(bl):
-            if (ant not in xants) and (ant[0] not in xants) and (ant[0] not in ants):
+            if (ant not in xants) and (ant[0] not in xants):
                 ants.add(ant)
+    antnums = set([ant[0] for ant in ants])
     antpols = set([ant[1] for ant in ants])
 
+    # If an antenna is not touched, data is missing and hence set this metric to nan.
+    per_ant_corr_cross_pol_metrics = {ant: np.nan for ant in ants}
     #Iterate through all antennas
-    for a in ants:
-        keys = set([key for key in corr_stats.keys() if (a[0] in key) and
-            (key[0] not in xants) and (key[1] not in xants)])
-        xx_xy = []
-        xx_yx = []
-        yy_xy = []
-        yy_yx = []
-        #Calculate all crosses, excluding ants in xants
-        for k in keys:
-            a1 = k[0]
-            a2 = k[1]
-            xx_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[0])],corr_stats[(a1,a2,cross_pols[0])]))
-            xx_yx.append(np.subtract(corr_stats[(a1,a2,same_pols[0])],corr_stats[(a1,a2,cross_pols[1])]))
-            yy_xy.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[0])]))
-            yy_yx.append(np.subtract(corr_stats[(a1,a2,same_pols[1])],corr_stats[(a1,a2,cross_pols[1])]))
-        #If the max value is negative (indicating crossed), then all 4 values must be negative
-        for pol in antpols:
-            cross_pol_metrics[(a[0],pol)] = np.max([np.nanmean(xx_xy),np.nanmean(xx_yx),np.nanmean(yy_xy),np.nanmean(yy_yx)])
+    for a1 in antnums:
+        # check if any pols of this ant are flagged
+        if (a1 in xants) or np.any([(a1, ap) in xants for ap in antpols]):
+            continue
 
-    return cross_pol_metrics
+        diffs = [[], [], [], []]
+        for a2 in antnums:
+            # check if any pols of this ant are flagged
+            if (a2 in xants) or np.any([(a2, ap) in xants for ap in antpols]):
+                continue
+
+            # this loops over all the combinations of same and cross-pols
+            for i, (pol1, pol2) in enumerate([(same_pols[0], cross_pols[0]), (same_pols[0], cross_pols[1]),
+                                              (same_pols[1], cross_pols[0]), (same_pols[1], cross_pols[1])]):
+                if (a1, a2, pol1) in corr_stats and (a1, a2, pol2) in corr_stats:
+                    diffs[i].append(corr_stats[(a1, a2, pol1)]- corr_stats[(a1, a2, pol2)])
+
+        # assign same metric to both antpols
+        for ap in antpols:
+            per_ant_corr_cross_pol_metrics[(a[0], ap)] = np.nanmax([np.nanmean(d) for d in diff])
+
+    return per_ant_corr_cross_pol_metrics
 
 
 def load_antenna_metrics(filename):
