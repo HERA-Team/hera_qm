@@ -425,27 +425,13 @@ class AntennaMetrics():
         # Compute all raw metrics
         metNames = []
         metVals = []
+        metNames.append('corr')
+        metVals.append(corr_metrics(self.corr_stats, xants=self.xants, pols=self.same_pols))
+        metNames.append('corrXPol')
+        metVals.append(corr_cross_pol_metrics(self.corr_stats, xants=self.xants))
 
-        if run_cross_pols_only and not run_cross_pols:
-            raise ValueError('Must run at least 1 metric, but run_cross_pols is False '
-                             'while run_cross_pols_only is True')
-
-        if not run_cross_pols_only:
-            metNames.append('meanVij')
-            meanVij = mean_Vij_metrics(self.abs_vis_stats, xants=self.xants, rawMetric=True)
-            metVals.append(meanVij)
-            metNames.append('corr')
-            corr = corr_metric(self.corr_stats,xants=self.xants)
-            metVals.append(corr)
-
-        if run_cross_pols:
-            metNames.append('corrXPol')
-            corrXPol = corr_cross_pol_metrics(self.corr_stats,
-                                                     xants=self.xants)
-            metVals.append(corrXPol)
-
-        # Save all metrics and zscores
-        metrics, modzScores = {}, {}
+        # Save all metrics
+        metrics = {}
         for metric, metName in zip(metVals, metNames):
             metrics[metName] = metric
             for key in metric:
