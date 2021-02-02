@@ -116,9 +116,9 @@ def test_spectrum_modz_scores():
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean)
     for bl in auto_spectra:
         if bl == (0, 0, 'ee'):
-            assert modzs[bl] > 10000
+            assert modzs[bl] > 5000
         else:
-            assert np.abs(modzs[bl]) < 10
+            assert np.abs(modzs[bl]) < 5
             
     # test with a nan
     auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
@@ -127,9 +127,9 @@ def test_spectrum_modz_scores():
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean)
     for bl in auto_spectra:
         if bl == (0, 0, 'ee'):
-            assert modzs[bl] > 10000
+            assert modzs[bl] > 5000
         else:
-            assert np.abs(modzs[bl]) < 10
+            assert np.abs(modzs[bl]) < 5
 
     # test with single spectral channel outlier in median mode
     auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
@@ -144,9 +144,9 @@ def test_spectrum_modz_scores():
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, metric_func=np.nanmean)
     for bl in auto_spectra:
         if bl == (0, 0, 'ee'):
-            assert modzs[bl] > 100
+            assert modzs[bl] > 50
         else:
-            assert np.abs(modzs[bl]) < 10
+            assert np.abs(modzs[bl]) < 5
 
     # test abs_diff=False
     auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
@@ -154,9 +154,9 @@ def test_spectrum_modz_scores():
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, abs_diff=False)
     for bl in auto_spectra:
         if bl == (0, 0, 'ee'):
-            assert modzs[bl] < -10000
+            assert modzs[bl] < -5000
         else:
-            assert np.abs(modzs[bl]) < 10
+            assert np.abs(modzs[bl]) < 5
 
     # test metric_log=True
     auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
@@ -165,21 +165,21 @@ def test_spectrum_modz_scores():
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, metric_log=True, ex_ants=[0, 1])
     for bl in auto_spectra:
         if bl == (0, 0, 'ee'):
-            assert modzs[bl] > 1000
+            assert modzs[bl] > 500
         elif bl == (1, 1, 'ee'):
-            assert modzs[bl] > 1000
+            assert modzs[bl] > 500
         else:
-            assert np.abs(modzs[bl]) < 10
+            assert np.abs(modzs[bl]) < 5
 
     # test both metric_log=True and abs_diff=False
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, metric_log=True, abs_diff=False, ex_ants=[0, 1])
     for bl in auto_spectra:
         if bl == (0, 0, 'ee'):
-            assert modzs[bl] > 1000
+            assert modzs[bl] > 500
         elif bl == (1, 1, 'ee'):
-            assert modzs[bl] < -1000, modzs[bl]
+            assert modzs[bl] < -500, modzs[bl]
         else:
-            assert np.abs(modzs[bl]) < 10
+            assert np.abs(modzs[bl]) < 5
 
 
 def test_iterative_spectrum_modz():
@@ -216,7 +216,7 @@ def test_auto_metrics_run():
     auto_files = glob.glob(os.path.join(DATA_PATH, 'zen.2459122.*.sum.autos.downselected.uvh5'))
     metrics_outfile = os.path.join(DATA_PATH, 'unittest_auto_metrics.h5')
     ex_ants, modzs, spectra, flags = auto_metrics.auto_metrics_run(metrics_outfile, auto_files,
-                                                                   median_round_modz_cut=150., mean_round_modz_cut=10.,
+                                                                   median_round_modz_cut=75., mean_round_modz_cut=5.,
                                                                    edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, 
                                                                    chan_thresh_frac=.05, history='unittest', overwrite=True)
     metrics_in = metrics_io.load_metric_file(metrics_outfile)
@@ -265,8 +265,8 @@ def test_auto_metrics_run():
 
     # test saved parameters
     assert metrics_in['parameters']
-    assert metrics_in['parameters']['median_round_modz_cut'] == 150.
-    assert metrics_in['parameters']['mean_round_modz_cut'] == 10.
+    assert metrics_in['parameters']['median_round_modz_cut'] == 75.
+    assert metrics_in['parameters']['mean_round_modz_cut'] == 5.
     assert metrics_in['parameters']['edge_cut'] == 100
     assert metrics_in['parameters']['Kt'] == 8 
     assert metrics_in['parameters']['Kf'] == 8

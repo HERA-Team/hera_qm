@@ -77,9 +77,9 @@ def get_metrics_ArgumentParser(method_name):
                         help='Path to save auto_metrics hdf5 file.')
         ap.add_argument('raw_auto_files', type=str, nargs='+', 
                         help='Paths to data files including autocorrelations.')
-        ap.add_argument('--median_round_modz_cut', default=16., type=float, 
+        ap.add_argument('--median_round_modz_cut', default=8., type=float, 
                         help='Round 1 (median-based) cut on antenna modified Z-score.')
-        ap.add_argument('--mean_round_modz_cut', default=8., type=float, 
+        ap.add_argument('--mean_round_modz_cut', default=4., type=float, 
                         help='Round 2 (mean-based) cut on antenna modified Z-score.')
         ap.add_argument('--edge_cut', default=100, type=int, 
                         help='Number of channels on either end to flag (i.e. ignore) when looking for antenna outliers.')
