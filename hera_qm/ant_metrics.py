@@ -273,7 +273,7 @@ class AntennaMetrics():
         diff_files : str or list of str
             Path to file or files of raw diff data to calculate antenna metrics on
             If not provided, even/odd correlations will be inferred with interleaving.
-            Assumed to match sum_files in metadata
+            Assumed to match sum_files in metadata. Flags will be ORed with sum_files.
         apriori_xants : list of integers or tuples, optional
             List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
             as excluded apriori. These are included in self.xants, but not
@@ -303,7 +303,6 @@ class AntennaMetrics():
         abs_vis_stats : dictionary
             Dictionary mapping baseline keys e.g. (0, 1, 'ee') to single floats
             representing visibility amplitudes.
-
         version_str : str
             The version of the hera_qm module used to generate these metrics.
         history : str
