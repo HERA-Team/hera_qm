@@ -85,7 +85,7 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
             continue
 
         # split into even and odd
-        if data_diff is not None
+        if data_diff is not None:
             data_diff_here = np.where(np.isfinite(data_diff[bl]), data_diff[bl], np.nan)
             even = (data_sum_here + data_diff_here) / 2
             odd = (data_sum_here - data_diff_here) / 2
