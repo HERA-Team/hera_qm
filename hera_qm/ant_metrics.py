@@ -81,8 +81,9 @@ def per_antenna_modified_z_scores(metric):
     return zscores
 
 
-def calc_corr_stats(data_sum, data_diff=None, flags_sum=None, flags_diff=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
-    """Calculate correlation values for all baselines.
+def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, freq_alg=np.nanmean):
+    """Calculate correlation values for all baselines, the average cross-correlation between
+    even and 
 
     Parameters
     ----------
@@ -90,15 +91,15 @@ def calc_corr_stats(data_sum, data_diff=None, flags_sum=None, flags_diff=None, t
         Maps baseline keys e.g. (0, 1, 'ee') to numpy arrays of shape (Ntimes, Nfreqs)
     data_diff : dictionary or hera_cal DataContainer
         Maps baseline keys e.g. (0, 1, 'ee') to numpy arrays of shape (Ntimes, Nfreqs)
-    flags_sum : dictionary or hera_cal DataContainer, optional
-        If not None, should have the same keys and same array shapes as data
-    flags_diff : dictionary or hera_cal DataContainer, optional
-        If not None, should have the same keys and same array shapes as data
+        If not provided, data_sum will be broken into interleaving timesteps.
+    flags : dictionary or hera_cal DataContainer, optional
+        Times or frequencies to exclude from the calculation of the correlation metrics.
+        If not None, should have the same keys and same array shapes as data_sum
     time_alg : function, optional
         Function used to reduce a 2D or 1D numpy array to a single number.
         To handle flags properly, should be the "nan" version of the function.
     freq_alg : function, optional
-        Function that reuduces a 1D array to a single number or a 2D array to a 1D
+        Function that reduces a 1D array to a single number or a 2D array to a 1D
         array using the axis kwarg. If its the same as time_alg, the 2D --> float
         version will be used (no axis kwarg). To handle flags properly, should be
         the "nan" version of the function.
@@ -109,32 +110,34 @@ def calc_corr_stats(data_sum, data_diff=None, flags_sum=None, flags_diff=None, t
         Dictionary mapping baseline keys e.g. (0, 1, 'ee') to single floats representing
         correlation amplitudes. A value of 1 indicates a strong correlation, and a value
         of 0 indicates no correlation.
-
     """
     corr_stats = {}
     for bl in data_sum:
-        data_sum_here = deepcopy(data_sum[bl])
-        data_sum_here[~np.isfinite(data_sum_here)] = np.nan
-        if data_diff is not None:
-            data_diff_here = deepcopy(data_diff[bl])
-            data_diff_here[~np.isfinite(data_diff_here)] = np.nan
-        if flags_sum is not None:
-            data_sum_here[flags_sum[bl]] = np.nan
-        if flags_diff is not None:
-            data_diff_here[flags_diff[bl]] = np.nan
+        # turn flags and other non-finite data into nans
+        data_sum_here = np.where(np.isfinite(data_sum[bl]), data_sum[bl], np.nan)
+        if flags is not None:
+            data_sum_here[flags[bl]] = np.nan
 
-        if data_diff is not None:
-            # Standard calculation
-            even = (data_sum_here + data_diff_here)/2
-            odd = (data_sum_here - data_diff_here)/2
+        # split into even and odd
+        if data_diff is not None
+            data_diff_here = np.where(np.isfinite(data_diff[bl]), data_diff[bl], np.nan)
+            even = (data_sum_here + data_diff_here) / 2
+            odd = (data_sum_here - data_diff_here) / 2
         else:
-            # If diff files are not provided, use interleaving sum files
-            even = data_sum_here[::2,:]
-            odd = data_sum_here[1::2,:]
-        even = np.divide(even,np.abs(even))
-        odd = np.divide(odd,np.abs(odd))
-        metric = np.abs(np.nanmean(np.multiply(even,np.conj(odd))))
-        corr_stats[bl] = metric
+            # interleave, dropping last integraiton if there are an odd number
+            last_int = (data_sum_here.shape[0] // 2) * 2
+            even = data_sum_here[0:last_int:2, :]
+            odd = data_sum_here[1:last_int:2, :]
+
+        # normalize (reduces the impact of RFI by making every channel equally weighted)
+        even /= np.abs(even)
+        odd /= np.abs(odd)
+
+        # reduce to a scalar statistic
+        if time_alg == freq_alg:  # if they are the same algorithm, do it globally
+            corr_stats[bl] = np.abs(time_alg(even * np.conj(odd)))
+        else:
+            corr_stats[bl] = np.abs(time_alg(freq_alg(even * np.conj(odd), axis=1)))
     return corr_stats
 
 def corr_metric(corr_stats, xants=[], pols=['ee','nn']):
