@@ -78,8 +78,8 @@ def test_init():
     am = ant_metrics.AntennaMetrics(four_pol_uvh5, apriori_xants=[9, (10, 'Jxx'), (20, 'jxx')])
 
     # test metadata
-    assert am.datafile_list == [four_pol_uvh5]
-    assert am.hd is not None
+    assert am.datafile_list_sum == [four_pol_uvh5]
+    assert am.hd_sum is not None
     assert am.history == ''
     assert 'Git hash' in am.version_str
 
@@ -117,20 +117,18 @@ def test_init():
     assert am.dead_ants == []
     assert am.iter == 0
     assert am.all_metrics == {}
-    assert am.all_mod_z_scores == {}
     assert am.final_metrics == {}
-    assert am.final_mod_z_scores == {}
 
     # test _load_time_freq_abs_vis_stats
     for bl in am.bls:
-        assert bl in am.abs_vis_stats
-        assert np.real(am.abs_vis_stats[bl]) >= 0
-        assert np.imag(am.abs_vis_stats[bl]) == 0
+        assert bl in am.corr_stats
+        assert np.real(am.corr_stats[bl]) >= 0
+        assert np.imag(am.corr_stats[bl]) == 0
 
     # test Nbls_per_load
     am2 = ant_metrics.AntennaMetrics(four_pol_uvh5, Nbls_per_load=100)
     for bl in am.bls:
-        assert am.abs_vis_stats[bl] == am2.abs_vis_stats[bl]
+        assert am.corr_stats[bl] == am2.corr_stats[bl]
 
 
 def test_iterative_antenna_metrics_and_flagging():
