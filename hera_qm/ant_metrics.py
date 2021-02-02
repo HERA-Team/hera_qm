@@ -140,7 +140,8 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
             corr_stats[bl] = np.abs(time_alg(freq_alg(even * np.conj(odd), axis=1)))
     return corr_stats
 
-def corr_metric(corr_stats, xants=[], pols=['ee','nn']):
+
+def corr_metric(corr_stats, xants=[], pols=None):
     """Calculate an antenna's mean correlation value.
 
     Parameters
@@ -152,7 +153,7 @@ def corr_metric(corr_stats, xants=[], pols=['ee','nn']):
         Antenna numbers or tuples e.g. (1, 'Jee') to exclude from metrics
     pols : list of str, optional
         List of visibility polarizations (e.g. ['ee','en','ne','nn']).
-        Defaults to ['ee','nn'], None means all visibility polarizations are used.
+        Defaults None means all visibility polarizations are used.
 
     Returns
     -------
