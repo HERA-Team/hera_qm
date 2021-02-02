@@ -289,12 +289,12 @@ class AntennaMetrics():
     """Container for holding data and meta-data for ant metrics calculations.
 
     This class creates an object for holding relevant visibility data and metadata,
-    and provides interfaces to four antenna metrics: two identify dead antennas,
-    and two identify cross-polarized antennas. These metrics can be used iteratively
-    to identify bad antennas. The object handles all stroage of metrics, and supports
-    writing metrics to an HDF5 filetype. The analysis functions are designed to work
-    on raw data from a single observation with all four polarizations.
-
+    and provides interfaces to two antenna metrics: one for identifying dead / not
+    correlating atennas and the other for identifying cross-polarized antennas. These
+    metrics can be used iteratively to identify bad antennas. The object handles 
+    all stroage of metrics, and supports writing metrics to an HDF5 filetype. 
+    The analysis functions are designed to work on raw data from one or more observations
+    with all four polarizations.
     """
 
     def __init__(self, sum_files, diff_files=None, apriori_xants=[], Nbls_per_load=None):
@@ -306,6 +306,8 @@ class AntennaMetrics():
             Path to file or files of raw sum data to calculate antenna metrics on
         diff_files : str or list of str
             Path to file or files of raw diff data to calculate antenna metrics on
+            If not provided, even/odd correlations will be inferred with interleaving.
+            Assumed to match sum_files in metadata
         apriori_xants : list of integers or tuples, optional
             List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
             as excluded apriori. These are included in self.xants, but not
@@ -317,9 +319,9 @@ class AntennaMetrics():
         Attributes
         ----------
         hd_sum : HERAData
-            HERAData object generated from datafile_list_sum.
+            HERAData object generated from sum_files.
         hd_diff : HERAData
-            HERAData object generated from datafile_list_diff.
+            HERAData object generated from diff_files.
         ants : list of tuples
             List of antenna-polarization tuples to assess
         antnums : list of ints
