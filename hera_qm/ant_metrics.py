@@ -187,59 +187,6 @@ def corr_metric(corr_stats, xants=[], pols=['ee','nn']):
     return per_ant_means
 
 
-def mean_Vij_metrics(abs_vis_stats, xants=[], pols=None, rawMetric=False):
-    """Calculate how an antennas's average |Vij| deviates from others.
-
-    Parameters
-    ----------
-    abs_vis_stats : dictionary
-        Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to
-        mean absolute value of visibilites over time and frequency.
-    xants : list of ints or tuples, optional
-        Antenna numbers or tuples e.g. (1, 'Jee') to exclude from metrics
-    pols : list of str, optional
-        List of visibility polarizations (e.g. ['ee','en','ne','nn']).
-        Default None means all visibility polarizations are used.
-    rawMetric : bool, optional
-        If True, return the raw mean Vij metric instead of the modified z-score.
-        Default is False.
-
-    Returns
-    -------
-    meanMetrics : dict
-        Dictionary indexed by (ant, antpol) of the modified z-score of the
-        mean of the absolute value of all visibilities associated with an antenna.
-        Very small or very large numbers are probably bad antennas.
-
-    """
-    from hera_cal.utils import split_pol, split_bl
-
-    # figure out which antennas match pols and and are not in xants
-    if pols is not None:
-        antpols = set([ap for bl in abs_vis_stats for ap in split_pol(bl[2])
-                       if ((pols is None) or (bl[2] in pols))])
-    ants = set()
-    for bl in abs_vis_stats:
-        for ant in split_bl(bl):
-            if (ant not in xants) and (ant[0] not in xants):
-                if (pols is None) or (ant[1] in antpols):
-                    ants.add(ant)
-
-    # assign visibility means to each antenna in the baseline
-    per_ant_means = {ant: [] for ant in ants}
-    for bl, vis_mean in abs_vis_stats.items():
-        if bl[0] == bl[1]:
-            continue  # ignore autocorrelations
-        if (pols is None) or (bl[2] in pols):
-            for ant in split_bl(bl):
-                if ant in ants:
-                    per_ant_means[ant].append(vis_mean)
-    per_ant_means = {ant: np.nanmean(per_ant_means[ant]) for ant in ants}
-
-    if rawMetric:
-        return per_ant_means
-    else:
-        return per_antenna_modified_z_scores(per_ant_means)
 
 
 
