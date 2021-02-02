@@ -73,62 +73,73 @@ def test_load_ant_metrics_json():
 
 
 def test_init():
-    # load data
-    four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
-    am = ant_metrics.AntennaMetrics(four_pol_uvh5, apriori_xants=[9, (10, 'Jxx'), (20, 'jxx')])
+    # try with both sum files only and both
+    files = [{'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5', 'diff_files': None},
+             {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5', 
+              'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}]
+    
+    for to_load in files:
+        # load data
+        am = ant_metrics.AntennaMetrics(**to_load, apriori_xants=[51, (116, 'Jnn'), (93, 'jnn')])
 
-    # test metadata
-    assert am.datafile_list_sum == [four_pol_uvh5]
-    assert am.hd_sum is not None
-    assert am.history == ''
-    assert 'Git hash' in am.version_str
+        # test metadata
+        assert am.datafile_list_sum == [to_load['sum_files']]
+        assert am.hd_sum is not None
+        if to_load['diff_files'] is not None:
+            assert am.datafile_list_diff == [to_load['diff_files']]
+            assert am.hd_sum is not None
+        else:
+            assert am.datafile_list_diff is None
+            assert am.hd_diff is None
+        assert am.history == ''
+        assert 'Git hash' in am.version_str
 
-    # test antennas and baselines
-    true_antnums = [9, 10, 20, 22, 31, 43, 53, 64, 65, 72, 80, 81, 88, 89, 96, 97, 104, 105, 112]
-    assert len(am.bls) == len(true_antnums) * (len(true_antnums) - 1) / 2 * 4 + len(true_antnums) * 4
-    for antpol in ['Jxx', 'Jyy']:
-        assert antpol in am.antpols
-        for antnum in true_antnums:
-            assert antnum in am.antnums
-            assert (antnum, antpol) in am.ants
+        # test antennas and baselines
+        true_antnums = [51, 87, 116, 93, 65, 85, 53, 160, 36, 83, 135, 157, 98, 117, 68]
+        assert len(am.bls) == len(true_antnums) * (len(true_antnums) - 1) / 2 * 4 + len(true_antnums) * 4
+        for antpol in ['Jnn', 'Jee']:
+            assert antpol in am.antpols
+            for antnum in true_antnums:
+                assert antnum in am.antnums
+                assert (antnum, antpol) in am.ants
 
-    # test apriori xants
-    assert (9, 'Jxx') in am.apriori_xants
-    assert (9, 'Jyy') in am.apriori_xants
-    assert 9 not in am.apriori_xants
-    assert (10, 'Jxx') in am.apriori_xants
-    assert (10, 'Jyy') not in am.apriori_xants
-    assert (20, 'Jxx') in am.apriori_xants
-    assert (20, 'Jyy') not in am.apriori_xants
+        # test apriori xants
+        assert (51, 'Jnn') in am.apriori_xants
+        assert (51, 'Jee') in am.apriori_xants
+        assert 51 not in am.apriori_xants
+        assert (116, 'Jnn') in am.apriori_xants
+        assert (116, 'Jee') not in am.apriori_xants
+        assert (93, 'Jnn') in am.apriori_xants
+        assert (116, 'Jee') not in am.apriori_xants
 
-    # test errors in parsing apriori xants
-    with pytest.raises(ValueError):
-        ant_metrics.AntennaMetrics(four_pol_uvh5, apriori_xants=(9, 'Jxx'))
-    with pytest.raises(ValueError):
-        ant_metrics.AntennaMetrics(four_pol_uvh5, apriori_xants=[(9, 10, 'xx')])
-    with pytest.raises(ValueError):
-        ant_metrics.AntennaMetrics(four_pol_uvh5, apriori_xants=[1.0])
+        # test errors in parsing apriori xants
+        with pytest.raises(ValueError):
+            ant_metrics.AntennaMetrics(**to_load, apriori_xants=(9, 'Jnn'))
+        with pytest.raises(ValueError):
+            ant_metrics.AntennaMetrics(**to_load, apriori_xants=[(9, 10, 'nn')])
+        with pytest.raises(ValueError):
+            ant_metrics.AntennaMetrics(**to_load, apriori_xants=[1.0])
 
-    # test _reset_summary_stats
-    for ant in am.apriori_xants:
-        assert am.removal_iteration[ant] == -1
-        assert ant in am.xants
-    assert am.crossed_ants == []
-    assert am.dead_ants == []
-    assert am.iter == 0
-    assert am.all_metrics == {}
-    assert am.final_metrics == {}
+        # test _reset_summary_stats
+        for ant in am.apriori_xants:
+            assert am.removal_iteration[ant] == -1
+            assert ant in am.xants
+        assert am.crossed_ants == []
+        assert am.dead_ants == []
+        assert am.iter == 0
+        assert am.all_metrics == {}
+        assert am.final_metrics == {}
 
-    # test _load_time_freq_abs_vis_stats
-    for bl in am.bls:
-        assert bl in am.corr_stats
-        assert np.real(am.corr_stats[bl]) >= 0
-        assert np.imag(am.corr_stats[bl]) == 0
+        # test _load_time_freq_abs_vis_stats
+        for bl in am.bls:
+            assert bl in am.corr_stats
+            assert np.real(am.corr_stats[bl]) >= 0
+            assert np.imag(am.corr_stats[bl]) == 0
 
-    # test Nbls_per_load
-    am2 = ant_metrics.AntennaMetrics(four_pol_uvh5, Nbls_per_load=100)
-    for bl in am.bls:
-        assert am.corr_stats[bl] == am2.corr_stats[bl]
+        # test Nbls_per_load
+        am2 = ant_metrics.AntennaMetrics(**to_load, Nbls_per_load=100)
+        for bl in am.bls:
+            assert am.corr_stats[bl] == am2.corr_stats[bl]
 
 
 def test_iterative_antenna_metrics_and_flagging():
