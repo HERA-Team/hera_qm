@@ -7,7 +7,6 @@ import numpy as np
 from copy import deepcopy
 import os
 import re
-from collections import OrderedDict
 from .version import hera_qm_version_str
 from . import utils, metrics_io
 
