@@ -7,6 +7,7 @@ dependencies:
   - pip
   - astropy>=3.2.3
   - h5py
+  - pyuvdata
   - scipy
   - pytest
   - scikit-learn # from hera_cal
@@ -14,6 +15,5 @@ dependencies:
   - matplotlib
   - coveralls
   - pip:
-    - git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git
     - git+https://github.com/HERA-Team/uvtools
     - git+https://github.com/HERA-Team/hera_cal
