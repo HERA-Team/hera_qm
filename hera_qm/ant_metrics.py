@@ -413,11 +413,12 @@ class AntennaMetrics():
         self.corr_stats = {}
         for blg in bl_load_groups:
             data_sum, flags, _ = self.hd_sum.read(bls=blg, axis='blt')
+            data_diff = None
             if self.hd_diff is not None:
                 data_diff, flags_diff, _ = self.hd_diff.read(bls=blg, axis='blt')
                 for bl in flags:
                     flags[bl] |= flags_diff[bl]
-            self.corr_stats.update(calc_corr_stats(data_sum, data_diff, flags_sum, flags_diff))
+            self.corr_stats.update(calc_corr_stats(data_sum, data_diff=data_diff, flags=flags))
 
     def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median correlation coefficient is 0.0.
