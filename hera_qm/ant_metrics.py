@@ -127,6 +127,7 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
             corr_stats[bl] = np.abs(time_alg(even * np.conj(odd)))
         else:
             corr_stats[bl] = np.abs(time_alg(freq_alg(even * np.conj(odd), axis=1)))
+
     return corr_stats
 
 
@@ -147,7 +148,7 @@ def corr_metrics(corr_stats, xants=[], pols=None):
     Returns
     -------
     per_ant_mean_corr_metrics : dict
-        Dictionary indexed by (ant, antpol) of the modified z-score of the
+        Dictionary indexed by (ant, antpol) of the
         mean of correlation value associated with an antenna.
         Very small or very large numbers are probably bad antennas.
 
