@@ -511,8 +511,7 @@ def metrics2mc(filename, ftype):
     if ftype == 'ant':
         from hera_qm.ant_metrics import load_antenna_metrics
         data = load_antenna_metrics(filename)
-        key2cat = {'final_metrics': 'ant_metrics',
-                   'final_mod_z_scores': 'ant_metrics_mod_z_scores'}
+        key2cat = {'final_metrics': 'ant_metrics'}
         for key, category in key2cat.items():
             for met, array in data[key].items():
                 metric = '_'.join([category, met])

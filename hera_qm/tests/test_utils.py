@@ -175,7 +175,8 @@ def test_metrics2mc():
     assert set(d.keys()) == set(['ant_metrics', 'array_metrics'])
     assert len(d['array_metrics']) == 0
     ant_metrics_list = get_ant_metrics_dict()
-    assert set(d['ant_metrics'].keys()) == set(ant_metrics_list.keys())
+    for k in set(d['ant_metrics'].keys()):
+        assert k in ant_metrics_list
 
     # test firstcal metrics
     filename = os.path.join(DATA_PATH, 'example_firstcal_metrics.json')
