@@ -40,46 +40,6 @@ def get_ant_metrics_dict():
                                              'hera_qm.ant_metrics.'}
     return metrics_dict
 
-#######################################################################
-# Low level functionality that is potentially reusable
-#######################################################################
-
-
-def per_antenna_modified_z_scores(metric):
-    """Compute modified Z-Score over antennas for each antenna polarization.
-
-    This function computes the per-pol modified z-score of the given metric
-    dictionary for each antenna.
-
-    The modified Z-score is defined as:
-        0.6745 * (metric - median(all_metrics))/ median_absoulte_deviation
-
-    Parameters
-    ----------
-    metric : dict
-        Dictionary of metric data to compute z-score. Keys are expected to
-        have the form: (ant, antpol)
-
-    Returns
-    -------
-    zscores : dict
-        Dictionary of z-scores for the given data.
-
-    """
-    zscores = {}
-    antpols = set([key[1] for key in metric])
-    for antpol in antpols:
-        values = np.array([val for (key, val) in metric.items()
-                           if key[1] == antpol])
-        median = np.nanmedian(values)
-        medAbsDev = np.nanmedian(np.abs(values - median))
-        for (key, val) in metric.items():
-            if key[1] == antpol:
-                # this factor makes it comparable to a
-                # standard z-score for gaussian data
-                zscores[key] = 0.6745 * (val - median) / medAbsDev
-    return zscores
-
 
 def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, freq_alg=np.nanmean):
     """Calculate correlation values for all baselines, the average cross-correlation between
