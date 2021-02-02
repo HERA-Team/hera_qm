@@ -507,7 +507,7 @@ class AntennaMetrics():
                     self.crossed_ants.append(crossed_ant)
                     self.removal_iteration[crossed_ant] = iteration
                     if verbose:
-                        print(f'On iteration {iteration} we flag {crossed_ant} with modified z of {crossMetrics[worstCrossAnt]}.')
+                        print(f'On iteration {iteration} we flag {crossed_ant} with cross-pol corr metric of {crossMetrics[worstCrossAnt]}.')
             elif (worstDeadCutDiff < worstCrossCutDiff) and (worstDeadCutDiff < 0):
                 dead_ants = set([worstDeadAnt])
                 for dead_ant in dead_ants:
@@ -515,7 +515,7 @@ class AntennaMetrics():
                     self.dead_ants.append(dead_ant)
                     self.removal_iteration[dead_ant] = iteration
                     if verbose:
-                        print(f'On iteration {iteration} we flag {dead_ant} with modified z of {deadMetrics[worstDeadAnt]}.')
+                        print(f'On iteration {iteration} we flag {dead_ant} with corr metric z of {deadMetrics[worstDeadAnt]}.')
             else:
                 break
 
