@@ -3,7 +3,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - numpy=1.19 # TODO UPDATE
+  - numpy>=1.10
   - pip
   - astropy>=3.2.3
   - h5py
