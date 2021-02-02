@@ -496,15 +496,15 @@ class AntennaMetrics():
             worstDeadCutDiff = 1
             worstCrossCutDiff = 1
 
-            # Find most likely dead antenna
+            # Find most likely dead/crossed antenna
             deadMetrics = {ant: np.abs(metric) for ant, metric
                            in self.all_metrics[iteration]['corr'].items()}
-            worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
-            worstDeadCutDiff = np.abs(deadMetrics[worstDeadAnt]) - deadCut
-
-            # Find most likely cross-polarized antenna
             crossMetrics = {ant: np.max(metric) for ant, metric
                             in self.all_metrics[iteration]['corrXPol'].items()}
+            if (len(deadMetrics) == 0) or (len(crossMetrics) == 0):
+                break  # no unflagged antennas remain
+            worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
+            worstDeadCutDiff = np.abs(deadMetrics[worstDeadAnt]) - deadCut
             worstCrossAnt = min(crossMetrics, key=crossMetrics.get)
             worstCrossCutDiff = crossMetrics[worstCrossAnt] - crossCut
 
