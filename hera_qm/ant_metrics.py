@@ -329,8 +329,13 @@ class AntennaMetrics():
         else:
             self.bls = self.hd_sum.bls
 
+        # Figure out polarizations in the data:
+        from hera_cal.utils import split_bl, comply_pol, split_pol
+        self.pols = set([bl[2] for bl in self.bls])
+        self.cross_pols = [pol for pol in self.pols if split_pol(pol)[0] != split_pol(pol)[1]]
+        self.same_pols = [pol for pol in self.pols if split_pol(pol)[0] == split_pol(pol)[1]]
+
         # Figure out which antennas are in the data
-        from hera_cal.utils import split_bl, comply_pol
         self.split_bl = split_bl  # prevents the need for importing again later
         self.ants = set([ant for bl in self.bls for ant in split_bl(bl)])
         self.antnums = set([ant[0] for ant in self.ants])
