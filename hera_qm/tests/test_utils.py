@@ -39,7 +39,7 @@ def test_get_metrics_ArgumentParser_auto_metrics():
     args = a.parse_args(['out.h5', 'auto1.uvh5', 'auto2.uvh5'])
     assert args.metric_outfile == 'out.h5'
     assert args.raw_auto_files == ['auto1.uvh5', 'auto2.uvh5']
-    assert args.median_round_modz_cut == 16.0
+    assert args.median_round_modz_cut == 8.0
     assert args.chan_thresh_frac == .05
     # try to set something
     args = a.parse_args(['out.h5', 'auto1.uvh5', 'auto2.uvh5', '--sig_init', '10.3'])
