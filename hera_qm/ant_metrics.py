@@ -369,8 +369,8 @@ class AntennaMetrics():
         self.xants, self.crossed_ants, self.dead_ants = [], [], []
         self.iter = 0
         self.removal_iteration = {}
-        self.all_metrics, self.all_mod_z_scores = {}, {}
-        self.final_metrics, self.final_mod_z_scores = {}, {}
+        self.all_metrics = {}
+        self.final_metrics = {}
         for ant in self.apriori_xants:
             self.xants.append(ant)
             self.removal_iteration[ant] = -1
@@ -458,17 +458,12 @@ class AntennaMetrics():
         metrics, modzScores = {}, {}
         for metric, metName in zip(metVals, metNames):
             metrics[metName] = metric
-            modz = per_antenna_modified_z_scores(metric)
-            modzScores[metName] = modz
             for key in metric:
                 if metName in self.final_metrics:
                     self.final_metrics[metName][key] = metric[key]
-                    self.final_mod_z_scores[metName][key] = modz[key]
                 else:
                     self.final_metrics[metName] = {key: metric[key]}
-                    self.final_mod_z_scores[metName] = {key: modz[key]}
         self.all_metrics.update({self.iter: metrics})
-        self.all_mod_z_scores.update({self.iter: modzScores})
 
     def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=0.4,
                                                verbose=False, run_cross_pols=True,
@@ -553,8 +548,6 @@ class AntennaMetrics():
         out_dict['dead_ants'] = self.dead_ants
         out_dict['final_metrics'] = self.final_metrics
         out_dict['all_metrics'] = self.all_metrics
-        out_dict['final_mod_z_scores'] = self.final_mod_z_scores
-        out_dict['all_mod_z_scores'] = self.all_mod_z_scores
         out_dict['removal_iteration'] = self.removal_iteration
         out_dict['cross_pol_cut'] = self.crossCut
         out_dict['dead_ant_cut'] = self.deadCut
