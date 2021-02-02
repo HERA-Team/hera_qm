@@ -362,7 +362,7 @@ class AntennaMetrics():
         self._reset_summary_stats()
 
         # Load and summarize data
-        self._load_time_freq_abs_vis_stats(Nbls_per_load=Nbls_per_load)
+        self._load_corr_stats(Nbls_per_load=Nbls_per_load)
 
     def _reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
@@ -375,9 +375,9 @@ class AntennaMetrics():
             self.xants.append(ant)
             self.removal_iteration[ant] = -1
 
-    def _load_time_freq_abs_vis_stats(self, Nbls_per_load=None):
-        """Loop through groups of baselines to calculate self.abs_vis_stats
-        using time_freq_abs_vis_stats()
+    def _load_corr_stats(self, Nbls_per_load=None):
+        """Loop through groups of baselines to calculate self.corr_stats
+        using calc_corr_stats()
         """
         if Nbls_per_load is None:
             bl_load_groups = [self.bls]
