@@ -413,7 +413,6 @@ class AntennaMetrics():
         self.corr_stats = {}
         for blg in bl_load_groups:
             data_sum, flags, _ = self.hd_sum.read(bls=blg, axis='blt')
-            data_diff
             if self.hd_diff is not None:
                 data_diff, flags_diff, _ = self.hd_diff.read(bls=blg, axis='blt')
                 for bl in flags:
