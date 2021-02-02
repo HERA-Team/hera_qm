@@ -81,46 +81,6 @@ def per_antenna_modified_z_scores(metric):
     return zscores
 
 
-def time_freq_abs_vis_stats(data, flags=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
-    """Summarize visibility magnitudes as a single number for quick comparison to others.
-    Parameters
-    ----------
-    data : dictionary or hera_cal DataContainer
-        Maps baseline keys e.g. (0, 1, 'ee') to numpy arrays of shape (Ntimes, Nfreqs)
-    flags : dictionary or hera_cal DataContainer, optional
-        If not None, should have the same keys and same array shapes as data
-    time_alg : function, optional
-        Function used to reduce a 2D or 1D numpy array to a single number.
-        To handle flags properly, should be the "nan" version of the function.
-    freq_alg : function, optional
-        Function that reuduces a 1D array to a single number or a 2D array to a 1D
-        array using the axis kwarg. If its the same as time_alg, the 2D --> float
-        version will be used (no axis kwarg). To handle flags properly, should be
-        the "nan" version of the function.
-    Returns
-    -------
-    abs_vis_stats : dictionary
-        Dictionary mapping baseline keys e.g. (0, 1, 'ee') to single floats representing
-        visibility amplitudes. If the median value is 0, the stat will always be 0 to catch
-        help catch completely dead antennas (this was observed in H1C).
-    """
-    abs_vis_stats = {}
-    for bl in data:
-        data_here = deepcopy(data[bl])
-        data_here[~np.isfinite(data_here)] = np.nan
-        if flags is not None:
-            data_here[flags[bl]] = np.nan
-
-        med_abs_vis = np.nanmedian(np.abs(data_here))
-        if med_abs_vis == 0:
-            abs_vis_stats[bl] = 0
-        else:
-            if time_alg == freq_alg:  # if they are the algorithm, do it globally
-                abs_vis_stats[bl] = time_alg(np.abs(data_here))
-            else:
-                abs_vis_stats[bl] = time_alg(freq_alg(np.abs(data_here), axis=1))
-    return abs_vis_stats
-
 def calc_corr_stats(data_sum, data_diff=None, flags_sum=None, flags_diff=None, time_alg=np.nanmedian, freq_alg=np.nanmedian):
     """Calculate correlation values for all baselines.
 
