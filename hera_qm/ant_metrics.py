@@ -385,16 +385,15 @@ class AntennaMetrics():
             bl_load_groups = [self.bls[i:i + Nbls_per_load]
                               for i in range(0, len(self.bls), Nbls_per_load)]
 
-        self.abs_vis_stats = {}
+        # loop through baseline load groups, computing corr_stats
         self.corr_stats = {}
         for blg in bl_load_groups:
-            data_sum, flags_sum, _ = self.hd_sum.read(bls=blg, axis='blt')
-            if self.hd_diff == None:
-                data_diff = None
-                flags_diff = None
-            else:
+            data_sum, flags, _ = self.hd_sum.read(bls=blg, axis='blt')
+            data_diff
+            if self.hd_diff is not None:
                 data_diff, flags_diff, _ = self.hd_diff.read(bls=blg, axis='blt')
-            self.abs_vis_stats.update(time_freq_abs_vis_stats(data_sum, flags_sum))
+                for bl in flags:
+                    flags[bl] |= flags_diff[bl]
             self.corr_stats.update(calc_corr_stats(data_sum, data_diff, flags_sum, flags_diff))
 
     def _find_totally_dead_ants(self, verbose=False):
