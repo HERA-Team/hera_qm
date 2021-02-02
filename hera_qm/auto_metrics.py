@@ -143,7 +143,7 @@ def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedia
     median_diff_metric = np.median([metric for bl, metric in diff_metrics.items() if bl[0] not in ex_ants])
     mad_diff_metric = np.median([np.abs(metric - median_diff_metric) for bl, metric in diff_metrics.items() 
                                  if bl[0] not in ex_ants])
-    modzs = {bl: 1.4826 * (diff_metrics[bl] - median_diff_metric) / mad_diff_metric for bl in auto_spectra}
+    modzs = {bl: (diff_metrics[bl] - median_diff_metric) / mad_diff_metric / 1.4826 for bl in auto_spectra}
     return modzs
 
 
