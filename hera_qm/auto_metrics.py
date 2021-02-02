@@ -202,7 +202,7 @@ def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on
     return ex_ants, modzs
 
 
-def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=16., mean_round_modz_cut=8.,
+def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., mean_round_modz_cut=4.,
                      edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, chan_thresh_frac=.05, 
                      history='', overwrite=False):
     '''Evaluates day-long autocorrelation waterfalls for "outlierness" in shape, power, temporal 
