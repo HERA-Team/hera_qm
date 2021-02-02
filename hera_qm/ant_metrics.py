@@ -30,15 +30,6 @@ def get_ant_metrics_dict():
                                            'antenna.',
                     'ant_metrics_corrXPol': 'Max difference between same-pol '
                                                'and cross-pol corr values ',
-                    'ant_metrics_mod_z_scores_meanVij': 'Modified z-score of '
-                                                        'the mean of the '
-                                                        'absolute value of '
-                                                        'all visibilities '
-                                                        'associated with an '
-                                                        'antenna.',
-                    'ant_metrics_crossed_ants': 'Antennas deemed to be '
-                                                'cross-polarized by '
-                                                'hera_qm.ant_metrics.',
                     'ant_metrics_removal_iteration': 'hera_qm.ant_metrics '
                                                      'iteration number in '
                                                      'which the antenna '
