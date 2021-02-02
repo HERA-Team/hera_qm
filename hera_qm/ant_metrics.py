@@ -419,17 +419,8 @@ class AntennaMetrics():
                 if verbose:
                     print(f'Antenna {ant} appears totally dead and is removed.')
 
-    def _run_all_metrics(self, run_cross_pols=True, run_cross_pols_only=False):
+    def _run_all_metrics(self):
         """Local call for all metrics as part of iterative flagging method.
-
-        Parameters
-        ----------
-        run_cross_pols : bool, optional
-            Define if corr_cross_pol_metrics is executed. Default is True.
-        run_cross_pols_only : bool, optional
-            Define if corr_cross_pol_metrics is the *only* metric to be run.
-            Default is False.
-
         """
         # Compute all raw metrics
         metNames = []
