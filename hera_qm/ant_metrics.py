@@ -141,8 +141,8 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
     return corr_stats
 
 
-def corr_metric(corr_stats, xants=[], pols=None):
-    """Calculate an antenna's mean correlation value.
+def corr_metrics(corr_stats, xants=[], pols=None):
+    """Calculate all antennas' mean correlation values.
 
     Parameters
     ----------
@@ -157,9 +157,9 @@ def corr_metric(corr_stats, xants=[], pols=None):
 
     Returns
     -------
-    meanMetrics : dict
+    per_ant_mean_corr_metrics : dict
         Dictionary indexed by (ant, antpol) of the modified z-score of the
-        mean of the absolute value of all visibilities associated with an antenna.
+        mean of correlation value associated with an antenna.
         Very small or very large numbers are probably bad antennas.
 
     """
@@ -177,21 +177,18 @@ def corr_metric(corr_stats, xants=[], pols=None):
                 if (pols is None) or (ant[1] in antpols):
                     ants.add(ant)
 
-    # assign visibility means to each antenna in the baseline
-    per_ant_means = {ant: [] for ant in ants}
+    # assign correlation metrics to each antenna in the baseline
+    per_ant_corrs = {ant: [] for ant in ants}
     for bl, corr_mean in corr_stats.items():
         if bl[0] == bl[1]:
             continue  # ignore autocorrelations
         if (pols is None) or (bl[2] in pols):
             for ant in split_bl(bl):
                 if ant in ants:
-                    per_ant_means[ant].append(corr_mean)
-    per_ant_means = {ant: np.nanmean(per_ant_means[ant]) for ant in ants}
+                    per_ant_corrs[ant].append(corr_mean)
+    per_ant_mean_corr_metrics = {ant: np.nanmean(per_ant_corrs[ant]) for ant in ants}
 
-    return per_ant_means
-
-
-
+    return per_ant_mean_corr_metrics
 
 
 def corr_cross_pol_metrics(corr_stats, xants=[]):
