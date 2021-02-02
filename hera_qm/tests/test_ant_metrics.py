@@ -143,60 +143,43 @@ def test_init():
 
 
 def test_iterative_antenna_metrics_and_flagging():
-    four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
-    am = ant_metrics.AntennaMetrics(four_pol_uvh5)
+    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5', 
+             'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
+    am = ant_metrics.AntennaMetrics(**files)
 
     # try normal operation
-    am.iterative_antenna_metrics_and_flagging(verbose=True, crossCut=5, deadCut=5)
-    assert (81, 'Jxx') in am.crossed_ants
-    assert (81, 'Jyy') in am.crossed_ants
-    assert (81, 'Jxx') in am.xants
-    assert (81, 'Jyy') in am.xants
-    assert list(am.all_mod_z_scores.keys()) == [0, 1]
-    assert list(am.all_metrics.keys()) == [0, 1]
-    assert am.all_mod_z_scores[0]['meanVijXPol'][(81, 'Jxx')] >= 5
-    assert am.all_mod_z_scores[0]['meanVijXPol'][(81, 'Jyy')] >= 5
+    am.iterative_antenna_metrics_and_flagging(verbose=True, crossCut=0., deadCut=.4, )
+    for ap in ['Jnn', 'Jee']:
+        assert (93, ap) in am.dead_ants
+        assert (93, ap) in am.xants
+        assert (65, ap) in am.dead_ants
+        assert (65, ap) in am.xants
+        assert (116, ap) in am.dead_ants
+        assert (116, ap) in am.xants
+        assert (51, ap) in am.crossed_ants
+        assert (87, ap) in am.crossed_ants
+        assert (51, ap) in am.xants
+        assert (87, ap) in am.xants
+
+    assert list(am.all_metrics.keys()) == [0, 1, 2, 3, 4, 5, 6, 7, 8]
     for metric in am.all_metrics[1]:
         for ant in am.all_metrics[1][metric]:
-            assert am.all_metrics[1][metric][ant] < 5
-    assert am.final_mod_z_scores['meanVijXPol'][(81, 'Jxx')] == am.final_mod_z_scores['meanVijXPol'][(81, 'Jyy')]
-    assert am.final_mod_z_scores['meanVijXPol'][(81, 'Jxx')] == am.all_mod_z_scores[0]['meanVijXPol'][(81, 'Jxx')]
-    assert am.final_mod_z_scores['meanVijXPol'][(81, 'Jyy')] == am.all_mod_z_scores[0]['meanVijXPol'][(81, 'Jyy')]
-    assert am.final_metrics['meanVijXPol'][(81, 'Jxx')] == am.final_metrics['meanVijXPol'][(81, 'Jyy')]
-    assert am.final_metrics['meanVijXPol'][(81, 'Jxx')] == am.all_metrics[0]['meanVijXPol'][(81, 'Jxx')]
-    assert am.final_metrics['meanVijXPol'][(81, 'Jyy')] == am.all_metrics[0]['meanVijXPol'][(81, 'Jyy')]
-
-    # try run_cross_pols=False
-    am.iterative_antenna_metrics_and_flagging(verbose=True, deadCut=4, run_cross_pols=False)
-    assert (81, 'Jxx') in am.dead_ants
-    assert (81, 'Jyy') in am.dead_ants
-    assert (81, 'Jxx') in am.xants
-    assert (81, 'Jyy') in am.xants
-    assert am.crossed_ants == []
-
-    # try run_cross_pols_only=True
-    am.iterative_antenna_metrics_and_flagging(verbose=True, run_cross_pols_only=True)
-    assert (81, 'Jxx') in am.crossed_ants
-    assert (81, 'Jyy') in am.crossed_ants
-    assert (81, 'Jxx') in am.xants
-    assert (81, 'Jyy') in am.xants
-    assert am.dead_ants == []
+            assert (am.all_metrics[1][metric][ant] <= 1) or np.isnan(am.all_metrics[1][metric][ant])
+    assert am.final_metrics['corrXPol'][(87, 'Jnn')] == am.final_metrics['corrXPol'][(87, 'Jee')]
+    assert am.final_metrics['corrXPol'][(87, 'Jnn')] == am.all_metrics[5]['corrXPol'][(87, 'Jnn')]
+    assert am.final_metrics['corrXPol'][(87, 'Jee')] == am.all_metrics[5]['corrXPol'][(87, 'Jee')]
 
     # test _find_totally_dead_ants
-    for bl in am.abs_vis_stats:
-        if 9 in bl:
-            am.abs_vis_stats[bl] = 0.0
+    for bl in am.corr_stats:
+        if 68 in bl:
+            am.corr_stats[bl] = 0.0
     am.iterative_antenna_metrics_and_flagging(verbose=True)
-    assert (9, 'Jxx') in am.xants
-    assert (9, 'Jyy') in am.xants
-    assert (9, 'Jxx') in am.dead_ants
-    assert (9, 'Jyy') in am.dead_ants
-    assert am.removal_iteration[9, 'Jxx'] == -1
-    assert am.removal_iteration[9, 'Jyy'] == -1
-
-    # test error
-    with pytest.raises(ValueError):
-        am.iterative_antenna_metrics_and_flagging(verbose=True, run_cross_pols=False, run_cross_pols_only=True)
+    assert (68, 'Jnn') in am.xants
+    assert (68, 'Jee') in am.xants
+    assert (68, 'Jnn') in am.dead_ants
+    assert (68, 'Jee') in am.dead_ants
+    assert am.removal_iteration[68, 'Jnn'] == -1
+    assert am.removal_iteration[68, 'Jee'] == -1
 
 
 def test_ant_metrics_run_and_load_antenna_metrics():
