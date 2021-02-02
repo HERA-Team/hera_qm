@@ -460,24 +460,21 @@ class AntennaMetrics():
         # iteratively remove antennas, removing only the worst antenna
         for iteration in range(len(self.antpols) * len(self.ants)):
             self.iter = iteration
-            self._run_all_metrics(run_cross_pols=run_cross_pols,
-                                  run_cross_pols_only=run_cross_pols_only)
+            self._run_all_metrics()
             worstDeadCutDiff = 1
             worstCrossCutDiff = 1
 
             # Find most likely dead antenna
-            if not run_cross_pols_only:
-                deadMetrics = {ant: np.abs(metric) for ant, metric
-                               in self.all_metrics[iteration]['corr'].items()}
-                worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
-                worstDeadCutDiff = np.abs(deadMetrics[worstDeadAnt]) - deadCut
+            deadMetrics = {ant: np.abs(metric) for ant, metric
+                           in self.all_metrics[iteration]['corr'].items()}
+            worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
+            worstDeadCutDiff = np.abs(deadMetrics[worstDeadAnt]) - deadCut
 
             # Find most likely cross-polarized antenna
-            if run_cross_pols:
-                crossMetrics = {ant: np.max(metric) for ant, metric
-                                in self.all_metrics[iteration]['corrXPol'].items()}
-                worstCrossAnt = min(crossMetrics, key=crossMetrics.get)
-                worstCrossCutDiff = crossMetrics[worstCrossAnt] - crossCut
+            crossMetrics = {ant: np.max(metric) for ant, metric
+                            in self.all_metrics[iteration]['corrXPol'].items()}
+            worstCrossAnt = min(crossMetrics, key=crossMetrics.get)
+            worstCrossCutDiff = crossMetrics[worstCrossAnt] - crossCut
 
             # Find the single worst antenna, remove it, log it, and run again
             if (worstCrossCutDiff <= worstDeadCutDiff) and (worstCrossCutDiff < 0):
