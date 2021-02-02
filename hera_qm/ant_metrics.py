@@ -526,8 +526,7 @@ class AntennaMetrics():
 
 
 def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants_yaml=None,
-                    crossCut=5.0, deadCut=0.4, run_cross_pols=True, run_cross_pols_only=False,
-                    metrics_path='', extension='.ant_metrics.hdf5',
+                    crossCut=0.0, deadCut=0.4, metrics_path='', extension='.ant_metrics.hdf5',
                     overwrite=False, Nbls_per_load=None, history='', verbose=True):
     """
     Run a series of ant_metrics tests on a given set of input files.
@@ -553,14 +552,11 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
         See hera_qm.metrics_io.read_a_priori_ant_flags() for details.
         Frequency and time flags in the YAML are ignored.
     crossCut : float, optional
-        Limit below which to cut cross-polarized antennas. Default is 0.
+        Cut in cross-pol correlation metric below which to flag antennas as cross-polarized.
+        Default is 0.
     deadCut : float, optional
-        Limit below which to cut dead antennas. Default is 0.4.
-    run_cross_pols : bool, optional
-        Define if corr_cross_pol_metrics is executed. Default is True.
-    run_cross_pols_only : bool, optional
-        Define if corr_cross_pol_metrics is the *only* metric to be run.
-        Default is False.
+        Cut in correlation metric below which antennas are most likely dead / not correlating. 
+        Default is 0.4.
     metrics_path : str, optional
         Full path to directory to story output metric. Default is the same directory
         as input data files.
@@ -583,14 +579,8 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
         apriori_xants = list(set(list(apriori_xants) + apaf))
 
     # run ant metrics
-    am = AntennaMetrics(sum_files, diff_files,
-                        apriori_xants=apriori_xants,
-                        Nbls_per_load=Nbls_per_load)
-    am.iterative_antenna_metrics_and_flagging(crossCut=crossCut,
-                                              deadCut=deadCut,
-                                              verbose=verbose,
-                                              run_cross_pols=run_cross_pols,
-                                              run_cross_pols_only=run_cross_pols_only)
+    am = AntennaMetrics(sum_files, diff_files, apriori_xants=apriori_xants, Nbls_per_load=Nbls_per_load)
+    am.iterative_antenna_metrics_and_flagging(crossCut=crossCut, deadCut=deadCut, verbose=verbose)
     am.history = am.history + history
 
     for file in am.datafile_list_sum:
