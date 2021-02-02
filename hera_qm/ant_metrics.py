@@ -397,21 +397,21 @@ class AntennaMetrics():
             self.corr_stats.update(calc_corr_stats(data_sum, data_diff, flags_sum, flags_diff))
 
     def _find_totally_dead_ants(self, verbose=False):
-        """Flag antennas whose median autoPower is 0.0.
+        """Flag antennas whose median correlation coefficient is 0.0.
 
         These antennas are marked as dead. They do not appear in recorded antenna
         metrics or zscores. Their removal iteration is -1 (i.e. before iterative
         flagging).
         """
-        # assign abs_vis_stats to antennas
-        abs_vis_stats_by_ant = {ant: [] for ant in self.ants}
-        for bl in self.abs_vis_stats:
+        # assign corr_stats to antennas
+        corr_stats_by_ant = {ant: [] for ant in self.ants}
+        for bl in self.corr_stats:
             for ant in self.split_bl(bl):
-                abs_vis_stats_by_ant[ant].append(self.abs_vis_stats[bl])
+                corr_stats_by_ant[ant].append(self.corr_stats[bl])
 
         # remove antennas that are totally dead and all nans
-        for ant, vis_stats in abs_vis_stats_by_ant.items():
-            med = np.nanmedian(vis_stats)
+        for ant, corrs in corr_stats_by_ant.items():
+            med = np.nanmedian(corrs)
             if ~np.isfinite(med) or (med == 0):
                 self.xants.append(ant)
                 self.dead_ants.append(ant)
