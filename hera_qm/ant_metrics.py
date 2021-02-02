@@ -245,7 +245,7 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
 
         # assign same metric to both antpols
         for ap in antpols:
-            per_ant_corr_cross_pol_metrics[(a[0], ap)] = np.nanmax([np.nanmean(d) for d in diff])
+            per_ant_corr_cross_pol_metrics[(a1, ap)] = np.nanmax([np.nanmean(d) for d in diffs])
 
     return per_ant_corr_cross_pol_metrics
 
