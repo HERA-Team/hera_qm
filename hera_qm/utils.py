@@ -56,19 +56,10 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--a_priori_xants_yaml', type=str, default=None,
                         help=('path to a priori flagging YAML with xant information parsable by '
                               'hera_qm.metrics_io.read_a_priori_ant_flags()'))
-        ap.add_argument('--crossCut', default=5.0, type=float,
-                        help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
+        ap.add_argument('--crossCut', default=0.0, type=float,
+                        help='Cut in cross-pol correlation metric below which to flag antennas as cross-polarized. Default 0.0.')
         ap.add_argument('--deadCut', default=5.0, type=float,
-                        help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
-        ap.add_argument('--skip_cross_pols', action='store_false',
-                        dest='run_cross_pols', default=True,
-                        help=('Sets boolean flag to False. Flag determines if '
-                              'mean_Vij_cross_pol_metrics is run. '
-                              'Default: True'))
-        ap.add_argument('--run_cross_pols_only', action='store_true',
-                        dest='run_cross_pols_only', default=False,
-                        help=('Define if cross pol metrics are the *only* '
-                              'metrics to be run. Default is False.'))
+                        help='Cut in correlation metric below which antennas are most likely dead / not correlating. Default 0.4.')
         ap.add_argument('--metrics_path', default='', type=str,
                         help='Path to save metrics file to. Default is same directory as file.')
         ap.add_argument('--extension', default='.ant_metrics.json', type=str,
