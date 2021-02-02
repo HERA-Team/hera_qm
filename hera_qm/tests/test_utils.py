@@ -26,7 +26,7 @@ def test_get_metrics_ArgumentParser_ant_metrics():
     a = utils.get_metrics_ArgumentParser('ant_metrics')
     # First try defaults - test a few of them
     args = a.parse_args('')
-    assert args.crossCut == 5.0
+    assert args.crossCut == 0.0
     assert args.metrics_path == ''
     assert args.verbose is True
     # try to set something
