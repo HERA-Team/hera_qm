@@ -78,6 +78,12 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
         if flags is not None:
             data_sum_here[flags[bl]] = np.nan
 
+        # check to see if the sum file is mostly zeros, in which case the antenna is totally dead
+        med_abs_sum = np.nanmedian(np.abs(data_sum_here))
+        if med_abs_sum == 0:
+            corr_stats[bl] = 0
+            continue
+
         # split into even and odd
         if data_diff is not None
             data_diff_here = np.where(np.isfinite(data_diff[bl]), data_diff[bl], np.nan)
