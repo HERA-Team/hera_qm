@@ -75,9 +75,9 @@ def test_load_ant_metrics_json():
 def test_init():
     # try with both sum files only and both
     files = [{'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5', 'diff_files': None},
-             {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5', 
+             {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
               'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}]
-    
+
     for to_load in files:
         # load data
         am = ant_metrics.AntennaMetrics(**to_load, apriori_xants=[51, (116, 'Jnn'), (93, 'jnn')])
@@ -143,7 +143,7 @@ def test_init():
 
 
 def test_iterative_antenna_metrics_and_flagging():
-    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5', 
+    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
              'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
     am = ant_metrics.AntennaMetrics(**files)
 
@@ -183,7 +183,7 @@ def test_iterative_antenna_metrics_and_flagging():
 
 
 def test_ant_metrics_run_and_load_antenna_metrics():
-    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5', 
+    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
              'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
     am = ant_metrics.AntennaMetrics(**files)
     am.iterative_antenna_metrics_and_flagging()
@@ -217,3 +217,52 @@ def test_ant_metrics_run_and_load_antenna_metrics():
         assert am_hdf5['removal_iteration'][ant] == -1
 
     os.remove(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
+
+
+# def test_calc_corr_stats():
+#     files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
+#              'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
+#     am = ant_metrics.AntennaMetrics(**files)
+
+def test_corr_metrics():
+    corr_stats = {(0, 1, 'ee'): 1.0,
+                     (0, 2, 'ee'): 1.0,
+                     (0, 3, 'ee'): 0.4,
+                     (1, 2, 'ee'): 0.8,
+                     (1, 3, 'ee'): 0.3,
+                     (2, 3, 'ee'): 0.15,
+                     (1, 0, 'nn'): 1.0,
+                     (0, 2, 'nn'): 1.0,
+                     (0, 3, 'nn'): 0.4,
+                     (1, 2, 'nn'): 0.8,
+                     (1, 3, 'nn'): 0.3,
+                     (2, 3, 'nn'): 0.15}
+
+# test normal operation
+    corr = ant_metrics.corr_metrics(corr_stats)
+    for ant in corr:
+        assert ant[0] in [0,1,2,3]
+        assert ant[1] in ['Jee','Jnn']
+        if ant[0] == 3:
+            assert corr[ant] < 0.4
+        else:
+            assert corr[ant] >= 0.4
+
+    # test xants
+    corr = ant_metrics.corr_metrics(corr_stats, xants=[3])
+    print(corr)
+    for ant in corr:
+        assert ant[0] in [0,1,2]
+        assert ant[1] in ['Jee','Jnn']
+        assert ant != (3,'Jnn') and ant != (3,'Jee')
+        assert corr[ant] == {0: 1, 1: 0.9, 2: 0.9}[ant[0]]
+
+    # test pols
+    corr = ant_metrics.corr_metrics(corr_stats, pols=['ee'])
+    for ant in corr:
+        assert ant[0] in [0,1,2,3]
+        assert ant[1] in ['Jee']
+        assert corr[ant] == pytest.approx({0: 0.8, 1: 0.7, 2: 0.65, 3: 0.85/3}[ant[0]])
+
+
+# def test_corr_cross_pol_metrics():
