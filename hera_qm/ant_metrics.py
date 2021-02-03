@@ -166,7 +166,6 @@ def corr_metrics(corr_stats, xants=[], pols=None):
             if (ant not in xants) and (ant[0] not in xants):
                 if (pols is None) or (ant[1] in antpols):
                     ants.add(ant)
-    print(ants)
 
     # assign correlation metrics to each antenna in the baseline
     per_ant_corrs = {ant: [] for ant in ants}
