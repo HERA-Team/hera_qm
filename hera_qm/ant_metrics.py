@@ -238,8 +238,7 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
                 continue
 
             # this loops over all the combinations of same and cross-pols
-            for i, (pol1, pol2) in enumerate([(same_pols[0], cross_pols[0]), (same_pols[0], cross_pols[1]),
-                                              (same_pols[1], cross_pols[0]), (same_pols[1], cross_pols[1])]):
+            for i, (pol1, pol2) in enumerate([(sp, cp) for sp in same_pols for cp in cross_pols]):
                 # reverse baselines if necessary
                 bl1 = (a1, a2, pol1)
                 if (bl1 not in corr_stats) and (reverse_bl(bl1) in corr_stats):
