@@ -66,7 +66,7 @@ def get_ant_metrics_dict():
 
 def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, freq_alg=np.nanmean):
     """Calculate correlation values for all baselines, the average cross-correlation between
-    even and 
+    even and
 
     Parameters
     ----------
@@ -166,6 +166,7 @@ def corr_metrics(corr_stats, xants=[], pols=None):
             if (ant not in xants) and (ant[0] not in xants):
                 if (pols is None) or (ant[1] in antpols):
                     ants.add(ant)
+    print(ants)
 
     # assign correlation metrics to each antenna in the baseline
     per_ant_corrs = {ant: [] for ant in ants}
@@ -173,9 +174,10 @@ def corr_metrics(corr_stats, xants=[], pols=None):
         if bl[0] == bl[1]:
             continue  # ignore autocorrelations
         if (pols is None) or (bl[2] in pols):
-            for ant in split_bl(bl):
-                if ant in ants:
+            if split_bl(bl)[0] in ants and split_bl(bl)[1] in ants:
+                for ant in split_bl(bl):
                     per_ant_corrs[ant].append(corr_mean)
+    print(per_ant_corrs)
     per_ant_mean_corr_metrics = {ant: np.nanmean(per_ant_corrs[ant]) for ant in ants}
 
     return per_ant_mean_corr_metrics
@@ -199,7 +201,7 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
     -------
     per_ant_corr_cross_pol_metrics : dict
         Dictionary indexed by keys (ant,antpol). Contains the max value over the
-        four polarization combinations of the average (over baselines) difference 
+        four polarization combinations of the average (over baselines) difference
         in correlation metrics (xx-xy, xx-yx, yy-xy, yy-yx).
     """
 
@@ -289,8 +291,8 @@ class AntennaMetrics():
     This class creates an object for holding relevant visibility data and metadata,
     and provides interfaces to two antenna metrics: one for identifying dead / not
     correlating atennas and the other for identifying cross-polarized antennas. These
-    metrics can be used iteratively to identify bad antennas. The object handles 
-    all stroage of metrics, and supports writing metrics to an HDF5 filetype. 
+    metrics can be used iteratively to identify bad antennas. The object handles
+    all stroage of metrics, and supports writing metrics to an HDF5 filetype.
     The analysis functions are designed to work on raw data from one or more observations
     with all four polarizations.
     """
@@ -482,7 +484,7 @@ class AntennaMetrics():
             Cut in cross-pol correlation metric below which to flag antennas as cross-polarized.
             Default is 0.
         deadCut : float, optional
-            Cut in correlation metric below which antennas are most likely dead / not correlating. 
+            Cut in correlation metric below which antennas are most likely dead / not correlating.
             Default is 0.4.
         """
         self._reset_summary_stats()
@@ -587,7 +589,7 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
         Cut in cross-pol correlation metric below which to flag antennas as cross-polarized.
         Default is 0.
     deadCut : float, optional
-        Cut in correlation metric below which antennas are most likely dead / not correlating. 
+        Cut in correlation metric below which antennas are most likely dead / not correlating.
         Default is 0.4.
     metrics_path : str, optional
         Full path to directory to story output metric. Default is the same directory
