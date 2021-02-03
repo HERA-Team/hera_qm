@@ -183,31 +183,34 @@ def test_iterative_antenna_metrics_and_flagging():
 
 
 def test_ant_metrics_run_and_load_antenna_metrics():
-    four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
-    am = ant_metrics.AntennaMetrics(four_pol_uvh5)
+    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5', 
+             'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
+    am = ant_metrics.AntennaMetrics(**files)
     am.iterative_antenna_metrics_and_flagging()
 
-    ant_metrics.ant_metrics_run(four_pol_uvh5, overwrite=True, history='test_history_string', verbose=True)
-    am_hdf5 = ant_metrics.load_antenna_metrics(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
+    ant_metrics.ant_metrics_run(**files, overwrite=True, history='test_history_string', verbose=True)
+    am_hdf5 = ant_metrics.load_antenna_metrics(files['sum_files'].replace('.uvh5', '.ant_metrics.hdf5'))
 
     assert 'test_history_string' in am_hdf5['history']
     assert am.version_str == am_hdf5['version']
-    assert am.crossCut == am_hdf5['cross_pol_z_cut']
-    assert am.deadCut == am_hdf5['dead_ant_z_cut']
+    assert am.crossCut == am_hdf5['cross_pol_cut']
+    assert am.deadCut == am_hdf5['dead_ant_cut']
     assert set(am.xants) == set(am_hdf5['xants'])
     assert set(am.crossed_ants) == set(am_hdf5['crossed_ants'])
     assert set(am.dead_ants) == set(am_hdf5['dead_ants'])
-    assert set(am.datafile_list) == set(am_hdf5['datafile_list'])
+    assert set(am.datafile_list_sum) == set(am_hdf5['datafile_list_sum'])
+    assert set(am.datafile_list_diff) == set(am_hdf5['datafile_list_diff'])
 
     assert qmtest.recursive_compare_dicts(am.removal_iteration, am_hdf5['removal_iteration'])
     assert qmtest.recursive_compare_dicts(am.final_metrics, am_hdf5['final_metrics'])
     assert qmtest.recursive_compare_dicts(am.all_metrics, am_hdf5['all_metrics'])
-    assert qmtest.recursive_compare_dicts(am.final_mod_z_scores, am_hdf5['final_mod_z_scores'])
-    assert qmtest.recursive_compare_dicts(am.all_mod_z_scores, am_hdf5['all_mod_z_scores'])
+
+    os.remove(files['sum_files'].replace('.uvh5', '.ant_metrics.hdf5'))
 
     # test a priori flagging via YAML
+    four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
     apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_old_pols.yaml')
-    ant_metrics.ant_metrics_run(four_pol_uvh5, overwrite=True, a_priori_xants_yaml=apf_yaml, verbose=True)
+    am = ant_metrics.ant_metrics_run(four_pol_uvh5, diff_files=four_pol_uvh5, overwrite=True, a_priori_xants_yaml=apf_yaml, verbose=True)
     am_hdf5 = ant_metrics.load_antenna_metrics(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
     for ant in [(0, 'Jxx'), (0, 'Jyy'), (10, 'Jxx'), (10, 'Jyy'), (1, 'Jxx'), (3, 'Jyy')]:
         assert ant in am_hdf5['xants']
