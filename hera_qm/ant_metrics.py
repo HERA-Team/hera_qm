@@ -176,7 +176,6 @@ def corr_metrics(corr_stats, xants=[], pols=None):
             if split_bl(bl)[0] in ants and split_bl(bl)[1] in ants:
                 for ant in split_bl(bl):
                     per_ant_corrs[ant].append(corr_mean)
-    print(per_ant_corrs)
     per_ant_mean_corr_metrics = {ant: np.nanmean(per_ant_corrs[ant]) for ant in ants}
 
     return per_ant_mean_corr_metrics
