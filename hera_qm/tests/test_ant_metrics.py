@@ -40,12 +40,9 @@ def test_calc_corr_stats():
     assert corr_stats[(0,1,'ee')] == pytest.approx(0.9238,abs=1e-2)
 
     # test no diff, odd number of times
-    # data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j, 10 + 20j], [10.0, 30.0, 0 + 10j]]),
-    #             (0, 1, 'nn'): np.array([[10.0j, 10.0, 20 + 10j], [20.0 + 100j, 10.0, 30 +20j]])}
     data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j], [10.0, 30.0], [30, 200+ 50j]]),
                 (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0], [10j, 20 + 30j]])}
     corr_stats = ant_metrics.calc_corr_stats(data_sum)
-    print(corr_stats)
     assert corr_stats[(0,1,'nn')] == pytest.approx(1,abs=1e-2)
     assert corr_stats[(0,1,'ee')] == pytest.approx(0.9238,abs=1e-2)
 
