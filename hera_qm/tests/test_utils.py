@@ -25,12 +25,13 @@ pytestmark = pytest.mark.filterwarnings(
 def test_get_metrics_ArgumentParser_ant_metrics():
     a = utils.get_metrics_ArgumentParser('ant_metrics')
     # First try defaults - test a few of them
-    args = a.parse_args('')
+    args = a.parse_args(['sum_file1', 'sum_file2'])
+    assert args.sum_files == ['sum_file1', 'sum_file2']
     assert args.crossCut == 0.0
     assert args.metrics_path == ''
     assert args.verbose is True
     # try to set something
-    args = a.parse_args(['--extension', 'foo'])
+    args = a.parse_args(['sum_file1', '--extension', 'foo'])
     assert args.extension == 'foo'
 
 def test_get_metrics_ArgumentParser_auto_metrics():
