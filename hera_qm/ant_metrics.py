@@ -110,12 +110,8 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
         # split into even and odd
         if data_diff is not None:
             data_diff_here = np.where(np.isfinite(data_diff[bl]), data_diff[bl], np.nan)
-            if data_diff_here.shape == data_sum_here.shape:
-                even = (data_sum_here + data_diff_here) / 2
-                odd = (data_sum_here - data_diff_here) / 2
-            else:
-                data_diff = None
-                print('WARNING: Different number of sum and diff files Provided - proceeding with interleaved sum files')
+            even = (data_sum_here + data_diff_here) / 2
+            odd = (data_sum_here - data_diff_here) / 2
         if data_diff is None:
             # interleave, dropping last integraiton if there are an odd number
             last_int = (data_sum_here.shape[0] // 2) * 2
@@ -346,6 +342,8 @@ class AntennaMetrics():
             sum_files = [sum_files]
         if isinstance(diff_files, str):
             diff_files = [diff_files]
+        if len(diff_files) != len(sum_files):
+            raise ValueError('Must provide the same number of sum and diff files')
         self.datafile_list_sum = sum_files
         self.hd_sum = HERAData(sum_files)
         if diff_files is None:
