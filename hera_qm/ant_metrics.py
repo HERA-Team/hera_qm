@@ -346,7 +346,7 @@ class AntennaMetrics():
             raise ValueError('Must provide the same number of sum and diff files')
         self.datafile_list_sum = sum_files
         self.hd_sum = HERAData(sum_files)
-        if diff_files is None:
+        if diff_files is None or len(diff_files) == 0:
             self.datafile_list_diff = None
             self.hd_diff = None
         else:

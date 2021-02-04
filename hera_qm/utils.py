@@ -49,8 +49,10 @@ def get_metrics_ArgumentParser(method_name):
 
     if method_name == 'ant_metrics':
         ap.prog = 'ant_metrics.py'
-        ap.add_argument('data_files', metavar='files', type=str, nargs='*', default=[],
-                        help='4-pol visibility files used to compute antenna metrics')
+        ap.add_argument('sum_files', type=str, nargs='+',
+                        help='4-pol visibility sum files used to compute antenna metrics')
+        ap.add_argument('--diff_files', type=str, nargs='+', default=None,
+                        help='4-pol visibility diff files used to compute antenna metrics. If not provided, even/odd will be formed from time interleaving.')
         ap.add_argument('--apriori_xants', type=int, nargs='*', default=[],
                         help='space-delimited list of integer antenna numbers to exclude apriori.')
         ap.add_argument('--a_priori_xants_yaml', type=str, default=None,
