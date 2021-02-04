@@ -250,7 +250,6 @@ def test_corr_metrics():
 
     # test xants
     corr = ant_metrics.corr_metrics(corr_stats, xants=[3])
-    print(corr)
     for ant in corr:
         assert ant[0] in [0,1,2]
         assert ant[1] in ['Jee','Jnn']
@@ -265,4 +264,54 @@ def test_corr_metrics():
         assert corr[ant] == pytest.approx({0: 0.8, 1: 0.7, 2: 0.65, 3: 0.85/3}[ant[0]])
 
 
-# def test_corr_cross_pol_metrics():
+def test_corr_cross_pol_metrics():
+    print('testing bananas')
+    corr_stats = {(0, 1, 'ee'): 0.6, (1, 0, 'nn'): 0.6,
+                     (0, 2, 'ee'): 1.0, (0, 2, 'nn'): 1.0,
+                     (0, 3, 'ee'): 0.9, (0, 3, 'nn'): 0.9,
+                     (1, 2, 'ee'): 0.7, (1, 2, 'nn'): 0.5,
+                     (1, 3, 'ee'): 0.45, (1, 3, 'nn'): 0.45,
+                     (2, 3, 'ee'): 0.8, (2, 3, 'nn'): 0.8,
+                     (0, 1, 'en'): 1.0, (1, 0, 'ne'): 1.0,
+                     (0, 2, 'en'): 0.5, (0, 2, 'ne'): 0.5,
+                     (0, 3, 'en'): 0.4, (0, 3, 'ne'): 0.4,
+                     (1, 2, 'en'): 0.8, (1, 2, 'ne'): 0.9,
+                     (1, 3, 'en'): 0.85, (1, 3, 'ne'): 0.85,
+                     (2, 3, 'en'): 0.6, (2, 3, 'ne'): 0.6}
+
+    # test normal operation
+    xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats)
+    for ant in xpol_metric:
+        assert ant[0] in [0,1,2,3]
+        assert ant[1] in ['Jnn','Jee']
+        if ant[0] == 1:
+            assert xpol_metric[ant] < 0
+        else:
+            assert xpol_metric[ant] > 0
+
+    # test xants
+    xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats, xants=[1])
+    for ant in xpol_metric:
+        assert ant[0] in [0,2,3]
+        assert ant[1] in ['Jnn','Jee']
+        assert xpol_metric[ant] > 0
+
+    xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats, xants=[2])
+    for ant in xpol_metric:
+        assert ant[0] in [0,1,3]
+        assert ant[1] in ['Jnn','Jee']
+        if ant[0] == 1:
+            assert xpol_metric[ant] < 0
+        else:
+            assert xpol_metric[ant] > 0
+
+    # test error
+    corr_stats = {(0, 1, 'ee'): 1.0,
+                     (0, 2, 'ee'): 1.0,
+                     (1, 2, 'ee'): 0.8,
+                     (1, 0, 'nn'): 1.0,
+                     (0, 2, 'nn'): 1.0,
+                     (1, 2, 'nn'): 0.8}
+
+    with pytest.raises(ValueError):
+        xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats)
