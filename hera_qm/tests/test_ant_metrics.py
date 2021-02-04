@@ -16,6 +16,133 @@ pytestmark = pytest.mark.filterwarnings(
 )
 
 
+def test_calc_corr_stats():
+    data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j], [10.0, 30.0]]),
+                (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0]])}
+    data_diff = {(0, 1, 'ee'): np.array([[0.0, 1.0 + 1.0j], [1.0, 3.0]]),
+                (0, 1, 'nn'): np.array([[3.0, 1.0j], [0.0, 2.0]])}
+    flags = {(0, 1, 'ee'): np.array([[False, False], [False, False]]),
+                (0, 1, 'nn'): np.array([[False, False], [False, False]])}
+
+    # test normal operation
+    corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff,flags)
+    assert corr_stats[(0,1,'ee')] == 1
+    assert corr_stats[(0,1,'nn')] == pytest.approx(0.9578,abs=1e-2)
+
+    # test with flags
+    flags[(0,1,'nn')][1,0] = True
+    corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff,flags)
+    assert corr_stats[(0,1,'nn')] == pytest.approx(0.9457,abs=1e-2)
+
+    # test no diff data
+    corr_stats = ant_metrics.calc_corr_stats(data_sum)
+    assert corr_stats[(0,1,'nn')] == pytest.approx(1,abs=1e-2)
+    assert corr_stats[(0,1,'ee')] == pytest.approx(0.9238,abs=1e-2)
+
+    # test no diff, odd number of times
+    # data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j, 10 + 20j], [10.0, 30.0, 0 + 10j]]),
+    #             (0, 1, 'nn'): np.array([[10.0j, 10.0, 20 + 10j], [20.0 + 100j, 10.0, 30 +20j]])}
+    data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j], [10.0, 30.0], [30, 200+ 50j]]),
+                (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0], [10j, 20 + 30j]])}
+    corr_stats = ant_metrics.calc_corr_stats(data_sum)
+    print(corr_stats)
+    assert corr_stats[(0,1,'nn')] == pytest.approx(1,abs=1e-2)
+    assert corr_stats[(0,1,'ee')] == pytest.approx(0.9238,abs=1e-2)
+
+
+def test_corr_metrics():
+    corr_stats = {(0, 1, 'ee'): 1.0,
+                     (0, 2, 'ee'): 1.0,
+                     (0, 3, 'ee'): 0.4,
+                     (1, 2, 'ee'): 0.8,
+                     (1, 3, 'ee'): 0.3,
+                     (2, 3, 'ee'): 0.15,
+                     (1, 0, 'nn'): 1.0,
+                     (0, 2, 'nn'): 1.0,
+                     (0, 3, 'nn'): 0.4,
+                     (1, 2, 'nn'): 0.8,
+                     (1, 3, 'nn'): 0.3,
+                     (2, 3, 'nn'): 0.15}
+
+# test normal operation
+    corr = ant_metrics.corr_metrics(corr_stats)
+    for ant in corr:
+        assert ant[0] in [0,1,2,3]
+        assert ant[1] in ['Jee','Jnn']
+        if ant[0] == 3:
+            assert corr[ant] < 0.4
+        else:
+            assert corr[ant] >= 0.4
+
+    # test xants
+    corr = ant_metrics.corr_metrics(corr_stats, xants=[3])
+    for ant in corr:
+        assert ant[0] in [0,1,2]
+        assert ant[1] in ['Jee','Jnn']
+        assert ant != (3,'Jnn') and ant != (3,'Jee')
+        assert corr[ant] == {0: 1, 1: 0.9, 2: 0.9}[ant[0]]
+
+    # test pols
+    corr = ant_metrics.corr_metrics(corr_stats, pols=['ee'])
+    for ant in corr:
+        assert ant[0] in [0,1,2,3]
+        assert ant[1] in ['Jee']
+        assert corr[ant] == pytest.approx({0: 0.8, 1: 0.7, 2: 0.65, 3: 0.85/3}[ant[0]])
+
+
+def test_corr_cross_pol_metrics():
+    # Set up such that antenna 1 is cross-polarized
+    corr_stats = {(0, 1, 'ee'): 0.6, (1, 0, 'nn'): 0.6,
+                     (0, 2, 'ee'): 1.0, (0, 2, 'nn'): 1.0,
+                     (0, 3, 'ee'): 0.9, (0, 3, 'nn'): 0.9,
+                     (1, 2, 'ee'): 0.7, (1, 2, 'nn'): 0.5,
+                     (1, 3, 'ee'): 0.45, (1, 3, 'nn'): 0.45,
+                     (2, 3, 'ee'): 0.8, (2, 3, 'nn'): 0.8,
+                     (0, 1, 'en'): 1.0, (1, 0, 'ne'): 1.0,
+                     (0, 2, 'en'): 0.5, (0, 2, 'ne'): 0.5,
+                     (0, 3, 'en'): 0.4, (0, 3, 'ne'): 0.4,
+                     (1, 2, 'en'): 0.8, (1, 2, 'ne'): 0.9,
+                     (1, 3, 'en'): 0.85, (1, 3, 'ne'): 0.85,
+                     (2, 3, 'en'): 0.6, (2, 3, 'ne'): 0.6}
+
+    # test normal operation
+    xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats)
+    for ant in xpol_metric:
+        assert ant[0] in [0,1,2,3]
+        assert ant[1] in ['Jnn','Jee']
+        if ant[0] == 1:
+            assert xpol_metric[ant] < 0
+        else:
+            assert xpol_metric[ant] > 0
+
+    # test xants
+    xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats, xants=[1])
+    for ant in xpol_metric:
+        assert ant[0] in [0,2,3]
+        assert ant[1] in ['Jnn','Jee']
+        assert xpol_metric[ant] > 0
+
+    xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats, xants=[2])
+    for ant in xpol_metric:
+        assert ant[0] in [0,1,3]
+        assert ant[1] in ['Jnn','Jee']
+        if ant[0] == 1:
+            assert xpol_metric[ant] < 0
+        else:
+            assert xpol_metric[ant] > 0
+
+    # test error
+    corr_stats = {(0, 1, 'ee'): 1.0,
+                     (0, 2, 'ee'): 1.0,
+                     (1, 2, 'ee'): 0.8,
+                     (1, 0, 'nn'): 1.0,
+                     (0, 2, 'nn'): 1.0,
+                     (1, 2, 'nn'): 0.8}
+
+    with pytest.raises(ValueError):
+        xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats)
+
+
 def test_load_antenna_metrics():
     # N.B. This test operates on an old json with an old polarization convetion.
     # Appears to work OK for now, but may not be worth maintaining.
@@ -217,130 +344,3 @@ def test_ant_metrics_run_and_load_antenna_metrics():
         assert am_hdf5['removal_iteration'][ant] == -1
 
     os.remove(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
-
-
-def test_calc_corr_stats():
-    data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j], [10.0, 30.0]]),
-                (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0]])}
-    data_diff = {(0, 1, 'ee'): np.array([[0.0, 1.0 + 1.0j], [1.0, 3.0]]),
-                (0, 1, 'nn'): np.array([[3.0, 1.0j], [0.0, 2.0]])}
-    flags = {(0, 1, 'ee'): np.array([[False, False], [False, False]]),
-                (0, 1, 'nn'): np.array([[False, False], [False, False]])}
-
-    # test normal operation
-    corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff,flags)
-    assert corr_stats[(0,1,'ee')] == 1
-    assert corr_stats[(0,1,'nn')] == pytest.approx(0.9578,abs=1e-2)
-
-    # test with flags
-    flags[(0,1,'nn')][1,0] = True
-    corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff,flags)
-    assert corr_stats[(0,1,'nn')] == pytest.approx(0.9457,abs=1e-2)
-
-    # test no diff data
-    corr_stats = ant_metrics.calc_corr_stats(data_sum)
-    assert corr_stats[(0,1,'nn')] == pytest.approx(1,abs=1e-2)
-    assert corr_stats[(0,1,'ee')] == pytest.approx(0.9238,abs=1e-2)
-
-    # test no diff, odd number of times
-    # data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j, 10 + 20j], [10.0, 30.0, 0 + 10j]]),
-    #             (0, 1, 'nn'): np.array([[10.0j, 10.0, 20 + 10j], [20.0 + 100j, 10.0, 30 +20j]])}
-    data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j], [10.0, 30.0], [30, 200+ 50j]]),
-                (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0], [10j, 20 + 30j]])}
-    corr_stats = ant_metrics.calc_corr_stats(data_sum)
-    print(corr_stats)
-    assert corr_stats[(0,1,'nn')] == pytest.approx(1,abs=1e-2)
-    assert corr_stats[(0,1,'ee')] == pytest.approx(0.9238,abs=1e-2)
-
-
-def test_corr_metrics():
-    corr_stats = {(0, 1, 'ee'): 1.0,
-                     (0, 2, 'ee'): 1.0,
-                     (0, 3, 'ee'): 0.4,
-                     (1, 2, 'ee'): 0.8,
-                     (1, 3, 'ee'): 0.3,
-                     (2, 3, 'ee'): 0.15,
-                     (1, 0, 'nn'): 1.0,
-                     (0, 2, 'nn'): 1.0,
-                     (0, 3, 'nn'): 0.4,
-                     (1, 2, 'nn'): 0.8,
-                     (1, 3, 'nn'): 0.3,
-                     (2, 3, 'nn'): 0.15}
-
-# test normal operation
-    corr = ant_metrics.corr_metrics(corr_stats)
-    for ant in corr:
-        assert ant[0] in [0,1,2,3]
-        assert ant[1] in ['Jee','Jnn']
-        if ant[0] == 3:
-            assert corr[ant] < 0.4
-        else:
-            assert corr[ant] >= 0.4
-
-    # test xants
-    corr = ant_metrics.corr_metrics(corr_stats, xants=[3])
-    for ant in corr:
-        assert ant[0] in [0,1,2]
-        assert ant[1] in ['Jee','Jnn']
-        assert ant != (3,'Jnn') and ant != (3,'Jee')
-        assert corr[ant] == {0: 1, 1: 0.9, 2: 0.9}[ant[0]]
-
-    # test pols
-    corr = ant_metrics.corr_metrics(corr_stats, pols=['ee'])
-    for ant in corr:
-        assert ant[0] in [0,1,2,3]
-        assert ant[1] in ['Jee']
-        assert corr[ant] == pytest.approx({0: 0.8, 1: 0.7, 2: 0.65, 3: 0.85/3}[ant[0]])
-
-
-def test_corr_cross_pol_metrics():
-    # Set up such that antenna 1 is cross-polarized
-    corr_stats = {(0, 1, 'ee'): 0.6, (1, 0, 'nn'): 0.6,
-                     (0, 2, 'ee'): 1.0, (0, 2, 'nn'): 1.0,
-                     (0, 3, 'ee'): 0.9, (0, 3, 'nn'): 0.9,
-                     (1, 2, 'ee'): 0.7, (1, 2, 'nn'): 0.5,
-                     (1, 3, 'ee'): 0.45, (1, 3, 'nn'): 0.45,
-                     (2, 3, 'ee'): 0.8, (2, 3, 'nn'): 0.8,
-                     (0, 1, 'en'): 1.0, (1, 0, 'ne'): 1.0,
-                     (0, 2, 'en'): 0.5, (0, 2, 'ne'): 0.5,
-                     (0, 3, 'en'): 0.4, (0, 3, 'ne'): 0.4,
-                     (1, 2, 'en'): 0.8, (1, 2, 'ne'): 0.9,
-                     (1, 3, 'en'): 0.85, (1, 3, 'ne'): 0.85,
-                     (2, 3, 'en'): 0.6, (2, 3, 'ne'): 0.6}
-
-    # test normal operation
-    xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats)
-    for ant in xpol_metric:
-        assert ant[0] in [0,1,2,3]
-        assert ant[1] in ['Jnn','Jee']
-        if ant[0] == 1:
-            assert xpol_metric[ant] < 0
-        else:
-            assert xpol_metric[ant] > 0
-
-    # test xants
-    xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats, xants=[1])
-    for ant in xpol_metric:
-        assert ant[0] in [0,2,3]
-        assert ant[1] in ['Jnn','Jee']
-        assert xpol_metric[ant] > 0
-
-    xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats, xants=[2])
-    for ant in xpol_metric:
-        assert ant[0] in [0,1,3]
-        assert ant[1] in ['Jnn','Jee']
-        if ant[0] == 1:
-            assert xpol_metric[ant] < 0
-        else:
-            assert xpol_metric[ant] > 0
-
-    # test error
-    corr_stats = {(0, 1, 'ee'): 1.0,
-                     (0, 2, 'ee'): 1.0,
-                     (1, 2, 'ee'): 0.8,
-                     (1, 0, 'nn'): 1.0,
-                     (0, 2, 'nn'): 1.0,
-                     (1, 2, 'nn'): 0.8}
-
-    with pytest.raises(ValueError):
-        xpol_metric = ant_metrics.corr_cross_pol_metrics(corr_stats)
