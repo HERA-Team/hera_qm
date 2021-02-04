@@ -220,9 +220,38 @@ def test_ant_metrics_run_and_load_antenna_metrics():
 
 
 def test_calc_corr_stats():
-    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
-             'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
-    am = ant_metrics.AntennaMetrics(**files)
+    data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j], [10.0, 30.0]]),
+                (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0]])}
+    data_diff = {(0, 1, 'ee'): np.array([[0.0, 1.0 + 1.0j], [1.0, 3.0]]),
+                (0, 1, 'nn'): np.array([[3.0, 1.0j], [0.0, 2.0]])}
+    flags = {(0, 1, 'ee'): np.array([[False, False], [False, False]]),
+                (0, 1, 'nn'): np.array([[False, False], [False, False]])}
+
+    # test normal operation
+    corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff,flags)
+    assert corr_stats[(0,1,'ee')] == 1
+    assert corr_stats[(0,1,'nn')] == pytest.approx(0.9578,abs=1e-2)
+
+    # test with flags
+    flags[(0,1,'nn')][1,0] = True
+    corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff,flags)
+    assert corr_stats[(0,1,'nn')] == pytest.approx(0.9457,abs=1e-2)
+
+    # test no diff data
+    corr_stats = ant_metrics.calc_corr_stats(data_sum)
+    assert corr_stats[(0,1,'nn')] == pytest.approx(1,abs=1e-2)
+    assert corr_stats[(0,1,'ee')] == pytest.approx(0.9238,abs=1e-2)
+
+    # test no diff, odd number of times
+    # data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j, 10 + 20j], [10.0, 30.0, 0 + 10j]]),
+    #             (0, 1, 'nn'): np.array([[10.0j, 10.0, 20 + 10j], [20.0 + 100j, 10.0, 30 +20j]])}
+    data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j], [10.0, 30.0], [30, 200+ 50j]]),
+                (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0], [10j, 20 + 30j]])}
+    corr_stats = ant_metrics.calc_corr_stats(data_sum)
+    print(corr_stats)
+    assert corr_stats[(0,1,'nn')] == pytest.approx(1,abs=1e-2)
+    assert corr_stats[(0,1,'ee')] == pytest.approx(0.9238,abs=1e-2)
+
 
 def test_corr_metrics():
     corr_stats = {(0, 1, 'ee'): 1.0,
