@@ -219,10 +219,10 @@ def test_ant_metrics_run_and_load_antenna_metrics():
     os.remove(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
 
 
-# def test_calc_corr_stats():
-#     files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
-#              'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
-#     am = ant_metrics.AntennaMetrics(**files)
+def test_calc_corr_stats():
+    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
+             'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
+    am = ant_metrics.AntennaMetrics(**files)
 
 def test_corr_metrics():
     corr_stats = {(0, 1, 'ee'): 1.0,
@@ -265,7 +265,7 @@ def test_corr_metrics():
 
 
 def test_corr_cross_pol_metrics():
-    print('testing bananas')
+    # Set up such that antenna 1 is cross-polarized
     corr_stats = {(0, 1, 'ee'): 0.6, (1, 0, 'nn'): 0.6,
                      (0, 2, 'ee'): 1.0, (0, 2, 'nn'): 1.0,
                      (0, 3, 'ee'): 0.9, (0, 3, 'nn'): 0.9,
