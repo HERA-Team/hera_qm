@@ -204,12 +204,15 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
     """
 
     from hera_cal.utils import split_pol, split_bl, reverse_bl
+    from hera_cal.datacontainer import DataContainer
+
+    # cast corr_stats as DataContainer to abstract away polarization/conjugation
+    corr_stats_dc = DataContainer(corr_stats)
 
     # figure out pols om corr_stats and make sure they are sensible
-    pols = set([bl[2] for bl in corr_stats])
-    cross_pols = [pol for pol in pols if split_pol(pol)[0] != split_pol(pol)[1]]
-    same_pols = [pol for pol in pols if split_pol(pol)[0] == split_pol(pol)[1]]
-    if (len(pols) != 4) or (len(same_pols) != 2):
+    cross_pols = [pol for pol in corr_stats_dc.pols() if split_pol(pol)[0] != split_pol(pol)[1]]
+    same_pols = [pol for pol in corr_stats_dc.pols() if split_pol(pol)[0] == split_pol(pol)[1]]
+    if (len(corr_stats_dc.pols()) != 4) or (len(same_pols) != 2):
         raise ValueError('There must be precisely two "cross" visbility polarizations '
                          'and two "same" polarizations but we have instead '
                          f'{cross_pols} and {same_pols}')
@@ -238,18 +241,10 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
                 continue
 
             # this loops over all the combinations of same and cross-pols
-            for i, (pol1, pol2) in enumerate([(same_pols[0], cross_pols[0]), (same_pols[0], cross_pols[1]),
-                                              (same_pols[1], cross_pols[0]), (same_pols[1], cross_pols[1])]):
-                # reverse baselines if necessary
-                bl1 = (a1, a2, pol1)
-                if (bl1 not in corr_stats) and (reverse_bl(bl1) in corr_stats):
-                    bl1 = reverse_bl(bl1)
-                bl2 = (a1, a2, pol2)
-                if (bl2 not in corr_stats) and (reverse_bl(bl2) in corr_stats):
-                    bl2= reverse_bl(bl2)
-                # get diff if both bls in corr_stats
-                if (bl1 in corr_stats) and (bl2 in corr_stats):
-                    diffs[i].append(corr_stats[bl1]- corr_stats[bl2])
+            # technically, this is a double-count, but the average takes that out
+            for i, (sp, cp) in enumerate([(sp, cp) for sp in same_pols for cp in cross_pols]):
+                if ((a1, a2, sp) in corr_stats_dc) and ((a1, a2, cp) in corr_stats_dc):
+                    diffs[i].append(corr_stats_dc[(a1, a2, sp)] - corr_stats_dc[(a1, a2, cp)])
 
         # assign same metric to both antpols
         for ap in antpols:
