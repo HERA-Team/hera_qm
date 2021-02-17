@@ -60,7 +60,7 @@ def get_metrics_ArgumentParser(method_name):
                               'hera_qm.metrics_io.read_a_priori_ant_flags()'))
         ap.add_argument('--crossCut', default=0.0, type=float,
                         help='Cut in cross-pol correlation metric below which to flag antennas as cross-polarized. Default 0.0.')
-        ap.add_argument('--deadCut', default=5.0, type=float,
+        ap.add_argument('--deadCut', default=0.4, type=float,
                         help='Cut in correlation metric below which antennas are most likely dead / not correlating. Default 0.4.')
         ap.add_argument('--metrics_path', default='', type=str,
                         help='Path to save metrics file to. Default is same directory as file.')
