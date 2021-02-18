@@ -494,10 +494,8 @@ class AntennaMetrics():
             worstCrossCutDiff = 1
 
             # Find most likely dead/crossed antenna
-            deadMetrics = {ant: np.abs(metric) for ant, metric
-                           in self.all_metrics[iteration]['corr'].items()}
-            crossMetrics = {ant: np.max(metric) for ant, metric
-                            in self.all_metrics[iteration]['corrXPol'].items()}
+            deadMetrics = self.all_metrics[iteration]['corr']
+            crossMetrics = self.all_metrics[iteration]['corrXPol']
             if (len(deadMetrics) == 0) or (len(crossMetrics) == 0):
                 break  # no unflagged antennas remain
             worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
