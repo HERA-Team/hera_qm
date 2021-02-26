@@ -34,4 +34,4 @@ xrfi.xrfi_run(args.ocalfits_files, args.acalfits_files, args.model_files,
               auto_mean_filter=not(args.skip_auto_mean_filter),
               cross_median_filter=args.use_cross_median_filter,
               cross_mean_filter=not(args.skip_cross_mean_filter),
-              metrics_file=args.metrics_file, clobber=args.clobber)
+              metrics_files=args.metrics_files, clobber=args.clobber)
