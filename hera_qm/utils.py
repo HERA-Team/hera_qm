@@ -305,9 +305,11 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
-        ap.add_argument('--metrics_file', default=None, type=str,
-                        help='Metrics file that contains a list of excluded antennas. Flags of '
-                        'visibilities formed with these antennas will be set to True.')
+        ap.add_argument("--metrics_files", type=str, nargs='*', default=[],
+                        help="path to file containing ant_metrics or auto_metrics readable by "
+                             "hera_qm.metrics_io.load_metric_file. ex_ants here are combined "
+                             "with antennas excluded via ex_ants. Flags of visibilities formed "
+                             "with these antennas will be set to True.")
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing files (default False)')
         ap.add_argument("--keep_edge_times", default=False, action="store_true",
@@ -354,9 +356,11 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
-        ap.add_argument('--metrics_file', default=None, type=str,
-                        help='Metrics file that contains a list of excluded antennas. Flags of '
-                        'visibilities formed with these antennas will be set to True.')
+        ap.add_argument("--metrics_files", type=str, nargs='*', default=[],
+                        help="path to file containing ant_metrics or auto_metrics readable by "
+                             "hera_qm.metrics_io.load_metric_file. ex_ants here are combined "
+                             "with antennas excluded via ex_ants. Flags of visibilities formed "
+                             "with these antennas will be set to True.")
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='overwrites existing files (default False)')
         ap.add_argument("--cross_median_filter", default=False, action="store_true",

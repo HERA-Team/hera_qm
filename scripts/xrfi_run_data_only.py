@@ -18,4 +18,4 @@ xrfi.xrfi_run(data_files=args.data_files, a_priori_flag_yaml=args.a_priori_flag_
               kt_size=args.kt_size, kf_size=args.kf_size, sig_init=args.sig_init,
               sig_adj=args.sig_adj, ex_ants=args.ex_ants,
               Nwf_per_load=args.Nwf_per_load,
-              metrics_file=args.metrics_file, clobber=args.clobber)
+              metrics_files=args.metrics_files, clobber=args.clobber)
