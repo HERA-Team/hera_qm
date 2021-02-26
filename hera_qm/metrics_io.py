@@ -983,7 +983,7 @@ def process_ex_ants(ex_ants=None, metrics_files=[]):
                     elif 'ex_ants' in metrics and 'r2_ex_ants' in metrics['ex_ants']:
                         for ant in metrics['ex_ants']['r2_ex_ants']:
                             xants.add(int(ant))  # Auto metrics reports just antenna numbers
-        return soted(list(xants))
+        return sorted(list(xants))
 
 
 def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
