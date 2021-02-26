@@ -24,7 +24,7 @@ def get_ant_metrics_dict():
         Dictionary with metric names as keys and descriptions as values.
 
     """
-    metrics_dict = {'ant_metrics_corr': 'Median value of the correlation matrix '
+    metrics_dict = {'ant_metrics_corr': 'Median value of the corr_metric '
                                            'across all values including an '
                                            'antenna.',
                     'ant_metrics_corrXPol': 'Max difference between same-pol '
