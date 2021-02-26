@@ -1782,7 +1782,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
              cross_median_filter=False, cross_mean_filter=True,
              history=None, wf_method='quadmean', Nwf_per_load=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
-             ex_ants=None, metrics_file=None,
+             ex_ants=None, metrics_files=None,
              output_prefixes=None, throw_away_edges=True, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
@@ -1926,10 +1926,11 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         A comma-separated list of antennas to exclude. Flags of visibilities formed
         with these antennas will be set to True. Default is None (i.e., no antennas
         will be excluded).
-    metrics_file : str, optional
-        Metrics file that contains a list of excluded antennas. Flags of visibilities
-        formed with these antennas will be set to True. Default is None (i.e.,
-        no antennas will be excluded).
+    metrics_files : str or list of strings, optional
+        path or list of paths to file(s) containing ant_metrics or auto_metrics readable by 
+        metrics_io.load_metric_file. Used for finding ex_ants and is combined with antennas
+        excluded via ex_ants. Flags of visibilities formed with these antennas will be set
+        to True. Default is [] (no metrics files used, no antennas excluded).
     output_prefixes : str or list of strings, optional
         Optional output prefix. If none is provided, use data_file.
         Required of data_file is None.
@@ -1985,7 +1986,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
 
     # Combine excluded antenna indices from ex_ants, metrics_file, and a_priori_flag_yaml
-    xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+    xants = process_ex_ants(ex_ants=ex_ants, metrics_files=metrics_files)
     if a_priori_flag_yaml is not None:
         xants = list(set(list(xants) + metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=True)))
 
@@ -2411,7 +2412,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
 
     """
     history = 'Flagging command: "' + flag_command + '", Using ' + hera_qm_version_str
-    xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+    xants = process_ex_ants(ex_ants=ex_ants, metrics_files=metrics_file)
 
     # Make sure input files are sorted
     ocalfits_files = sorted(ocalfits_files)
@@ -2886,7 +2887,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     # Flag on data
     if indata is not None:
         # Flag visibilities corresponding to specified antennas
-        xants = process_ex_ants(ex_ants=ex_ants, metrics_file=metrics_file)
+        xants = process_ex_ants(ex_ants=ex_ants, metrics_files=metrics_file)
         flag_xants(uvd, xants, run_check=run_check, check_extra=check_extra,
                    run_check_acceptability=run_check_acceptability)
         uvf_f, uvf_wf, uvf_w = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
