@@ -939,7 +939,7 @@ def load_metric_file(filename):
     return metric_dict
 
 
-def process_ex_ants(ex_ants=None, metrics_file=None):
+def process_ex_ants(ex_ants=None, metrics_files=[]):
     """Make a list of excluded antennas from command line argument.
 
     Parameters
