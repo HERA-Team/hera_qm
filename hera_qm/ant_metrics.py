@@ -184,7 +184,9 @@ def corr_metrics(corr_stats, xants=[], pols=None):
 
 
 def corr_cross_pol_metrics(corr_stats, xants=[]):
-    """Calculate the differences in the correlation metric between polarizations.
+    """Calculate the differences in corr_stats between polarizations. For
+    typical usage corr_stats is a measure of per-baseline average correlation
+    as calculated by the calc_corr_stats method.
 
     The four polarization combinations are xx-xy, yy-xy, xx-yx, and yy-yx. An
     antenna is considered cross-polarized if all four of these metrics are less
@@ -194,7 +196,7 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
     ----------
     corr_stats : dictionary
         Dictionary mapping baseline tuple e.g. (0, 1, 'ee') to
-        correlation metric value.
+        its average corr_metric value.
     xants : list of integers or tuples of antennas to exlcude, optional
 
     Returns
