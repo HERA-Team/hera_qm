@@ -955,8 +955,9 @@ def process_ex_ants(ex_ants=None, metrics_files=[]):
         A list of antennas to be excluded from analysis.
     """
     # test that there are ex_ants to process
-    if ex_ants is None and metrics_file is None:
-        return []
+    if ex_ants is None:
+        if (metrics_files is None) or (len(metrics_files) == 0):
+            return []
     else:
         xants = set([])
         if ex_ants is not None:
