@@ -71,10 +71,12 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
     Parameters
     ----------
     data_sum : dictionary or hera_cal DataContainer
-        Maps baseline keys e.g. (0, 1, 'ee') to numpy arrays of shape (Ntimes, Nfreqs)
+        Maps baseline keys e.g. (0, 1, 'ee') to numpy arrays of shape (Ntimes, Nfreqs).
+        Corresponds to the even+odd output from the correlator.
     data_diff : dictionary or hera_cal DataContainer
         Maps baseline keys e.g. (0, 1, 'ee') to numpy arrays of shape (Ntimes, Nfreqs)
         If not provided, data_sum will be broken into interleaving timesteps.
+        Corresponds to the even-odd output from the correlator.
     flags : dictionary or hera_cal DataContainer, optional
         Times or frequencies to exclude from the calculation of the correlation metrics.
         If not None, should have the same keys and same array shapes as data_sum
