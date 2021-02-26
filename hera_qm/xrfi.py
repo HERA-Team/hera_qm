@@ -1782,7 +1782,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
              cross_median_filter=False, cross_mean_filter=True,
              history=None, wf_method='quadmean', Nwf_per_load=None,
              xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
-             ex_ants=None, metrics_files=None,
+             ex_ants=None, metrics_files=[],
              output_prefixes=None, throw_away_edges=True, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
