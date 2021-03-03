@@ -35,10 +35,10 @@ known_string_keys = ['history', 'version', 'filedir', 'cut_edges',
                      'pol', 'ant_pol']
 float_keys = ['dead_ant_z_cut', 'cross_pol_z_cut', 'always_dead_ant_z_cut']
 antpol_dict_keys = ['removal_iteration']
-list_of_strings_keys = ['datafile_list']
+list_of_strings_keys = ['datafile_list', 'datafile_list_sum', 'datafile_list_diff']
 dict_of_dicts_keys = ['final_mod_z_scores', 'final_metrics']
 dict_of_dict_of_dicts_keys = ['all_metrics', 'all_mod_z_scores']
-dict_of_dict_of_tuple_keys = ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol']
+dict_of_dict_of_tuple_keys = ['meanVijXPol', 'meanVij', 'redCorr', 'redCorrXPol', 'corr', 'corrXPol']
 dict_of_bl_dicts_keys = ['spectra', 'modzs']  # for auto_metrics
 
 

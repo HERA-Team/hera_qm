@@ -49,26 +49,19 @@ def get_metrics_ArgumentParser(method_name):
 
     if method_name == 'ant_metrics':
         ap.prog = 'ant_metrics.py'
-        ap.add_argument('data_files', metavar='files', type=str, nargs='*', default=[],
-                        help='4-pol visibility files used to compute antenna metrics')
+        ap.add_argument('sum_files', type=str, nargs='+',
+                        help='4-pol visibility sum files used to compute antenna metrics')
+        ap.add_argument('--diff_files', type=str, nargs='+', default=None,
+                        help='4-pol visibility diff files used to compute antenna metrics. If not provided, even/odd will be formed from time interleaving.')
         ap.add_argument('--apriori_xants', type=int, nargs='*', default=[],
                         help='space-delimited list of integer antenna numbers to exclude apriori.')
         ap.add_argument('--a_priori_xants_yaml', type=str, default=None,
                         help=('path to a priori flagging YAML with xant information parsable by '
                               'hera_qm.metrics_io.read_a_priori_ant_flags()'))
-        ap.add_argument('--crossCut', default=5.0, type=float,
-                        help='Modified z-score cut for most cross-polarized antenna. Default 5 "sigmas"')
-        ap.add_argument('--deadCut', default=5.0, type=float,
-                        help='Modified z-score cut for most likely dead antenna. Default 5 "sigmas"')
-        ap.add_argument('--skip_cross_pols', action='store_false',
-                        dest='run_cross_pols', default=True,
-                        help=('Sets boolean flag to False. Flag determines if '
-                              'mean_Vij_cross_pol_metrics is run. '
-                              'Default: True'))
-        ap.add_argument('--run_cross_pols_only', action='store_true',
-                        dest='run_cross_pols_only', default=False,
-                        help=('Define if cross pol metrics are the *only* '
-                              'metrics to be run. Default is False.'))
+        ap.add_argument('--crossCut', default=0.0, type=float,
+                        help='Cut in cross-pol correlation metric below which to flag antennas as cross-polarized. Default 0.0.')
+        ap.add_argument('--deadCut', default=0.4, type=float,
+                        help='Cut in correlation metric below which antennas are most likely dead / not correlating. Default 0.4.')
         ap.add_argument('--metrics_path', default='', type=str,
                         help='Path to save metrics file to. Default is same directory as file.')
         ap.add_argument('--extension', default='.ant_metrics.json', type=str,
@@ -524,8 +517,7 @@ def metrics2mc(filename, ftype):
     if ftype == 'ant':
         from hera_qm.ant_metrics import load_antenna_metrics
         data = load_antenna_metrics(filename)
-        key2cat = {'final_metrics': 'ant_metrics',
-                   'final_mod_z_scores': 'ant_metrics_mod_z_scores'}
+        key2cat = {'final_metrics': 'ant_metrics'}
         for key, category in key2cat.items():
             for met, array in data[key].items():
                 metric = '_'.join([category, met])
