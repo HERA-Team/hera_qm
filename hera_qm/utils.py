@@ -75,25 +75,25 @@ def get_metrics_ArgumentParser(method_name):
 
     elif method_name == 'auto_metrics':
         ap.prog = 'auto_metrics.py'
-        ap.add_argument('metric_outfile', type=str, 
+        ap.add_argument('metric_outfile', type=str,
                         help='Path to save auto_metrics hdf5 file.')
-        ap.add_argument('raw_auto_files', type=str, nargs='+', 
+        ap.add_argument('raw_auto_files', type=str, nargs='+',
                         help='Paths to data files including autocorrelations.')
-        ap.add_argument('--median_round_modz_cut', default=8., type=float, 
+        ap.add_argument('--median_round_modz_cut', default=8., type=float,
                         help='Round 1 (median-based) cut on antenna modified Z-score.')
-        ap.add_argument('--mean_round_modz_cut', default=4., type=float, 
+        ap.add_argument('--mean_round_modz_cut', default=4., type=float,
                         help='Round 2 (mean-based) cut on antenna modified Z-score.')
-        ap.add_argument('--edge_cut', default=100, type=int, 
+        ap.add_argument('--edge_cut', default=100, type=int,
                         help='Number of channels on either end to flag (i.e. ignore) when looking for antenna outliers.')
         ap.add_argument('--Kt', default=8, type=int,
                         help='Time kernel half-width for RFI flagging.')
         ap.add_argument('--Kf', default=8, type=int,
                         help='Frequency kernel half-width for RFI flagging.')
-        ap.add_argument('--sig_init', default=5.0, type=float, 
+        ap.add_argument('--sig_init', default=5.0, type=float,
                         help='The number of sigmas above which to flag pixels.')
-        ap.add_argument('--sig_adj', default=2.0, type=float, 
+        ap.add_argument('--sig_adj', default=2.0, type=float,
                         help='The number of sigmas above which to flag pixels adjacent to flags.')
-        ap.add_argument('--chan_thresh_frac', default=.05, type=float, 
+        ap.add_argument('--chan_thresh_frac', default=.05, type=float,
                         help='The fraction of flagged times (ignoring completely flagged times) above which to flag a whole channel.')
         ap.add_argument("--clobber", default=False, action="store_true",
                         help='Overwrites existing metric_outfile (default False).')
@@ -669,7 +669,7 @@ def strip_extension(path, return_ext=False):
 
 def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name=None,
                      ant_indices_only=False, by_ant_pol=False, ant_pols=None,
-                     flag_ants=True, flag_freqs=True, flag_times=True):
+                     flag_ants=True, flag_freqs=True, flag_times=True, throw_away_flagged_ants=False):
     """Apply frequency and time flags to a UVData or UVCal object
 
     This function takes in a uvdata or uvcal object and applies
@@ -706,6 +706,9 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     flag_times : bool, optional
         specify whether or not to flag times
         default is True.
+    throw_away_flagged_ants : bool, optional
+        if True, remove flagged antennas from the data.
+        default is False.
     Returns
     -------
         uv : UVData or UVCal object
@@ -809,5 +812,15 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
                 if np.any(ant_selection):
                     for antind in np.where(ant_selection)[0]:
                         uv.flag_array[antind, :, :, :, pol_selection] =True
+        if throw_away_flagged_ants:
+            if ant_indices_only:
+                if issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
+                    antennas_to_keep = [a for a in uv.ant_array if a not in flagged_ants]
+                    uv.select(antenna_nums=antennas_to_keep)
+                elif issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline'):
+                    antennas_to_keep = [a for a in np.unique(np.hstack([uv.ant_1_array, uv.ant_2_array])) if a not in flagged_ants]
+                    uv.select(antenna_nums=antennas_to_keep)
+            else:
+                raise NotImplementedError("throwing away flagged antennas only implemented for ant_indices_only=True")
     # return uv with flags applied.
     return uv
