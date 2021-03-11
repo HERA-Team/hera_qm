@@ -954,36 +954,31 @@ def process_ex_ants(ex_ants=None, metrics_files=[]):
     xants : list
         A list of antennas to be excluded from analysis.
     """
-    # test that there are ex_ants to process
-    if ex_ants is None:
-        if (metrics_files is None) or (len(metrics_files) == 0):
-            return []
-    else:
-        xants = set([])
-        if ex_ants is not None:
-            if ex_ants != '':
-                for ant in ex_ants.split(','):
-                    try:
-                        if int(ant) not in xants:
-                            xants.add(int(ant))
-                    except ValueError:
-                        raise AssertionError(
-                            "ex_ants must be a comma-separated list of ints")
-        if metrics_files is not None:
-            if isinstance(metrics_files, str):
-                metrics_files = [metrics_files]
-            if len(metrics_files) > 0:
-                for mf in metrics_files:
-                    metrics = load_metric_file(mf)
-                    # load from an ant_metrics file
-                    if 'xants' in metrics:
-                        for ant in metrics['xants']:
-                            xants.add(int(ant[0]))  # Just take the antenna number, flagging both polarizations
-                    # load from an auto_metrics file
-                    elif 'ex_ants' in metrics and 'r2_ex_ants' in metrics['ex_ants']:
-                        for ant in metrics['ex_ants']['r2_ex_ants']:
-                            xants.add(int(ant))  # Auto metrics reports just antenna numbers
-        return sorted(list(xants))
+    xants = set([])
+    if ex_ants is not None:
+        if ex_ants != '':
+            for ant in ex_ants.split(','):
+                try:
+                    if int(ant) not in xants:
+                        xants.add(int(ant))
+                except ValueError:
+                    raise AssertionError(
+                        "ex_ants must be a comma-separated list of ints")
+    if metrics_files is not None:
+        if isinstance(metrics_files, str):
+            metrics_files = [metrics_files]
+        if len(metrics_files) > 0:
+            for mf in metrics_files:
+                metrics = load_metric_file(mf)
+                # load from an ant_metrics file
+                if 'xants' in metrics:
+                    for ant in metrics['xants']:
+                        xants.add(int(ant[0]))  # Just take the antenna number, flagging both polarizations
+                # load from an auto_metrics file
+                elif 'ex_ants' in metrics and 'r2_ex_ants' in metrics['ex_ants']:
+                    for ant in metrics['ex_ants']['r2_ex_ants']:
+                        xants.add(int(ant))  # Auto metrics reports just antenna numbers
+    return sorted(list(xants))
 
 
 def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
