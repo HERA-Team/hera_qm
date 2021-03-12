@@ -285,7 +285,7 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
     uvd = UVData()
     uvd.read(test_d_file)
     uvd = utils.apply_yaml_flags(uvd, test_flag, flag_freqs=flag_freqs, flag_times=flag_times,
-                                flag_ants=flag_ants, flag_first=True)
+                                flag_ants=flag_ants, unflag_first=True)
     if 'no_integrations' not in test_flag:
         for tind in integration_flags:
             time = sorted(np.unique(uvd.time_array))[tind]

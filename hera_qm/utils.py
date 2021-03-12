@@ -669,7 +669,7 @@ def strip_extension(path, return_ext=False):
 
 def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name=None,
                      ant_indices_only=False, by_ant_pol=False, ant_pols=None,
-                     flag_ants=True, flag_freqs=True, flag_times=True, unflag_first=False):
+                     flag_ants=True, flag_freqs=True, flag_times=True, throw_away_flagged_ants=False, unflag_first=False):
     """Apply frequency and time flags to a UVData or UVCal object
 
     This function takes in a uvdata or uvcal object and applies
