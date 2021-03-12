@@ -277,21 +277,15 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
     tmp_path = tmpdir.strpath
     test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvh5')
     test_flag = os.path.join(DATA_PATH, filein)
-    # set all flags to False
-    input_data = tmp_path + '/test_data.uvh5'
-    uv = UVData()
-    uv.read_uvh5(test_d_file)
-    uv.flag_array[:] = False
-    uv.write_uvh5(input_data, clobber=True)
     # first test flagging uvdata object
     freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
     channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
     integration_flags = [0, 1] # integrations from yaml file that should be flagged.
     ant_flags = [0, 10, [1, 'Jee'], [3, 'Jnn']]
     uvd = UVData()
-    uvd.read(input_data)
+    uvd.read(test_d_file)
     uvd = utils.apply_yaml_flags(uvd, test_flag, flag_freqs=flag_freqs, flag_times=flag_times,
-                                flag_ants=flag_ants)
+                                flag_ants=flag_ants, flag_first=True)
     if 'no_integrations' not in test_flag:
         for tind in integration_flags:
             time = sorted(np.unique(uvd.time_array))[tind]
@@ -369,7 +363,7 @@ def test_apply_yaml_flags_uvcal(filein, new_metadata):
         uvc.antenna_positions = None
         uvc.lst_array = None
 
-    uvc = utils.apply_yaml_flags(uvc, test_flag)
+    uvc = utils.apply_yaml_flags(uvc, test_flag, unflag_first=True)
     freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
     channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
     integration_flags = [0, 1] # integrations from yaml file that should be flagged.
@@ -433,4 +427,4 @@ def test_apply_yaml_flags_errors():
                       'a_priori_flags_negative_channels.yaml', 'a_priori_flags_negative_integrations.yaml']:
         yaml_path = os.path.join(DATA_PATH, warn_yaml)
         with pytest.warns(None) as record:
-            utils.apply_yaml_flags(uvc, yaml_path)
+            utils.apply_yaml_flags(uvc, yaml_path, unflag_first=True)
