@@ -727,7 +727,7 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     # if UVCal provided and lst_array is None, get lst_array from times.
     # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
     if unflag_first:
-        uv.flag_array[:] = False
+        uv.flag_array[:] = np.zeros_like(uv.flag_array, dtype=bool)
     if uv.lst_array is None:
         if lat_lon_alt_degrees is None:
             if telescope_name is None:

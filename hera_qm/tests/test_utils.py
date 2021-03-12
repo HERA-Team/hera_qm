@@ -350,6 +350,7 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
     "a_priori_flags_no_integrations.yaml",
     "a_priori_flags_no_chans.yaml",
     "a_priori_flags_no_ants.yaml",
+    "a_priori_flags_no_flags.yaml"
     ],
 )
 @pytest.mark.parametrize("new_metadata", [True, False])
@@ -368,41 +369,45 @@ def test_apply_yaml_flags_uvcal(filein, new_metadata):
     channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
     integration_flags = [0, 1] # integrations from yaml file that should be flagged.
     ant_flags = [0, 10, [1, 'Jee'], [3, 'Jnn']]
-    if 'no_integrations' not in test_flag:
-        for tind in integration_flags:
-            time = sorted(np.unique(uvc.time_array))[tind]
-            assert np.all(uvc.flag_array[:, :, :, uvc.time_array == time, :])
-    if 'no_chans' not in test_flag:
-        for region in freq_regions:
-            selection = (uvc.freq_array[0] >= region[0]) & (uvc.freq_array[0] <= region[-1])
-            assert np.all(uvc.flag_array[:, :, selection, :, :])
-        for chan in channel_flags:
-            assert np.all(uvc.flag_array[:, :, chan, :, :])
-    # check flagged antennas
-    if 'no_ants' not in test_flag:
-        for ant in ant_flags:
-            if isinstance(ant, int):
-                antnum = ant
-                pol_selection = np.ones(uvc.Njones, dtype=bool)
-            elif isinstance(ant, (list, tuple)):
-                antnum = ant[0]
-                pol_num = uvutils.jstr2num(ant[1], x_orientation=uvc.x_orientation)
-                pol_selection = np.where(uvc.jones_array == pol_num)[0]
-            ant_selection = uvc.ant_array == antnum
-            assert np.all(uvc.flag_array[ant_selection][:, :, :, :, pol_selection])
+    if 'no_flags' not in test_flag:
+        # check that the uvcal is completely unflagged since we used unflag_first
+        assert not np.any(uvc.flag_array)
+    else:
+        if 'no_integrations' not in test_flag:
+            for tind in integration_flags:
+                time = sorted(np.unique(uvc.time_array))[tind]
+                assert np.all(uvc.flag_array[:, :, :, uvc.time_array == time, :])
+        if 'no_chans' not in test_flag:
+            for region in freq_regions:
+                selection = (uvc.freq_array[0] >= region[0]) & (uvc.freq_array[0] <= region[-1])
+                assert np.all(uvc.flag_array[:, :, selection, :, :])
+            for chan in channel_flags:
+                assert np.all(uvc.flag_array[:, :, chan, :, :])
+        # check flagged antennas
+        if 'no_ants' not in test_flag:
+            for ant in ant_flags:
+                if isinstance(ant, int):
+                    antnum = ant
+                    pol_selection = np.ones(uvc.Njones, dtype=bool)
+                elif isinstance(ant, (list, tuple)):
+                    antnum = ant[0]
+                    pol_num = uvutils.jstr2num(ant[1], x_orientation=uvc.x_orientation)
+                    pol_selection = np.where(uvc.jones_array == pol_num)[0]
+                ant_selection = uvc.ant_array == antnum
+                assert np.all(uvc.flag_array[ant_selection][:, :, :, :, pol_selection])
 
-        # test removing antennas from the data:
-        all_ants = uvc.ant_array
-        uvc = utils.apply_yaml_flags(uvc, test_flag, throw_away_flagged_ants=True, ant_indices_only=True)
-        trimmed_ants = uvc.ant_array
-        # make sure there was a flagged antenna in the original flagged antennas.
-        assert np.any([a in all_ants for a in [0, 10, 1, 3]])
-        for a in [0, 10, 1, 3]:
-            if a in all_ants:
-                assert a not in trimmed_ants
-        # test NotImplementedError when trying to throw away flagged antennas when ant_indices_only is False
-        pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, a_priori_flag_yaml=test_flag,
-                     throw_away_flagged_ants=True, ant_indices_only=False)
+            # test removing antennas from the data:
+            all_ants = uvc.ant_array
+            uvc = utils.apply_yaml_flags(uvc, test_flag, throw_away_flagged_ants=True, ant_indices_only=True)
+            trimmed_ants = uvc.ant_array
+            # make sure there was a flagged antenna in the original flagged antennas.
+            assert np.any([a in all_ants for a in [0, 10, 1, 3]])
+            for a in [0, 10, 1, 3]:
+                if a in all_ants:
+                    assert a not in trimmed_ants
+            # test NotImplementedError when trying to throw away flagged antennas when ant_indices_only is False
+            pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, a_priori_flag_yaml=test_flag,
+                         throw_away_flagged_ants=True, ant_indices_only=False)
 
 def test_apply_yaml_flags_errors():
     test_flag_jds = os.path.join(DATA_PATH, 'a_priori_flags_jds.yaml')
