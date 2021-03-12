@@ -669,7 +669,7 @@ def strip_extension(path, return_ext=False):
 
 def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope_name=None,
                      ant_indices_only=False, by_ant_pol=False, ant_pols=None,
-                     flag_ants=True, flag_freqs=True, flag_times=True, throw_away_flagged_ants=False):
+                     flag_ants=True, flag_freqs=True, flag_times=True, throw_away_flagged_ants=False, unflag_first=False):
     """Apply frequency and time flags to a UVData or UVCal object
 
     This function takes in a uvdata or uvcal object and applies
@@ -709,6 +709,10 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     throw_away_flagged_ants : bool, optional
         if True, remove flagged antennas from the data.
         default is False.
+    unflag_first : bool, optional
+        if True, remove existing flags in UVData/UVCal/UVFlag object
+        (set all flag_array to False) before applying yaml flags.
+        Default is False.
     Returns
     -------
         uv : UVData or UVCal object
@@ -722,6 +726,8 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
         raise NotImplementedError("apply_yaml_flags does not support multiple spws at this time.")
     # if UVCal provided and lst_array is None, get lst_array from times.
     # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
+    if unflag_first:
+        uv.flag_array[:] = np.zeros_like(uv.flag_array, dtype=bool)
     if uv.lst_array is None:
         if lat_lon_alt_degrees is None:
             if telescope_name is None:

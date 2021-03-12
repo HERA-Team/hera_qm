@@ -1,0 +1,28 @@
+# A PRIORI FLAGS
+
+# The following flags can be loaded by functions in hera_qm.metrics_io, including:
+# read_a_priori_chan_flags(), read_a_priori_int_flags(), and read_a_priori_ant_flags().
+# Variable names are hard-coded and cannot be changed without unexpected behavior.
+
+# ---------------
+# FREQUENCY FLAGS
+# ---------------
+
+# freq_flags are an array of length-2 arrays of floats in units of Hz (freq ranges, inclusive)
+freq_flags: []
+
+# channel_flags are an array of ints or length-2 arrays of ints (channel ranges, inclusive)
+channel_flags: []
+
+
+# ---------------
+# TIME FLAGS
+# ---------------
+integration_flags: []
+
+
+# ---------------
+# ANTENNA FLAGS
+# ---------------
+
+# ex_ants is an array of integer antennas or length-2 arrays of integer antennas and string antpols
