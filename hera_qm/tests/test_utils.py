@@ -369,7 +369,7 @@ def test_apply_yaml_flags_uvcal(filein, new_metadata):
     channel_flags = [0, 1, 60] + list(range(10, 21)) # channels from yaml file.
     integration_flags = [0, 1] # integrations from yaml file that should be flagged.
     ant_flags = [0, 10, [1, 'Jee'], [3, 'Jnn']]
-    if 'no_flags' not in test_flag:
+    if 'no_flags' in test_flag:
         # check that the uvcal is completely unflagged since we used unflag_first
         assert not np.any(uvc.flag_array)
     else:
