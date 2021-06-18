@@ -135,19 +135,24 @@ def test_check_convolve_dims_3D():
 def test_check_convolve_dims_1D():
     size = 10
     d = np.ones(size)
-    K = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size + 1],
-                             nwarnings=1, category=UserWarning,
-                             message='K1 value {:d} is larger than the data'.format(size))
+    with uvtest.check_warnings(
+            UserWarning,
+            match=f"K1 value {size + 1} is larger than the data",
+            nwarnings=1
+    ):
+        K = xrfi._check_convolve_dims(d, size + 1)
     assert K == size
 
 
 def test_check_convolve_dims_kernel_not_given():
     size = 10
     d = np.ones((size, size))
-    K1, K2 = uvtest.checkWarnings(xrfi._check_convolve_dims, [d],
-                                  nwarnings=2, category=UserWarning,
-                                  message=['No K1 input provided.',
-                                           'No K2 input provided.'])
+    with uvtest.check_warnings(
+            UserWarning,
+            match=["No K1 input provided.", "No K2 input provided"],
+            nwarnings=2
+    ):
+        K1, K2 = xrfi._check_convolve_dims(d)
     assert K1 == size
     assert K2 == size
 
@@ -155,9 +160,12 @@ def test_check_convolve_dims_kernel_not_given():
 def test_check_convolve_dims_Kt_too_big():
     size = 10
     d = np.ones((size, size))
-    Kt, Kf = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size + 1, size],
-                                  nwarnings=1, category=UserWarning,
-                                  message='K1 value {:d} is larger than the data'.format(size))
+    with uvtest.check_warnings(
+            UserWarning,
+            match=f"K1 value {size + 1} is larger than the data",
+            nwarnings=1,
+    ):
+        Kt, Kf = xrfi._check_convolve_dims(d, size + 1, size)
     assert Kt == size
     assert Kf == size
 
@@ -165,9 +173,12 @@ def test_check_convolve_dims_Kt_too_big():
 def test_check_convolve_dims_Kf_too_big():
     size = 10
     d = np.ones((size, size))
-    Kt, Kf = uvtest.checkWarnings(xrfi._check_convolve_dims, [d, size, size + 1],
-                                  nwarnings=1, category=UserWarning,
-                                  message='K1 value {:d} is larger than the data'.format(size))
+    with uvtest.check_warnings(
+            UserWarning,
+            match=f"K2 value {size + 1} is larger than the data",
+            nwarnings=1,
+    ):
+        Kt, Kf = xrfi._check_convolve_dims(d, size, size + 1)
     assert Kt == size
     assert Kf == size
 
@@ -288,10 +299,15 @@ def test_detrend_medfilt():
     # run detrend medfilt
     Kt = 101
     Kf = 101
-    dm = uvtest.checkWarnings(xrfi.detrend_medfilt, [fake_data, None, Kt, Kf], nwarnings=2,
-                              category=[UserWarning, UserWarning],
-                              message=['K1 value {:d} is larger than the data'.format(Kt),
-                                       'K2 value {:d} is larger than the data'.format(Kf)])
+    with uvtest.check_warnings(
+            UserWarning,
+            match=[
+                f"K1 value {Kt} is larger than the data",
+                f"K2 value {Kf} is larger than the data",
+            ],
+            nwarnings=2,
+    ):
+        dm = xrfi.detrend_medfilt(fake_data, None, Kt, Kf)
 
     # read in "answer" array
     # this is output that corresponds to .size==100, Kt==101, Kf==101
@@ -1943,8 +1959,6 @@ def test_day_threshold_run_cal_only(tmpdir):
     ]
     mess1 = ['This object is already a waterfall']
     messages = metadata_messages + 2 * mess1 + metadata_messages + 6 * mess1  + metadata_messages
-    cat1 = [UserWarning]
-    categories = 14 * cat1
     # Spoof the files - run xrfi_run twice on spoofed files.
     tmp_path = tmpdir.strpath
     fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
@@ -1958,9 +1972,20 @@ def test_day_threshold_run_cal_only(tmpdir):
     data_files = [raw_dfile]
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
-                                         None], {'history': 'Just a test', 'kt_size': 3, 'output_prefixes': raw_dfile, 'throw_away_edges':False},
-                         nwarnings=len(messages), message=messages, category=categories)
+    with uvtest.check_warnings(
+            UserWarning, match=messages, nwarnings=len(messages)
+    ):
+        xrfi.xrfi_run(
+            acal_file,
+            ocal_file,
+            None,
+            None,
+            history="Just a test",
+            kt_size=3,
+            output_prefixes=raw_dfile,
+            throw_away_edges=False,
+        )
+
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
@@ -1980,10 +2005,19 @@ def test_day_threshold_run_cal_only(tmpdir):
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
     messages = mess1 * 8
-    categories = cat1 * 8
-    uvtest.checkWarnings(xrfi.xrfi_run, [acal_file, ocal_file, None,
-                                         None], {'history': 'Just a test', 'kt_size': 3, 'output_prefixes': data_files[1], 'throw_away_edges':False},
-                         nwarnings=len(messages), message=messages, category=categories)
+    with uvtest.check_warnings(
+            UserWarning, match=messages, nwarnings=len(messages)
+    ):
+        xrfi.xrfi_run(
+            acal_file,
+            ocal_file,
+            None,
+            None,
+            history="Just a test",
+            kt_size=3,
+            output_prefixes=data_files[1],
+            throw_away_edges=False,
+        )
 
     xrfi.day_threshold_run(data_files, history='just a test')
     types = ['ox', 'og', 'ax', 'ag', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed',
