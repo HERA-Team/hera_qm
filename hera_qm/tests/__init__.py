@@ -61,7 +61,7 @@ def recursive_compare_dicts(d1, d2):
                                                                                    )
         elif isinstance(d1[key], dict):
             recursive_compare_dicts(d1[key], d2[key])
-        elif isinstance(d1[key], (float, np.float, np.float32)):
+        elif isinstance(d1[key], (float, np.float32, np.float64)):
             assert np.allclose(d1[key], d2[key], equal_nan=True), ("key: {key} has type {key1_type} in d1 and {key2_type} in d2\n"
                                                                    "d1:  data has type {data1_type} and value {data1_val}\n"
                                                                    "d2:  data has type {data2_type} and value {data2_val}\n"
