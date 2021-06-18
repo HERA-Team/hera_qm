@@ -116,7 +116,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
         with h5py, a TypeError is raised.
 
     """
-    allowed_types = (np.ndarray, np.float32, np.float, np.int,
+    allowed_types = (np.ndarray, np.float32, float, int,
                      bytes, str, list, bool, np.bool_)
     compressable_types = (np.ndarray, list)
     for key in in_dict:
@@ -438,7 +438,7 @@ def _recursively_parse_json(in_dict):
         if key in known_string_keys:
             out_dict[out_key] = str(in_dict[key])
         elif key in bool_keys:
-            out_dict[out_key] = np.bool(in_dict[key])
+            out_dict[out_key] = np.bool_(in_dict[key])
         elif key in float_keys:
             out_dict[out_key] = float(in_dict[key])
         elif key in antpol_dict_keys:
@@ -473,8 +473,8 @@ def _recursively_parse_json(in_dict):
             elif isinstance(in_dict[key], (list, np.ndarray)):
                 try:
                     if len(in_dict[key]) > 0:
-                        if isinstance(in_dict[key][0], (str, np.int,
-                                                        np.float, np.complex)):
+                        if isinstance(in_dict[key][0], (str, int,
+                                                        float, complex)):
                             try:
                                 out_dict[out_key] = [float(val)
                                                      for val in in_dict[key]]
@@ -519,7 +519,7 @@ def _parse_value(in_val):
             return float(str(in_val))
         except ValueError:
             try:
-                return np.complex(str(in_val))
+                return np.complex128(str(in_val))
             except ValueError:
                 return str(in_val)
 
@@ -883,7 +883,7 @@ def _recursively_validate_dict(in_dict):
                             else n for n in in_dict[key]]
 
         if isinstance(in_dict[key], (np.int64, np.int32)):
-            in_dict[key] = np.int(in_dict[key])
+            in_dict[key] = int(in_dict[key])
 
         if isinstance(in_dict[key], dict):
             _recursively_validate_dict(in_dict[key])
