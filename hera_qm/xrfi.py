@@ -656,7 +656,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
             # Time watershed
             ts = np.unique(uvf.time_array)
             tempd = np.zeros(ts.size)
-            tempf = np.zeros(ts.size, dtype=np.bool)
+            tempf = np.zeros(ts.size, dtype=np.bool_)
             for ti, time in enumerate(ts):
                 tempd[ti] = uvutils.collapse(marr[uvf.time_array == time, 0, :, :], avg_method,
                                              weights=warr[uvf.time_array == time, 0, :, :])
@@ -1170,9 +1170,9 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
         raise KeyError('Algorithm not found in list of available functions.')
     uvf = UVFlag(uv)
     if issubclass(uv.__class__, UVData):
-        uvf.weights_array = uv.nsample_array * np.logical_not(uv.flag_array).astype(np.float)
+        uvf.weights_array = uv.nsample_array * np.logical_not(uv.flag_array).astype(np.float64)
     else:
-        uvf.weights_array = np.logical_not(uv.flag_array).astype(np.float)
+        uvf.weights_array = np.logical_not(uv.flag_array).astype(np.float64)
     if issubclass(uv.__class__, UVData):
         for key, data in uv.antpairpol_iter():
             ind1, ind2, pol = uv._key2inds(key)
@@ -1376,10 +1376,10 @@ def xrfi_pipe(uv, alg='detrend_medfilt', Kt=8, Kf=8, xants=[], cal_mode='gain',
     if center_metric:
         # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
         uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0],
-                                               flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)),
+                                               flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool_)),
                                                Kt=Kt, Kf=Kf)
     if reset_weights:
-        uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
+        uvf_m.weights_array = uvf_m.weights_array.astype(np.bool_).astype(np.float64)
     if not skip_flags:
         uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
                      check_extra=check_extra,
@@ -1439,11 +1439,11 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
                        run_check_acceptability=run_check_acceptability)
     # This next line resets the weights to 1 (with data) or 0 (no data) to equally
     # combine with the other metrics.
-    uvf_m.weights_array = uvf_m.weights_array.astype(np.bool).astype(np.float)
+    uvf_m.weights_array = uvf_m.weights_array.astype(np.bool_).astype(np.float64)
     alg_func = algorithm_dict[alg]
     # Pass the z-scores through the filter again to get a zero-centered, width-of-one distribution.
     uvf_m.metric_array[:, :, 0] = alg_func(uvf_m.metric_array[:, :, 0], modified=modified,
-                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool)))
+                                           flags=~(uvf_m.weights_array[:, :, 0].astype(np.bool_)))
     # Flag and watershed on waterfall
     uvf_f = flag(uvf_m, nsig_p=sig_init, run_check=run_check,
                  check_extra=check_extra,
@@ -2109,7 +2109,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         vdict['uvf_metrics'].label = 'Combined metrics, round 1.'
         alg_func = algorithm_dict['detrend_medfilt']
         vdict['uvf_metrics'].metric_array[:, :, 0] = alg_func(vdict['uvf_metrics'].metric_array[:, :, 0],
-                                                     flags=~vdict['uvf_metrics'].weights_array[:, :, 0].astype(np.bool),
+                                                     flags=~vdict['uvf_metrics'].weights_array[:, :, 0].astype(np.bool_),
                                                      Kt=kt_size, Kf=kf_size)
 
         # Flag on combined metrics
@@ -2469,7 +2469,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvf_metrics.label = 'Combined metrics, round 1.'
     alg_func = algorithm_dict['detrend_medfilt']
     uvf_metrics.metric_array[:, :, 0] = alg_func(uvf_metrics.metric_array[:, :, 0],
-                                                 flags=~uvf_metrics.weights_array[:, :, 0].astype(np.bool),
+                                                 flags=~uvf_metrics.weights_array[:, :, 0].astype(np.bool_),
                                                  Kt=kt_size, Kf=kf_size)
 
     # Flag on combined metrics

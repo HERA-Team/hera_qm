@@ -129,7 +129,7 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
         if pad:
             for ax in axis:
                 # get padding vector
-                zero_slice = utils.dynamic_slice(np.zeros_like(data, dtype=np.float), slice(0, 1), axis=ax)
+                zero_slice = utils.dynamic_slice(np.zeros_like(data, dtype=np.float64), slice(0, 1), axis=ax)
                 # pad arrays
                 data = np.concatenate([data, zero_slice], axis=ax)
                 t_int = np.concatenate([t_int, zero_slice], axis=ax)
@@ -304,8 +304,8 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
     for bl in bls:
         d1[bl] = uvd1.get_data(bl)
         d2[bl] = uvd2.get_data(bl)
-        w1[bl] = (~uvd1.get_flags(bl)).astype(np.float)
-        w2[bl] = (~uvd2.get_flags(bl)).astype(np.float)
+        w1[bl] = (~uvd1.get_flags(bl)).astype(np.float64)
+        w2[bl] = (~uvd2.get_flags(bl)).astype(np.float64)
         m1[bl] = (np.sum(d1[bl] * w1[bl], axis=sumaxes, keepdims=True)
                   / np.sum(w1[bl], axis=sumaxes, keepdims=True).clip(1e-10, np.inf))
         m2[bl] = (np.sum(d2[bl] * w2[bl], axis=sumaxes, keepdims=True)
@@ -313,7 +313,7 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
 
     # setup empty cov array
     Nbls = len(bls)
-    cov = np.empty((Nbls, Nbls, Ntimes, Nfreqs), dtype=np.complex) * np.nan
+    cov = np.empty((Nbls, Nbls, Ntimes, Nfreqs), dtype=np.complex128) * np.nan
 
     # iterate over bls
     for bl1i, bl1 in enumerate(bls):
@@ -336,7 +336,7 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
     # calculate correlation matrix
     if return_corr:
         # get stds of bls
-        std = np.empty((2, Nbls, Ntimes, Nfreqs), dtype=np.complex) * np.nan
+        std = np.empty((2, Nbls, Ntimes, Nfreqs), dtype=np.complex128) * np.nan
         for bli, bl in enumerate(bls):
             d1diff = d1[bl] - m1[bl]
             std[0, bli] = np.sqrt(np.abs(np.sum(d1diff * d1diff.conj() * w1[bl],
@@ -626,8 +626,8 @@ def plot_bl_bl_scatter(uvd1, uvd2, bls, component='real', whiten=False, colorbar
                 # data key didn't exist...
                 d1 = np.zeros_like(color)
                 d2 = np.zeros_like(color)
-                f1 = np.ones_like(color, dtype=np.bool)
-                f2 = np.ones_like(color, dtype=np.bool)
+                f1 = np.ones_like(color, dtype=np.bool_)
+                f2 = np.ones_like(color, dtype=np.bool_)
 
             d1[f1] *= np.nan
             d2[f2] *= np.nan
