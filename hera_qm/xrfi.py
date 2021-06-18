@@ -1966,15 +1966,15 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     if ocalfits_files is None and acalfits_files is None and model_files is None and data_files is None:
         raise ValueError("Must provide at least one of the following; ocalfits_files, acalfits_files, model_files, data_files")
     # user must provide an optional output prefix if no data file is provided.
-    if isinstance(acalfits_files, (str, np.str)):
+    if isinstance(acalfits_files, (str, np.string_)):
         acalfits_files = [acalfits_files]
-    if isinstance(ocalfits_files, (str, np.str)):
+    if isinstance(ocalfits_files, (str, np.string_)):
         ocalfits_files = [ocalfits_files]
-    if isinstance(model_files, (str, np.str)):
+    if isinstance(model_files, (str, np.string_)):
         model_files = [model_files]
-    if isinstance(data_files, (str, np.str)):
+    if isinstance(data_files, (str, np.string_)):
         data_files = [data_files]
-    if isinstance(output_prefixes, (str, np.str)):
+    if isinstance(output_prefixes, (str, np.string_)):
         output_prefixes = [output_prefixes]
     if output_prefixes is None:
         if data_files is not None:

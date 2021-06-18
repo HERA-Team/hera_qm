@@ -134,7 +134,7 @@ def write_metrics(metrics, filename=None, filetype='json'):
                     metrics_out[pol][key] = metrics[pol][key].tolist()
                 elif isinstance(metrics_out[pol][key], (dict, odict)):
                     if list(metrics_out[pol][key].values())[0].dtype == np.complex:
-                        metrics_out[pol][key] = odict([(j, metrics_out[pol][key][j].astype(np.str)) for j in metrics_out[pol][key]])
+                        metrics_out[pol][key] = odict([(j, metrics_out[pol][key][j].astype(str)) for j in metrics_out[pol][key]])
                     metrics_out[pol][key] = odict([(str(j), metrics_out[pol][key][j].tolist()) for j in metrics_out[pol][key]])
                 elif isinstance(metrics_out[pol][key], (np.bool, np.bool_)):
                     metrics_out[pol][key] = bool(metrics_out[pol][key])
