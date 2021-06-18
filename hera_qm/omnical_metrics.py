@@ -82,7 +82,7 @@ def load_omnical_metrics(filename):
                 if isinstance(metric[key2], (dict, odict)):
                     if isinstance(list(metric[key2].values())[0], list):
                         metric[key2] = odict([(int(i), np.array(metric[key2][i])) for i in metric[key2]])
-                    elif isinstance(list(metric[key2].values())[0], (np.unicode, np.unicode_)):
+                    elif isinstance(list(metric[key2].values())[0], (str, np.unicode_)):
                         metric[key2] = odict([(int(i), metric[key2][i].astype(np.complex128)) for i in metric[key2]])
 
                 elif isinstance(metric[key2], list):
@@ -133,12 +133,12 @@ def write_metrics(metrics, filename=None, filetype='json'):
                 if isinstance(metrics_out[pol][key], np.ndarray):
                     metrics_out[pol][key] = metrics[pol][key].tolist()
                 elif isinstance(metrics_out[pol][key], (dict, odict)):
-                    if list(metrics_out[pol][key].values())[0].dtype == np.complex:
+                    if list(metrics_out[pol][key].values())[0].dtype == complex:
                         metrics_out[pol][key] = odict([(j, metrics_out[pol][key][j].astype(str)) for j in metrics_out[pol][key]])
                     metrics_out[pol][key] = odict([(str(j), metrics_out[pol][key][j].tolist()) for j in metrics_out[pol][key]])
-                elif isinstance(metrics_out[pol][key], (np.bool, np.bool_)):
+                elif isinstance(metrics_out[pol][key], (bool, np.bool_)):
                     metrics_out[pol][key] = bool(metrics_out[pol][key])
-                elif isinstance(metrics_out[pol][key], np.float):
+                elif isinstance(metrics_out[pol][key], (float, np.float32, np.float64)):
                     metrics_out[pol][key] = float(metrics_out[pol][key])
                 elif isinstance(metrics_out[pol][key], np.integer):
                     metrics_out[pol][key] = int(metrics_out[pol][key])
