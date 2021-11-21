@@ -6,6 +6,7 @@
 import numpy as np
 from copy import deepcopy
 import os
+import shutil
 import re
 from .version import hera_qm_version_str
 from . import utils, metrics_io
@@ -647,7 +648,7 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
     am.iterative_antenna_metrics_and_flagging(crossCut=crossCut, deadCut=deadCut, verbose=verbose)
     am.history = am.history + history
 
-    for file in am.datafile_list_sum:
+    for i, file in enumerate(am.datafile_list_sum):
         metrics_basename = utils.strip_extension(os.path.basename(file)) + extension
         if metrics_path == '':
             # default path is same directory as file
@@ -655,4 +656,8 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
         outfile = os.path.join(metrics_path, metrics_basename)
         if verbose:
             print(f'Now saving results to {outfile}')
-        am.save_antenna_metrics(outfile, overwrite=overwrite)
+        if i == 0:
+            first_outfile = outfile
+            am.save_antenna_metrics(outfile, overwrite=overwrite)
+        else:
+            shutil.copyfile(first_outfile, outfile)
