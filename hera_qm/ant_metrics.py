@@ -408,26 +408,42 @@ class AntennaMetrics():
             self.xants.append(ant)
             self.removal_iteration[ant] = -1
 
-    def _load_corr_stats(self, Nbls_per_load=None):
-        """Loop through groups of baselines to calculate self.corr_stats
-        using calc_corr_stats()
-        """
-        if Nbls_per_load is None:
-            bl_load_groups = [self.bls]
-        else:
+    def _load_corr_stats(self, Nbls_per_load=None, Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
+        """Loop through groups of baselines to calculate self.corr_stats using calc_corr_stats()."""
+        bl_load_groups = [None]  # load all baselines simultaneously
+        if Nbls_per_load is not None:
             bl_load_groups = [self.bls[i:i + Nbls_per_load]
                               for i in range(0, len(self.bls), Nbls_per_load)]
 
-        # loop through baseline load groups, computing corr_stats
-        self.corr_stats = {}
-        for blg in bl_load_groups:
-            data_sum, flags, _ = self.hd_sum.read(bls=blg, axis='blt')
-            data_diff = None
+        corr_stats = {bl: [] for bl in self.bls}
+
+        hd_sums = [deepcopy(self.hd_sum)]
+        hd_diffs = [deepcopy(self.hd_diff)]
+        if Nfiles_per_load is not None:
+            from hera_cal.io import HERAData
+            chunker = lambda paths: [paths[i:i + Nfiles_per_load] for i in range(0, len(paths), Nfiles_per_load)]
+            hd_sums = [HERAData(filepaths) for filepaths in chunker(self.hd_sum.filepaths)]
             if self.hd_diff is not None:
-                data_diff, flags_diff, _ = self.hd_diff.read(bls=blg, axis='blt')
-                for bl in flags:
-                    flags[bl] |= flags_diff[bl]
-            self.corr_stats.update(calc_corr_stats(data_sum, data_diff=data_diff, flags=flags))
+                hd_diffs = [HERAData(filepath) for filepath in chunker(self.hd_diff.filepaths)]
+        while len(hd_sums) > 0:
+            # loop through baseline load groups, computing corr_stats
+            for blg in bl_load_groups:
+                # read data for this 
+                data_sum, flags, _ = hd_sums[0].read(bls=blg, axis='blt')
+                data_diff = None
+                if hd_diffs[0] is not None:
+                    data_diff, flags_diff, _ = hd_diffs[0].read(bls=blg, axis='blt')
+                    for bl in flags:
+                        flags[bl] |= flags_diff[bl]
+
+                # compute corr_stats and append them to list, weighting by the number of files
+                for bl, stat in calc_corr_stats(data_sum, data_diff=data_diff, flags=flags).items():
+                    corr_stats[bl].extend([stat] * len(hd_sums[0].filepaths))
+
+            del hd_sums[0], hd_diffs[0]  # save memory by deleting after each file load
+
+        # reduce to a single stat per baseline (rather than per baseline, per file group)
+        self.corr_stats = {bl: time_alg(corr_stats[bl]) for bl in self.bls}
 
     def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median correlation coefficient is 0.0.
