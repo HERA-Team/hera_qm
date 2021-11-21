@@ -294,7 +294,8 @@ class AntennaMetrics():
     with all four polarizations.
     """
 
-    def __init__(self, sum_files, diff_files=None, apriori_xants=[], Nbls_per_load=None):
+    def __init__(self, sum_files, diff_files=None, apriori_xants=[], Nbls_per_load=None,
+                 Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
         """Initilize an AntennaMetrics object and load mean visibility amplitudes.
 
         Parameters
@@ -312,6 +313,16 @@ class AntennaMetrics():
         Nbls_per_load : integer, optional
             Number of baselines to load simultaneously. Trades speed for memory
             efficiency. Default None means load all baselines.
+        Nfiles_per_load : integer, optional
+            Number of files to load simultaneously and reduce to corr_stats.
+            If None, all files are loaded simultaneously. If not None, then
+            corr_stats are averaged in time with np.nanmean.
+        time_alg : function, optional
+            Averaging function along the time axis for producing correlation stats.
+            See calc_corr_stats() for more details.
+        freq_alg : function, optional
+            Averaging function along the frequency axis for producing correlation stats.
+            See calc_corr_stats() for more details.
 
         Attributes
         ----------
@@ -395,7 +406,8 @@ class AntennaMetrics():
         self._reset_summary_stats()
 
         # Load and summarize data
-        self._load_corr_stats(Nbls_per_load=Nbls_per_load)
+        self._load_corr_stats(Nbls_per_load=Nbls_per_load, Nfiles_per_load=Nfiles_per_load,
+                              time_alg=time_alg, freq_alg=freq_alg)
 
     def _reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
