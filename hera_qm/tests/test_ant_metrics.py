@@ -260,8 +260,8 @@ def test_init():
             assert np.real(am.corr_stats[bl]) >= 0
             assert np.imag(am.corr_stats[bl]) == 0
 
-        # test Nbls_per_load
-        am2 = ant_metrics.AntennaMetrics(**to_load, Nbls_per_load=100)
+        # test Nbls_per_load and Nfiles_per_load
+        am2 = ant_metrics.AntennaMetrics(**to_load, Nbls_per_load=100, Nfiles_per_load=1)
         for bl in am.bls:
             assert am.corr_stats[bl] == am2.corr_stats[bl]
 
