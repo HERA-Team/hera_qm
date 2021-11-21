@@ -70,6 +70,8 @@ def get_metrics_ArgumentParser(method_name):
                         help='overwrites existing ant_metrics file (default False)')
         ap.add_argument('--Nbls_per_load', default=None, type=int,
                         help='Number of baselines to load simultaneously.')
+        ap.add_argument('--Nfiles_per_load', default=None, type=int,
+                        help='Number of files to load simultaneously.')
         ap.add_argument('-q', '--quiet', action='store_false', dest='verbose', default=True,
                         help='Silence feedback to the command line.')
 
