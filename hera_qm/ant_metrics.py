@@ -586,7 +586,7 @@ class AntennaMetrics():
 
 def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants_yaml=None,
                     crossCut=0.0, deadCut=0.4, metrics_path='', extension='.ant_metrics.hdf5',
-                    overwrite=False, Nbls_per_load=None, history='', verbose=True):
+                    overwrite=False, Nbls_per_load=None, Nfiles_per_load=None, history='', verbose=True):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
@@ -626,6 +626,10 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
     Nbls_per_load : integer, optional
         Number of baselines to load simultaneously. Trades speed for memory
         efficiency. Default None means load all baselines.
+    Nfiles_per_load : integer, optional
+        Number of files to load simultaneously and reduce to corr_stats.
+        If None, all files are loaded simultaneously. If not None, then
+        corr_stats are averaged in time with np.nanmean.
     history : str, optional
         The history the add to metrics. Default is nothing (empty string).
     verbose : bool, optional
@@ -638,7 +642,8 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
         apriori_xants = list(set(list(apriori_xants) + apaf))
 
     # run ant metrics
-    am = AntennaMetrics(sum_files, diff_files, apriori_xants=apriori_xants, Nbls_per_load=Nbls_per_load)
+    am = AntennaMetrics(sum_files, diff_files, apriori_xants=apriori_xants,
+                        Nbls_per_load=Nbls_per_load, Nfiles_per_load=Nfiles_per_load)
     am.iterative_antenna_metrics_and_flagging(crossCut=crossCut, deadCut=deadCut, verbose=verbose)
     am.history = am.history + history
 
