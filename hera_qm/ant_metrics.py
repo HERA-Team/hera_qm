@@ -208,7 +208,7 @@ def corr_cross_pol_metrics(corr_stats, xants=[]):
         in correlation metrics (xx-xy, xx-yx, yy-xy, yy-yx).
     """
 
-    from hera_cal.utils import split_pol, split_bl, reverse_bl
+    from hera_cal.utils import split_pol, split_bl
     from hera_cal.datacontainer import DataContainer
 
     # cast corr_stats as DataContainer to abstract away polarization/conjugation
@@ -455,8 +455,9 @@ class AntennaMetrics():
 
             del hd_sums[0], hd_diffs[0]  # save memory by deleting after each file load
 
-        # reduce to a single stat per baseline (rather than per baseline, per file group)
-        self.corr_stats = {bl: time_alg(corr_stats[bl]) for bl in self.bls}
+        # reduce to a single stat per baseline (rather than per baseline, per file group) and cast as DataContainer
+        from hera_cal.datacontainer import DataContainer
+        self.corr_stats = DataContainer({bl: time_alg(corr_stats[bl]) for bl in self.bls})
 
     def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median correlation coefficient is 0.0.
