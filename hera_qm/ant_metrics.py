@@ -506,6 +506,17 @@ class AntennaMetrics():
             if ant_to_flag[1] == ap2:
                 self.corr_matrices[pol][:, self.ant_to_index[ant_to_flag]] = np.nan
 
+    def _corr_metrics_per_ant(self):
+        """Computes dictionary indexed by (ant, antpol) of the averaged unflagged correlation statistic.
+        """
+        per_ant_mean_corr_metrics = {}
+        for pol in self.same_pols:
+            # average over one antenna dimension
+            mean_corr_matrix = np.nanmean(self.corr_matrices[pol], axis=0)
+            antpol = self.split_pol(pol)[0]
+            for ant, metric in zip(self.ants_per_antpol[antpol], mean_corr_matrix):
+                per_ant_mean_corr_metrics[ant] = metric
+        return per_ant_mean_corr_metrics
     def _run_all_metrics(self):
         """Local call for all metrics as part of iterative flagging method.
         """
