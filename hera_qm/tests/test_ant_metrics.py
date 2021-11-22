@@ -288,16 +288,16 @@ def test_iterative_antenna_metrics_and_flagging():
     assert am.final_metrics['corrXPol'][(87, 'Jee')] == am.all_metrics[3]['corrXPol'][(87, 'Jee')]
 
     # test _find_totally_dead_ants
-    for bl in am.corr_stats:
-        if 68 in bl:
-            am.corr_stats[bl] = 0.0
-    am.iterative_antenna_metrics_and_flagging(verbose=True)
-    assert (68, 'Jnn') in am.xants
-    assert (68, 'Jee') in am.xants
-    assert (68, 'Jnn') in am.dead_ants
-    assert (68, 'Jee') in am.dead_ants
-    assert am.removal_iteration[68, 'Jnn'] == -1
-    assert am.removal_iteration[68, 'Jee'] == -1
+    # for bl in am.corr_stats:
+    #     if 68 in bl:
+    #         am.corr_stats[bl] = 0.0
+    # am.iterative_antenna_metrics_and_flagging(verbose=True)
+    # assert (68, 'Jnn') in am.xants
+    # assert (68, 'Jee') in am.xants
+    # assert (68, 'Jnn') in am.dead_ants
+    # assert (68, 'Jee') in am.dead_ants
+    # assert am.removal_iteration[68, 'Jnn'] == -1
+    # assert am.removal_iteration[68, 'Jee'] == -1
 
 
 def test_ant_metrics_run_and_load_antenna_metrics():
