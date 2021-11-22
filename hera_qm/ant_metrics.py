@@ -433,10 +433,11 @@ class AntennaMetrics():
         for metric, metName in zip(metVals, metNames):
             metrics[metName] = metric
             for key in metric:
-                if metName in self.final_metrics:
-                    self.final_metrics[metName][key] = metric[key]
-                else:
-                    self.final_metrics[metName] = {key: metric[key]}
+                if np.isfinite(metric[key]):
+                    if metName in self.final_metrics:
+                        self.final_metrics[metName][key] = metric[key]
+                    else:
+                        self.final_metrics[metName] = {key: metric[key]}
         self.all_metrics.update({self.iter: metrics})
 
     def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=0.4, verbose=False):
