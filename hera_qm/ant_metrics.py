@@ -352,8 +352,16 @@ class AntennaMetrics():
             History to append to the metrics files when writing out files.
 
         """
-        # Instantiate HERAData object and figure out baselines
+        
         from hera_cal.io import HERAData
+        from hera_cal.utils import split_bl, comply_pol, split_pol, join_pol
+        # prevents the need for importing again later
+        self.HERAData = HERAData
+        self.split_bl = split_bl
+        self.join_pol = join_pol
+        self.split_pol = split_pol
+
+        # Instantiate HERAData object and figure out baselines
         if isinstance(sum_files, str):
             sum_files = [sum_files]
         if isinstance(diff_files, str):
