@@ -543,9 +543,9 @@ class AntennaMetrics():
         metNames = []
         metVals = []
         metNames.append('corr')
-        metVals.append(corr_metrics(self.corr_stats, xants=self.xants, pols=self.same_pols))
+        metVals.append(self._corr_metrics_per_ant())
         metNames.append('corrXPol')
-        metVals.append(corr_cross_pol_metrics(self.corr_stats, xants=self.xants))
+        metVals.append(self._corr_cross_pol_metrics_per_ant())
 
         # Save all metrics
         metrics = {}
@@ -583,7 +583,7 @@ class AntennaMetrics():
 
             # Find most likely dead/crossed antenna
             deadMetrics = {ant: metric for ant, metric in self.all_metrics[iteration]['corr'].items() if np.isfinite(metric)}
-            crossMetrics = {ant: np.max(metric) for ant, metric in self.all_metrics[iteration]['corrXPol'].items() if np.isfinite(metric)}
+            crossMetrics = {ant: np.nanmax(metric) for ant, metric in self.all_metrics[iteration]['corrXPol'].items() if np.isfinite(metric)}
             if (len(deadMetrics) == 0) or (len(crossMetrics) == 0):
                 break  # no unflagged antennas remain
             worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
@@ -598,6 +598,7 @@ class AntennaMetrics():
                     self.xants.append(crossed_ant)
                     self.crossed_ants.append(crossed_ant)
                     self.removal_iteration[crossed_ant] = iteration
+                    self._flag_corr_matrices(crossed_ant)
                     if verbose:
                         print(f'On iteration {iteration} we flag {crossed_ant} with cross-pol corr metric of {crossMetrics[worstCrossAnt]}.')
             elif (worstDeadCutDiff < worstCrossCutDiff) and (worstDeadCutDiff < 0):
@@ -606,6 +607,7 @@ class AntennaMetrics():
                     self.xants.append(dead_ant)
                     self.dead_ants.append(dead_ant)
                     self.removal_iteration[dead_ant] = iteration
+                    self._flag_corr_matrices(dead_ant)
                     if verbose:
                         print(f'On iteration {iteration} we flag {dead_ant} with corr metric z of {deadMetrics[worstDeadAnt]}.')
             else:
