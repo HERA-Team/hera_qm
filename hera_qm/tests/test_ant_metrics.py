@@ -284,8 +284,8 @@ def test_iterative_antenna_metrics_and_flagging():
         for ant in am.all_metrics[1][metric]:
             assert (am.all_metrics[1][metric][ant] <= 1) or np.isnan(am.all_metrics[1][metric][ant])
     assert am.final_metrics['corrXPol'][(87, 'Jnn')] == am.final_metrics['corrXPol'][(87, 'Jee')]
-    assert am.final_metrics['corrXPol'][(87, 'Jnn')] == am.all_metrics[5]['corrXPol'][(87, 'Jnn')]
-    assert am.final_metrics['corrXPol'][(87, 'Jee')] == am.all_metrics[5]['corrXPol'][(87, 'Jee')]
+    assert am.final_metrics['corrXPol'][(87, 'Jnn')] == am.all_metrics[3]['corrXPol'][(87, 'Jnn')]
+    assert am.final_metrics['corrXPol'][(87, 'Jee')] == am.all_metrics[3]['corrXPol'][(87, 'Jee')]
 
     # test _find_totally_dead_ants
     for bl in am.corr_stats:
