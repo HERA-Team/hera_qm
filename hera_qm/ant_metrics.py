@@ -517,6 +517,25 @@ class AntennaMetrics():
             for ant, metric in zip(self.ants_per_antpol[antpol], mean_corr_matrix):
                 per_ant_mean_corr_metrics[ant] = metric
         return per_ant_mean_corr_metrics
+
+    def _corr_cross_pol_metrics_per_ant(self):
+        """Computes dictionary indexed by (ant, antpol) of the cross-polarization statistic.
+        """
+        # construct all four combintions of same pols and cross pols
+        matrix_pol_diffs = []
+        for sp in self.same_pols:
+            for cp in self.cross_pols:
+                matrix_pol_diffs.append(self.corr_matrices[sp] - self.corr_matrices[cp])
+
+        # average over one antenna dimension and then take the maximum of the four combinations
+        cross_pol_metrics = np.nanmax(np.nanmean(matrix_pol_diffs, axis=1), axis=0)
+
+        per_ant_corr_cross_pol_metrics = {}
+        for antpol, ants in self.ants_per_antpol.items():
+            for ant, metric in zip(ants, cross_pol_metrics):
+                per_ant_corr_cross_pol_metrics[ant] = metric
+        return per_ant_corr_cross_pol_metrics
+
     def _run_all_metrics(self):
         """Local call for all metrics as part of iterative flagging method.
         """
