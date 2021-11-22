@@ -482,21 +482,19 @@ class AntennaMetrics():
         metrics or zscores. Their removal iteration is -1 (i.e. before iterative
         flagging).
         """
-        # assign corr_stats to antennas
-        corr_stats_by_ant = {ant: [] for ant in self.ants}
-        for bl in self.corr_stats:
-            for ant in self.split_bl(bl):
-                corr_stats_by_ant[ant].append(self.corr_stats[bl])
-
-        # remove antennas that are totally dead and all nans
-        for ant, corrs in corr_stats_by_ant.items():
-            med = np.nanmedian(corrs)
-            if ~np.isfinite(med) or (med == 0):
-                self.xants.append(ant)
-                self.dead_ants.append(ant)
-                self.removal_iteration[ant] = -1
+        for pol in self.same_pols:
+            # median over one antenna dimension
+            med_corr_matrix = np.nanmedian(self.corr_matrices[pol], axis=0)
+            is_dead = (med_corr_matrix == 0) | ~np.isfinite(med_corr_matrix)
+            antpol = self.split_pol(pol)[0]
+            dead_ants = [self.ants_per_antpol[antpol][i] for i in np.argwhere(is_dead)[:, 0]]
+            for dead_ant in dead_ants:
+                self._flag_corr_matrices(dead_ant)
+                self.xants.append(dead_ant)
+                self.dead_ants.append(dead_ant)
+                self.removal_iteration[dead_ant] = -1
                 if verbose:
-                    print(f'Antenna {ant} appears totally dead and is removed.')
+                    print(f'Antenna {dead_ant} appears totally dead and is removed.')
 
     def _run_all_metrics(self):
         """Local call for all metrics as part of iterative flagging method.
