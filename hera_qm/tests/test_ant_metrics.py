@@ -254,16 +254,10 @@ def test_init():
         assert am.all_metrics == {}
         assert am.final_metrics == {}
 
-        # test _load_time_freq_abs_vis_stats
-        for bl in am.bls:
-            assert bl in am.corr_stats
-            assert np.real(am.corr_stats[bl]) >= 0
-            assert np.imag(am.corr_stats[bl]) == 0
-
         # test Nbls_per_load and Nfiles_per_load
         am2 = ant_metrics.AntennaMetrics(**to_load, Nbls_per_load=100, Nfiles_per_load=1)
-        for bl in am.bls:
-            assert am.corr_stats[bl] == am2.corr_stats[bl]
+        for pol in am.corr_matrices:
+            np.testing.assert_array_equal(am.corr_matrices[pol], am2.corr_matrices[pol])
 
 
 def test_iterative_antenna_metrics_and_flagging():
