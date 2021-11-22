@@ -350,6 +350,7 @@ class AntennaMetrics():
                 self.corr_matrices[bl[2]][self.ant_to_index[ant1], self.ant_to_index[ant2]] = corr_stats[bl]
         for pol, cm in self.corr_matrices.items(): 
             self.corr_matrices[pol] = np.nanmean([cm, cm.T], axis=0)  # symmetrize
+        self.corr_matrices_for_xpol = deepcopy(self.corr_matrices)
 
     def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median correlation coefficient is 0.0.
@@ -382,6 +383,10 @@ class AntennaMetrics():
             if ant_to_flag[1] == ap2:
                 self.corr_matrices[pol][:, self.ant_to_index[ant_to_flag]] = np.nan
 
+            # flag both polarizations for the xpol calculation to match previous versions of this algorithm
+            self.corr_matrices_for_xpol[pol][self.ant_to_index[(ant_to_flag[0], ap1)], :] = np.nan
+            self.corr_matrices_for_xpol[pol][:, self.ant_to_index[(ant_to_flag[0], ap2)]] = np.nan
+
     def _corr_metrics_per_ant(self):
         """Computes dictionary indexed by (ant, antpol) of the averaged unflagged correlation statistic.
         """
@@ -401,7 +406,7 @@ class AntennaMetrics():
         matrix_pol_diffs = []
         for sp in self.same_pols:
             for cp in self.cross_pols:
-                matrix_pol_diffs.append(self.corr_matrices[sp] - self.corr_matrices[cp])
+                matrix_pol_diffs.append(self.corr_matrices_for_xpol[sp] - self.corr_matrices_for_xpol[cp])
 
         # average over one antenna dimension and then take the maximum of the four combinations
         cross_pol_metrics = np.nanmax(np.nanmean(matrix_pol_diffs, axis=1), axis=0)
