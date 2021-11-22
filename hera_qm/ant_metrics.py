@@ -282,7 +282,6 @@ def load_antenna_metrics(filename):
 # High level functionality for HERA
 #######################################################################
 
-
 class AntennaMetrics():
     """Container for holding data and meta-data for ant metrics calculations.
 
@@ -382,17 +381,16 @@ class AntennaMetrics():
         else:
             self.bls = self.hd_sum.bls
 
-        # Figure out polarizations in the data:
-        from hera_cal.utils import split_bl, comply_pol, split_pol
+        # Figure out polarizations in the data
         self.pols = set([bl[2] for bl in self.bls])
         self.cross_pols = [pol for pol in self.pols if split_pol(pol)[0] != split_pol(pol)[1]]
         self.same_pols = [pol for pol in self.pols if split_pol(pol)[0] == split_pol(pol)[1]]
 
         # Figure out which antennas are in the data
-        self.split_bl = split_bl  # prevents the need for importing again later
-        self.ants = set([ant for bl in self.bls for ant in split_bl(bl)])
-        self.antnums = set([ant[0] for ant in self.ants])
-        self.antpols = set([ant[1] for ant in self.ants])
+        self.ants = sorted(sorted(set([ant for bl in self.bls for ant in split_bl(bl)])))
+        self.antnums = sorted(set([ant[0] for ant in self.ants]))
+        self.antpols = sorted(set([ant[1] for ant in self.ants]))
+        self.ants_per_antpol = {antpol: sorted([ant for ant in self.ants if ant[1] == antpol]) for antpol in self.antpols}
 
         # Parse apriori_xants
         if not (isinstance(apriori_xants, list) or isinstance(apriori_xants, np.ndarray)):
@@ -414,9 +412,9 @@ class AntennaMetrics():
         self.history = ''
         self._reset_summary_stats()
 
-        # Load and summarize data
-        self._load_corr_stats(Nbls_per_load=Nbls_per_load, Nfiles_per_load=Nfiles_per_load,
-                              time_alg=time_alg, freq_alg=freq_alg)
+        # Load and summarize data and convert into correlation matrices
+        self._load_corr_matrices(Nbls_per_load=Nbls_per_load, Nfiles_per_load=Nfiles_per_load,
+                                 time_alg=time_alg, freq_alg=freq_alg)
 
     def _reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
