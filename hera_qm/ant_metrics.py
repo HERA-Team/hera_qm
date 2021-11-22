@@ -496,6 +496,16 @@ class AntennaMetrics():
                 if verbose:
                     print(f'Antenna {dead_ant} appears totally dead and is removed.')
 
+    def _flag_corr_matrices(self, ant_to_flag):
+        """Sets all rows and columns in self.corr_matrices corresponding to the antenna to np.nan.
+        """
+        for pol in self.corr_matrices:
+            ap1, ap2 = self.split_pol(pol)
+            if ant_to_flag[1] == ap1:
+                self.corr_matrices[pol][self.ant_to_index[ant_to_flag], :] = np.nan
+            if ant_to_flag[1] == ap2:
+                self.corr_matrices[pol][:, self.ant_to_index[ant_to_flag]] = np.nan
+
     def _run_all_metrics(self):
         """Local call for all metrics as part of iterative flagging method.
         """
