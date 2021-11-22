@@ -429,23 +429,23 @@ class AntennaMetrics():
             self.xants.append(ant)
             self.removal_iteration[ant] = -1
 
-    def _load_corr_stats(self, Nbls_per_load=None, Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
-        """Loop through groups of baselines to calculate self.corr_stats using calc_corr_stats()."""
+    def _load_corr_matrices(self, Nbls_per_load=None, Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
+        """Loop through groups of baselines to calculate self.corr_matrices using calc_corr_stats().
+        """
         bl_load_groups = [None]  # load all baselines simultaneously
         if Nbls_per_load is not None:
             bl_load_groups = [self.bls[i:i + Nbls_per_load]
                               for i in range(0, len(self.bls), Nbls_per_load)]
 
+        # initialize HERAData objects
         corr_stats = {bl: [] for bl in self.bls}
-
         hd_sums = [deepcopy(self.hd_sum)]
         hd_diffs = [deepcopy(self.hd_diff)]
         if Nfiles_per_load is not None:
-            from hera_cal.io import HERAData
             chunker = lambda paths: [paths[i:i + Nfiles_per_load] for i in range(0, len(paths), Nfiles_per_load)]
-            hd_sums = [HERAData(filepaths) for filepaths in chunker(self.hd_sum.filepaths)]
+            hd_sums = [self.HERAData(filepaths) for filepaths in chunker(self.hd_sum.filepaths)]
             if self.hd_diff is not None:
-                hd_diffs = [HERAData(filepath) for filepath in chunker(self.hd_diff.filepaths)]
+                hd_diffs = [self.HERAData(filepath) for filepath in chunker(self.hd_diff.filepaths)]
         while len(hd_sums) > 0:
             # loop through baseline load groups, computing corr_stats
             for blg in bl_load_groups:
@@ -463,9 +463,19 @@ class AntennaMetrics():
 
             del hd_sums[0], hd_diffs[0]  # save memory by deleting after each file load
 
-        # reduce to a single stat per baseline (rather than per baseline, per file group) and cast as DataContainer
-        from hera_cal.datacontainer import DataContainer
-        self.corr_stats = DataContainer({bl: time_alg(corr_stats[bl]) for bl in self.bls})
+        # reduce to a single stat per baseline (rather than per baseline, per file group)
+        corr_stats = {bl: time_alg(corr_stats[bl]) for bl in self.bls}
+
+        # convert from corr stats to corr matrices
+        self.ant_to_index = {ant: i for ants in self.ants_per_antpol.values() for i, ant in enumerate(ants)}
+        self.corr_matrices = {self.join_pol(ap1, ap2): np.full((len(self.ants_per_antpol[ap1]), len(self.ants_per_antpol[ap2])), np.nan)
+                              for ap1 in self.antpols for ap2 in self.antpols}
+        for bl in corr_stats:
+            if bl[0] != bl[1]:  # ignore autocorrelations
+                ant1, ant2 = self.split_bl(bl)
+                self.corr_matrices[bl[2]][self.ant_to_index[ant1], self.ant_to_index[ant2]] = corr_stats[bl]
+        for pol, cm in self.corr_matrices.items(): 
+            self.corr_matrices[pol] = np.nanmean([cm, cm.T], axis=0)  # symmetrize
 
     def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median correlation coefficient is 0.0.
