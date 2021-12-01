@@ -304,7 +304,7 @@ class AntennaMetrics():
             self.removal_iteration[ant] = -1
 
     def _load_files_and_update_corr_stats(self, corr_stats, sum_files, diff_files, bl_load_groups):
-        """Loop over baseline groups and sum/diff files, extending the existing corr_stats dict of lists.
+        """Loop over baseline groups, loading sum/diff files and extending the existing corr_stats dict of lists.
         """
         # loop over baseline groups
         for blg in bl_load_groups:
