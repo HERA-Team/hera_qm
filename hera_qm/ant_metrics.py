@@ -303,39 +303,54 @@ class AntennaMetrics():
             self.xants.append(ant)
             self.removal_iteration[ant] = -1
 
+    def _load_files_and_update_corr_stats(self, corr_stats, sum_files, diff_files, bl_load_groups):
+        """Loop over baseline groups and sum/diff files, extending the existing corr_stats dict of lists.
+        """
+        # loop over baseline groups
+        for blg in bl_load_groups:
+            # load sum files
+            hd_sum = self.HERAData(sum_files)
+            data_sum, flags, _ = hd_sum.read(bls=blg, axis='blt')
+            del hd_sum
+
+            # load diff files, if appropraite
+            data_diff = None
+            if diff_files is not None:
+                hd_diff = self.HERAData(diff_files)
+                data_diff, flags_diff, _ = hd_diff.read(bls=blg, axis='blt')
+                del hd_diff
+                for bl in flags:
+                    flags[bl] |= flags_diff[bl]
+
+            # compute corr_stats and append them to list, weighting by the number of integrations
+            for bl, stat in calc_corr_stats(data_sum, data_diff=data_diff, flags=flags).items():
+                corr_stats[bl].extend([stat] * len(data_sum.times))
+
     def _load_corr_matrices(self, Nbls_per_load=None, Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
         """Loop through groups of baselines to calculate self.corr_matrices using calc_corr_stats().
         """
+        # chunk baseline load groups
         bl_load_groups = [None]  # load all baselines simultaneously
         if Nbls_per_load is not None:
             bl_load_groups = [self.bls[i:i + Nbls_per_load]
                               for i in range(0, len(self.bls), Nbls_per_load)]
 
-        # initialize HERAData objects
-        corr_stats = {bl: [] for bl in self.bls}
-        hd_sums = [deepcopy(self.hd_sum)]
-        hd_diffs = [deepcopy(self.hd_diff)]
+        # chunk file load groups
+        sum_files = deepcopy(self.datafile_list_sum)
+        diff_files = deepcopy(self.datafile_list_diff)
         if Nfiles_per_load is not None:
             chunker = lambda paths: [paths[i:i + Nfiles_per_load] for i in range(0, len(paths), Nfiles_per_load)]
-            hd_sums = [self.HERAData(filepaths) for filepaths in chunker(self.hd_sum.filepaths)]
-            if self.hd_diff is not None:
-                hd_diffs = [self.HERAData(filepath) for filepath in chunker(self.hd_diff.filepaths)]
-        while len(hd_sums) > 0:
-            # loop through baseline load groups, computing corr_stats
-            for blg in bl_load_groups:
-                # read data for this 
-                data_sum, flags, _ = hd_sums[0].read(bls=blg, axis='blt')
-                data_diff = None
-                if hd_diffs[0] is not None:
-                    data_diff, flags_diff, _ = hd_diffs[0].read(bls=blg, axis='blt')
-                    for bl in flags:
-                        flags[bl] |= flags_diff[bl]
+            sum_files = chunker(sum_files)
+            if diff_files is not None:
+                diff_files = chunker(diff_files)
+        # turn diff_files into a list of Nones to enable the zip below
+        if diff_files is None:
+            diff_files = [None for i in range(len(sum_files))]
 
-                # compute corr_stats and append them to list, weighting by the number of files
-                for bl, stat in calc_corr_stats(data_sum, data_diff=data_diff, flags=flags).items():
-                    corr_stats[bl].extend([stat] * len(hd_sums[0].filepaths))
-
-            del hd_sums[0], hd_diffs[0]  # save memory by deleting after each file load
+        # load data and calculate corr_stats
+        corr_stats = {bl: [] for bl in self.bls}
+        for sum_file_group, diff_file_group in zip(sum_files, diff_files):
+            self._load_files_and_update_corr_stats(corr_stats, sum_file_group, diff_file_group, bl_load_groups)
 
         # reduce to a single stat per baseline (rather than per baseline, per file group)
         corr_stats = {bl: time_alg(corr_stats[bl]) for bl in self.bls}
