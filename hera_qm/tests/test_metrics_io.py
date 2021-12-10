@@ -465,11 +465,12 @@ def test_process_ex_ants_bad_string():
 
 def test_process_ex_ants_string_and_file():
     ex_ants = '0,1'
-    met_file = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
-    xants = metrics_io.process_ex_ants(metrics_files=met_file)
-    assert xants == [81]
-    xants = metrics_io.process_ex_ants(ex_ants=ex_ants, metrics_files=met_file)
-    assert xants == [0, 1, 81]
+    for ext in ['hdf5', 'json']:
+        met_file = os.path.join(DATA_PATH, f'example_ant_metrics.{ext}')
+        xants = metrics_io.process_ex_ants(metrics_files=met_file)
+        assert xants == [81]
+        xants = metrics_io.process_ex_ants(ex_ants=ex_ants, metrics_files=met_file)
+        assert xants == [0, 1, 81]
 
 
 def test_boolean_read_write_json():
