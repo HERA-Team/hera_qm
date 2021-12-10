@@ -1455,18 +1455,18 @@ def chi_sq_pipe(uv, alg='zscore_full_array', modified=False, sig_init=6.0,
     return uvf_m, uvf_fws
 
 def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
-                   alg='detrend_medfilt', kt_size=8, kf_size=8,
-                   xants=None, cal_mode='gain', correlations='cross',
-                   wf_method='quadmean', sig_init=5.0, sig_adj=2.0, label='',
-                   calculate_uvf_apriori=False, reinitialize=True,
-                   Nwf_per_load=None, apply_uvf_apriori=True,
-                   dtype='uvcal', run_filter=True,
-                   metrics=None, flags=None, modified_z_score=False,
-                   a_priori_flag_yaml=None,
-                   a_priori_ants_only=False,
-                   run_check=True,
-                   check_extra=True,
-                   run_check_acceptability=True):
+                  alg='detrend_medfilt', kt_size=8, kf_size=8,
+                  xants=None, cal_mode='gain', correlations='cross',
+                  wf_method='quadmean', sig_init=5.0, sig_adj=2.0, label='',
+                  calculate_uvf_apriori=False, reinitialize=True,
+                  Nwf_per_load=None, apply_uvf_apriori=True,
+                  dtype='uvcal', run_filter=True,
+                  metrics=None, flags=None, modified_z_score=False,
+                  a_priori_flag_yaml=None,
+                  a_priori_ants_only=False,
+                  run_check=True,
+                  check_extra=True,
+                  run_check_acceptability=True):
     """Helper functin for xrfi run.
 
     This function contains the repeated pattern in xrfi run in which a uv_files is supplied
