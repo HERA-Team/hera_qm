@@ -463,14 +463,14 @@ def test_process_ex_ants_bad_string():
     pytest.raises(AssertionError, metrics_io.process_ex_ants, ex_ants=ex_ants)
 
 
-def test_process_ex_ants_string_and_file():
+@pytest.mark.parametrize('extension', ['hdf5', 'json'])
+def test_process_ex_ants_string_and_file(extension):
     ex_ants = '0,1'
-    for ext in ['hdf5', 'json']:
-        met_file = os.path.join(DATA_PATH, f'example_ant_metrics.{ext}')
-        xants = metrics_io.process_ex_ants(metrics_files=met_file)
-        assert xants == [81]
-        xants = metrics_io.process_ex_ants(ex_ants=ex_ants, metrics_files=met_file)
-        assert xants == [0, 1, 81]
+    met_file = os.path.join(DATA_PATH, f'example_ant_metrics.{extension}')
+    xants = metrics_io.process_ex_ants(metrics_files=met_file)
+    assert xants == [81]
+    xants = metrics_io.process_ex_ants(ex_ants=ex_ants, metrics_files=met_file)
+    assert xants == [0, 1, 81]
 
 
 def test_boolean_read_write_json():
