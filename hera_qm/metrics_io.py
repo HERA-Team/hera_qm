@@ -951,8 +951,8 @@ def process_ex_ants(ex_ants=None, metrics_files=[]):
 
     Returns
     -------
-    xants : list
-        A list of antennas to be excluded from analysis.
+    xants : list of ints
+        A list of antenna numbers to be excluded from analysis.
     """
     xants = set([])
     if ex_ants is not None:
@@ -969,15 +969,27 @@ def process_ex_ants(ex_ants=None, metrics_files=[]):
             metrics_files = [metrics_files]
         if len(metrics_files) > 0:
             for mf in metrics_files:
-                metrics = load_metric_file(mf)
-                # load from an ant_metrics file
-                if 'xants' in metrics:
-                    for ant in metrics['xants']:
-                        xants.add(int(ant[0]))  # Just take the antenna number, flagging both polarizations
-                # load from an auto_metrics file
-                elif 'ex_ants' in metrics and 'r2_ex_ants' in metrics['ex_ants']:
-                    for ant in metrics['ex_ants']['r2_ex_ants']:
-                        xants.add(int(ant))  # Auto metrics reports just antenna numbers
+                try: # try to get data out quickly via h5py
+                    with h5py.File(mf, 'r') as infile:
+                        # load from an ant_metrics file
+                        if 'xants' in infile['Metrics']:
+                            # Just take the antenna number, flagging both polarizations
+                            xants |= set([ant[0] for ant in infile['Metrics']['xants']])
+                        # load from an auto_metrics file                            
+                        elif 'ex_ants' in infile['Metrics'] and 'r2_ex_ants' in infile['Metrics']['ex_ants']:
+                            # Auto metrics reports just antenna numbers
+                            xants |= set(infile['Metrics']['ex_ants']['r2_ex_ants'])
+                
+                except: # fallback for the old JSON style
+                    metrics = load_metric_file(mf)
+                    # load from an ant_metrics file
+                    if 'xants' in metrics:
+                        for ant in metrics['xants']:
+                            xants.add(int(ant[0]))  # Just take the antenna number, flagging both polarizations
+                    # load from an auto_metrics file
+                    elif 'ex_ants' in metrics and 'r2_ex_ants' in metrics['ex_ants']:
+                        for ant in metrics['ex_ants']['r2_ex_ants']:
+                            xants.add(int(ant))  # Auto metrics reports just antenna numbers
     return sorted(list(xants))
 
 
