@@ -1464,6 +1464,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                   metrics=None, flags=None, modified_z_score=False,
                   a_priori_flag_yaml=None,
                   a_priori_ants_only=False,
+                  use_cross_pol_vis=True,
                   run_check=True,
                   check_extra=True,
                   run_check_acceptability=True):
@@ -1571,6 +1572,8 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
         See hera_qm.metrics_io.read_a_priori_[chan/int/ant]_flags() for details.
     a_priori_ants_only : bool, optional
         if True, only apply antenna flags from apriori yaml.
+    use_cross_pol_vis : bool, optionl
+        If True (default), also load and flag on cross-polarized visibilities (e.g. 'ne'/'en')
     run_check : bool
         Option to check for the existence and proper shapes of parameters
         on UVFlag Object.
@@ -1647,6 +1650,9 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
         # The following code applies if uv is a UVData object.
         if issubclass(uv.__class__, UVData):
             bls = uv.get_antpairpols()
+            if not use_cross_pol_vis:
+                # cut baselines whose polarization is not the same as its conjugate (e.g. 'ne')
+                bls = [app for app in bls if (app[2] == uvutils.conj_pol(app[2]))]
             if correlations == 'cross':
                 bls = [app for app in bls if app[1] != app[0]]
             elif correlations == 'auto':
