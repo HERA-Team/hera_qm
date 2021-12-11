@@ -292,6 +292,8 @@ def get_metrics_ArgumentParser(method_name):
                               'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))
         ap.add_argument('--a_apriori_times_and_freqs', default=False, action="store_true",
                         help="If True, ignore frequeny and time flags in apriori yaml file (only use ant flags).")
+        ap.add_argument('--skip_cross_pol_vis', default=False, action="store_true",
+                        help="Don't load or use cross-polarized visibilities, e.g. 'en' or 'ne', in flagging.")
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,
@@ -343,6 +345,8 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--a_priori_flag_yaml', default=None, type=str,
                         help=('Path to a priori flagging YAML with frequency, time, and/or '
                               'antenna flagsfor parsable by hera_qm.metrics_io.read_a_priori_*_flags()'))
+        ap.add_argument('--skip_cross_pol_vis', default=False, action="store_true",
+                        help="Don't load or use cross-polarized visibilities, e.g. 'en' or 'ne', in flagging.")
         ap.add_argument('--xrfi_path', default='', type=str,
                         help='Path to save flag files to. Default is same directory as input file.')
         ap.add_argument('--kt_size', default=8, type=int,
