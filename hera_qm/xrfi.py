@@ -1572,7 +1572,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
         See hera_qm.metrics_io.read_a_priori_[chan/int/ant]_flags() for details.
     a_priori_ants_only : bool, optional
         if True, only apply antenna flags from apriori yaml.
-    use_cross_pol_vis : bool, optionl
+    use_cross_pol_vis : bool, optional
         If True (default), also load and flag on cross-polarized visibilities (e.g. 'ne'/'en')
     run_check : bool
         Option to check for the existence and proper shapes of parameters
@@ -1776,7 +1776,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
 
 def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
              data_files=None, a_priori_flag_yaml=None,
-             a_priori_ants_only=False,
+             a_priori_ants_only=False, use_cross_pol_vis=True,
              omnical_median_filter=True, omnical_mean_filter=True,
              omnical_chi2_median_filter=True, omnical_chi2_mean_filter=True,
              omnical_zscore_filter=True,
@@ -1825,6 +1825,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         Default is False.
         WARNING: Default can cause excess flags in the vicinity the apriori regions
         due to edge effects.
+    use_cross_pol_vis : bool, optional
+        If True (default), also load and flag on cross-polarized visibilities (e.g. 'ne'/'en')
     omnical_median_filter : bool, optional
         If true, run a median filter on omnical gains.
         Mean filters are run after median filters.
@@ -2051,6 +2053,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                      calculate_uvf_apriori=True, modified_z_score=True,
                                                                                      a_priori_flag_yaml=a_priori_flag_yaml,
                                                                                      a_priori_ants_only=a_priori_ants_only,
+                                                                                     use_cross_pol_vis=use_cross_pol_vis,
                                                                                      run_check=run_check, check_extra=check_extra,
                                                                                      run_check_acceptability=run_check_acceptability)
     # to do the abscal filters, just change
@@ -2068,6 +2071,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                      calculate_uvf_apriori=True, modified_z_score=True,
                                                                                      a_priori_flag_yaml=a_priori_flag_yaml,
                                                                                      a_priori_ants_only=a_priori_ants_only,
+                                                                                     use_cross_pol_vis=use_cross_pol_vis,
                                                                                      run_check=run_check, check_extra=check_extra,
                                                                                      run_check_acceptability=run_check_acceptability)
     # now we perform first-round filters on our uvdata inputs.
@@ -2098,6 +2102,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                                   correlations=corr, calculate_uvf_apriori=True, modified_z_score=True,
                                                                                                   a_priori_flag_yaml=a_priori_flag_yaml,
                                                                                                   a_priori_ants_only=a_priori_ants_only,
+                                                                                                  use_cross_pol_vis=use_cross_pol_vis,
                                                                                                   run_check=run_check, check_extra=check_extra,
                                                                                                   run_check_acceptability=run_check_acceptability)
     # Now that we've had a chance to load in all of the provided data products and
@@ -2160,6 +2165,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                     calculate_uvf_apriori=False,
                                                                                     a_priori_flag_yaml=a_priori_flag_yaml,
                                                                                     a_priori_ants_only=a_priori_ants_only,
+                                                                                    use_cross_pol_vis=use_cross_pol_vis,
                                                                                     run_check=run_check, check_extra=check_extra,
                                                                                     run_check_acceptability=run_check_acceptability)
     # Meanfilter abscal. Note that init flags are pased as apriori_flags.
@@ -2175,6 +2181,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                     calculate_uvf_apriori=False,
                                                                                     a_priori_flag_yaml=a_priori_flag_yaml,
                                                                                     a_priori_ants_only=a_priori_ants_only,
+                                                                                    use_cross_pol_vis=use_cross_pol_vis,
                                                                                     run_check=run_check, check_extra=check_extra,
                                                                                     run_check_acceptability=run_check_acceptability)
     # mean filter omnivis and data files.
@@ -2196,6 +2203,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                calculate_uvf_apriori=False,
                                                                                a_priori_flag_yaml=a_priori_flag_yaml,
                                                                                a_priori_ants_only=a_priori_ants_only,
+                                                                               use_cross_pol_vis=use_cross_pol_vis,
                                                                                run_check=run_check, check_extra=check_extra,
                                                                                run_check_acceptability=run_check_acceptability)
     if len(metrics) > 0:
