@@ -1042,6 +1042,18 @@ def test_xrfi_run_step(tmpdir):
     assert np.all(np.isclose(uvf_f1x.flag_array, uvf_f2x.flag_array))
     assert np.all(np.isclose(uvf_a1x.flag_array, uvf_a2x.flag_array))
 
+    # test use_cross_pol_vis (since the file is all a single pol, the results should be the same)
+    uv3, uvf3, uvf_f3, uvf_a3, metrics3, flags3 = xrfi.xrfi_run_step(uv_files=raw_dfile,
+                                                                     calculate_uvf_apriori=True,
+                                                                     run_filter=True, dtype='uvdata',
+                                                                     use_cross_pol_vis=False,
+                                                                     wf_method='quadmean',
+                                                                     alg='detrend_medfilt',
+                                                                     correlations='cross')
+    assert np.all(np.isclose(uvf_f1.flag_array, uvf_f3.flag_array))
+    assert np.all(np.isclose(uvf_a1.flag_array, uvf_a3.flag_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf3.metric_array))
+
     # comparison for meanfilter.
     uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
     calculate_uvf_apriori=True, run_filter=True, dtype='uvdata', wf_method='mean', alg='detrend_meanfilt')
