@@ -12,6 +12,7 @@ args = ap.parse_args()
 history = ' '.join(sys.argv)
 
 xrfi.xrfi_run(data_files=args.data_files, a_priori_flag_yaml=args.a_priori_flag_yaml,
+              use_cross_pol_vis=not(args.skip_cross_pol_vis),
               cross_median_filter=args.cross_median_filter,
               cross_mean_filter=not(args.skip_cross_mean_filter),
               history=history, xrfi_path=args.xrfi_path, throw_away_edges=not(args.keep_edge_times),
