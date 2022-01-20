@@ -1648,7 +1648,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                                                        flag_times=not(a_priori_ants_only),
                                                        flag_freqs=not(a_priori_ants_only))
         # The following code applies if uv is a UVData object.
-        if issubclass(uv.__class__, UVData):
+        if issubclass(uv.__class__, UVData) and run_filter:
             bls = uv.get_antpairpols()
             if not use_cross_pol_vis:
                 # cut baselines whose polarization is not the same as its conjugate (e.g. 'ne')
@@ -1692,37 +1692,36 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 # data chunk.
                 elif apply_uvf_apriori:
                     flag_apply(uvf_apriori, uv, keep_existing=True, run_check=run_check, run_check_acceptability=run_check_acceptability, force_pol=True)
-                if run_filter:
-                    # We can compute individual metrics for each baseline and then collapse them
-                    # onto a running average metric. Some slight modifications to xrfi_pipe were necessary to make
-                    # this work. First, each individual chunk cannot be translated to a z-score centered at zero so
-                    # we disable this step (per chunk) with the center_metric keyword. We also don't want to flag or
-                    # reset the weights which we deactivate with the reset_weights and skip_flags keyword
-                    uvft, _ = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=True,
-                                             cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
-                                             reset_weights=False, center_metric=False, wf_method=wf_method,
-                                             label=label, run_check=run_check, check_extra=check_extra,
-                                             run_check_acceptability=run_check_acceptability)
-                    # if this is the first chunk, set uvf (metrics) equal to metrics chunk.
-                    if loadnum == 0:
-                        uvf = uvft
-                    # otherwise, combine metrics chunk with uvf aggragate.
-                    else:
-                        uvf.combine_metrics(uvft, method=wf_method, run_check=run_check,
-                                           check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-            if run_filter:
-                # now that we have a uvf that includes the combined metric of all the baselines, we can
-                # run one last round of xrfi_pipe with flagging enabled, centering the metric enabled, and resetting
-                # the weights enabled to perform these final steps which are run on the full collapsed metric.
-                # note that we pass uvf as an arg instead of uv. xrfi_pipe has been modified so that if a uvflag
-                # is passed in place of uvdata or uvcal, it skips the metric calculation /waterfalling
-                # steps and goes straight to steps performed on combined metrics, i.e.
-                # flagging, normalizing, and weights reseting.
-                uvf, uvf_f = xrfi_pipe(uvf, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=False,
-                                         cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
-                                         center_metric=True, reset_weights=True,
+                # We can compute individual metrics for each baseline and then collapse them
+                # onto a running average metric. Some slight modifications to xrfi_pipe were necessary to make
+                # this work. First, each individual chunk cannot be translated to a z-score centered at zero so
+                # we disable this step (per chunk) with the center_metric keyword. We also don't want to flag or
+                # reset the weights which we deactivate with the reset_weights and skip_flags keyword
+                uvft, _ = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=True,
+                                         cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
+                                         reset_weights=False, center_metric=False, wf_method=wf_method,
                                          label=label, run_check=run_check, check_extra=check_extra,
                                          run_check_acceptability=run_check_acceptability)
+                # if this is the first chunk, set uvf (metrics) equal to metrics chunk.
+                if loadnum == 0:
+                    uvf = uvft
+                # otherwise, combine metrics chunk with uvf aggragate.
+                else:
+                    uvf.combine_metrics(uvft, method=wf_method, run_check=run_check,
+                                       check_extra=check_extra, run_check_acceptability=run_check_acceptability)
+
+            # now that we have a uvf that includes the combined metric of all the baselines, we can
+            # run one last round of xrfi_pipe with flagging enabled, centering the metric enabled, and resetting
+            # the weights enabled to perform these final steps which are run on the full collapsed metric.
+            # note that we pass uvf as an arg instead of uv. xrfi_pipe has been modified so that if a uvflag
+            # is passed in place of uvdata or uvcal, it skips the metric calculation /waterfalling
+            # steps and goes straight to steps performed on combined metrics, i.e.
+            # flagging, normalizing, and weights reseting.
+            uvf, uvf_f = xrfi_pipe(uvf, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=False,
+                                     cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
+                                     center_metric=True, reset_weights=True,
+                                     label=label, run_check=run_check, check_extra=check_extra,
+                                     run_check_acceptability=run_check_acceptability)
         # the following code is for when uv is a UVCal object.
         elif issubclass(uv.__class__, UVCal):
             # if uvf_apriori is not provided and we wish to derive it from uv
