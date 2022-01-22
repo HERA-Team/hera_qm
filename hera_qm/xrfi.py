@@ -1975,10 +1975,16 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         raise ValueError("Must provide at least one of the following; ocalfits_files, acalfits_files, model_files, data_files")
 
     # recast strings as lists of strings
-    for varname in ['acalfits_files', 'ocalfits_files', 'model_files', 'data_files', 'output_prefixes']:
-        if isinstance(eval(varname), (str, np.string_)):
-            exec(f'{varname} = [{varname}]') 
-            
+    def _recast_as_list_if_str(to_cast):
+        if isinstance(to_cast, (str, np.string_)):
+            to_cast = [to_cast]
+        return to_cast
+    acalfits_files = _recast_as_list_if_str(acalfits_files)
+    ocalfits_files = _recast_as_list_if_str(ocalfits_files)
+    model_files = _recast_as_list_if_str(model_files)
+    data_files = _recast_as_list_if_str(data_files)
+    output_prefixes = _recast_as_list_if_str(output_prefixes)
+
     # ensure that an optional output prefix if no data file is provided.
     if output_prefixes is None:
         if data_files is not None:
