@@ -2008,7 +2008,6 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                             'a_priori_ants_only': a_priori_ants_only, 'use_cross_pol_vis': use_cross_pol_vis, 
                             'run_check': run_check, 'check_extra': check_extra, 'run_check_acceptability': run_check_acceptability}
         
-        
     # vdict stores all of the outputs (metrics, flags etc...) All possible products
     # are ultimately referenced by vdict but could be set to None. Outputs set to None are simply
     # not written and can be used to determine whether steps depending on them should be run.
@@ -2033,50 +2032,51 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         rndnum = {True: '1', False: '2'}[median_round]
         alg = {True: 'detrend_medfilt', False: 'detrend_meanfilt'}[median_round]
         modified = {True: 'modified ', False: ''}[median_round]
+        start_flag_name = {True: 'uvf_apriori', False: 'uvf_init'}[median_round]
         final_flag_name = {True: 'uvf_init', False: 'uvf_combined2'}[median_round]
-        
+
         # Median/mean filter omnical gains and chi^2
         if omnical_filter:
-            (vdict['uvc_o'], vdict[f'uvf_og{rnd}'], vdict[f'uvf_ogf{rnd}'], vdict['uvf_apriori'], metrics, flags) = \
-                xrfi_run_step(uv=vdict['uvc_o'], uv_files=ocalfits_files, alg=alg, cal_mode='gain', metrics=metrics, flags=flags,
+            (vdict['uvc_o'], vdict[f'uvf_og{rnd}'], vdict[f'uvf_ogf{rnd}'], vdict[start_flag_name], metrics, flags) = \
+                xrfi_run_step(uv=vdict['uvc_o'], uv_files=ocalfits_files, alg=alg, cal_mode='gain', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=False, label=f'Omnical gains, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
         if omnical_chi2_filter:
-            (vdict['uvc_o'], vdict[f'uvf_ox{rnd}'], vdict[f'uvf_oxf{rnd}'], vdict['uvf_apriori'], metrics, flags) = \
-                xrfi_run_step(uv=vdict['uvc_o'], uv_files=ocalfits_files, alg=alg, cal_mode='tot_chisq', metrics=metrics, flags=flags, 
+            (vdict['uvc_o'], vdict[f'uvf_ox{rnd}'], vdict[f'uvf_oxf{rnd}'], vdict[start_flag_name], metrics, flags) = \
+                xrfi_run_step(uv=vdict['uvc_o'], uv_files=ocalfits_files, alg=alg, cal_mode='tot_chisq', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=False, label=f'Omnical chisq, {label} filter.', apply_uvf_apriori=False, **xrfi_run_step_kwargs)
         if omnical_zscore_filter:
-            (vdict['uvc_o'], vdict[f'uvf_oz{rnd}'], vdict[f'uvf_ozf{rnd}'], vdict['uvf_apriori'], metrics, flags) = \
-                xrfi_run_step(uv=vdict['uvc_o'], uv_files=ocalfits_files, alg='zscore_full_array', cal_mode=None, metrics=metrics, flags=flags,
+            (vdict['uvc_o'], vdict[f'uvf_oz{rnd}'], vdict[f'uvf_ozf{rnd}'], vdict[start_flag_name], metrics, flags) = \
+                xrfi_run_step(uv=vdict['uvc_o'], uv_files=ocalfits_files, alg='zscore_full_array', cal_mode=None, metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=False, label=f'Omnical overall {modified}z-score of chisq.', apply_uvf_apriori=False, **xrfi_run_step_kwargs)
 
         # Median/mean filter abscal gains and chi^2
         if abscal_filter:
-            (vdict['uvc_a'], vdict[f'uvf_ag{rnd}'], vdict[f'uvf_agf{rnd}'], vdict['uvf_apriori'], metrics, flags) = \
-                xrfi_run_step(uv=vdict['uvc_a'], uv_files=acalfits_files, alg=alg, cal_mode='gain', metrics=metrics, flags=flags,
+            (vdict['uvc_a'], vdict[f'uvf_ag{rnd}'], vdict[f'uvf_agf{rnd}'], vdict[start_flag_name], metrics, flags) = \
+                xrfi_run_step(uv=vdict['uvc_a'], uv_files=acalfits_files, alg=alg, cal_mode='gain', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=False, label=f'Abscal gains, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
         if abscal_chi2_filter:
-            (vdict['uvc_a'], vdict[f'uvf_ax{rnd}'], vdict[f'uvf_axf{rnd}'], vdict['uvf_apriori'], metrics, flags) = \
-                xrfi_run_step(uv=vdict['uvc_a'], uv_files=acalfits_files, alg=alg, cal_mode='tot_chisq', metrics=metrics, flags=flags, 
+            (vdict['uvc_a'], vdict[f'uvf_ax{rnd}'], vdict[f'uvf_axf{rnd}'], vdict[start_flag_name], metrics, flags) = \
+                xrfi_run_step(uv=vdict['uvc_a'], uv_files=acalfits_files, alg=alg, cal_mode='tot_chisq', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=False, label=f'Abscal chisq, {label} filter.', apply_uvf_apriori=False, **xrfi_run_step_kwargs)
         if abscal_zscore_filter:
-            (vdict['uvc_a'], vdict[f'uvf_az{rnd}'], vdict[f'uvf_azf{rnd}'], vdict['uvf_apriori'], metrics, flags) = \
-                xrfi_run_step(uv=vdict['uvc_a'], uv_files=acalfits_files, alg='zscore_full_array', cal_mode=None, metrics=metrics, flags=flags,
+            (vdict['uvc_a'], vdict[f'uvf_az{rnd}'], vdict[f'uvf_azf{rnd}'], vdict[start_flag_name], metrics, flags) = \
+                xrfi_run_step(uv=vdict['uvc_a'], uv_files=acalfits_files, alg='zscore_full_array', cal_mode=None, metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=False, label=f'Abscal overall {modified}z-score of chisq.', apply_uvf_apriori=False, **xrfi_run_step_kwargs)
 
         # Median/mean filter omnical visibility solutions, cross-correlations, and autocorrelations
         if omnivis_filter:
-            (vdict['uv_v'], vdict[f'uvf_v{rnd}'], vdict[f'uvf_vf{rnd}'], vdict['uvf_apriori'], metrics, flags) = \
-                xrfi_run_step(uv=vdict['uv_v'], uv_files=model_files, alg=alg,  dtype='uvdata', correlations='both', metrics=metrics, flags=flags,
+            (vdict['uv_v'], vdict[f'uvf_v{rnd}'], vdict[f'uvf_vf{rnd}'], vdict[start_flag_name], metrics, flags) = \
+                xrfi_run_step(uv=vdict['uv_v'], uv_files=model_files, alg=alg,  dtype='uvdata', correlations='both', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=True, label=f'Omnical visibility solutions, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
         if cross_filter:
-            (vdict['uv_d'], vdict[f'uvf_d{rnd}'], vdict[f'uvf_df{rnd}'], vdict['uvf_apriori'], metrics, flags) = \
-                xrfi_run_step(uv=vdict['uv_d'], uv_files=data_files, alg=alg,  dtype='uvdata', correlations='cross', metrics=metrics, flags=flags,
+            (vdict['uv_d'], vdict[f'uvf_d{rnd}'], vdict[f'uvf_df{rnd}'], vdict[start_flag_name], metrics, flags) = \
+                xrfi_run_step(uv=vdict['uv_d'], uv_files=data_files, alg=alg,  dtype='uvdata', correlations='cross', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=True, label=f'Crosscorr, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
         if auto_filter:
-            (vdict['uv_d'], vdict[f'uvf_da{rnd}'], vdict[f'uvf_daf{rnd}'], vdict['uvf_apriori'], metrics, flags) = \
-                xrfi_run_step(uv=vdict['uv_d'], uv_files=data_files, alg=alg,  dtype='uvdata', correlations='auto', metrics=metrics, flags=flags,
+            (vdict['uv_d'], vdict[f'uvf_da{rnd}'], vdict[f'uvf_daf{rnd}'], vdict[start_flag_name], metrics, flags) = \
+                xrfi_run_step(uv=vdict['uv_d'], uv_files=data_files, alg=alg,  dtype='uvdata', correlations='auto', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=True, label=f'Autocorr, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
-            
+
         # Now that we've had a chance to load in all of the provided data products and run filters when specified, 
         # we combine the metrics computed so far into a combined metrics object, using the metrics list.
         if len(metrics) > 0:
@@ -2123,13 +2123,13 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     # settings for median round
     xrfi_run_step_kwargs['modified_z_score'] =  True 
     xrfi_run_step_kwargs['calculate_uvf_apriori'] = True
-    xrfi_run_step_kwargs['uvf_apriori'] = vdict['uvf_apriori']        
-            
+
     _run_all_filters(True, 
                      omnical_median_filter, omnical_chi2_median_filter, omnical_zscore_filter, 
                      abscal_median_filter, abscal_chi2_median_filter, abscal_zscore_filter,
                      omnivis_median_filter, cross_median_filter, auto_median_filter)
     spoof_init = (vdict['uvf_init'] is None)
+    median_round_flags_copy = copy.deepcopy(vdict['uvf_init'])
 
     ########################
     # RUN MEAN ROUND
@@ -2138,13 +2138,13 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     # settings for median round
     xrfi_run_step_kwargs['modified_z_score'] =  False 
     xrfi_run_step_kwargs['calculate_uvf_apriori'] = False
-    xrfi_run_step_kwargs['uvf_apriori'] = vdict['uvf_init']
 
     # Now perform the mean filtering after median filtering.
     _run_all_filters(False, 
                      omnical_mean_filter, omnical_chi2_mean_filter, omnical_zscore_filter, 
                      abscal_mean_filter, abscal_chi2_mean_filter, abscal_zscore_filter,
                      omnivis_mean_filter, cross_mean_filter, auto_mean_filter)
+    vdict['uvf_init'] = median_round_flags_copy  # prevents this from getting modified above
 
     ########################
     # WRITE EVERYTHING OUT
