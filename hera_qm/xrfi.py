@@ -2021,7 +2021,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                          omnical_filter, omnical_chi2_filter, omnical_zscore_filter, 
                          abscal_filter, abscal_chi2_filter, abscal_zscore_filter,
                          omnivis_filter, cross_filter, auto_filter):
-        '''This function runs all possible filters, updating vdict as appropriate'''
+        '''This function runs all possible filters, updating vdict as appropriate. 
+        rnd_label is "mean" or "median". All other args are booleans for whether to run that filter type.'''
         
         # Start with empty list of flags and metrics for later combination
         metrics = []
