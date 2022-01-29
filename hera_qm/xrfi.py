@@ -972,8 +972,8 @@ def threshold_wf(uvf_m, nsig_f=7., nsig_t=7., nsig_f_adj=3., nsig_t_adj=3.,
     return uvf_f
 
 
-def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
-               return_net_flags=False, run_check=True,
+def flag_apply(uvf, uv, keep_existing=True, force_pol=False, time_atol=1e-8,
+               history='', return_net_flags=False, run_check=True,
                check_extra=True, run_check_acceptability=True):
     """Apply flags from UVFlag or list of UVFlag objects to UVData or UVCal.
 
@@ -991,6 +991,11 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
     force_pol : bool, optional
         If True, will use 1 pol to broadcast to any other pol. If False, will
         require polarizations to match. Default is False.
+    time_atol : float, optional
+        Allowable time error in JD between times in uvf and times in uv to be
+        considered the same. Only used when uv is a UVData object or a UVFlag
+        object of baseline type and uvf is waterfall or antenna type. Default
+        value of 1e-8 corresponds to a bit under 1 ms.
     history : str, optional
         The history string to be added to uv.history. Default is empty string.
     return_net_flags : bool, optional
@@ -1037,8 +1042,8 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
         if uvf_i.type == 'waterfall':
             uvf_i = uvf_i.copy()  # don't change the input object
             if expected_type == 'baseline':
-                uvf_i.to_baseline(uv, force_pol=force_pol, run_check=run_check,
-                                  check_extra=check_extra,
+                uvf_i.to_baseline(uv, force_pol=force_pol, time_atol=time_atol,
+                                  run_check=run_check, check_extra=check_extra,
                                   run_check_acceptability=run_check_acceptability)
             else:
                 uvf_i.to_antenna(uv, force_pol=force_pol, run_check=run_check,
