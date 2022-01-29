@@ -1797,7 +1797,6 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
              output_prefixes=None, throw_away_edges=True, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
-
     This pipeline uses the detrending and watershed algorithms above.
     The algorithm is run on several data products: omnical gains, omnical chisq,
     abscal gains, abscal chisq, omnical visibility solutions, renormalized chisq,
@@ -1806,10 +1805,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     to get better estimate. The metrics and flags from each data product and both
     rounds are stored in the xrfi_path (which defaults to a subdirectory, see
     xrfi_path below). Also stored are the a priori flags and combined metrics/flags.
-
     User must provide at least one of ocalfits_files, acalfits_files, model_files,
     or data_files.
-
     Parameters
     ----------
     ocalfits_files : str or list of strings, optional
@@ -1970,11 +1967,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     run_check_acceptability : bool
         Option to check acceptable range of the values of parameters
         on UVFlag Object.
-
     Returns
     -------
     None
-
     """
     if ocalfits_files is None and acalfits_files is None and model_files is None and data_files is None:
         raise ValueError("Must provide at least one of the following; ocalfits_files, acalfits_files, model_files, data_files")
@@ -2018,38 +2013,38 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     # are ultimately referenced by vdict but could be set to None. Outputs set to None are simply
     # not written and can be used to determine whether steps depending on them should be run.
     vdict={'uvf_apriori': None,
-           'uvf_init': None, 'uvf_fws': None, 'uvf_f': None, 'uvf_metrics': None,
-           'uvf_metrics2': None, 'uvf_f2': None, 'uvf_fws2': None,
-           'uvf_combined2': None, 'uvc_o':None, 'uvc_a':None, 'uvc_v':None, 'uv_v':None, 'uv_d':None} # keep all the variables here.
+    'uvf_init': None, 'uvf_fws': None, 'uvf_f': None, 'uvf_metrics': None,
+    'uvf_metrics2': None, 'uvf_f2': None, 'uvf_fws2': None,
+    'uvf_combined2': None, 'uvc_o':None, 'uvc_a':None, 'uvc_v':None, 'uv_v':None, 'uv_d':None} # keep all the variables here.
 
-    def _run_all_filters(rnd_label, 
+    def _run_all_filters(median_round, 
                          omnical_filter, omnical_chi2_filter, omnical_zscore_filter, 
                          abscal_filter, abscal_chi2_filter, abscal_zscore_filter,
                          omnivis_filter, cross_filter, auto_filter):
-        '''This function runs all possible filters, updating vdict as appropriate. 
-        rnd_label is "mean" or "median". All other args are booleans for whether to run that filter type.'''
+        '''This function runs all possible filters, updating vdict as appropriate'''
         
         # Start with empty list of flags and metrics for later combination
         metrics = []
         flags = []
         
         # Modify these labels and parameters based on whether we're doing mean- or median-based statistics
-        rnd = {'median': '', 'mean': '2'}[rnd_label]
-        rndnum = {'median': '1', 'mean': '2'}[rnd_label]
-        alg = {'median': 'detrend_medfilt', 'mean': 'detrend_meanfilt'}[rnd_label]
-        modified = {'median': 'modified ', 'mean': ''}[rnd_label]
-        start_flag_name = {'median': 'uvf_apriori', 'mean': 'uvf_init'}[rnd_label]
-        final_flag_name = {'median': 'uvf_init', 'mean': 'uvf_combined2'}[rnd_label]
+        label = {True: 'median', False: 'mean'}[median_round]
+        rnd = {True: '', False: '2'}[median_round]
+        rndnum = {True: '1', False: '2'}[median_round]
+        alg = {True: 'detrend_medfilt', False: 'detrend_meanfilt'}[median_round]
+        modified = {True: 'modified ', False: ''}[median_round]
+        start_flag_name = {True: 'uvf_apriori', False: 'uvf_init'}[median_round]
+        final_flag_name = {True: 'uvf_init', False: 'uvf_combined2'}[median_round]
 
         # Median/mean filter omnical gains and chi^2
         if omnical_filter:
             (vdict['uvc_o'], vdict[f'uvf_og{rnd}'], vdict[f'uvf_ogf{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uvc_o'], uv_files=ocalfits_files, alg=alg, cal_mode='gain', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
-                              reinitialize=False, label=f'Omnical gains, {rnd_label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
+                              reinitialize=False, label=f'Omnical gains, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
         if omnical_chi2_filter:
             (vdict['uvc_o'], vdict[f'uvf_ox{rnd}'], vdict[f'uvf_oxf{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uvc_o'], uv_files=ocalfits_files, alg=alg, cal_mode='tot_chisq', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
-                              reinitialize=False, label=f'Omnical chisq, {rnd_label} filter.', apply_uvf_apriori=False, **xrfi_run_step_kwargs)
+                              reinitialize=False, label=f'Omnical chisq, {label} filter.', apply_uvf_apriori=False, **xrfi_run_step_kwargs)
         if omnical_zscore_filter:
             (vdict['uvc_o'], vdict[f'uvf_oz{rnd}'], vdict[f'uvf_ozf{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uvc_o'], uv_files=ocalfits_files, alg='zscore_full_array', cal_mode=None, metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
@@ -2059,12 +2054,12 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         if abscal_filter:
             (vdict['uvc_a'], vdict[f'uvf_ag{rnd}'], vdict[f'uvf_agf{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uvc_a'], uv_files=acalfits_files, alg=alg, cal_mode='gain', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
-                              reinitialize=False, label=f'Abscal gains, {rnd_label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
+                              reinitialize=False, label=f'Abscal gains, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
         if abscal_chi2_filter:
             (vdict['uvc_a'], vdict[f'uvf_ax{rnd}'], vdict[f'uvf_axf{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uvc_a'], uv_files=acalfits_files, alg=alg, cal_mode='tot_chisq', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
-                              reinitialize=False, label=f'Abscal chisq, {rnd_label} filter.', apply_uvf_apriori=False, **xrfi_run_step_kwargs)
-        if abscal_zscore_filter:    
+                              reinitialize=False, label=f'Abscal chisq, {label} filter.', apply_uvf_apriori=False, **xrfi_run_step_kwargs)
+        if abscal_zscore_filter:
             (vdict['uvc_a'], vdict[f'uvf_az{rnd}'], vdict[f'uvf_azf{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uvc_a'], uv_files=acalfits_files, alg='zscore_full_array', cal_mode=None, metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=False, label=f'Abscal overall {modified}z-score of chisq.', apply_uvf_apriori=False, **xrfi_run_step_kwargs)
@@ -2073,15 +2068,15 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         if omnivis_filter:
             (vdict['uv_v'], vdict[f'uvf_v{rnd}'], vdict[f'uvf_vf{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uv_v'], uv_files=model_files, alg=alg,  dtype='uvdata', correlations='both', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
-                              reinitialize=True, label=f'Omnical visibility solutions, {rnd_label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
+                              reinitialize=True, label=f'Omnical visibility solutions, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
         if cross_filter:
             (vdict['uv_d'], vdict[f'uvf_d{rnd}'], vdict[f'uvf_df{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uv_d'], uv_files=data_files, alg=alg,  dtype='uvdata', correlations='cross', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
-                              reinitialize=True, label=f'Crosscorr, {rnd_label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
+                              reinitialize=True, label=f'Crosscorr, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
         if auto_filter:
             (vdict['uv_d'], vdict[f'uvf_da{rnd}'], vdict[f'uvf_daf{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uv_d'], uv_files=data_files, alg=alg,  dtype='uvdata', correlations='auto', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
-                              reinitialize=True, label=f'Autocorr, {rnd_label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
+                              reinitialize=True, label=f'Autocorr, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
 
         # Now that we've had a chance to load in all of the provided data products and run filters when specified, 
         # we combine the metrics computed so far into a combined metrics object, using the metrics list.
@@ -2091,8 +2086,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
             else:
                 vdict[f'uvf_metrics{rnd}'] = copy.deepcopy(metrics[-1])
             
-            # Prep starting flags for combined metrics
-            if rnd_label == 'median':
+            # Prep starting flags for combined metrics    
+            if median_round:
                 flags_for_combined_metrics = ~vdict[f'uvf_metrics{rnd}'].weights_array[:, :, 0].astype(np.bool_)
             else:
                 if vdict['uvf_init'] is None:
@@ -2130,7 +2125,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     xrfi_run_step_kwargs['modified_z_score'] =  True 
     xrfi_run_step_kwargs['calculate_uvf_apriori'] = True
 
-    _run_all_filters('median', 
+    _run_all_filters(True, 
                      omnical_median_filter, omnical_chi2_median_filter, omnical_zscore_filter, 
                      abscal_median_filter, abscal_chi2_median_filter, abscal_zscore_filter,
                      omnivis_median_filter, cross_median_filter, auto_median_filter)
@@ -2146,7 +2141,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     xrfi_run_step_kwargs['calculate_uvf_apriori'] = False
 
     # Now perform the mean filtering after median filtering.
-    _run_all_filters('mean', 
+    _run_all_filters(False, 
                      omnical_mean_filter, omnical_chi2_mean_filter, omnical_zscore_filter, 
                      abscal_mean_filter, abscal_chi2_mean_filter, abscal_zscore_filter,
                      omnivis_mean_filter, cross_mean_filter, auto_mean_filter)
@@ -2264,7 +2259,6 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
                         clobber=False, run_check=True, check_extra=True,
                         run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H3C IDR2.1.
-
     This pipeline uses the detrending and watershed algorithms above.
     Several files are concatenated together to perform the detrending,
     and the flags from the inner files are stored*.
@@ -2275,7 +2269,6 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     to get better estimate. The metrics and flags from each data product and both
     rounds are stored in the xrfi_path (which defaults to a subdirectory, see
     xrfi_path below). Also stored are the a priori flags and combined metrics/flags.
-
     * For a given chunk of files, we do not store output files for the edges,
     determined by the size of the time kernel (kt_size) and the number of
     integrations per file. The exception is the very start and end of a day,
@@ -2283,7 +2276,6 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     the edge.
     It is up to the user to run overlapping chunks to ensure output is created
     for every input file.
-
     Parameters
     ----------
     ocalfits_files : str
@@ -2329,11 +2321,9 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     run_check_acceptability : bool
         Option to check acceptable range of the values of parameters
         on UVFlag Object.
-
     Returns
     -------
     None
-
     """
     history = 'Flagging command: "' + flag_command + '", Using ' + hera_qm_version_str
     xants = process_ex_ants(ex_ants=ex_ants, metrics_files=metrics_file)
@@ -2539,152 +2529,6 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
             outpath = os.path.join(dirname, outfile)
             uvf_out.history += history
             uvf_out.write(outpath, clobber=clobber)
-
-
-def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
-                      nsig_f_adj=3., nsig_t_adj=3., flag_abscal=True,
-                      clobber=False, a_priori_flag_yaml=None,
-                      run_check=True, check_extra=True,
-                      run_check_acceptability=True):
-    """Apply thresholding across all times/frequencies, using a full day of data.
-
-    This function will write UVFlag files for each data input (omnical gains,
-    omnical chisquared, abscal gains, etc.) for the full day. These files will be
-    written in the same directory as the first data_file, and have filenames
-    "zen.{JD}.{type}_threshold_flags.h5", where {type} describes the input data (e.g.
-    "og" for omnical gains).
-    This function will also copy the abscal calfits files but with flags defined
-    by the union of all flags from xrfi_run and the day thresholding. These files
-    will replace "abs" with "flagged_abs" in the filenames, and saved in the same
-    directory as each abscal file.
-
-    Parameters
-    ----------
-    data_files : list of strings
-        Paths to the raw data files which have been used to calibrate and rfi flag so far.
-    history : str
-        The history string to include in files.
-    nsig_f : float, optional
-        The number of sigma above which to flag channels. Default is 7.0.
-    nsig_t : float, optional
-        The number of sigma above which to flag integrations. Default is 7.0.
-    nsig_f_adj : float, optional
-        The number of sigma above which to flag channels if they neighbor flagged channels.
-        Default is 3.0.
-    nsig_t_adj : float, optional
-        The number of sigma above which to flag integrations if they neighbor flagged integrations.
-        Default is 3.0.
-    flag_abscal : bool, optional
-        If True, generate new abscal solutions with day thresholded flags.
-    clobber : bool, optional
-        If True, overwrite existing files. Default is False.
-    a_priori_flag_yaml : str, optional
-        string specifying apriori flagging yaml.
-    run_check : bool
-        Option to check for the existence and proper shapes of parameters
-        on UVFlag Object.
-    check_extra : bool
-        Option to check optional parameters as well as required ones.
-    run_check_acceptability : bool
-        Option to check acceptable range of the values of parameters
-        on UVFlag Object.
-
-    Returns
-    -------
-    None
-
-    """
-    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
-    data_files = sorted(data_files)
-    xrfi_dirs = [resolve_xrfi_path('', dfile, jd_subdir=True) for dfile in data_files]
-    basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
-    outdir = resolve_xrfi_path('', data_files[0])
-    # Set up extensions to find the many files
-    types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
-             'abscal_chi_sq_renormed', 'combined']
-    mexts = ['og_metrics', 'ox_metrics', 'ag_metrics', 'ax_metrics',
-             'v_metrics', 'cross_metrics', 'auto_metrics', 'omnical_chi_sq_renormed_metrics',
-             'abscal_chi_sq_renormed_metrics', 'combined_metrics']
-    # Read in the metrics objects
-    filled_metrics = []
-    for ext in mexts:
-        # Fill in 2nd metrics with 1st metrics where 2nd are not available.
-        files1_all = [glob.glob(d + '/*' + ext + '1.h5') for d in xrfi_dirs]
-        files2_all = [glob.glob(d + '/*' + ext + '2.h5') for d in xrfi_dirs]
-        # only consider flagging products that exist in all observations for thresholding.
-        if np.all([len(f) > 0 for f in files1_all]) and np.all([len(f) > 0 for f in files2_all]):
-            files1 = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
-            files2 = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
-            uvf1 = UVFlag(files1)
-            uvf2 = UVFlag(files2)
-            uvf2.metric_array = np.where(np.isinf(uvf2.metric_array), uvf1.metric_array,
-                                         uvf2.metric_array)
-            filled_metrics.append(uvf2)
-        elif np.all([len(f) > 0 for f in files2_all]):
-            # some flags only exist in round2 (data for example).
-            files = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
-            filled_metrics.append(UVFlag(files))
-        elif np.all([len(f) > 0 for f in files1_all]):
-            # some flags only exist in round1 (if we chose median filtering only for example).
-            files = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
-            filled_metrics.append(UVFlag(files))
-        else:
-            filled_metrics.append(None)
-    filled_metrics_that_exist = [f for f in filled_metrics if f is not None]
-    # Threshold each metric and save flag object
-    uvf_total = filled_metrics_that_exist[0].copy()
-    uvf_total.to_flag(run_check=run_check, check_extra=check_extra,
-                      run_check_acceptability=run_check_acceptability)
-    for i, uvf_m in enumerate(filled_metrics):
-        if uvf_m is not None:
-            uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t,
-                                 nsig_f_adj=nsig_f_adj, nsig_t_adj=nsig_t_adj,
-                                 detrend=False, run_check=run_check,
-                                 check_extra=check_extra,
-                                 run_check_acceptability=run_check_acceptability)
-            outfile = '.'.join([basename, types[i] + '_threshold_flags.h5'])
-            outpath = os.path.join(outdir, outfile)
-            uvf_f.write(outpath, clobber=clobber)
-            uvf_total |= uvf_f
-
-    # Read non thresholded flags and combine
-    # Include round 1 and 2 flags for potential medain filter only.
-    for rnd in [1, 2]:
-        for mext in (mexts + ['flags']):
-            try:
-                ext_here = f'{mext.replace("metrics", "flags")}{rnd}.h5'
-                files = [glob.glob(f'{d}/*.{ext_here}')[0] for d in xrfi_dirs]
-                uvf_total |= UVFlag(files)
-            except IndexError:
-                pass
-
-    outfile = '.'.join([basename, 'total_threshold_flags.h5'])
-    outpath = os.path.join(outdir, outfile)
-    uvf_total.write(outpath, clobber=clobber)
-    if a_priori_flag_yaml is not None:
-        uvf_total = qm_utils.apply_yaml_flags(uvf_total, a_priori_flag_yaml)
-        outfile = '.'.join([basename, 'total_threshold_and_a_priori_flags.h5'])
-        outpath = os.path.join(outdir, outfile)
-        uvf_total.write(outpath, clobber=clobber)
-    if flag_abscal:
-        # Apply to abs calfits
-        uvc_a = UVCal()
-        incal_ext = 'abs'
-        outcal_ext = 'flagged_abs'
-        for dfile in data_files:
-            basename = qm_utils.strip_extension(dfile)
-            abs_in = '.'.join([basename, incal_ext, 'calfits'])
-            abs_out = '.'.join([basename, outcal_ext, 'calfits'])
-            # abscal flagging only happens if the abscal files exist.
-            uvc_a.read_calfits(abs_in)
-
-            # select the times from the file we are going to flag
-            uvf_file = uvf_total.select(times=uvc_a.time_array, inplace=False)
-
-            flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
-                       run_check=run_check, check_extra=check_extra,
-                       run_check_acceptability=run_check_acceptability)
-            uvc_a.write_calfits(abs_out, clobber=clobber)
 
 
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
