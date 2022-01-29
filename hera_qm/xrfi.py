@@ -2531,6 +2531,148 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
             uvf_out.write(outpath, clobber=clobber)
 
 
+def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
+                      nsig_f_adj=3., nsig_t_adj=3., flag_abscal=True,
+                      clobber=False, a_priori_flag_yaml=None,
+                      run_check=True, check_extra=True,
+                      run_check_acceptability=True):
+    """Apply thresholding across all times/frequencies, using a full day of data.
+    This function will write UVFlag files for each data input (omnical gains,
+    omnical chisquared, abscal gains, etc.) for the full day. These files will be
+    written in the same directory as the first data_file, and have filenames
+    "zen.{JD}.{type}_threshold_flags.h5", where {type} describes the input data (e.g.
+    "og" for omnical gains).
+    This function will also copy the abscal calfits files but with flags defined
+    by the union of all flags from xrfi_run and the day thresholding. These files
+    will replace "abs" with "flagged_abs" in the filenames, and saved in the same
+    directory as each abscal file.
+    Parameters
+    ----------
+    data_files : list of strings
+        Paths to the raw data files which have been used to calibrate and rfi flag so far.
+    history : str
+        The history string to include in files.
+    nsig_f : float, optional
+        The number of sigma above which to flag channels. Default is 7.0.
+    nsig_t : float, optional
+        The number of sigma above which to flag integrations. Default is 7.0.
+    nsig_f_adj : float, optional
+        The number of sigma above which to flag channels if they neighbor flagged channels.
+        Default is 3.0.
+    nsig_t_adj : float, optional
+        The number of sigma above which to flag integrations if they neighbor flagged integrations.
+        Default is 3.0.
+    flag_abscal : bool, optional
+        If True, generate new abscal solutions with day thresholded flags.
+    clobber : bool, optional
+        If True, overwrite existing files. Default is False.
+    a_priori_flag_yaml : str, optional
+        string specifying apriori flagging yaml.
+    run_check : bool
+        Option to check for the existence and proper shapes of parameters
+        on UVFlag Object.
+    check_extra : bool
+        Option to check optional parameters as well as required ones.
+    run_check_acceptability : bool
+        Option to check acceptable range of the values of parameters
+        on UVFlag Object.
+    Returns
+    -------
+    None
+    """
+    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    data_files = sorted(data_files)
+    xrfi_dirs = [resolve_xrfi_path('', dfile, jd_subdir=True) for dfile in data_files]
+    basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
+    outdir = resolve_xrfi_path('', data_files[0])
+    # Set up extensions to find the many files
+    types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
+             'abscal_chi_sq_renormed', 'combined']
+    mexts = ['og_metrics', 'ox_metrics', 'ag_metrics', 'ax_metrics',
+             'v_metrics', 'cross_metrics', 'auto_metrics', 'omnical_chi_sq_renormed_metrics',
+             'abscal_chi_sq_renormed_metrics', 'combined_metrics']
+    # Read in the metrics objects
+    filled_metrics = []
+    for ext in mexts:
+        # Fill in 2nd metrics with 1st metrics where 2nd are not available.
+        files1_all = [glob.glob(d + '/*' + ext + '1.h5') for d in xrfi_dirs]
+        files2_all = [glob.glob(d + '/*' + ext + '2.h5') for d in xrfi_dirs]
+        # only consider flagging products that exist in all observations for thresholding.
+        if np.all([len(f) > 0 for f in files1_all]) and np.all([len(f) > 0 for f in files2_all]):
+            files1 = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
+            files2 = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
+            uvf1 = UVFlag(files1)
+            uvf2 = UVFlag(files2)
+            uvf2.metric_array = np.where(np.isinf(uvf2.metric_array), uvf1.metric_array,
+                                         uvf2.metric_array)
+            filled_metrics.append(uvf2)
+        elif np.all([len(f) > 0 for f in files2_all]):
+            # some flags only exist in round2 (data for example).
+            files = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
+            filled_metrics.append(UVFlag(files))
+        elif np.all([len(f) > 0 for f in files1_all]):
+            # some flags only exist in round1 (if we chose median filtering only for example).
+            files = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
+            filled_metrics.append(UVFlag(files))
+        else:
+            filled_metrics.append(None)
+    filled_metrics_that_exist = [f for f in filled_metrics if f is not None]
+    # Threshold each metric and save flag object
+    uvf_total = filled_metrics_that_exist[0].copy()
+    uvf_total.to_flag(run_check=run_check, check_extra=check_extra,
+                      run_check_acceptability=run_check_acceptability)
+    for i, uvf_m in enumerate(filled_metrics):
+        if uvf_m is not None:
+            uvf_f = threshold_wf(uvf_m, nsig_f=nsig_f, nsig_t=nsig_t,
+                                 nsig_f_adj=nsig_f_adj, nsig_t_adj=nsig_t_adj,
+                                 detrend=False, run_check=run_check,
+                                 check_extra=check_extra,
+                                 run_check_acceptability=run_check_acceptability)
+            outfile = '.'.join([basename, types[i] + '_threshold_flags.h5'])
+            outpath = os.path.join(outdir, outfile)
+            uvf_f.write(outpath, clobber=clobber)
+            uvf_total |= uvf_f
+
+    # Read non thresholded flags and combine
+    # Include round 1 and 2 flags for potential medain filter only.
+    for rnd in [1, 2]:
+        for mext in (mexts + ['flags']):
+            try:
+                ext_here = f'{mext.replace("metrics", "flags")}{rnd}.h5'
+                files = [glob.glob(f'{d}/*.{ext_here}')[0] for d in xrfi_dirs]
+                uvf_total |= UVFlag(files)
+            except IndexError:
+                pass
+
+    outfile = '.'.join([basename, 'total_threshold_flags.h5'])
+    outpath = os.path.join(outdir, outfile)
+    uvf_total.write(outpath, clobber=clobber)
+    if a_priori_flag_yaml is not None:
+        uvf_total = qm_utils.apply_yaml_flags(uvf_total, a_priori_flag_yaml)
+        outfile = '.'.join([basename, 'total_threshold_and_a_priori_flags.h5'])
+        outpath = os.path.join(outdir, outfile)
+        uvf_total.write(outpath, clobber=clobber)
+    if flag_abscal:
+        # Apply to abs calfits
+        uvc_a = UVCal()
+        incal_ext = 'abs'
+        outcal_ext = 'flagged_abs'
+        for dfile in data_files:
+            basename = qm_utils.strip_extension(dfile)
+            abs_in = '.'.join([basename, incal_ext, 'calfits'])
+            abs_out = '.'.join([basename, outcal_ext, 'calfits'])
+            # abscal flagging only happens if the abscal files exist.
+            uvc_a.read_calfits(abs_in)
+
+            # select the times from the file we are going to flag
+            uvf_file = uvf_total.select(times=uvc_a.time_array, inplace=False)
+
+            flag_apply(uvf_file, uvc_a, force_pol=True, history=history,
+                       run_check=run_check, check_extra=check_extra,
+                       run_check_acceptability=run_check_acceptability)
+            uvc_a.write_calfits(abs_out, clobber=clobber)
+
+
 def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
                  summary=False, summary_ext='flag_summary.h5', xrfi_path='',
                  model_file=None, model_file_format='uvfits',
