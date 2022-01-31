@@ -1464,6 +1464,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                   metrics=None, flags=None, modified_z_score=False,
                   a_priori_flag_yaml=None,
                   a_priori_ants_only=False,
+                  ignore_xants_override=False,
                   use_cross_pol_vis=True,
                   run_check=True,
                   check_extra=True,
@@ -1572,6 +1573,11 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
         See hera_qm.metrics_io.read_a_priori_[chan/int/ant]_flags() for details.
     a_priori_ants_only : bool, optional
         if True, only apply antenna flags from apriori yaml.
+    ignore_xants_override : bool, optional
+        If True, will not apply xants or get xants from the a_priori_flag_yaml. 
+        Used for redundantly averaged data and/or omnical visibility solutions where
+        baseline keys represent multiple redundant antnena pairs and it is presumed
+        that bad antenna exclusion was already performed.
     use_cross_pol_vis : bool, optional
         If True (default), also load and flag on cross-polarized visibilities (e.g. 'ne'/'en')
     run_check : bool
@@ -1613,8 +1619,10 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
         flags = []
     if metrics is None:
         metrics = []
-    if xants is None:
-        xants = []
+    if (xants is None) or (ignore_xants_override):
+        xants_here = []
+    else:
+        xants_here = copy.deepcopy(xants)
     if uv is None:
         # if no uv is provided, we should try loading it from the file specified
         # by uv_file.
@@ -1626,6 +1634,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 uv.read_calfits(uv_files)
                 if a_priori_flag_yaml is not None:
                     uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
+                                                   flag_ants=not(ignore_xants_override),
                                                    flag_times=not(a_priori_ants_only),
                                                    flag_freqs=not(a_priori_ants_only))
             elif dtype=='uvdata':
@@ -1645,6 +1654,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                     uv.read_calfits(uv_files)
                     if a_priori_flag_yaml is not None:
                         uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
+                                                       flag_ants=not(ignore_xants_override),
                                                        flag_times=not(a_priori_ants_only),
                                                        flag_freqs=not(a_priori_ants_only))
         # The following code applies if uv is a UVData object.
@@ -1698,7 +1708,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                     # this work. First, each individual chunk cannot be translated to a z-score centered at zero so
                     # we disable this step (per chunk) with the center_metric keyword. We also don't want to flag or
                     # reset the weights which we deactivate with the reset_weights and skip_flags keyword
-                    uvft, _ = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=True,
+                    uvft, _ = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants_here, skip_flags=True,
                                              cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
                                              reset_weights=False, center_metric=False, wf_method=wf_method,
                                              label=label, run_check=run_check, check_extra=check_extra,
@@ -1718,7 +1728,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 # is passed in place of uvdata or uvcal, it skips the metric calculation /waterfalling
                 # steps and goes straight to steps performed on combined metrics, i.e.
                 # flagging, normalizing, and weights reseting.
-                uvf, uvf_f = xrfi_pipe(uvf, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants, skip_flags=False,
+                uvf, uvf_f = xrfi_pipe(uvf, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants_here, skip_flags=False,
                                          cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj, wf_method=wf_method,
                                          center_metric=True, reset_weights=True,
                                          label=label, run_check=run_check, check_extra=check_extra,
@@ -1744,7 +1754,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                     uvf, uvf_f = chi_sq_pipe(uv, alg=alg, modified=modified_z_score, sig_init=sig_init, sig_adj=sig_adj,
                                              label=label, run_check=run_check, check_extra=check_extra, run_check_acceptability=run_check_acceptability)
                 else:
-                    uvf, uvf_f = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants,
+                    uvf, uvf_f = xrfi_pipe(uv, alg=alg, Kt=kt_size, Kf=kf_size, xants=xants_here,
                                            cal_mode=cal_mode, sig_init=sig_init, sig_adj=sig_adj,
                                            wf_method=wf_method,
                                            label=label, run_check=run_check, check_extra=check_extra,
@@ -1792,7 +1802,6 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
              output_prefixes=None, throw_away_edges=True, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
     """Run the xrfi excision pipeline used for H1C IDR2.2.
-
     This pipeline uses the detrending and watershed algorithms above.
     The algorithm is run on several data products: omnical gains, omnical chisq,
     abscal gains, abscal chisq, omnical visibility solutions, renormalized chisq,
@@ -1801,10 +1810,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     to get better estimate. The metrics and flags from each data product and both
     rounds are stored in the xrfi_path (which defaults to a subdirectory, see
     xrfi_path below). Also stored are the a priori flags and combined metrics/flags.
-
     User must provide at least one of ocalfits_files, acalfits_files, model_files,
     or data_files.
-
     Parameters
     ----------
     ocalfits_files : str or list of strings, optional
@@ -1965,11 +1972,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     run_check_acceptability : bool
         Option to check acceptable range of the values of parameters
         on UVFlag Object.
-
     Returns
     -------
     None
-
     """
     if ocalfits_files is None and acalfits_files is None and model_files is None and data_files is None:
         raise ValueError("Must provide at least one of the following; ocalfits_files, acalfits_files, model_files, data_files")
@@ -2068,7 +2073,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         if omnivis_filter:
             (vdict['uv_v'], vdict[f'uvf_v{rnd}'], vdict[f'uvf_vf{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uv_v'], uv_files=model_files, alg=alg,  dtype='uvdata', correlations='both', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
-                              reinitialize=True, label=f'Omnical visibility solutions, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
+                              reinitialize=True, label=f'Omnical visibility solutions, {label} filter.', apply_uvf_apriori=True, ignore_xants_override=True, **xrfi_run_step_kwargs)
         if cross_filter:
             (vdict['uv_d'], vdict[f'uvf_d{rnd}'], vdict[f'uvf_df{rnd}'], vdict[start_flag_name], metrics, flags) = \
                 xrfi_run_step(uv=vdict['uv_d'], uv_files=data_files, alg=alg,  dtype='uvdata', correlations='cross', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
