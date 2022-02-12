@@ -302,10 +302,14 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--kf_size', default=8, type=int,
                         help='Size of kernel in frequency dimension for detrend in '
                         'xrfi algorithm. Default is 8.')
-        ap.add_argument('--sig_init', default=6.0, type=float,
-                        help='Starting number of sigmas to flag on. Default is 6.0.')
-        ap.add_argument('--sig_adj', default=2.0, type=float,
-                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.0.')
+        ap.add_argument('--sig_init_med', default=10.0, type=float,
+                        help='Starting number of sigmas to flag on for medfilt round. Default is 10.0.')
+        ap.add_argument('--sig_adj_med', default=4.0, type=float,
+                        help='Number of sigmas to flag on for data adjacent to a flag for medfilt round. Default is 4.0.')
+        ap.add_argument('--sig_init_mean', default=5.0, type=float,
+                        help='Starting number of sigmas to flag on for meanfilt round. Default is 5.0.')
+        ap.add_argument('--sig_adj_mean', default=2.0, type=float,
+                        help='Number of sigmas to flag on for data adjacent to a flag for meanfilt round. Default is 2.0.')
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
@@ -355,10 +359,14 @@ def get_metrics_ArgumentParser(method_name):
         ap.add_argument('--kf_size', default=8, type=int,
                         help='Size of kernel in frequency dimension for detrend in '
                         'xrfi algorithm. Default is 8.')
-        ap.add_argument('--sig_init', default=6.0, type=float,
-                        help='Starting number of sigmas to flag on. Default is 6.0.')
-        ap.add_argument('--sig_adj', default=2.0, type=float,
-                        help='Number of sigmas to flag on for data adjacent to a flag. Default is 2.0.')
+        ap.add_argument('--sig_init_med', default=10.0, type=float,
+                        help='Starting number of sigmas to flag on for medfilt round. Default is 10.0.')
+        ap.add_argument('--sig_adj_med', default=4.0, type=float,
+                        help='Number of sigmas to flag on for data adjacent to a flag for medfilt round. Default is 4.0.')
+        ap.add_argument('--sig_init_mean', default=5.0, type=float,
+                        help='Starting number of sigmas to flag on for meanfilt round. Default is 5.0.')
+        ap.add_argument('--sig_adj_mean', default=2.0, type=float,
+                        help='Number of sigmas to flag on for data adjacent to a flag for meanfilt round. Default is 2.0.')
         ap.add_argument('--ex_ants', default=None, type=str,
                         help='Comma-separated list of antennas to exclude. Flags of visibilities '
                         'formed with these antennas will be set to True.')
