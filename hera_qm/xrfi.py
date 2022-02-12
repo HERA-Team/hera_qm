@@ -1797,7 +1797,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
              auto_median_filter=True, auto_mean_filter=True,
              cross_median_filter=False, cross_mean_filter=True,
              history=None, wf_method='quadmean', Nwf_per_load=None,
-             xrfi_path='', kt_size=8, kf_size=8, sig_init=5.0, sig_adj=2.0,
+             xrfi_path='', kt_size=8, kf_size=8, 
+             sig_init_med=10.0, sig_adj_med=4.0, sig_init_mean=5.0, sig_adj_mean=2.0,
              ex_ants=None, metrics_files=[],
              output_prefixes=None, throw_away_edges=True, clobber=False,
              run_check=True, check_extra=True, run_check_acceptability=True):
@@ -1932,10 +1933,15 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     kf_size : int, optional
         Size of kernel in frequency dimension for detrend in xrfi algorithm.
         Default is 8.
-    sig_init : float, optional
-        The starting number of sigmas to flag on. Default is 5.0.
-    sig_adj : float, optional
-        The number of sigmas to flag on for data adjacent to a flag.
+    sig_init_med : float, optional
+        The starting number of sigmas to flag on during the medfilt round. Default is 5.0.
+    sig_adj_med : float, optional
+        The number of sigmas to flag on for data adjacent to a flag during the medfilt round.
+        Default is 2.0.
+    sig_init_mean : float, optional
+        The starting number of sigmas to flag on during the meanfilt round. Default is 5.0.
+    sig_adj_mean : float, optional
+        The number of sigmas to flag on for data adjacent to a flag during the meanfilt round.
         Default is 2.0.
     ex_ants : str, optional
         A comma-separated list of antennas to exclude. Flags of visibilities formed
@@ -2009,7 +2015,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         xants = list(set(list(xants) + metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=True)))
 
     # build dictionary of common kwargs for xrfi_run_step
-    xrfi_run_step_kwargs = {'kt_size': kt_size, 'kf_size': kf_size, 'xants': xants, 'sig_init': sig_init, 'sig_adj': sig_adj, 
+    xrfi_run_step_kwargs = {'kt_size': kt_size, 'kf_size': kf_size, 'xants': xants, 
                             'wf_method': wf_method, 'Nwf_per_load': Nwf_per_load,  'a_priori_flag_yaml': a_priori_flag_yaml, 
                             'a_priori_ants_only': a_priori_ants_only, 'use_cross_pol_vis': use_cross_pol_vis, 
                             'run_check': run_check, 'check_extra': check_extra, 'run_check_acceptability': run_check_acceptability}
@@ -2107,9 +2113,9 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
             vdict[f'uvf_metrics{rnd}'].metric_array[:, :, 0] = algorithm_dict[alg](vdict[f'uvf_metrics{rnd}'].metric_array[:, :, 0],
                                                                                    flags=flags_for_combined_metrics,
                                                                                    Kt=kt_size, Kf=kf_size)
-            vdict[f'uvf_f{rnd}'] = flag(vdict[f'uvf_metrics{rnd}'], nsig_p=sig_init, run_check=run_check,
+            vdict[f'uvf_f{rnd}'] = flag(vdict[f'uvf_metrics{rnd}'], nsig_p=xrfi_run_step_kwargs['sig_init'], run_check=run_check,
                                         check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-            vdict[f'uvf_fws{rnd}'] = watershed_flag(vdict[f'uvf_metrics{rnd}'], vdict[f'uvf_f{rnd}'], nsig_p=sig_adj, 
+            vdict[f'uvf_fws{rnd}'] = watershed_flag(vdict[f'uvf_metrics{rnd}'], vdict[f'uvf_f{rnd}'], nsig_p=xrfi_run_step_kwargs['sig_adj'], 
                                                     inplace=False, run_check=run_check, check_extra=check_extra,
                                                     run_check_acceptability=run_check_acceptability)
             vdict[f'uvf_fws{rnd}'].label = f'Flags from combined metrics, round {rndnum}.'
@@ -2129,6 +2135,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     # settings for median round
     xrfi_run_step_kwargs['modified_z_score'] =  True 
     xrfi_run_step_kwargs['calculate_uvf_apriori'] = True
+    xrfi_run_step_kwargs['sig_init'] = sig_init_med
+    xrfi_run_step_kwargs['sig_adj'] = sig_adj_med
 
     _run_all_filters(True, 
                      omnical_median_filter, omnical_chi2_median_filter, omnical_zscore_filter, 
@@ -2144,6 +2152,8 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     # settings for median round
     xrfi_run_step_kwargs['modified_z_score'] =  False 
     xrfi_run_step_kwargs['calculate_uvf_apriori'] = False
+    xrfi_run_step_kwargs['sig_init'] = sig_init_mean
+    xrfi_run_step_kwargs['sig_adj'] = sig_adj_mean
 
     # Now perform the mean filtering after median filtering.
     _run_all_filters(False, 
