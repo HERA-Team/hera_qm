@@ -106,11 +106,11 @@ def test_get_metrics_ArgumentParser_xrfi_run():
     # First try defaults - test a few of them
     args = a.parse_args('')
     assert args.kt_size == 8
-    assert args.sig_init == 6.0
+    assert args.sig_init_mean == 5.0
     assert args.ex_ants is None
     # try to set something
-    args = a.parse_args(['--sig_adj', '3.0'])
-    assert args.sig_adj == 3.0
+    args = a.parse_args(['--sig_adj_mean', '3.0'])
+    assert args.sig_adj_mean == 3.0
 
 
 def test_get_metrics_ArgumentParser_xrfi_run_data_only():
@@ -118,11 +118,11 @@ def test_get_metrics_ArgumentParser_xrfi_run_data_only():
     # First try defaults - test a few of them
     args = a.parse_args('')
     assert args.kt_size == 8
-    assert args.sig_init == 6.0
+    assert args.sig_init_med == 10.0
     assert args.ex_ants is None
     # try to set something
-    args = a.parse_args(['--sig_adj', '3.0'])
-    assert args.sig_adj == 3.0
+    args = a.parse_args(['--sig_adj_med', '3.0'])
+    assert args.sig_adj_med == 3.0
 
 
 def test_get_metrics_ArgumentParser_day_threshold_run():
