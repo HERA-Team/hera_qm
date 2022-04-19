@@ -98,7 +98,7 @@ def get_auto_spectra(autos, flag_wf=None, time_avg_func=np.nanmedian, scalar_nor
 
 
 def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedian, metric_func=np.nanmedian, 
-                         metric_power=1.0, metric_log=False, abs_diff=True):
+                         metric_power=1.0, metric_log=False, abs_diff=True, minimum_relative_sigma=None):
     '''Computes a modified Z-score of a autocorrelation spectrum compared to all others not in ex_ants.
     
     Parameters
@@ -118,7 +118,11 @@ def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedia
         If True, take the log of both the spectrum and the overall spectrum before taking the abs diff
     abs_diff : bool
         If True, the metric uses the abs diff with the overall spectrum. Otherwise, it's just the diff.
-
+    minimum_relative_sigma : float
+        This quantity potentially decreases modified z-scores by increasing the denominator to a minimum
+        value which is some fraction of the overall spectrum. Default 0.0 does nothing. For example,
+        to make sure that a 10% increased amplitude (relative to the average amplitude) corresponds to 
+        no more than a 1 sigma outlier, set this value to 0.1.
 
     Returns
     -------
@@ -143,7 +147,19 @@ def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedia
     median_diff_metric = np.median([metric for bl, metric in diff_metrics.items() if bl[0] not in ex_ants])
     mad_diff_metric = np.median([np.abs(metric - median_diff_metric) for bl, metric in diff_metrics.items() 
                                  if bl[0] not in ex_ants])
+
+    # Calculate modified zs
     modzs = {bl: (diff_metrics[bl] - median_diff_metric) / mad_diff_metric / 1.4826 for bl in auto_spectra}
+    
+    # If desired, try comparing diffs to diffs from rescaled overall spectra
+    if minimum_relative_sigma is not None:
+        # compute spectra raised by minimum_relative_sigma
+        boosted_overall_spectra = {pol: overall_spectrum[pol] * (1.0 + minimum_relative_sigma) for pol in pols}
+        # compute what the diff metrics would be for those spectra
+        boosted_diff_metrics = {pol: metric_func(A(L(boosted_overall_spectra[pol]) - L(overall_spectrum[pol]))**metric_power) for pol in pols}
+        # compare diff metrics to boosted_diff_metrics, return the smaller value of this ratio and the modified z-score
+        modzs = {bl: min(modzs[bl], diff_metrics[bl] / np.mean(list(boosted_diff_metrics.values()))) for bl in modzs}
+
     return modzs
 
 
