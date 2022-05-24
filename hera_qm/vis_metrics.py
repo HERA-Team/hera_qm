@@ -57,7 +57,7 @@ def check_noise_variance(uvd):
         daj = (((aj[:-1, :-1] + aj[:-1, 1:]) + (aj[1:, :-1] + aj[1:, 1:])) * ww
                / 4)
         Cij[key] = (np.sum(np.abs(dd)**2, axis=0) / np.sum(dai * daj, axis=0)
-                    * (uvd.channel_width * integration_time))
+                    * (np.mean([uvd.channel_width[1:], uvd.channel_width[:-1]], axis=0) * integration_time))
 
     return Cij
 
@@ -189,9 +189,9 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
             bl_slice = uvd.antpair2ind(bl, ordered=False)
 
             # configure data and t_int
-            bl_data = data.get_data(bl, squeeze='none')[:, 0, :, :]
-            bl_t = (data.get_nsamples(bl, squeeze='none')[:, 0, :, :]
-                    * (~data.get_flags(bl, squeeze='none')[:, 0, :, :]).astype(np.float64)
+            bl_data = data.get_data(bl, squeeze='none')[:, :, :]
+            bl_t = (data.get_nsamples(bl, squeeze='none')[:, :, :]
+                    * (~data.get_flags(bl, squeeze='none')[:, :, :]).astype(np.float64)
                     * data.integration_time[data.antpair2ind(bl, ordered=False)][:, None, None])
 
             # take difference
@@ -202,9 +202,9 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
             nsample = bl_t / uvd.integration_time[uvd.antpair2ind(bl, ordered=False)][:, None, None]
 
             # assign data
-            uvd.data_array[bl_slice, 0, :, :] = bl_data
-            uvd.flag_array[bl_slice, 0, :, :] = flags
-            uvd.nsample_array[bl_slice, 0, :, :] = nsample
+            uvd.data_array[bl_slice, :, :] = bl_data
+            uvd.flag_array[bl_slice, :, :] = flags
+            uvd.nsample_array[bl_slice, :, :] = nsample
 
         # run check
         if run_check:

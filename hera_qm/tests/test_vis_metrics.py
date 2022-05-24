@@ -21,6 +21,7 @@ def vismetrics_data():
     data = UVData()
     filename = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
     data.read_miriad(filename)
+    data.use_future_array_shapes()
     # massage the object to make it work with check_noise_variance
     data.select(antenna_nums=data.get_ants()[0:10])
     data.select(freq_chans=range(100))
@@ -38,7 +39,7 @@ def vismetrics_data():
         ant_dat[i] = qmtest.noise(size=(ntimes, nchan)) + 0.1 * data1
     for key in data.get_antpairpols():
         ind = data._key2inds(key)[0]
-        data.data_array[ind, 0, :, 0] = ant_dat[key[0]] * ant_dat[key[1]].conj()
+        data.data_array[ind, :, 0] = ant_dat[key[0]] * ant_dat[key[1]].conj()
 
     class DataHolder(object):
         def __init__(self, data, data1, data2):
@@ -62,9 +63,9 @@ def test_check_noise_variance(vismetrics_data):
         inds = vismetrics_data.data.antpair2ind(*bl)
         n = nos[bl + (uvutils.parse_polstr('xx'),)]
         assert n.shape == (vismetrics_data.data.Nfreqs - 1,)
-        nsamp = vismetrics_data.data.channel_width * vismetrics_data.data.integration_time[inds][0]
+        nsamp = (vismetrics_data.data.channel_width[1:] + vismetrics_data.data.channel_width[:-1]) / 2 * vismetrics_data.data.integration_time[inds][0]
         np.testing.assert_almost_equal(n, np.ones_like(n) * nsamp,
-                                       -np.log10(nsamp))
+                                       -np.log10(np.median(nsamp)))
 
 
 def test_check_noise_variance_inttime_error(vismetrics_data):
@@ -77,6 +78,7 @@ def test_check_noise_variance_inttime_error(vismetrics_data):
 def test_vis_bl_cov():
     uvd = UVData()
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
+    uvd.use_future_array_shapes()
 
     # test basic execution
     bls = [(0, 1), (11, 12), (12, 13), (13, 14), (23, 24), (24, 25)]
@@ -101,6 +103,7 @@ def test_plot_bl_cov():
     plt = pytest.importorskip("matplotlib.pyplot")
     uvd = UVData()
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
+    uvd.use_future_array_shapes()
 
     # basic execution
     fig, ax = plt.subplots()
@@ -118,6 +121,7 @@ def test_plot_bl_bl_scatter():
     plt = pytest.importorskip("matplotlib.pyplot")
     uvd = UVData()
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
+    uvd.use_future_array_shapes()
 
     # basic execution
     bls = uvd.get_antpairs()[:3]  # should use redundant bls, but this is just a test...
@@ -149,6 +153,7 @@ def test_plot_bl_bl_scatter():
 def test_sequential_diff():
     uvd = UVData()
     uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'))
+    uvd.use_future_array_shapes()
 
     # diff across time
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=0, pad=False)
@@ -195,7 +200,7 @@ def test_sequential_diff():
         s = np.exp(1j * f[None, :] / 100.0 + 1j * t[:, None] / 10.0)
 
         # add into data
-        uvn.data_array[uvn.antpair2ind(bl, ordered=False), 0, :, 0] = s + n
+        uvn.data_array[uvn.antpair2ind(bl, ordered=False), :, 0] = s + n
 
     # run sequential diff
     uvn_diff1 = vis_metrics.sequential_diff(uvn, axis=(0, ), pad=False)
@@ -211,5 +216,5 @@ def test_sequential_diff():
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0, 1), pad=True)
     assert uvd_diff.Ntimes == uvd.Ntimes
     assert uvd_diff.Nfreqs == uvd.Nfreqs
-    assert uvd_diff.flag_array[:, 0, -1, 0].all()
+    assert uvd_diff.flag_array[:, -1, 0].all()
     assert uvd_diff.select(times=np.unique(uvd_diff.time_array)[-1:], inplace=False).flag_array.all()
