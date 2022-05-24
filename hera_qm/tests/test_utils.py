@@ -284,30 +284,31 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
     ant_flags = [0, 10, [1, 'Jee'], [3, 'Jnn']]
     uvd = UVData()
     uvd.read(test_d_file)
+    uvd.use_future_array_shapes()
     uvd = utils.apply_yaml_flags(uvd, test_flag, flag_freqs=flag_freqs, flag_times=flag_times,
                                 flag_ants=flag_ants, unflag_first=True)
     if 'no_integrations' not in test_flag:
         for tind in integration_flags:
             time = sorted(np.unique(uvd.time_array))[tind]
             if flag_times:
-                assert np.all(uvd.flag_array[uvd.time_array == time, :, :, :])
+                assert np.all(uvd.flag_array[uvd.time_array == time, :, :])
             else:
-                assert not np.all(uvd.flag_array[uvd.time_array == time, :, :, :])\
+                assert not np.all(uvd.flag_array[uvd.time_array == time, :, :])\
                     or np.count_nonzero(uvd.time_array == time) == 0
     if 'no_chans' not in test_flag:
         for region in freq_regions:
             selection = (uvd.freq_array[0] >= region[0]) & (uvd.freq_array[0] <= region[-1])
             if flag_freqs:
-                assert np.all(uvd.flag_array[:, :, selection, :])
+                assert np.all(uvd.flag_array[:, selection, :])
             else:
-                assert not np.all(uvd.flag_array[:, :, selection, :])\
+                assert not np.all(uvd.flag_array[:, selection, :])\
                     or np.count_nonzero(selection) == 0
 
         for chan in channel_flags:
             if flag_freqs:
-                assert np.all(uvd.flag_array[:, :, chan, :])
+                assert np.all(uvd.flag_array[:, chan, :])
             else:
-                assert not np.all(uvd.flag_array[:, :, chan, :])
+                assert not np.all(uvd.flag_array[:, chan, :])
     if 'no_ants' not in test_flag:
         for ant in ant_flags:
             if isinstance(ant, int):
@@ -319,9 +320,9 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
                 pol_selection = np.where(uvd.polarization_array == pol_num)[0]
             blt_selection = np.logical_or(uvd.ant_1_array == antnum, uvd.ant_2_array == antnum)
             if flag_ants:
-                assert np.all(uvd.flag_array[blt_selection][: , :, :, pol_selection])
+                assert np.all(uvd.flag_array[blt_selection][: , :, pol_selection])
             else:
-                assert not np.all(uvd.flag_array[blt_selection][: , :, :, pol_selection])\
+                assert not np.all(uvd.flag_array[blt_selection][: , :, pol_selection])\
                 or np.count_nonzero(blt_selection) == 0 or np.count_nonzero(pol_selection) == 0
 
         # test removing antennas from the data if we are not running no_ants:
@@ -359,6 +360,7 @@ def test_apply_yaml_flags_uvcal(filein, new_metadata):
     test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     if not new_metadata:
         uvc.telescope_location = None
         uvc.antenna_positions = None
@@ -376,13 +378,13 @@ def test_apply_yaml_flags_uvcal(filein, new_metadata):
         if 'no_integrations' not in test_flag:
             for tind in integration_flags:
                 time = sorted(np.unique(uvc.time_array))[tind]
-                assert np.all(uvc.flag_array[:, :, :, uvc.time_array == time, :])
+                assert np.all(uvc.flag_array[:, :, uvc.time_array == time, :])
         if 'no_chans' not in test_flag:
             for region in freq_regions:
                 selection = (uvc.freq_array[0] >= region[0]) & (uvc.freq_array[0] <= region[-1])
-                assert np.all(uvc.flag_array[:, :, selection, :, :])
+                assert np.all(uvc.flag_array[:, selection, :, :])
             for chan in channel_flags:
-                assert np.all(uvc.flag_array[:, :, chan, :, :])
+                assert np.all(uvc.flag_array[:, chan, :, :])
         # check flagged antennas
         if 'no_ants' not in test_flag:
             for ant in ant_flags:
@@ -394,7 +396,7 @@ def test_apply_yaml_flags_uvcal(filein, new_metadata):
                     pol_num = uvutils.jstr2num(ant[1], x_orientation=uvc.x_orientation)
                     pol_selection = np.where(uvc.jones_array == pol_num)[0]
                 ant_selection = uvc.ant_array == antnum
-                assert np.all(uvc.flag_array[ant_selection][:, :, :, :, pol_selection])
+                assert np.all(uvc.flag_array[ant_selection, :, :, pol_selection])
 
             # test removing antennas from the data:
             all_ants = uvc.ant_array
@@ -415,6 +417,7 @@ def test_apply_yaml_flags_errors():
     # check NotImplementedErrors
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     # check that setting uv to an object that is not a subclass of UVCal or UVData throws a NotImplementedError
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
     # check that not providing lat_lon_alt_degrees and a telescope location that is not in the pyuvdata.KNOWN_TELESCOPES dict
