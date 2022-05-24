@@ -92,13 +92,13 @@ def flag_xants(uv, xants, inplace=True, run_check=True,
         for ant in all_ants:
             for xant in xants:
                 blts = uvo.antpair2ind(ant, xant)
-                uvo.flag_array[blts, :, :, :] = True
+                uvo.flag_array[blts] = True
                 blts = uvo.antpair2ind(xant, ant)
-                uvo.flag_array[blts, :, :, :] = True
+                uvo.flag_array[blts] = True
     elif issubclass(uvo.__class__, UVCal) or (isinstance(uvo, UVFlag) and uvo.type == 'antenna'):
         for xant in xants:
             ai = np.where(uvo.ant_array == xant)[0]
-            uvo.flag_array[ai, :, :, :, :] = True
+            uvo.flag_array[ai] = True
 
     if not inplace:
         return uvo
@@ -1849,6 +1849,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 uv = UVCal()
                 # No partial i/o for uvcal yet.
                 uv.read_calfits(uv_files)
+                uv.use_future_array_shapes()
                 if a_priori_flag_yaml is not None:
                     uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
                                                    flag_ants=not(ignore_xants_override),
@@ -1869,6 +1870,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                     uv.read(uv_files, read_data=False)
                 else:
                     uv.read_calfits(uv_files)
+                    uv.use_future_array_shapes()
                     if a_priori_flag_yaml is not None:
                         uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
                                                        flag_ants=not(ignore_xants_override),
@@ -1895,6 +1897,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             for loadnum in range(nloads):
                 # read in chunk
                 uv.read(uv_files, bls=bls[loadnum * Nwf_per_load:(loadnum + 1) * Nwf_per_load], axis='blt')
+                uv.use_future_array_shapes()
                 if a_priori_flag_yaml is not None:
                     uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
                                                    flag_times=not(a_priori_ants_only),
@@ -2422,10 +2425,12 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         uvlist = ocalfits_files
         uvtemp = UVCal()
         uvtemp.read_calfits(uvlist[0])
+        uvtemp.use_future_array_shapes()
     elif acalfits_files is not None:
         uvlist = acalfits_files
         uvtemp = UVCal()
         uvtemp.read_calfits(uvlist[0])
+        uvtemp.use_future_array_shapes()
     nintegrations = len(uvlist) * uvtemp.Ntimes
     # Determine the actual files to store
     # We will drop kt_size / (integrations per file) files at the start and
@@ -2579,6 +2584,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     # Calculate metric on abscal data
     uvc_a = UVCal()
     uvc_a.read_calfits(acalfits_files)
+    uvc_a.use_future_array_shapes()
     uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
     uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
@@ -2590,6 +2596,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     # Calculate metric on omnical data
     uvc_o = UVCal()
     uvc_o.read_calfits(ocalfits_files)
+    uvc_o.use_future_array_shapes()
     flag_apply(uvf_apriori, uvc_o, keep_existing=True, run_check=run_check,
                check_extra=check_extra,
                run_check_acceptability=run_check_acceptability)
@@ -2603,6 +2610,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     # Calculate metric on model vis
     uv_v = UVData()
     uv_v.read(model_files, axis='blt')
+    uv_v.use_future_array_shapes()
     uvf_v, uvf_vf = xrfi_pipe(uv_v, alg='detrend_medfilt', xants=[], Kt=kt_size, Kf=kf_size,
                               sig_init=sig_init, sig_adj=sig_adj,
                               label='Omnical visibility solutions, round 1.',
@@ -2641,6 +2649,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     # Read in data file
     uv_d = UVData()
     uv_d.read(data_files, axis='blt')
+    uv_d.use_future_array_shapes()
     for uv in [uvc_o, uvc_a, uv_v, uv_d]:
         flag_apply(uvf_init, uv, keep_existing=True, force_pol=True,
                    **check_kwargs)
@@ -2904,6 +2913,7 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
             abs_out = '.'.join([basename, outcal_ext, 'calfits'])
             # abscal flagging only happens if the abscal files exist.
             uvc_a.read_calfits(abs_in)
+            uvc_a.use_future_array_shapes()
 
             # select the times from the file we are going to flag
             uvf_file = uvf_total.select(times=uvc_a.time_array, inplace=False)
@@ -3031,6 +3041,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
             raise ValueError('filename must be string path to file.')
         uvd = UVData()
         uvd.read(filename)
+        uvd.use_future_array_shapes()
 
     # append to history
     history = 'Flagging command: "' + history + '", Using ' + __version__
@@ -3069,6 +3080,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     if model_file is not None:
         uvm = UVData()
         uvm.read(model_file)
+        uvm.use_future_array_shapes()
         if indata is not None:
             if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array),
                                 atol=1e-5, rtol=0)
@@ -3093,6 +3105,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     if calfits_file is not None:
         uvc = UVCal()
         uvc.read_calfits(calfits_file)
+        uvc.use_future_array_shapes()
         if indata is not None:
             if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array),
                                 atol=1e-5, rtol=0)
@@ -3196,6 +3209,7 @@ def xrfi_h1c_apply(filename, history, infile_format='miriad', xrfi_path='',
         filename = filename[0]
     uvd = UVData()
     uvd.read(filename)
+    uvd.use_future_array_shapes()
 
     full_list = []
     # Read in flag file
