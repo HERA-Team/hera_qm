@@ -46,18 +46,20 @@ pytestmark = pytest.mark.filterwarnings(
 def test_uvdata():
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     xant = uv.get_ants()[0]
     xrfi.flag_xants(uv, xant)
-    assert np.all(uv.flag_array[uv.ant_1_array == xant, :, :, :])
-    assert np.all(uv.flag_array[uv.ant_2_array == xant, :, :, :])
+    assert np.all(uv.flag_array[uv.ant_1_array == xant, :, :])
+    assert np.all(uv.flag_array[uv.ant_2_array == xant, :, :])
 
 
 def test_uvcal():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     xant = uvc.ant_array[0]
     xrfi.flag_xants(uvc, xant)
-    assert np.all(uvc.flag_array[0, :, :, :, :])
+    assert np.all(uvc.flag_array[0, :, :, :])
 
 
 def test_uvflag():
@@ -96,6 +98,7 @@ def test_not_inplace_uvflag():
 def test_not_inplace_uvdata():
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     xant = uv.get_ants()[0]
     uv2 = xrfi.flag_xants(uv, xant, inplace=False)
     assert np.all(uv2.flag_array[uv2.ant_1_array == xant, :, :, :])
@@ -447,6 +450,7 @@ def test_watershed_flag():
     # generate a metrics and flag UVFlag object
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this')
     uvf = UVFlag(uv, mode='flag')
 
@@ -499,6 +503,7 @@ def test_watershed_flag():
     # test antenna type objects
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvm = UVFlag(uvc, history='I made this')
     uvf = UVFlag(uvc, mode='flag')
 
@@ -548,6 +553,7 @@ def test_watershed_flag():
     # test waterfall types
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this', waterfall=True)
     uvf = UVFlag(uv, mode='flag', waterfall=True)
 
@@ -598,6 +604,7 @@ def test_watershed_flag_errors():
     # setup
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this')
     uvf = UVFlag(uv, mode='flag')
     uvf2 = UVFlag(uv, mode='flag', waterfall=True)
@@ -694,6 +701,7 @@ def test_flag():
     # setup
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this')
 
     # initialize array with specific values
@@ -730,6 +738,7 @@ def test_flag():
     # test channel flagging in antenna type
     uv = UVCal()
     uv.read_calfits(test_c_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this')
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvm.metric_array[:, :, 0, :, :] = 7.
@@ -751,6 +760,7 @@ def test_flag():
     # test channel flagging in waterfall type
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this', waterfall=True)
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvm.metric_array[:, 0, :] = 7.
@@ -784,6 +794,7 @@ def test_flag_apply():
     # test applying to UVData
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag')
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
@@ -794,6 +805,7 @@ def test_flag_apply():
     # test applying to UVCal
     uv = UVCal()
     uv.read_calfits(test_c_file)
+    uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag')
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
@@ -804,6 +816,7 @@ def test_flag_apply():
     # test applying to waterfalls
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag', waterfall=True)
     uvf.flag_array[:, 0, :] = True
@@ -813,6 +826,7 @@ def test_flag_apply():
 
     uv = UVCal()
     uv.read_calfits(test_c_file)
+    uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag', waterfall=True)
     uvf.flag_array[:, 0, :] = True
@@ -847,6 +861,7 @@ def test_calculate_metric_vis():
     # setup
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     # Use Kt=3 because test file only has three times
     uvf = xrfi.calculate_metric(uv, 'detrend_medfilt', Kt=3)
     assert uvf.mode == 'metric'
@@ -861,6 +876,7 @@ def test_calculate_metric_gains():
     # Cal gains version
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', Kt=3, Kf=3)
     assert uvf.mode == 'metric'
     assert uvf.type == 'antenna'
@@ -873,6 +889,7 @@ def test_calculate_metric_chisq():
     # Cal chisq version
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', cal_mode='chisq',
                                 Kt=3, Kf=3)
     assert uvf.mode == 'metric'
@@ -886,6 +903,7 @@ def test_calculate_metric_tot_chisq():
     # Cal total chisq version
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', cal_mode='tot_chisq',
                                 Kt=3, Kf=3)
     assert uvf.mode == 'metric'
@@ -898,6 +916,7 @@ def test_calculate_metric_tot_chisq():
 def test_calculate_metric_errors():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     pytest.raises(ValueError, xrfi.calculate_metric, 5, 'detrend_medfilt')
     pytest.raises(KeyError, xrfi.calculate_metric, uvc, 'my_awesome_algorithm')
     pytest.raises(ValueError, xrfi.calculate_metric, uvc, 'detrend_medfilt',
@@ -907,6 +926,7 @@ def test_calculate_metric_errors():
 def test_xrfi_h1c_pipe_no_summary():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf_f, uvf_wf = xrfi.xrfi_h1c_pipe(uvc, Kt=3, return_summary=False)
     assert uvf_f.mode == 'flag'
     assert uvf_f.type == 'antenna'
@@ -918,6 +938,7 @@ def test_xrfi_h1c_pipe_no_summary():
 def test_xrfi_h1c_pipe_summary():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf_f, uvf_wf, uvf_w = xrfi.xrfi_h1c_pipe(uvc, Kt=3, return_summary=True)
     assert uvf_f.mode == 'flag'
     assert uvf_f.type == 'antenna'
@@ -932,6 +953,7 @@ def test_xrfi_h1c_pipe_summary():
 def test_xrfi_h1c_idr2_2_pipe():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf_m, uvf_f = xrfi.xrfi_pipe(uvc, Kt=3)
     assert uvf_m.mode == 'metric'
     assert uvf_f.mode == 'flag'
@@ -1790,6 +1812,7 @@ def test_day_threshold_run(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -1799,6 +1822,7 @@ def test_day_threshold_run(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
+    uvc.use_future_array_shapes()
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
@@ -1870,6 +1894,7 @@ def test_day_threshold_run_yaml(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -1879,6 +1904,7 @@ def test_day_threshold_run_yaml(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
+    uvc.use_future_array_shapes()
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
@@ -1933,6 +1959,7 @@ def test_day_threshold_run_data_only(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -1942,6 +1969,7 @@ def test_day_threshold_run_data_only(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
+    uvc.use_future_array_shapes()
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
@@ -2001,6 +2029,7 @@ def test_day_threshold_run_cal_only(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -2010,6 +2039,7 @@ def test_day_threshold_run_cal_only(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
+    uvc.use_future_array_shapes()
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
@@ -2067,6 +2097,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -2076,6 +2107,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
+    uvc.use_future_array_shapes()
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
@@ -2123,6 +2155,7 @@ def test_xrfi_h1c_run_no_filename():
     # test no filename provided
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     pytest.raises(AssertionError, xrfi.xrfi_h1c_run, uvd,
                   'Just as test.', filename=None)
 
@@ -2131,6 +2164,7 @@ def test_xrfi_h1c_run_filename_not_string():
     # filename is not a string
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd,
                   history='Just a test.', filename=5)
 
@@ -2139,6 +2173,7 @@ def test_xrfi_h1c_run_uvfits_no_xrfi_path():
     # test uvfits file and no xrfi path
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     basename = utils.strip_extension(test_uvfits_file)
     outtest = basename + '.flags.h5'
     if os.path.exists(outtest):
@@ -2165,6 +2200,7 @@ def test_xrfi_h1c_run_uvfits_xrfi_path():
     # test uvfits file with xrfi path
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     basename = utils.strip_extension(os.path.basename(test_uvfits_file))
     outtest = os.path.join(xrfi_path, basename) + '.flags.h5'
     if os.path.exists(outtest):
@@ -2179,8 +2215,10 @@ def test_xrfi_h1c_run_miriad_model():
     # miriad model file test
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     ext = 'flag'
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     basename = os.path.basename(utils.strip_extension(test_d_file))
     outtest = '.'.join([os.path.join(xrfi_path, basename), ext])
     if os.path.exists(outtest):
@@ -2195,6 +2233,7 @@ def test_xrfi_h1c_run_uvfits_model():
     # uvfits model file test
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     ext = 'flag'
     basename = os.path.basename(utils.strip_extension(test_uvfits_file))
     outtest = '.'.join([os.path.join(xrfi_path, basename), ext])
@@ -2210,6 +2249,7 @@ def test_xrfi_h1c_run_incorrect_model():
     # incorrect model
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     bad_uvfits_test = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA.uvfits')
     pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd, history='Just a test.',
                   filename=test_d_file, model_file=bad_uvfits_test,
@@ -2220,6 +2260,7 @@ def test_xrfi_h1c_run_input_calfits():
     # input calfits
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     ext = 'flag'
     cbasename = os.path.basename(utils.strip_extension(test_c_file))
     outtest1 = '.'.join([os.path.join(xrfi_path, cbasename), 'x', ext])
@@ -2240,6 +2281,7 @@ def test_xrfi_h1c_run_incorrect_calfits():
     # check for calfits with incorrect time/freq axes
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     bad_calfits = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
     pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd, history='Just a test.',
                   filename=test_d_file, calfits_file=bad_calfits,
@@ -2438,6 +2480,7 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
     for obsi in range(len(fake_obses)):
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
+        uvc.use_future_array_shapes()
         dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
         uvc.time_array += obsi * dt
         uvc.write_calfits(ocalfits_files[obsi])
@@ -2445,6 +2488,7 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
 
         uv = UVData()
         uv.read(test_uvh5_file)
+        uv.use_future_array_shapes()
         uv.time_array += obsi * dt
         uv.set_lsts_from_time_array()
         uv.write_uvh5(model_files[obsi])
