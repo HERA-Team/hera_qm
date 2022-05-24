@@ -345,6 +345,7 @@ class FirstCalMetrics(object):
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_files)
+        self.UVC.use_future_array_shapes()
 
         self.pols = np.array([uvutils.polnum2str(jones, x_orientation=self.UVC.x_orientation)
                               for jones in self.UVC.jones_array])
@@ -375,7 +376,7 @@ class FirstCalMetrics(object):
             # get delays
             freqs = self.UVC.freq_array.squeeze()
             # the unwrap is dove over the frequency axis
-            fc_gains = self.UVC.gain_array[:, 0, :, :, :]
+            fc_gains = self.UVC.gain_array[:, :, :, :]
             fc_phi = np.unwrap(np.angle(fc_gains), axis=1)
             d_nu = np.median(np.diff(freqs))
             d_phi = np.median(fc_phi[:, 1:, :, :] - fc_phi[:, :-1, :, :], axis=1)
@@ -397,7 +398,7 @@ class FirstCalMetrics(object):
             self.rot_ants = []
 
         # Calculate avg delay solution and subtract to get delay_fluctuations
-        delay_flags = np.all(self.UVC.flag_array, axis=(1, 2))
+        delay_flags = np.all(self.UVC.flag_array, axis=(1))
         self.delays = self.delays * 1e9
         self.delays[delay_flags] = np.nan
         self.delay_avgs = np.nanmedian(self.delays, axis=1, keepdims=True)
@@ -612,7 +613,7 @@ class FirstCalMetrics(object):
 
         """
         # calculate standard deviations, ignoring antenna-times flagged for all freqs
-        delay_flags = np.all(self.UVC.flag_array, axis=(1, 2))[:, :, pol_ind]
+        delay_flags = np.all(self.UVC.flag_array, axis=(1))[:, :, pol_ind]
         ant_avg = self.delay_avgs[:, :, pol_ind]
         ant_avg = self.delay_avgs[:, :, pol_ind]
         ant_std = np.sqrt([astats.biweight_midvariance((self.delay_fluctuations[i, :, pol_ind])[~delay_flags[i, :]])
