@@ -26,6 +26,7 @@ xrfi_path = os.path.join(DATA_PATH, 'test_output')
 test_flag_integrations= os.path.join(DATA_PATH, 'a_priori_flags_integrations.yaml')
 test_flag_jds= os.path.join(DATA_PATH, 'a_priori_flags_jds.yaml')
 test_flag_lsts= os.path.join(DATA_PATH, 'a_priori_flags_lsts.yaml')
+test_auto_file = os.path.join(DATA_PATH, 'zen.2457698.40355.autos.xx.HH.uvh5')
 
 test_uvh5_files = ['zen.2457698.40355191.xx.HH.uvh5',
                    'zen.2457698.40367619.xx.HH.uvh5',
@@ -1200,6 +1201,8 @@ def test_xrfi_run(tmpdir):
     shutil.copyfile(test_uvh5_file, raw_dfile)
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
+    auto_file = os.path.join(tmp_path, fake_obs + '.autos.uvh5')
+    shutil.copyfile(test_auto_file, auto_file)
 
     # check warnings
     with pytest.warns(None) as record:
@@ -1364,6 +1367,19 @@ def test_xrfi_run(tmpdir):
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if 'cross' not in ext and 'v_' not in ext and 'auto' not in ext:
+            assert os.path.exists(out)
+            uvf = UVFlag(out)
+            assert uvf.label == label
+    # cleanup
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
+        if os.path.exists(out):
+            os.remove(out)
+    # test run with only an autocorrelation only file.
+    xrfi.xrfi_run(data_files=auto_file, history='autocorrs only.')
+    for ext, label in ext_labels.items():
+        out = os.path.join(outdir, '.'.join([fake_obs + '.autos', ext, 'h5']))
+        if 'auto' in ext or 'combined' in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
             assert uvf.label == label
