@@ -34,3 +34,4 @@ hera_qm/data/test_output
 *.ipynb_checkpoints
 hera_qm/GIT_INFO
 hera_qm/data/test_output/ant_metrics_output.json
+hera_qm/_version.py
