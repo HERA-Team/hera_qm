@@ -8,7 +8,7 @@ from copy import deepcopy
 import os
 import shutil
 import re
-from .version import hera_qm_version_str
+from . import __version__
 from . import utils, metrics_io
 
 
@@ -284,7 +284,7 @@ class AntennaMetrics():
                 raise ValueError(f'{ant} is not a valid entry in apriori_xants.')
 
         # Set up metadata and summary stats
-        self.version_str = hera_qm_version_str
+        self.version_str = __version__
         self.history = ''
         self._reset_summary_stats()
 

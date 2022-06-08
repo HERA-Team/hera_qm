@@ -3,13 +3,6 @@
 # Licensed under the MIT License
 
 """init file for hera_qm."""
-from . import xrfi  # noqa
-from . import vis_metrics  # noqa
-from . import ant_metrics  # noqa
-from . import auto_metrics  # noqa
-from . import firstcal_metrics  # noqa
-from . import omnical_metrics  # noqa  # noqa
-from . import metrics_io  # noqa
 
 try:
     from importlib.metadata import version, PackageNotFoundError
@@ -27,3 +20,11 @@ except ModuleNotFoundError:  # pragma: no cover
 
 del version
 del PackageNotFoundError
+
+from . import xrfi  # noqa
+from . import vis_metrics  # noqa
+from . import ant_metrics  # noqa
+from . import auto_metrics  # noqa
+from . import firstcal_metrics  # noqa
+from . import omnical_metrics  # noqa 
+from . import metrics_io  # noqa
