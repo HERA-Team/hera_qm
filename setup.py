@@ -5,12 +5,6 @@ import os.path as op
 import json
 
 sys.path.append('hera_qm')
-import version  # noqa
-
-data = [version.git_origin, version.git_hash, version.git_description, version.git_branch]
-with open(op.join('hera_qm', 'GIT_INFO'), 'w') as outfile:
-    json.dump(data, outfile)
-
 
 def package_files(package_dir, subdirectory):
     # walk the input package_dir/subdirectory
@@ -49,7 +43,6 @@ setup_args = {
                 'scripts/xrfi_h3ca_rtp_run.py',
                 'scripts/xrfi_run_data_only.py'
                 ],
-    'version': version.version,
     'package_data': {'hera_qm': data_files},
     'setup_requires': ['pytest-runner'],
     'install_requires': [
