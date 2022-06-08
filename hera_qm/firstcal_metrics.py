@@ -7,7 +7,7 @@ import numpy as np
 from pyuvdata import UVCal, utils as uvutils
 import astropy.stats as astats
 from collections import OrderedDict
-from .version import hera_qm_version_str
+from . import __version__
 from . import utils, metrics_io
 import copy
 import os
@@ -367,7 +367,7 @@ class FirstCalMetrics(object):
         self.minutes = 24 * 60 * (self.frac_JD - self.frac_JD.min())
         self.Nants = self.UVC.Nants_data
         self.ants = self.UVC.ant_array
-        self.version_str = hera_qm_version_str
+        self.version_str = __version__
         self.history = ''
 
         # Get the firstcal delays and/or gains and/or rotated antennas

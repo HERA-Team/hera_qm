@@ -216,7 +216,6 @@ def test_init():
             assert am.datafile_list_diff is None
             assert am.hd_diff is None
         assert am.history == ''
-        assert 'Git hash' in am.version_str
 
         # test antennas and baselines
         true_antnums = [51, 87, 116, 93, 65, 85, 53, 160, 36, 83, 135, 157, 98, 117, 68]

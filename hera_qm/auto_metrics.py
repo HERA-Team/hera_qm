@@ -6,7 +6,6 @@
 import numpy as np
 from copy import deepcopy
 import operator
-from .version import hera_qm_version_str
 from .xrfi import simple_flag_waterfall
 from .metrics_io import write_metric_file
 
