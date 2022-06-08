@@ -3,6 +3,7 @@ import os
 import sys
 import os.path as op
 import json
+from pathlib import Path
 
 sys.path.append('hera_qm')
 
@@ -19,6 +20,8 @@ def package_files(package_dir, subdirectory):
 
 
 data_files = package_files('hera_qm', 'data')
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 setup_args = {
     'name': 'hera_qm',
@@ -26,6 +29,8 @@ setup_args = {
     'url': 'https://github.com/HERA-Team/hera_qm',
     'license': 'BSD',
     'description': 'HERA Data Quality Metrics.',
+    'long_description': long_description,
+    'long_description_content_type': 'text/markdown',
     'package_dir': {'hera_qm': 'hera_qm'},
     'packages': ['hera_qm'],
     'include_package_data': True,
