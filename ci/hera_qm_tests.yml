@@ -3,17 +3,17 @@ channels:
   - defaults
   - conda-forge
 dependencies:
+  - astropy>=3.2.3
+  - coveralls
+  - h5py
+  - matplotlib
   - numpy>=1.10
   - pip
-  - astropy>=3.2.3
-  - h5py
-  - scipy
   - pytest
-  - scikit-learn # from hera_cal
   - pytest-cov
-  - matplotlib
-  - coveralls
+  - pyuvdata
+  - scikit-learn # from hera_cal
+  - scipy
   - pip:
-    - git+https://github.com/RadioAstronomySoftwareGroup/pyuvdata.git
-    - git+https://github.com/HERA-Team/uvtools
-    - git+https://github.com/HERA-Team/hera_cal
+    - hera_cal
+    - uvtools
