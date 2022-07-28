@@ -59,3 +59,17 @@ class AntennaClassification():
         '''Iterate over ant-pol tuples.'''
         return iter(self._classification)
     
+    @property
+    def classes(self):
+        '''Sorted list of unique antenna classifications.'''
+        return sorted(set(self._classification.values()))
+
+    @property
+    def ants(self):
+        '''Sorted list of all classified ant-pol tuples.'''
+        return sorted(self._classification.keys())
+    
+    def get_all(self, classification):
+        '''Return all ant-pol tuples with the given classification.'''
+        return sorted([ant for ant, cls in self._classification.items() if cls == classification])
+   
