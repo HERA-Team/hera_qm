@@ -62,22 +62,22 @@ class AntennaClassification():
     
     @property
     def classes(self):
-        '''Sorted list of unique antenna classifications.'''
-        return sorted(set(self._classification.values()))
+        '''Set of unique antenna classifications.'''
+        return set(self._classification.values())
 
     @property
     def ants(self):
-        '''Sorted list of all classified ant-pol tuples.'''
-        return sorted(self._classification.keys())
+        '''Set of all classified ant-pol tuples.'''
+        return set(self._classification.keys())
     
     def get_all(self, classification):
-        '''Return all ant-pol tuples with the given classification.'''
-        return sorted([ant for ant, cls in self._classification.items() if cls == classification])
+        '''Return set of all ant-pol tuples with the given classification.'''
+        return set([ant for ant, cls in self._classification.items() if cls == classification])
    
     @property
     def good_ants(self):
-        '''Sorted list of ant-pol tuples with the current good classification (default "good").'''
-        return self.get_all(self._GOOD)     
+        '''Set of ant-pol tuples with the current good classification (default "good").'''
+        return self.get_all(self._GOOD)
     
     def is_good(self, ant):
         '''Returns True if antenna has the current good classification (default "good").'''
@@ -85,7 +85,7 @@ class AntennaClassification():
     
     @property
     def suspect_ants(self):
-        '''Sorted list of ant-pol tuples with the current suspect classification (default "suspect").'''
+        '''Set of ant-pol tuples with the current suspect classification (default "suspect").'''
         return self.get_all(self._SUSPECT)  
 
     def is_suspect(self, ant):
@@ -94,7 +94,7 @@ class AntennaClassification():
     
     @property
     def bad_ants(self):
-        '''Sorted list of ant-pol tuples with the current bad classification (default "bad").'''
+        '''Set of ant-pol tuples with the current bad classification (default "bad").'''
         return self.get_all(self._BAD)
         
     def is_bad(self, ant):
