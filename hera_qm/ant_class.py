@@ -47,3 +47,15 @@ class AntennaClassification():
         self._SUSPECT = 'suspect'
         self._BAD = 'bad'        
     
+    def __getitem__(self, key):
+        '''Get classification of a specific ant-pol tuple.'''
+        return self._classification[key]
+    
+    def __setitem__(self, key, value):
+        '''Set the classification of a specific ant-pol tuple.'''
+        self._classification[key] = value
+    
+    def __iter__(self):
+        '''Iterate over ant-pol tuples.'''
+        return iter(self._classification)
+    
