@@ -10,6 +10,7 @@ def _check_antpol(ap):
     '''Verifies that input is a valid ant-pol tuple. Otherwies, raises a ValueError'''
     from hera_cal.utils import join_bl
     try:
+        assert np.issubdtype(type(ap[0]), np.integer)
         join_bl(ap, ap)
     except:
         raise ValueError(f"{ap} could not be interpreted as an antpol tuple of the form (1, 'Jee').")
@@ -45,7 +46,7 @@ class AntennaClassification():
         self._classification = {}
         self._GOOD = 'good'
         self._SUSPECT = 'suspect'
-        self._BAD = 'bad'        
+        self._BAD = 'bad'
     
     def __getitem__(self, key):
         '''Get classification of a specific ant-pol tuple.'''
