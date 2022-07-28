@@ -99,7 +99,7 @@ class AntennaClassification():
         
     def is_bad(self, ant):
         '''Returns True if antenna has the current bad classification (default "bad"), else False.'''
-        (ant in self._classification) and (self[ant] == self._BAD)
+        return (ant in self._classification) and (self[ant] == self._BAD)
         
     def define_quality(self, good='good', suspect='suspect', bad='bad'):
         '''Resets the classifications considered good/suspect/bad. These are used for adding
