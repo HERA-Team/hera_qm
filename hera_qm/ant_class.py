@@ -80,8 +80,8 @@ class AntennaClassification():
         return self.get_all(self._GOOD)
     
     def is_good(self, ant):
-        '''Returns True if antenna has the current good classification (default "good").'''
-        return self[ant] == self._GOOD
+        '''Returns True if antenna has the current good classification (default "good"), else False.'''
+        return (ant in self._classification) and (self[ant] == self._GOOD)
     
     @property
     def suspect_ants(self):
@@ -89,8 +89,8 @@ class AntennaClassification():
         return self.get_all(self._SUSPECT)  
 
     def is_suspect(self, ant):
-        '''Returns True if antenna has the current suspect classification (default "suspect").'''
-        return self[ant] == self._SUSPECT    
+        '''Returns True if antenna has the current suspect classification (default "suspect"), else False.'''
+        return (ant in self._classification) and (self[ant] == self._SUSPECT)
     
     @property
     def bad_ants(self):
@@ -98,8 +98,8 @@ class AntennaClassification():
         return self.get_all(self._BAD)
         
     def is_bad(self, ant):
-        '''Returns True if antenna has the current bad classification (default "bad").'''
-        return self[ant] == self._BAD
+        '''Returns True if antenna has the current bad classification (default "bad"), else False.'''
+        (ant in self._classification) and (self[ant] == self._BAD)
         
     def define_quality(self, good='good', suspect='suspect', bad='bad'):
         '''Resets the classifications considered good/suspect/bad. These are used for adding
