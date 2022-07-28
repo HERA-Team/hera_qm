@@ -138,3 +138,45 @@ class AntennaClassification():
                 if cls in old_classes:
                     self._classification[ant] = new_class
 
+    def __add__(self, other):
+        '''Combines together two AntennaClassification objects, returning a new one. Both objects
+        must have the same quality_classes and all ant-pols in both must belong to those quality classes.
+        Ant-pols that are bad in either object are bad in the result. Ant-pols that are good in both objects
+        are good in the result. All other ant-pols are suspect. Antennas that are classified in one object 
+        but absent from the other are included in the result with their classifications preserved.
+        '''
+        # make sure both obects are of type AntennaClassification
+        if not issubclass(type(other), AntennaClassification):
+            raise TypeError(f'Cannot add {type(other)} to AntennaClassification object.')
+        # make sure both objects have the same names for good, suspect, and bad
+        if not set(self.quality_classes) == set(other.quality_classes):
+            raise ValueError(f'To combine AntennaClassification objects, their quality classes must be the same. \
+                             {self.quality_classes} is not the same as {other.quality_classes}')
+        # make sure all antennas in both objects are either good, suspect, or bad
+        for o in [self, other]:
+            if any([cls not in o.quality_classes for cls in o.classes]):
+                raise ValueError(f'To add together two AntennaClassification objects, all classes must be one of \
+                                 {o.quality_classes}, but one of {o.classes} is not.')
+        
+        # Figure out which antenna gets which classification in the combined object
+        ants_here = set(self.ants)
+        ants_there = set(other.ants)
+        new_class = {}
+        for ant in (ants_here | ants_there):
+            if ant not in ants_here:
+                new_class[ant] = other[ant]
+            elif ant not in ants_there:
+                new_class[ant] = self[ant]
+            else:
+                if (self[ant] == self._BAD) | (other[ant] == other._BAD):
+                    new_class[ant] = self._BAD
+                elif (self[ant] == self._GOOD) & (other[ant] == other._GOOD):
+                    new_class[ant] = self._GOOD
+                else:
+                    new_class[ant] = self._SUSPECT
+        
+        # Build and return combined object, preserving quality classes
+        ac = AntennaClassification(**{qual: [ant for ant in new_class if new_class[ant] == qual] for qual in self.quality_classes})
+        ac.define_quality(*self.quality_classes)
+        return ac
+
