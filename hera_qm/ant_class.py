@@ -73,3 +73,30 @@ class AntennaClassification():
         '''Return all ant-pol tuples with the given classification.'''
         return sorted([ant for ant, cls in self._classification.items() if cls == classification])
    
+    @property
+    def good_ants(self):
+        '''Sorted list of ant-pol tuples with the current good classification (default "good").'''
+        return self.get_all(self._GOOD)     
+    
+    def is_good(self, ant):
+        '''Returns True if antenna has the current good classification (default "good").'''
+        return self[ant] == self._GOOD
+    
+    @property
+    def suspect_ants(self):
+        '''Sorted list of ant-pol tuples with the current suspect classification (default "suspect").'''
+        return self.get_all(self._SUSPECT)  
+
+    def is_suspect(self, ant):
+        '''Returns True if antenna has the current suspect classification (default "suspect").'''
+        return self[ant] == self._SUSPECT    
+    
+    @property
+    def bad_ants(self):
+        '''Sorted list of ant-pol tuples with the current bad classification (default "bad").'''
+        return self.get_all(self._BAD)
+        
+    def is_bad(self, ant):
+        '''Returns True if antenna has the current bad classification (default "bad").'''
+        return self[ant] == self._BAD
+        
