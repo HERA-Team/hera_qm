@@ -28,3 +28,4 @@ from . import auto_metrics  # noqa
 from . import firstcal_metrics  # noqa
 from . import omnical_metrics  # noqa 
 from . import metrics_io  # noqa
+from . import ant_class  # noqa
