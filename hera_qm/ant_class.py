@@ -100,3 +100,41 @@ class AntennaClassification():
         '''Returns True if antenna has the current bad classification (default "bad").'''
         return self[ant] == self._BAD
         
+    def define_quality(self, good='good', suspect='suspect', bad='bad'):
+        '''Resets the classifications considered good/suspect/bad. These are used for adding
+        together AntennaClassification objects.
+        
+        Arguments:
+            good: string to reset the classification considered good. Default "good".
+            suspect: string to reset the classification considered suspect. Default "suspect".
+            bad: string to reset the classification considered bad. Default "bad".
+        '''
+        self._GOOD = good
+        self._SUSPECT = suspect
+        self._BAD = bad
+    
+    @property
+    def quality_classes(self):
+        '''3-tuple of classification names considered good, suspect, and bad.'''
+        return self._GOOD, self._SUSPECT, self._BAD
+    
+    def to_quality(self, good_classes=[], suspect_classes=[], bad_classes=[]):
+        '''Function to reassigning classifications to good, suspect, or bad. All classifications
+        must have a mapping to one of those three, which are by default "good", "suspect", and "bad",
+        and can be queried by self.quality_classes and set by self.define_quality().
+        
+        Arguments:
+            good_classes: list of string classfications to be renamed to the current good classification
+            suspect_classes: list of string classfications to be renamed to the current suspect classification
+            bad_classes: list of string classfications to be renamed to the current bad classification            
+        '''        
+        # check to make sure all classes have been sorted into good, suspect, or bad
+        for cls in self.classes:
+            if cls not in self.quality_classes:
+                if (cls not in good_classes) and (cls not in suspect_classes) and (cls not in bad_classes):
+                    raise ValueError(f'Unable to convert "{cls}" to one of {self.quality_classes}.')
+        for new_class, old_classes in zip(self.quality_classes, [good_classes, suspect_classes, bad_classes]):
+            for ant, cls in self._classification.items():
+                if cls in old_classes:
+                    self._classification[ant] = new_class
+
