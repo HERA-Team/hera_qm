@@ -180,3 +180,59 @@ class AntennaClassification():
         ac.define_quality(*self.quality_classes)
         return ac
 
+
+def _is_bound(bound):
+    '''Returns True if input is a length-2 iterable of numbers, the second >= the first, False otherwise.'''
+    try:
+        assert len(bound) == 2
+        assert float(bound[0]) <= float(bound[1])
+    except:
+        return False
+    return True
+
+
+def antenna_bounds_checker(data, **kwargs):
+    '''Converts scalar data about antennas to a classification using (potentially disjoint) bounds.
+    Example usage: antenna_bounds_checker(data, good=[(.5, 1)], suspect=[(0, .5), (1, 2)], bad=(-np.inf, np.inf))
+    
+    Arguments:
+        data: dictionary mapping ant-pol tuples (or autocorrelation keys) to 
+        kwargs: named antenna classifications and the range or ranges of data values which map to those 
+            categories. Classification bounds are checked in order and the first accepted bound is used. 
+            All ranges are inclusive (i.e. >= or <=).
+        
+    Returns:
+        AntennaClassification object using data and bounds to classify antennas in data
+    '''
+    
+    classifiction_dict = {cls: set([]) for cls in kwargs}
+    for ant in data:
+        # check that key is either a valid ant-pol tuple of an autocorrelation tuple
+        try:
+            _check_antpol(ant)
+        except:
+            try:  # try to convert autocorrelation 3-tuple into ant-pol
+                from hera_cal.utils import split_bl
+                ant1, ant2 = split_bl(ant)
+                if ant1 == ant2:
+                    ant = ant1
+                else:
+                    raise ValueError
+            except:
+                raise ValueError(f'{ant} is not a valid ant-pol tuple nor a valid autocorrelation key.')
+        
+        # classify antenna
+        for cls, bounds in kwargs.items():
+            if _is_bound(bounds):
+                bounds = [bounds]
+            # iterate over (potentially disjoint) bounts in this 
+            for bound in bounds:
+                if not _is_bound(bound):
+                    raise ValueError(f'Count not convert {bound} into a valid range for {cls} antennas.')
+                if (data[ant] >= bound[0]) and (data[ant] <= bound[1]):
+                    classifiction_dict[cls].add(ant)
+                    break
+            if ant in classifiction_dict[cls]:
+                break
+    
+    return AntennaClassification(**classifiction_dict)
