@@ -7,7 +7,7 @@ import numpy as np
 
 
 def _check_antpol(ap):
-    '''Verifies that input is a valid ant-pol tuple. Otherwies, raises a ValueError'''
+    '''Verifies that input is a valid ant-pol tuple. Otherwise, raises a ValueError'''
     from hera_cal.utils import join_bl
     try:
         assert np.issubdtype(type(ap[0]), np.integer)
