@@ -140,3 +140,19 @@ def test_is_bound():
     assert not ant_class._is_bound([1, 1 + 1j])
 
 
+def test_antenna_bounds_checker():
+    data = {(1, 'Jee'): 1, (2, 'Jee'): 3, (3, 'Jee'): 4, (4, 4, 'ee'): 10}
+
+    ac = ant_class.antenna_bounds_checker(data, good=[(0, 2), (3.5, 4)], weird=[(4, np.inf)])
+    ac.define_quality(bad='weird')
+    assert (1, 'Jee') in ac.good_ants
+    assert (3, 'Jee') in ac.good_ants
+    assert (3, 'Jee') not in ac.bad_ants
+    assert (4, 'Jee') in ac.bad_ants
+    assert (4, 4, 'ee') not in ac
+    assert (2, 'Jee') not in ac
+
+    with pytest.raises(ValueError):
+        ac = ant_class.antenna_bounds_checker(data, bad_bound=[(0, -1)])
+        ac = ant_class.antenna_bounds_checker(data, bad_bound=(0, -1))
+        ac = ant_class.antenna_bounds_checker({(1, 2, 'ee'): 1.0}, bad_bound=[(0, -1)])
