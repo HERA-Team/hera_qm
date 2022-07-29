@@ -85,3 +85,45 @@ def test_AntennaClassification():
     assert len(ac.ants) == 0
 
 
+def test_AntennaClassification_add():
+    ac1 = ant_class.AntennaClassification(good=[(0, 'Jnn'), (0, 'Jee'), (1, 'Jnn')],
+                                      bad=[(1,'Jee')], 
+                                      weird=[(2, 'Jee'), (2, 'Jnn')])
+    ac2 = ant_class.AntennaClassification(good=[(0, 'Jnn')],
+                                          bad=[(1,'Jee'), (0, 'Jee'), (2, 'Jee')], 
+                                          weird=[(1, 'Jnn'), (2, 'Jnn')])
+    # test wrong type error
+    with pytest.raises(TypeError):
+        ac1 += 1
+
+    # test non-quality class error
+    with pytest.raises(ValueError):
+        ac = ac1 + ac2
+
+    ac1.define_quality(suspect='weird')
+
+    # test quality class mismatch error
+    with pytest.raises(ValueError):
+        ac = ac1 + ac2
+
+    ac2.define_quality(suspect='weird')
+    ac = ac1 + ac2
+
+    # test good + good
+    assert ac.is_good((0, 'Jnn'))
+
+    # test good + bad
+    assert ac.is_bad((0, 'Jee'))
+
+    # test good + suspect
+    assert ac.is_suspect((1, 'Jnn'))
+
+    # test suspect + suspect
+    assert ac.is_suspect((2, 'Jnn'))
+
+    # test suspect + bad
+    assert ac.is_bad((2, 'Jee'))
+
+    # test bad + bad
+    assert ac.is_bad((1,'Jee'))
+
