@@ -127,3 +127,16 @@ def test_AntennaClassification_add():
     # test bad + bad
     assert ac.is_bad((1,'Jee'))
 
+
+def test_is_bound():
+    assert ant_class._is_bound([0, 1])
+    assert ant_class._is_bound(np.array([0, 1]))
+    assert ant_class._is_bound((0, 1))
+    assert ant_class._is_bound([0, 1.0])
+
+    assert not ant_class._is_bound([2, 1, 3])
+    assert not ant_class._is_bound([2, 1])
+    assert not ant_class._is_bound([1, 'stuff'])
+    assert not ant_class._is_bound([1, 1 + 1j])
+
+
