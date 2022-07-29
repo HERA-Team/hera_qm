@@ -229,8 +229,8 @@ def antenna_bounds_checker(data, **kwargs):
             # iterate over (potentially disjoint) bounts in this 
             for bound in bounds:
                 if not _is_bound(bound):
-                    raise ValueError(f'Count not convert {bound} into a valid range for {cls} antennas.')
                 if (data[ant] >= bound[0]) and (data[ant] <= bound[1]):
+                    raise ValueError(f'Count not convert {bounds} into a valid range or ranges for {cls} antennas.')
                     classifiction_dict[cls].add(ant)
                     break
             if ant in classifiction_dict[cls]:
