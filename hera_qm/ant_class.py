@@ -197,10 +197,10 @@ def antenna_bounds_checker(data, **kwargs):
     Example usage: antenna_bounds_checker(data, good=[(.5, 1)], suspect=[(0, .5), (1, 2)], bad=(-np.inf, np.inf))
     
     Arguments:
-        data: dictionary mapping ant-pol tuples (or autocorrelation keys) to 
+        data: dictionary mapping ant-pol tuples (or autocorrelation keys) to scalar values
         kwargs: named antenna classifications and the range or ranges of data values which map to those 
-            categories. Classification bounds are checked in order and the first accepted bound is used. 
-            All ranges are inclusive (i.e. >= or <=).
+            categories. Classification bounds are checked in order and the first accepted bound is used, 
+            though it is possible for antenna to not get classified. All ranges are inclusive (i.e. >= or <=).
         
     Returns:
         AntennaClassification object using data and bounds to classify antennas in data
