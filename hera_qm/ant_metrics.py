@@ -200,16 +200,16 @@ class AntennaMetrics():
         freq_alg : function, optional
             Averaging function along the frequency axis for producing correlation stats.
             See calc_corr_stats() for more details.
-        sum_data : dictionary or DataContainer, optional
+        sum_data : hera_cal DataContainer, optional
             Use this data instead of loading data form sum_files (which is used only for metadata).
             This option is indended for interactive use when the data are already in memory.
             Must include the full data set expected from sum_files. Nfiles_per_load and
             Nbls_per_load must both be None if this is provided.
-        diff_data : dictionary or DataContainer, optional
+        diff_data : hera_cal DataContainer, optional
             Same as sum_data, but for the diff files.
-        sum_flags : dictionary or DataContainer, optional
+        sum_flags : hera_cal DataContainer, optional
             Same as sum_data, but for flags instead of data
-        diff_flags : dictionary or DataContainer, optional
+        diff_flags : hera_cal DataContainer, optional
             Same as sum_flags, but for the diff files.
 
         Attributes
