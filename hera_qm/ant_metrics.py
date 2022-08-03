@@ -257,13 +257,13 @@ class AntennaMetrics():
             raise ValueError(f'The number of sum files ({len(sum_files)}) does not match the number of diff files ({len(diff_files)}).')
         self.datafile_list_sum = sum_files
         self.hd_sum = HERADataFastReader(sum_files)
+        self.bls = self.hd_sum.bls
         if diff_files is None or len(diff_files) == 0:
             self.datafile_list_diff = None
             self.hd_diff = None
         else:
             self.datafile_list_diff = diff_files
             self.hd_diff = HERADataFastReader(diff_files)
-            self.bls = self.hd_sum.bls
 
         # save sum_data, etc. internally. Typically these are None.
         self.sum_data = sum_data
