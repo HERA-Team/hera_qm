@@ -171,7 +171,8 @@ class AntennaMetrics():
     """
 
     def __init__(self, sum_files, diff_files=None, apriori_xants=[], Nbls_per_load=None,
-                 Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
+                 Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean,
+                 sum_data=None, diff_data=None, sum_flags=None, diff_flags=None):
         """Initilize an AntennaMetrics object and load mean visibility amplitudes.
 
         Parameters
@@ -199,6 +200,17 @@ class AntennaMetrics():
         freq_alg : function, optional
             Averaging function along the frequency axis for producing correlation stats.
             See calc_corr_stats() for more details.
+        sum_data : dictionary or DataContainer, optional
+            Use this data instead of loading data form sum_files (which is used only for metadata).
+            This option is indended for interactive use when the data are already in memory.
+            Must include the full data set expected from sum_files. Nfiles_per_load and
+            Nbls_per_load must both be None if this is provided.
+        diff_data : dictionary or DataContainer, optional
+            Same as sum_data, but for the diff files.
+        sum_flags : dictionary or DataContainer, optional
+            Same as sum_data, but for flags instead of data
+        diff_flags : dictionary or DataContainer, optional
+            Same as sum_flags, but for the diff files.
 
         Attributes
         ----------
@@ -253,6 +265,20 @@ class AntennaMetrics():
             self.hd_diff = HERADataFastReader(diff_files)
             self.bls = self.hd_sum.bls
 
+        # save sum_data, etc. internally. Typically these are None.
+        self.sum_data = sum_data
+        self.diff_data = diff_data
+        self.sum_flags = sum_flags
+        self.diff_flags = diff_flags
+
+        # make sure sum_data is sensible and that the algorithm
+        if (self.sum_data is not None):
+            if (Nfiles_per_load is not None) or (Nbls_per_load is not None):
+                raise ValueError('sum_data was provided, skipping data loading, so Nbls_per_load and Nfiles_per_load must be None.')
+            for bl in self.bls:
+                if bl not in self.sum_data:
+                    raise KeyError(f'{bl} is in sum_files but not in sum_data. sum_data should come from sum_files.')
+
         # Figure out polarizations in the data
         self.pols = set([bl[2] for bl in self.bls])
         self.cross_pols = [pol for pol in self.pols if split_pol(pol)[0] != split_pol(pol)[1]]
@@ -302,25 +328,37 @@ class AntennaMetrics():
     def _load_files_and_update_corr_stats(self, corr_stats, sum_files, diff_files, bl_load_groups):
         """Loop over baseline groups, loading sum/diff files and extending the existing corr_stats dict of lists.
         """
-        # loop over baseline groups
-        for blg in bl_load_groups:
-            # load sum files
-            hd_sum = self.HERAData(sum_files)
-            data_sum, flags, _ = hd_sum.read(bls=blg, axis='blt')
-            del hd_sum
+        if self.sum_data is None:
+            # loop over baseline groups
+            for blg in bl_load_groups:
+                # load sum files
+                hd_sum = self.HERADataFastReader(sum_files)
+                data_sum, flags, _ = hd_sum.read(bls=blg, read_nsamples=False)
+                del hd_sum
 
-            # load diff files, if appropraite
-            data_diff = None
-            if diff_files is not None:
-                hd_diff = self.HERAData(diff_files)
-                data_diff, flags_diff, _ = hd_diff.read(bls=blg, axis='blt')
-                del hd_diff
-                for bl in flags:
-                    flags[bl] |= flags_diff[bl]
+                # load diff files, if appropraite
+                data_diff = None
+                if diff_files is not None:
+                    hd_diff = self.HERADataFastReader(diff_files)
+                    data_diff, flags_diff, _ = hd_diff.read(bls=blg, read_nsamples=False)
+                    del hd_diff
+                    for bl in flags:
+                        flags[bl] |= flags_diff[bl]
 
+                # compute corr_stats and append them to list, weighting by the number of integrations
+                for bl, stat in calc_corr_stats(data_sum, data_diff=data_diff, flags=flags).items():
+                    corr_stats[bl].extend([stat] * len(data_sum.times))
+        else:
+            # use self.sum_data, self.diff_data, self.sum_flags, and self.diff_flags
+            flags = deepcopy(self.sum_flags)
+            if (self.diff_flags is not None) and flags is None:
+                flags = self.diff_flags
+            elif (flags is not None) and (self.diff_flags is not None):
+                for bl in self.diff_flags:
+                    flags[bl] |= self.diff_flags[bl]
             # compute corr_stats and append them to list, weighting by the number of integrations
-            for bl, stat in calc_corr_stats(data_sum, data_diff=data_diff, flags=flags).items():
-                corr_stats[bl].extend([stat] * len(data_sum.times))
+            for bl, stat in calc_corr_stats(self.sum_data, data_diff=self.diff_data, flags=flags).items():
+                corr_stats[bl].extend([stat] * len(self.sum_data.times))
 
     def _load_corr_matrices(self, Nbls_per_load=None, Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
         """Loop through groups of baselines to calculate self.corr_matrices using calc_corr_stats().
