@@ -202,10 +202,10 @@ class AntennaMetrics():
 
         Attributes
         ----------
-        hd_sum : HERAData
-            HERAData object generated from sum_files.
-        hd_diff : HERAData
-            HERAData object generated from diff_files.
+        hd_sum : HERADataFastReader
+            HERADataFastReader object generated from sum_files.
+        hd_diff : HERADataFastReader
+            HERADataFastReader object generated from diff_files.
         ants : list of tuples
             List of antenna-polarization tuples to assess
         antnums : list of ints
@@ -213,7 +213,7 @@ class AntennaMetrics():
         antpols : List of str
             List of antenna polarization strings. Typically ['Jee', 'Jnn']
         bls : list of ints
-            List of baselines in HERAData object.
+            List of baselines in HERADataFastReader object.
         datafile_list_sum : list of str
             List of sum data filenames that went into this calculation.
         datafile_list_diff : list of str
@@ -228,10 +228,10 @@ class AntennaMetrics():
 
         """
         
-        from hera_cal.io import HERAData
+        from hera_cal.io import HERADataFastReader
         from hera_cal.utils import split_bl, comply_pol, split_pol, join_pol
         # prevents the need for importing again later
-        self.HERAData = HERAData
+        self.HERADataFastReader = HERADataFastReader
         self.split_bl = split_bl
         self.join_pol = join_pol
         self.split_pol = split_pol
@@ -244,17 +244,13 @@ class AntennaMetrics():
         if (diff_files is not None) and (len(diff_files) != len(sum_files)):
             raise ValueError(f'The number of sum files ({len(sum_files)}) does not match the number of diff files ({len(diff_files)}).')
         self.datafile_list_sum = sum_files
-        self.hd_sum = HERAData(sum_files)
+        self.hd_sum = HERADataFastReader(sum_files)
         if diff_files is None or len(diff_files) == 0:
             self.datafile_list_diff = None
             self.hd_diff = None
         else:
             self.datafile_list_diff = diff_files
-            self.hd_diff = HERAData(diff_files)
-        if len(self.hd_sum.filepaths) > 1:
-            # only load baselines in all files
-            self.bls = sorted(set.intersection(*[set(bls) for bls in self.hd_sum.bls.values()]))
-        else:
+            self.hd_diff = HERADataFastReader(diff_files)
             self.bls = self.hd_sum.bls
 
         # Figure out polarizations in the data
