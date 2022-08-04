@@ -8,6 +8,7 @@ from copy import deepcopy
 import os
 import shutil
 import re
+import warnings
 from . import __version__
 from . import utils, metrics_io
 
@@ -122,8 +123,10 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
             odd = data_sum_here[1:last_int:2, :]
 
         # normalize (reduces the impact of RFI by making every channel equally weighted)
-        even /= np.abs(even)
-        odd /= np.abs(odd)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="invalid value encountered in true_divide")
+            even /= np.abs(even)
+            odd /= np.abs(odd)
 
         # reduce to a scalar statistic
         if time_alg == freq_alg:  # if they are the same algorithm, do it globally
@@ -398,7 +401,9 @@ class AntennaMetrics():
                 ant1, ant2 = self.split_bl(bl)
                 self.corr_matrices[bl[2]][self.ant_to_index[ant1], self.ant_to_index[ant2]] = corr_stats[bl]
         for pol, cm in self.corr_matrices.items(): 
-            self.corr_matrices[pol] = np.nanmean([cm, cm.T], axis=0)  # symmetrize
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Mean of empty slice")
+                self.corr_matrices[pol] = np.nanmean([cm, cm.T], axis=0)  # symmetrize
         self.corr_matrices_for_xpol = deepcopy(self.corr_matrices)
 
     def _find_totally_dead_ants(self, verbose=False):
@@ -442,7 +447,9 @@ class AntennaMetrics():
         per_ant_mean_corr_metrics = {}
         for pol in self.same_pols:
             # average over one antenna dimension
-            mean_corr_matrix = np.nanmean(self.corr_matrices[pol], axis=0)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Mean of empty slice")
+                mean_corr_matrix = np.nanmean(self.corr_matrices[pol], axis=0)
             antpol = self.split_pol(pol)[0]
             for ant, metric in zip(self.ants_per_antpol[antpol], mean_corr_matrix):
                 per_ant_mean_corr_metrics[ant] = metric
@@ -458,7 +465,10 @@ class AntennaMetrics():
                 matrix_pol_diffs.append(self.corr_matrices_for_xpol[sp] - self.corr_matrices_for_xpol[cp])
 
         # average over one antenna dimension and then take the maximum of the four combinations
-        cross_pol_metrics = np.nanmax(np.nanmean(matrix_pol_diffs, axis=1), axis=0)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Mean of empty slice")
+            warnings.filterwarnings("ignore", message="All-NaN slice encountered")
+            cross_pol_metrics = np.nanmax(np.nanmean(matrix_pol_diffs, axis=1), axis=0)
 
         per_ant_corr_cross_pol_metrics = {}
         for antpol, ants in self.ants_per_antpol.items():
