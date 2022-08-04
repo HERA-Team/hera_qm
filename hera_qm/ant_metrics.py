@@ -285,7 +285,7 @@ class AntennaMetrics():
         self.same_pols = [pol for pol in self.pols if split_pol(pol)[0] == split_pol(pol)[1]]
 
         # Figure out which antennas are in the data
-        self.ants = sorted(sorted(set([ant for bl in self.bls for ant in split_bl(bl)])))
+        self.ants = sorted(set([ant for bl in self.bls for ant in split_bl(bl)]))
         self.antnums = sorted(set([ant[0] for ant in self.ants]))
         self.antpols = sorted(set([ant[1] for ant in self.ants]))
         self.ants_per_antpol = {antpol: sorted([ant for ant in self.ants if ant[1] == antpol]) for antpol in self.antpols}
