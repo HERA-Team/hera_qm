@@ -30,6 +30,12 @@ def test_AntennaClassification():
                                          suspect=[(2, 'Jee')],
                                          weird=[(2, 'Jnn')])  
 
+    # test string
+    assert 'good' in str(ac)
+    assert 'suspect' in str(ac).split('good')[1]
+    assert 'bad' in str(ac).split('suspect')[1]
+    assert 'weird' in str(ac).split('bad')[1]
+
     # test getter
     assert ac[(0, 'Jnn')] == 'good'
     assert ac[(2, 'Jnn')] == 'weird'
