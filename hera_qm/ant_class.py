@@ -100,7 +100,7 @@ class AntennaClassification():
     def is_bad(self, ant):
         '''Returns True if antenna has the current bad classification (default "bad"), else False.'''
         return (ant in self._classification) and (self[ant] == self._BAD)
-        
+
     def define_quality(self, good='good', suspect='suspect', bad='bad'):
         '''Resets the classifications considered good/suspect/bad. These are used for adding
         together AntennaClassification objects.
@@ -180,6 +180,20 @@ class AntennaClassification():
         ac = AntennaClassification(**{qual: [ant for ant in new_class if new_class[ant] == qual] for qual in self.quality_classes})
         ac.define_quality(*self.quality_classes)
         return ac
+
+    def __str__(self):
+        outstr = ''
+        to_show = [cls for cls in self.quality_classes if cls in self.classes]
+        to_show += [cls for cls in self.classes if cls not in self.quality_classes]
+        pols = sorted(set([ant[1] for ant in self.ants]))
+        for pol in pols:
+            outstr += f'{pol}:\n----------\n'
+            for cls in to_show:
+                ants = sorted([ant for ant in self.get_all(cls) if ant[1] == pol])
+                outstr += f'{cls} ({len(ants)} antpols):\n' + ', '.join([str(ant[0]) for ant in ants]) + '\n\n'
+            outstr += '\n'
+
+        return outstr.rstrip('\n')
 
 
 def _is_bound(bound):
