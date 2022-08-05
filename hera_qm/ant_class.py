@@ -5,6 +5,7 @@
 """Class and algorithms to classify antennas by various data quality metrics."""
 import numpy as np
 from scipy.ndimage import median_filter
+import warnings
 
 
 def _check_antpol(ap):
@@ -313,7 +314,9 @@ def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, fi
         mean_data = np.mean(data[bl], axis=0)
         med_filt = median_filter(mean_data, size=filt_size)[edge_cut:-edge_cut]
         fit = np.polyfit(np.linspace(-.5, .5, len(mean_data))[edge_cut:-edge_cut], med_filt, 1)
-        relative_slopes[bl] = (fit[0] / fit[1] if np.isfinite(fit[1]) else np.sign(fit[0]) * np.inf)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="invalid value encountered")
+            relative_slopes[bl] = (fit[0] / fit[1] if np.isfinite(fit[1]) else np.sign(fit[0]) * np.inf)
 
     return antenna_bounds_checker(relative_slopes, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
