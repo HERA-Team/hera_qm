@@ -181,3 +181,19 @@ def test_auto_power_checker():
     for ant in {(65, 'Jee'), (65, 'Jnn'), (68, 'Jee'), (68, 'Jnn'), (93, 'Jee'), (93, 'Jnn'), (116, 'Jee'), (116, 'Jnn'), (135, 'Jee')}:
         assert ant in auto_power_class.bad_ants
 
+
+def test_auto_slope_checker():
+    hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
+    data, _, _ = hd.read(read_flags=False, read_nsamples=False)
+    auto_slope_class = ant_class.auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=20)  # smaller edge cut due to downsampling
+
+    for ant in {(83, 'Jee'), (160, 'Jee'), (85, 'Jee'), (98, 'Jee'), (83, 'Jnn'), (160, 'Jnn'), (85, 'Jnn'), (98, 'Jnn'), (36, 'Jee'), (135, 'Jee'), (157, 'Jee'),
+                (51, 'Jee'), (87, 'Jnn'), (36, 'Jnn'), (135, 'Jnn'), (157, 'Jnn'), (117, 'Jee'), (53, 'Jee'), (51, 'Jnn'), (117, 'Jnn'), (53, 'Jnn')}:
+        assert ant in auto_slope_class.good_ants
+    
+    for ant in {(68, 'Jee'), (87, 'Jee'), (68, 'Jnn')}:
+        assert ant in auto_slope_class.suspect_ants
+    
+    for ant in {(65, 'Jnn'), (116, 'Jee'), (93, 'Jnn'), (65, 'Jee'), (93, 'Jee'), (116, 'Jnn')}:
+        assert ant in auto_slope_class.bad_ants
+
