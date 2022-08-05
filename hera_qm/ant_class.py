@@ -4,6 +4,7 @@
 
 """Class and algorithms to classify antennas by various data quality metrics."""
 import numpy as np
+from scipy.ndimage import median_filter
 
 
 def _check_antpol(ap):
@@ -281,4 +282,38 @@ def auto_power_checker(data, good=(5, 30), suspect=(1, 80), int_count=None):
     # compute median powers and classify antennas
     auto_med_powers = {bl: np.median(np.abs(data[bl])) / int_count for bl in auto_bls}
     return antenna_bounds_checker(auto_med_powers, good=good, suspect=suspect, bad=(-np.inf, np.inf))
+
+
+def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, filt_size=17):
+    '''Classifies ant-pols as good, suspect, or bad based on their relative rise of fall over
+    the band after linear fitting median-filtered autocorrelations. Computes slope relative to
+    offset in the linear fit, so a slope of 1 corresponds roughly to a doubling over the band.
+    Ant-pols not in the good or suspect ranges will be labeled "bad".
+
+    Arguments:
+        data: DataContainer containing antenna autocorrelations (other baselines ignored)
+        good: 2-tuple or list of 2-tuple bounds for ranges considered good. In units of relative
+            slope over the band.
+        suspect: 2-tuple or list of 2-tuple bounds for ranges considered suspect. Ant-pols
+            in both the good and suspect ranges will be labeled good.
+        edge_cut: integer number of frequency channels to ignore on either side of the band
+            when computing slopes.
+        filt_size: size of the median filter designed to mitigate RFI before linear filtering
+    
+    Returns:
+        AntennaClassification with "good", "suspect", and "bad" ant-pols based on relative slope
+    '''
+    # get autocorelation keys
+    from hera_cal.utils import split_pol
+    auto_bls = [bl for bl in data if (bl[0] == bl[1]) and (split_pol(bl[2])[0] == split_pol(bl[2])[1])]
+
+    # compute relative slope over the band
+    relative_slopes = {}
+    for bl in auto_bls:
+        mean_data = np.mean(data[bl], axis=0)
+        med_filt = median_filter(mean_data, size=filt_size)[edge_cut:-edge_cut]
+        fit = np.polyfit(np.linspace(-.5, .5, len(mean_data))[edge_cut:-edge_cut], med_filt, 1)
+        relative_slopes[bl] = (fit[0] / fit[1] if np.isfinite(fit[1]) else np.sign(fit[0]) * np.inf)
+
+    return antenna_bounds_checker(relative_slopes, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
