@@ -251,3 +251,34 @@ def antenna_bounds_checker(data, **kwargs):
                 break
     
     return AntennaClassification(**classifiction_dict)
+
+
+def auto_power_checker(data, good=(5, 30), suspect=(1, 80), int_count=None):
+    '''Classifies ant-pols as good, suspect, or bad based on their median autocorrelations
+    in units of int_count. Ant-pols not in the good or suspect ranges will be labeled "bad".
+
+    Arguments:
+        data: DataContainer containing antenna autocorrelations (other baselines ignored)
+        good: 2-tuple or list of 2-tuple bounds for ranges considered good
+        suspect: 2-tuple or list of 2-tuple bounds for ranges considered suspect. Ant-pols
+            in both the good and suspect ranges will be labeled good.
+        int_count: Number of samples per integration in correlator. If default None, use 
+            data.times and data.freqs to infer int_count = channel resolution * integration time.
+    
+    Returns:
+        AntennaClassification with "good", "suspect", and "bad" ant-pols based on median power
+    '''
+    # infer int_count if not provided from data's metadata
+    if int_count is None:
+        int_time = 24 * 3600 * np.median(np.diff(data.times))
+        chan_res = np.median(np.diff(data.freqs))
+        int_count = int(int_time * chan_res)
+
+    # get autocorelation keys
+    from hera_cal.utils import split_pol
+    auto_bls = [bl for bl in data if (bl[0] == bl[1]) and (split_pol(bl[2])[0] == split_pol(bl[2])[1])]
+    
+    # compute median powers and classify antennas
+    auto_med_powers = {bl: np.median(np.abs(data[bl])) / int_count for bl in auto_bls}
+    return antenna_bounds_checker(auto_med_powers, good=good, suspect=suspect, bad=(-np.inf, np.inf))
+
