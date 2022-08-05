@@ -8,6 +8,7 @@ from copy import deepcopy
 import os
 import shutil
 import re
+import warnings
 from . import __version__
 from . import utils, metrics_io
 
@@ -122,8 +123,10 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
             odd = data_sum_here[1:last_int:2, :]
 
         # normalize (reduces the impact of RFI by making every channel equally weighted)
-        even /= np.abs(even)
-        odd /= np.abs(odd)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="invalid value encountered in true_divide")
+            even /= np.abs(even)
+            odd /= np.abs(odd)
 
         # reduce to a scalar statistic
         if time_alg == freq_alg:  # if they are the same algorithm, do it globally
@@ -171,7 +174,8 @@ class AntennaMetrics():
     """
 
     def __init__(self, sum_files, diff_files=None, apriori_xants=[], Nbls_per_load=None,
-                 Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
+                 Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean,
+                 sum_data=None, diff_data=None, sum_flags=None, diff_flags=None):
         """Initilize an AntennaMetrics object and load mean visibility amplitudes.
 
         Parameters
@@ -199,13 +203,24 @@ class AntennaMetrics():
         freq_alg : function, optional
             Averaging function along the frequency axis for producing correlation stats.
             See calc_corr_stats() for more details.
+        sum_data : hera_cal DataContainer, optional
+            Use this data instead of loading data form sum_files (which is used only for metadata).
+            This option is indended for interactive use when the data are already in memory.
+            Must include the full data set expected from sum_files. Nfiles_per_load and
+            Nbls_per_load must both be None if this is provided.
+        diff_data : hera_cal DataContainer, optional
+            Same as sum_data, but for the diff files.
+        sum_flags : hera_cal DataContainer, optional
+            Same as sum_data, but for flags instead of data
+        diff_flags : hera_cal DataContainer, optional
+            Same as sum_flags, but for the diff files.
 
         Attributes
         ----------
-        hd_sum : HERAData
-            HERAData object generated from sum_files.
-        hd_diff : HERAData
-            HERAData object generated from diff_files.
+        hd_sum : HERADataFastReader
+            HERADataFastReader object generated from sum_files.
+        hd_diff : HERADataFastReader
+            HERADataFastReader object generated from diff_files.
         ants : list of tuples
             List of antenna-polarization tuples to assess
         antnums : list of ints
@@ -213,7 +228,7 @@ class AntennaMetrics():
         antpols : List of str
             List of antenna polarization strings. Typically ['Jee', 'Jnn']
         bls : list of ints
-            List of baselines in HERAData object.
+            List of baselines in HERADataFastReader object.
         datafile_list_sum : list of str
             List of sum data filenames that went into this calculation.
         datafile_list_diff : list of str
@@ -228,10 +243,10 @@ class AntennaMetrics():
 
         """
         
-        from hera_cal.io import HERAData
+        from hera_cal.io import HERADataFastReader
         from hera_cal.utils import split_bl, comply_pol, split_pol, join_pol
         # prevents the need for importing again later
-        self.HERAData = HERAData
+        self.HERADataFastReader = HERADataFastReader
         self.split_bl = split_bl
         self.join_pol = join_pol
         self.split_pol = split_pol
@@ -244,18 +259,28 @@ class AntennaMetrics():
         if (diff_files is not None) and (len(diff_files) != len(sum_files)):
             raise ValueError(f'The number of sum files ({len(sum_files)}) does not match the number of diff files ({len(diff_files)}).')
         self.datafile_list_sum = sum_files
-        self.hd_sum = HERAData(sum_files)
+        self.hd_sum = HERADataFastReader(sum_files)
+        self.bls = self.hd_sum.bls
         if diff_files is None or len(diff_files) == 0:
             self.datafile_list_diff = None
             self.hd_diff = None
         else:
             self.datafile_list_diff = diff_files
-            self.hd_diff = HERAData(diff_files)
-        if len(self.hd_sum.filepaths) > 1:
-            # only load baselines in all files
-            self.bls = sorted(set.intersection(*[set(bls) for bls in self.hd_sum.bls.values()]))
-        else:
-            self.bls = self.hd_sum.bls
+            self.hd_diff = HERADataFastReader(diff_files)
+
+        # save sum_data, etc. internally. Typically these are None.
+        self.sum_data = sum_data
+        self.diff_data = diff_data
+        self.sum_flags = sum_flags
+        self.diff_flags = diff_flags
+
+        # make sure sum_data is sensible and that the algorithm
+        if (self.sum_data is not None):
+            if (Nfiles_per_load is not None) or (Nbls_per_load is not None):
+                raise ValueError('sum_data was provided, skipping data loading, so Nbls_per_load and Nfiles_per_load must be None.')
+            for bl in self.bls:
+                if bl not in self.sum_data:
+                    raise KeyError(f'{bl} is in sum_files but not in sum_data. sum_data should come from sum_files.')
 
         # Figure out polarizations in the data
         self.pols = set([bl[2] for bl in self.bls])
@@ -263,7 +288,7 @@ class AntennaMetrics():
         self.same_pols = [pol for pol in self.pols if split_pol(pol)[0] == split_pol(pol)[1]]
 
         # Figure out which antennas are in the data
-        self.ants = sorted(sorted(set([ant for bl in self.bls for ant in split_bl(bl)])))
+        self.ants = sorted(set([ant for bl in self.bls for ant in split_bl(bl)]))
         self.antnums = sorted(set([ant[0] for ant in self.ants]))
         self.antpols = sorted(set([ant[1] for ant in self.ants]))
         self.ants_per_antpol = {antpol: sorted([ant for ant in self.ants if ant[1] == antpol]) for antpol in self.antpols}
@@ -306,25 +331,37 @@ class AntennaMetrics():
     def _load_files_and_update_corr_stats(self, corr_stats, sum_files, diff_files, bl_load_groups):
         """Loop over baseline groups, loading sum/diff files and extending the existing corr_stats dict of lists.
         """
-        # loop over baseline groups
-        for blg in bl_load_groups:
-            # load sum files
-            hd_sum = self.HERAData(sum_files)
-            data_sum, flags, _ = hd_sum.read(bls=blg, axis='blt')
-            del hd_sum
+        if self.sum_data is None:
+            # loop over baseline groups
+            for blg in bl_load_groups:
+                # load sum files
+                hd_sum = self.HERADataFastReader(sum_files)
+                data_sum, flags, _ = hd_sum.read(bls=blg, read_nsamples=False)
+                del hd_sum
 
-            # load diff files, if appropraite
-            data_diff = None
-            if diff_files is not None:
-                hd_diff = self.HERAData(diff_files)
-                data_diff, flags_diff, _ = hd_diff.read(bls=blg, axis='blt')
-                del hd_diff
-                for bl in flags:
-                    flags[bl] |= flags_diff[bl]
+                # load diff files, if appropraite
+                data_diff = None
+                if diff_files is not None:
+                    hd_diff = self.HERADataFastReader(diff_files)
+                    data_diff, flags_diff, _ = hd_diff.read(bls=blg, read_nsamples=False)
+                    del hd_diff
+                    for bl in flags:
+                        flags[bl] |= flags_diff[bl]
 
+                # compute corr_stats and append them to list, weighting by the number of integrations
+                for bl, stat in calc_corr_stats(data_sum, data_diff=data_diff, flags=flags).items():
+                    corr_stats[bl].extend([stat] * len(data_sum.times))
+        else:
+            # use self.sum_data, self.diff_data, self.sum_flags, and self.diff_flags
+            flags = deepcopy(self.sum_flags)
+            if (self.diff_flags is not None) and flags is None:
+                flags = self.diff_flags
+            elif (flags is not None) and (self.diff_flags is not None):
+                for bl in self.diff_flags:
+                    flags[bl] |= self.diff_flags[bl]
             # compute corr_stats and append them to list, weighting by the number of integrations
-            for bl, stat in calc_corr_stats(data_sum, data_diff=data_diff, flags=flags).items():
-                corr_stats[bl].extend([stat] * len(data_sum.times))
+            for bl, stat in calc_corr_stats(self.sum_data, data_diff=self.diff_data, flags=flags).items():
+                corr_stats[bl].extend([stat] * len(self.sum_data.times))
 
     def _load_corr_matrices(self, Nbls_per_load=None, Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
         """Loop through groups of baselines to calculate self.corr_matrices using calc_corr_stats().
@@ -364,7 +401,9 @@ class AntennaMetrics():
                 ant1, ant2 = self.split_bl(bl)
                 self.corr_matrices[bl[2]][self.ant_to_index[ant1], self.ant_to_index[ant2]] = corr_stats[bl]
         for pol, cm in self.corr_matrices.items(): 
-            self.corr_matrices[pol] = np.nanmean([cm, cm.T], axis=0)  # symmetrize
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Mean of empty slice")
+                self.corr_matrices[pol] = np.nanmean([cm, cm.T], axis=0)  # symmetrize
         self.corr_matrices_for_xpol = deepcopy(self.corr_matrices)
 
     def _find_totally_dead_ants(self, verbose=False):
@@ -408,7 +447,9 @@ class AntennaMetrics():
         per_ant_mean_corr_metrics = {}
         for pol in self.same_pols:
             # average over one antenna dimension
-            mean_corr_matrix = np.nanmean(self.corr_matrices[pol], axis=0)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Mean of empty slice")
+                mean_corr_matrix = np.nanmean(self.corr_matrices[pol], axis=0)
             antpol = self.split_pol(pol)[0]
             for ant, metric in zip(self.ants_per_antpol[antpol], mean_corr_matrix):
                 per_ant_mean_corr_metrics[ant] = metric
@@ -424,7 +465,10 @@ class AntennaMetrics():
                 matrix_pol_diffs.append(self.corr_matrices_for_xpol[sp] - self.corr_matrices_for_xpol[cp])
 
         # average over one antenna dimension and then take the maximum of the four combinations
-        cross_pol_metrics = np.nanmax(np.nanmean(matrix_pol_diffs, axis=1), axis=0)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Mean of empty slice")
+            warnings.filterwarnings("ignore", message="All-NaN slice encountered")
+            cross_pol_metrics = np.nanmax(np.nanmean(matrix_pol_diffs, axis=1), axis=0)
 
         per_ant_corr_cross_pol_metrics = {}
         for antpol, ants in self.ants_per_antpol.items():
