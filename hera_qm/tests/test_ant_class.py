@@ -6,6 +6,8 @@
 import pytest
 import numpy as np
 from hera_qm import ant_class
+from hera_cal import io
+from hera_qm.data import DATA_PATH
 
 
 def test_check_antpol():
@@ -163,3 +165,19 @@ def test_antenna_bounds_checker():
         ac = ant_class.antenna_bounds_checker(data, bad_bound=(0, -1))
         ac = ant_class.antenna_bounds_checker({(1, 2, 'ee'): 1.0}, bad_bound=[(0, -1)])
         ac = ant_class.antenna_bounds_checker({(1, 2, 'ee'): 1.0}, bound=[(0, 1)])
+
+
+def test_auto_power_checker():
+    hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
+    data, _, _ = hd.read(read_flags=False, read_nsamples=False)
+    auto_power_class = ant_class.auto_power_checker(data, good=(2,30), suspect=(1,80))
+
+    for ant in {(36, 'Jee'), (36, 'Jnn'), (51, 'Jnn'), (83, 'Jee'), (83, 'Jnn'), (87, 'Jee'), (98, 'Jee'), (98, 'Jnn'), (117, 'Jnn'), (135, 'Jnn'), (160, 'Jee')}:
+        assert ant in auto_power_class.good_ants
+    
+    for ant in {(51, 'Jee'), (53, 'Jee'), (53, 'Jnn'), (85, 'Jee'), (85, 'Jnn'), (87, 'Jnn'), (117, 'Jee'), (157, 'Jee'), (157, 'Jnn'), (160, 'Jnn')}:
+        assert ant in auto_power_class.suspect_ants
+    
+    for ant in {(65, 'Jee'), (65, 'Jnn'), (68, 'Jee'), (68, 'Jnn'), (93, 'Jee'), (93, 'Jnn'), (116, 'Jee'), (116, 'Jnn'), (135, 'Jee')}:
+        assert ant in auto_power_class.bad_ants
+
