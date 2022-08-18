@@ -13,6 +13,8 @@ import hera_qm.utils as utils
 from hera_qm.data import DATA_PATH
 from pyuvdata import UVFlag
 import glob
+import hera_qm.ant_class as ant_class
+from hera_cal import io
 
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
@@ -195,6 +197,109 @@ def test_robus_divide():
     b = np.array([2., 0., 1e-9], dtype=np.float32)
     c = xrfi.robust_divide(a, b)
     assert np.array_equal(c, np.array([1. / 2., np.inf, np.inf]))
+
+def test_dpss_flagger():
+    freqs = np.linspace(50e6, 250e6, 500)
+    df = np.diff(freqs)[0]
+    dt = 10
+    
+    # Generate fake auto-correlation  data with realistic noise
+    intcnt = df * dt
+    data = np.sin(freqs[None, :] / 50e6) + 5
+    data += np.random.normal(0, data / np.sqrt(intcnt / 2), size=data.shape)
+    
+    # Add RFI to a few channels
+    midx = [25, 125, 198, 259, 345, 398]
+    mask = np.zeros_like(data, dtype='bool')
+    mask[:, midx] = True
+    data[mask] += 10
+    
+    noise = np.abs(data) / np.sqrt(intcnt / 2)
+    
+    # Identify RFI
+    wgts = xrfi.dpss_flagger(
+        data, freqs=freqs, filter_centers=[0], filter_half_widths=[50e-9], noise=noise,
+    )
+    assert np.allclose(~wgts.astype(bool), mask)
+    
+    # Identify RFI w/ modified z-score
+    wgts = xrfi.dpss_flagger(
+        data, freqs=freqs, filter_centers=[0], filter_half_widths=[50e-9],
+    )
+    assert np.allclose(~wgts.astype(bool), mask)
+    
+    # Identify RFI w/ weights grid provided
+    wgts = xrfi.dpss_flagger(
+        data, freqs=freqs, filter_centers=[0], filter_half_widths=[50e-9], wgts=(~mask).astype(float)
+    )
+    assert np.allclose(~wgts.astype(bool), mask)
+
+    # Identify RFI with multiple filter centers/half-widths
+    wgts = xrfi.dpss_flagger(
+        data, freqs=freqs, filter_centers=[0, -2700e-9, 2700e-9], filter_half_widths=[50e-9, 10e-9, 10e-9],
+    )
+    assert np.allclose(~wgts.astype(bool), mask)
+    
+def test_channel_diff_flagger():
+    freqs = np.linspace(50e6, 250e6, 500)
+    df = np.diff(freqs)[0]
+    dt = 10
+    
+    # Generate fake auto-correlation  data with realistic noise
+    intcnt = df * dt
+    data = np.sin(freqs[None, :] / 50e6) + 5
+    data += np.random.normal(0, data / np.sqrt(intcnt / 2), size=data.shape)
+    
+    # Add RFI to a few channels
+    midx = [25, 125, 198, 259, 345, 398]
+    mask = np.zeros_like(data, dtype='bool')
+    mask[:, midx] = True
+    data[mask] += 5
+    noise = np.abs(data) / np.sqrt(intcnt / 2)
+    
+    # Identify RFI
+    wgts = xrfi.channel_diff_flagger(data, noise=noise,)
+    assert np.allclose(~wgts.astype(bool), mask)
+    
+    # Identify RFI w/ weights grid provided
+    wgts = xrfi.channel_diff_flagger(
+        data, noise=noise, wgts=(~mask).astype(float)
+    )
+    assert np.allclose(~wgts.astype(bool), mask)
+    
+def test_flag_autos():
+    # Load test data and extract autos
+    hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
+    data, _, _ = hd.read(read_flags=False, read_nsamples=False)
+    auto_bls = [(i, i, pol) for i in hd.data_ants for pol in hd.pols if pol in ['ee', 'nn']]
+    autos = hd.read(bls=auto_bls, read_data=True, read_flags=False, read_nsamples=False)[0]
+    inttime = 24 * 3600 * np.median(np.diff(hd.times)) 
+    chan_res = np.median(np.diff(hd.freqs)) / 5 # Data down-sampled
+    int_count = int(inttime * chan_res)
+    
+     # Check weights array and array_wgts are the correct size
+    wgts, array_wgts = xrfi.flag_autos(autos, flag_method='channel_diff_flagger')
+    assert len(wgts) == len(autos)
+    assert array_wgts.shape == autos[(36, 36, 'ee')].shape
+    
+    # Run with AntennaClassification object
+    auto_power_class = ant_class.auto_power_checker(data, good=(2, 30), suspect=(1, 80))
+    wgts, array_wgts = xrfi.flag_autos(
+        autos, flag_method='channel_diff_flagger', int_count=int_count, antenna_class=auto_power_class
+    )
+    # Check correct weight dictionary is the correct size
+    assert len(wgts) == len(autos)
+    
+    # Check antenna weights of a bad antenna are set to 0
+    bad_ant = list(auto_power_class.bad_ants)[0]
+    assert np.allclose(wgts[bad_ant], np.zeros_like(wgts[bad_ant]))
+    
+    # Confirm bad antennas are excluded from array averaged weights
+    _array_wgts = np.mean([1 - v for k, v in wgts.items()], axis=0)
+    assert not np.allclose(_array_wgts, array_wgts)
+    
+    # Confirm function raises ValueError when undefined flagger requested
+    pytest.raises(ValueError, xrfi.flag_autos, autos, 'undefined_function')
 
 
 @pytest.fixture(scope='function')

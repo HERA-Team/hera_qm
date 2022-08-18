@@ -56,6 +56,7 @@ setup_args = {
         'pyyaml',
         'numpy>=1.10',
         'pyuvdata',
+        'hera_filters',
     ],
     'tests_require': ['pytest'],
     'zip_safe': False,
