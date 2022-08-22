@@ -198,7 +198,7 @@ def test_robus_divide():
     c = xrfi.robust_divide(a, b)
     assert np.array_equal(c, np.array([1. / 2., np.inf, np.inf]))
 
-def test_dpss_flagger():
+def test_detrend_dpss_filt():
     freqs = np.linspace(50e6, 250e6, 500)
     df = np.diff(freqs)[0]
     dt = 10
@@ -217,30 +217,24 @@ def test_dpss_flagger():
     noise = np.abs(data) / np.sqrt(intcnt / 2)
     
     # Identify RFI
-    wgts = xrfi.dpss_flagger(
+    wgts = xrfi.detrend_dpss_filt(
         data, freqs=freqs, filter_centers=[0], filter_half_widths=[50e-9], noise=noise,
     )
     assert np.allclose(~wgts.astype(bool), mask)
     
-    # Identify RFI w/ modified z-score
-    wgts = xrfi.dpss_flagger(
-        data, freqs=freqs, filter_centers=[0], filter_half_widths=[50e-9],
-    )
-    assert np.allclose(~wgts.astype(bool), mask)
-    
     # Identify RFI w/ weights grid provided
-    wgts = xrfi.dpss_flagger(
-        data, freqs=freqs, filter_centers=[0], filter_half_widths=[50e-9], wgts=(~mask).astype(float)
+    wgts = xrfi.detrend_dpss_filt(
+        data, noise=noise, freqs=freqs, filter_centers=[0], filter_half_widths=[50e-9], wgts=(~mask).astype(float)
     )
     assert np.allclose(~wgts.astype(bool), mask)
 
     # Identify RFI with multiple filter centers/half-widths
-    wgts = xrfi.dpss_flagger(
-        data, freqs=freqs, filter_centers=[0, -2700e-9, 2700e-9], filter_half_widths=[50e-9, 10e-9, 10e-9],
+    wgts = xrfi.detrend_dpss_filt(
+        data, noise=noise, freqs=freqs, filter_centers=[0, -2700e-9, 2700e-9], filter_half_widths=[50e-9, 10e-9, 10e-9],
     )
     assert np.allclose(~wgts.astype(bool), mask)
     
-def test_channel_diff_flagger():
+def test_detrend_channel_diff_filt():
     freqs = np.linspace(50e6, 250e6, 500)
     df = np.diff(freqs)[0]
     dt = 10
@@ -258,11 +252,11 @@ def test_channel_diff_flagger():
     noise = np.abs(data) / np.sqrt(intcnt / 2)
     
     # Identify RFI
-    wgts = xrfi.channel_diff_flagger(data, noise=noise,)
+    wgts = xrfi.detrend_channel_diff_filt(data, noise=noise)
     assert np.allclose(~wgts.astype(bool), mask)
     
     # Identify RFI w/ weights grid provided
-    wgts = xrfi.channel_diff_flagger(
+    wgts = xrfi.detrend_channel_diff_filt(
         data, noise=noise, wgts=(~mask).astype(float)
     )
     assert np.allclose(~wgts.astype(bool), mask)
@@ -278,14 +272,14 @@ def test_flag_autos():
     int_count = int(inttime * chan_res)
     
      # Check weights array and array_wgts are the correct size
-    wgts, array_wgts = xrfi.flag_autos(autos, flag_method='channel_diff_flagger')
+    wgts, array_wgts = xrfi.flag_autos(autos, flag_method='detrend_channel_diff_filt')
     assert len(wgts) == len(autos)
     assert array_wgts.shape == autos[(36, 36, 'ee')].shape
     
     # Run with AntennaClassification object
     auto_power_class = ant_class.auto_power_checker(data, good=(2, 30), suspect=(1, 80))
     wgts, array_wgts = xrfi.flag_autos(
-        autos, flag_method='channel_diff_flagger', int_count=int_count, antenna_class=auto_power_class
+        autos, flag_method='detrend_channel_diff_filt', int_count=int_count, antenna_class=auto_power_class
     )
     # Check correct weight dictionary is the correct size
     assert len(wgts) == len(autos)
@@ -300,6 +294,28 @@ def test_flag_autos():
     
     # Confirm function raises ValueError when undefined flagger requested
     pytest.raises(ValueError, xrfi.flag_autos, autos, 'undefined_function')
+
+def test_auto_rfi_checker():
+    """
+    """
+    # Create mock flag weights
+    ants = [(i, 'Jee') for i in range(10)]
+    array_wgts = np.ones(1000)
+    array_wgts[np.random.choice(array_wgts.shape[0], size=5, replace=False)] = 0
+    auto_wgts = {k: np.copy(array_wgts) for k in ants}
+
+    # Add additional flagged channels to antenna (2, 'Jee')
+    idx = np.random.choice(np.where(array_wgts)[0], replace=False, size=100)
+    auto_wgts[(2, 'Jee')][idx] = 0
+
+    # Check to see if (2, 'Jee') is bad
+    rfi_class = xrfi.auto_rfi_checker(auto_wgts, array_wgts, good=(0, 1), suspect=(1, 3))
+    assert rfi_class.is_bad((2, 'Jee'))
+    
+    # Make sure other antennas are listed as good
+    for ant in ants:
+        if ant != (2, 'Jee'):
+            assert rfi_class.is_good(ant)
 
 
 @pytest.fixture(scope='function')

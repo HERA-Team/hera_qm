@@ -20,6 +20,7 @@ import re
 import copy
 from hera_filters import dspec
 from copy import deepcopy
+from . import ant_class
 
 #############################################################################
 # Utility functions
@@ -228,31 +229,33 @@ def robust_divide(num, den):
 # Functions for flagging auto-correlations
 # ############################################################################
 
-def dpss_flagger(data, freqs, filter_centers, filter_half_widths, wgts=None,
-                 nsig=10, mode="dpss_solve", noise=None, eigenval_cutoff=[1e-9],
+def detrend_dpss_filt(data, noise, freqs, filter_centers, filter_half_widths, wgts=None,
+                 nsig=6, mode="dpss_solve", eigenval_cutoff=[1e-9],
                  suppression_factors=[1e-9], cache={}):
     """
-    Flag visibilities by filtering data with discrete prolate spheroidal sequences
+    Identify RFI in visibilities by filtering data with discrete prolate spheroidal sequences. Returns an array of 
+    weights with the same shape as the input data array where ones are clean channels and zeros are channels 
+    identified to have RFI.
 
     Parameters:
     ----------
     data: np.ndarray
         2D data array of the shape (time, frequency)
+    noise: np.ndarray, default=None
+        2D array for containing an estimate of the noise standard deviation of the data. 
+        Must be the same shape as the data.
     freqs: np.ndarray
-        1D array of frequencies present in the data
+        1D array of frequencies present in the data in units of Hz
     filter_centers: array-like
         list of floats of centers of delay filter windows in nanosec
     filter_half_widths: array-like
         list of floats of half-widths of delay filter windows in nanosec
     wgts: np.ndarray
         2D np.ndarray of real weights. Must be the same shape as data.
-    nsig: float, default=10
+    nsig: float, default=6
         The number of sigma in the metric above which to flag pixels.
     mode: str, default='dpss_solve'
         Method used to solve for DPSS model components. Options are 'dpss_matrix', 'dpss_solve', and 'dpss_leastsq'.
-    noise: np.ndarray, default=None
-        2D array for containing an estimate of the noise standard deviation. Must be the same shape as the data.
-        If noise=None, the noise standard deviation will be estimated from the filtered residuals.
     eigenval_cutoff: array-like, default=[1e-9]
         List of sinc_matrix eigenvalue cutoffs to use for included DPSS modes.
     suppression_factors: array-like, default=[1e-9]
@@ -269,7 +272,7 @@ def dpss_flagger(data, freqs, filter_centers, filter_half_widths, wgts=None,
     """
     if len(suppression_factors) == 1 and len(filter_centers) > 1:
         suppression_factors = len(filter_centers) * suppression_factors
-         
+
     if len(eigenval_cutoff) == 1 and len(filter_centers) > 1:
         eigenval_cutoff = len(filter_centers) * eigenval_cutoff
 
@@ -287,12 +290,14 @@ def dpss_flagger(data, freqs, filter_centers, filter_half_widths, wgts=None,
     )
     res = data - model
 
-    # Compute modified z-score
+    # Compute modified z-score to set preliminary flags
     sigma = np.median(
         np.abs(res - np.median(res, keepdims=True, axis=1)), axis=1, keepdims=True,
     )
-    sigma /= 0.675
-    wgts = np.where(np.abs(res) < nsig * sigma, 1, 0)
+    sigma /= 0.6745
+
+    # If channels are flag, set weights to zero. Otherwise use inversion noise-variance weighting
+    wgts = np.where(np.abs(res) < nsig * sigma, noise ** -2, 0)
 
     # Recompute model with first pass weights
     model, _, _ = dspec.fourier_filter(
@@ -302,24 +307,18 @@ def dpss_flagger(data, freqs, filter_centers, filter_half_widths, wgts=None,
     )
     res = data - model
 
-    # Use noise standard deviation given or estimate it from residuals
-    if noise is not None:
-        sigma = noise
-
-    else:
-        sigma = np.median(
-            np.abs(res - np.median(res, keepdims=True, axis=1)), axis=1, keepdims=True,
-        )
-        sigma /= 0.675
+    # Use smooth model to noise standard deviation without RFI
+    sigma = np.abs(model) * (noise / data)
 
     # Determine weights
     wgts = np.where(np.abs(res) <= nsig * sigma, 1, 0)
     return wgts
 
 
-def channel_diff_flagger(data, noise, nsig=10, kernel_widths=[1, 2, 4], wgts=None):
+def detrend_channel_diff_filt(data, noise, nsig=6, kernel_widths=[1, 2, 4], wgts=None):
     """
-    Flags auto-correlations using channel differencing kernels
+    Identify RFI in data using channel differencing kernels. Returns an array of weights with the same shape
+    as the input data array where ones are clean channels and zeros are channels identified to have RFI
 
     Parameters:
     ----------
@@ -327,10 +326,10 @@ def channel_diff_flagger(data, noise, nsig=10, kernel_widths=[1, 2, 4], wgts=Non
         2D data array of the shape (time, frequency)
     noise: np.ndarray
         2D array for containing an estimate of the noise standard deviation. Must be the same shape as the data
-    nsig: float, default=10
+    nsig: float, default=6
         The number of sigma in the metric above which to flag pixels.
     kernel_width: list
-        Widths of the convolution kernels used to produce model
+        Half-width of the convolution kernels used to produce model. True kernel width is (2 * kernel_width + 1)
     wgts: np.ndarray, default=None
         2D array of real weights. Must be the same shape as data.
 
@@ -361,29 +360,29 @@ def channel_diff_flagger(data, noise, nsig=10, kernel_widths=[1, 2, 4], wgts=Non
     return wgts
 
 
-auto_flaggers = {'dpss_flagger': dpss_flagger, 'channel_diff_flagger': channel_diff_flagger}
+auto_flaggers = {'detrend_dpss_filt': detrend_dpss_filt, 'detrend_channel_diff_filt': detrend_channel_diff_filt}
 
 
-def flag_autos(data, flag_method, nsig=10, int_count=None, antenna_class=None, wgts=None,
+def flag_autos(data, flag_method="detrend_diff_filt", nsig=6, int_count=None, antenna_class=None, wgts=None,
                array_wgts_threshold=0.2, **flag_kwargs):
     """
     Driver function for identifying RFI in auto-correlations. Flags auto-correlations on a per antenna basis using
-    a given function and consolidates the weights into a single array-wide flag array.
+    a given function and consolidates the weights into a single array-wide weights array. Return weights 
 
     Parameters:
     ----------
     data: DataContainer
         DataContainer containing numpy arrays of auto-correlation data with shape (ntimes, nfreqs)
-    flag_method: str
-        Method used for flagging auto-correlations. Current options are 'dpss_flagger' and 'channel_diff_flagger'
-    nsig: float, default=10
+    flag_method: str, default='detrend_diff_filt'
+        Method used for flagging auto-correlations. Current options are 'dpss_flagger' and 'detrend_channel_diff_filt'
+    nsig: float, default=6
         The number of sigma in the metric above which to flag pixels.
     int_count: float, default=None
         Number of samples per integration in correlator (dt * dnu)
     antenna_class: AntennaClassification, default=None
         Optional AntennaClassification object. If provided, the flagging method chosen will skip antennas marked "bad"
     wgts: dictionary or DataContainer: default=None
-        Dictionary or DataContainer containing data weights. If wgts="None", then weights will be set to ones
+        Dictionary or DataContainer containing data weights. If wgts=None, then weights will be set to ones
     array_wgts_threshold: float, default=0.2
         The fraction of flags required to trigger a broadcast across all auto-correlations for
         a given (time, frequency) pixel in the combined weights array.
@@ -392,15 +391,15 @@ def flag_autos(data, flag_method, nsig=10, int_count=None, antenna_class=None, w
 
     Returns:
     -------
-    wgts: dictionary or DataContainer
-        Dictionary or DataContainer containing weights for each antenna with values of either zero or one with
+    rfi_wgts: dictionary
+        Dictionary containing weights for each antenna with values of either zero or one with
         zero identifying channels found to have RFI
     array_weights: np.ndarray
         Contains weights for the entire array averaged over all antennas. If antenna_class is provide, only antennas
-        labeled 'good' or 'suspect' are included in the average    
+        labeled 'good' or 'suspect' are included in the average
     """
     from hera_cal.utils import split_bl
-    
+
     # Check to see if flagging method is valid
     if flag_method not in auto_flaggers:
         raise ValueError("Flagging method must be a valid flagging function.")
@@ -440,6 +439,51 @@ def flag_autos(data, flag_method, nsig=10, int_count=None, antenna_class=None, w
     array_weights = np.mean(array_weights, axis=0)
     array_weights = np.where(array_weights < array_wgts_threshold, 1, 0)
     return rfi_wgts, array_weights
+
+def auto_rfi_checker(auto_wgts, array_wgts, good=(0, 3), suspect=(3, 6)):
+    """
+    Classifies ant-pols as good, suspect, or bad based on the fraction of channels flagged compared to the array average.
+    Ant-pols not in the good or suspect ranges will be labeled "bad". "auto_wgts" and "array_wgts" input parameters for this
+    function can be obtained from the "flag_autos" function.
+
+    Parameters:
+    ----------
+    auto_wgts: dictionary or DataContainer
+        Dictionary or DataContainer containing weights for each antenna with values of either zero or one with
+        zero identifying channels found to have RFI
+    array_weights: np.ndarray
+        Contains weights for the entire array averaged over all antennas
+    good: 2-tuple or list of 2-tuple bounds for ranges considered good. In units of relative
+            slope over the band.
+    suspect: 2-tuple or list of 2-tuple bounds for ranges considered suspect. Ant-pols
+        in both the good and suspect ranges will be labeled good.
+
+    Returns:
+        AntennaClassification with "good", "suspect", and "bad" ant-pols based on relative RFI flagging
+    """
+    # Get over-flagged fraction per-antenna where weights are not all zeros
+    flagged_fraction = np.array(
+        [
+            1 - np.sum(v * array_wgts) / np.sum(array_wgts)
+            for k, v in auto_wgts.items() if np.any(v)
+        ]
+    )
+
+    # Compute median and deviation
+    median = np.median(flagged_fraction)
+    std = np.median(np.abs(flagged_fraction - median)) / 0.6745
+
+    # Use standard deviation if std=0
+    if np.isclose(std, 0):
+        std = np.std(flagged_fraction)
+    
+    # For all antennas, determine a z-score
+    zscore = {}
+    for k, v in auto_wgts.items():
+        frac = 1 - np.sum(v * array_wgts) / np.sum(array_wgts)
+        zscore[k] = np.abs(frac - median) / std
+        
+    return ant_class.antenna_bounds_checker(zscore, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
 #############################################################################
 # Functions for preprocessing data prior to RFI flagging
