@@ -341,7 +341,7 @@ def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
         AntennaClassification with "good", "suspect", and "bad" ant-pols based on number of zeros
     '''
     from hera_cal.utils import split_bl
-    ants = sorted(set([ant for bl in hd.bls for ant in split_bl(bl)]))
+    ants = sorted(set([ant for bl in sum_data for ant in split_bl(bl)]))
     zero_count_by_ant = {ant: 0 for ant in ants}
     max_zeros_per_spectrum = {}
     
