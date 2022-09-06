@@ -463,29 +463,29 @@ def test_watershed_flag():
     # set metric and flag arrays to specific values
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvm.metric_array[0, 0, 1, 0] = 7.
-    uvf.flag_array[0, 0, 0, 0] = True
+    uvm.metric_array[0, 1, 0] = 7.
+    uvf.flag_array[0, 0, 0] = True
 
     # run watershed flag
     xrfi.watershed_flag(uvm, uvf, nsig_p=2., inplace=True)
 
     # check answer
     flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    flag_array[0, 0, :2, 0] = True
+    flag_array[0, :2, 0] = True
     assert np.allclose(uvf.flag_array, flag_array)
 
     # test flagging channels adjacent to fully flagged ones
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvm.metric_array[:, :, 1, :] = 1.
-    uvf.flag_array[:, :, 0, :] = True
+    uvm.metric_array[:, 1, :] = 1.
+    uvf.flag_array[:, 0, :] = True
 
     # run watershed flag
     xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_f=0.5, inplace=True)
 
     # check answer
     flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    flag_array[:, :, :2, :] = True
+    flag_array[:, :2, :] = True
     assert np.allclose(uvf.flag_array, flag_array)
 
     # test flagging times adjacent to fully flagged ones
@@ -494,16 +494,16 @@ def test_watershed_flag():
     times = np.unique(uv.time_array)
     inds1 = np.where(uv.time_array == times[0])[0]
     inds2 = np.where(uv.time_array == times[1])[0]
-    uvm.metric_array[inds2, 0, :, 0] = 1.
-    uvf.flag_array[inds1, 0, :, 0] = True
+    uvm.metric_array[inds2, :, 0] = 1.
+    uvf.flag_array[inds1, :, 0] = True
 
     # run watershed flag
     xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_t=0.5, inplace=True)
 
     # check answer
     flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    flag_array[inds1, 0, :, 0] = True
-    flag_array[inds2, 0, :, 0] = True
+    flag_array[inds1, :, 0] = True
+    flag_array[inds2, :, 0] = True
     assert np.allclose(uvf.flag_array, flag_array)
 
     # test antenna type objects
@@ -518,44 +518,44 @@ def test_watershed_flag():
     # set metric and flag arrays to specific values
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvm.metric_array[0, 0, 0, 1, 0] = 7.
-    uvf.flag_array[0, 0, 0, 0, 0] = True
+    uvm.metric_array[0, 0, 1, 0] = 7.
+    uvf.flag_array[0, 0, 0, 0] = True
 
     # run watershed flag
     xrfi.watershed_flag(uvm, uvf, nsig_p=2., inplace=True)
 
     # check answer
     flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    flag_array[0, 0, 0, :2, 0] = True
+    flag_array[0, 0, :2, 0] = True
     assert np.allclose(uvf.flag_array, flag_array)
 
     # test flagging channels adjacent to fully flagged ones
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvm.metric_array[:, :, 1, :, :] = 1.
-    uvf.flag_array[:, :, 0, :, :] = True
+    uvm.metric_array[:, 1, :, :] = 1.
+    uvf.flag_array[:, 0, :, :] = True
 
     # run watershed flag
     uvf2 = xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_f=0.5, inplace=False)
 
     # check answer
     flag_array = np.zeros_like(uvf2.flag_array, dtype=np.bool_)
-    flag_array[:, :, :2, :, :] = True
+    flag_array[:, :2, :, :] = True
     assert np.allclose(uvf2.flag_array, flag_array)
     del(uvf2)
 
     # test flagging times adjacent to fully flagged ones
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvm.metric_array[:, :, :, 1, :] = 1.
-    uvf.flag_array[:, :, :, 0, :] = True
+    uvm.metric_array[:, :, 1, :] = 1.
+    uvf.flag_array[:, :, 0, :] = True
 
     # run watershed flag
     xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_t=0.5, inplace=True)
 
     # check answer
     flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    flag_array[:, :, :, :2, :] = True
+    flag_array[:, :, :2, :] = True
     assert np.allclose(uvf.flag_array, flag_array)
 
     # test waterfall types
@@ -883,7 +883,7 @@ def test_calculate_metric_vis():
     inds = uv.antpair2ind(uv.ant_1_array[0], uv.ant_2_array[0])
     wf = uv.get_data(uv.ant_1_array[0], uv.ant_2_array[0])
     filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3)
-    assert np.allclose(filtered, uvf.metric_array[inds, 0, :, 0])
+    assert np.allclose(filtered, uvf.metric_array[inds, :, 0])
 
 
 def test_calculate_metric_gains():
