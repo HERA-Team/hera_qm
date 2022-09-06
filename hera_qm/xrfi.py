@@ -863,41 +863,41 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
         for bl in np.unique(uvf.baseline_array):
             ind = np.where(uvf.baseline_array == bl)[0]
             for pi in range(uvf.polarization_array.size):
-                farr[ind, 0, :, pi] += _ws_flag_waterfall(marr[ind, 0, :, pi],
-                                                          farr[ind, 0, :, pi], nsig_p)
+                farr[ind, :, pi] += _ws_flag_waterfall(marr[ind, :, pi],
+                                                       farr[ind, :, pi], nsig_p)
         if nsig_f is not None:
             # Channel watershed
-            tempd = uvutils.collapse(marr, avg_method, axis=(0, 1, 3), weights=warr)
-            tempf = np.all(farr, axis=(0, 1, 3))
-            farr[:, :, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_f).reshape(1, 1, -1, 1)
+            tempd = uvutils.collapse(marr, avg_method, axis=(0, 2), weights=warr)
+            tempf = np.all(farr, axis=(0, 2))
+            farr[:, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_f).reshape(1, -1, 1)
         if nsig_t is not None:
             # Time watershed
             ts = np.unique(uvf.time_array)
             tempd = np.zeros(ts.size)
             tempf = np.zeros(ts.size, dtype=np.bool_)
             for ti, time in enumerate(ts):
-                tempd[ti] = uvutils.collapse(marr[uvf.time_array == time, 0, :, :], avg_method,
-                                             weights=warr[uvf.time_array == time, 0, :, :])
-                tempf[ti] = np.all(farr[uvf.time_array == time, 0, :, :])
+                tempd[ti] = uvutils.collapse(marr[uvf.time_array == time, :, :], avg_method,
+                                             weights=warr[uvf.time_array == time, :, :])
+                tempf[ti] = np.all(farr[uvf.time_array == time, :, :])
             tempf = _ws_flag_waterfall(tempd, tempf, nsig_t)
             for ti, time in enumerate(ts):
-                farr[uvf.time_array == time, :, :, :] += tempf[ti]
+                farr[uvf.time_array == time, :, :] += tempf[ti]
     elif uvf_m.type == 'antenna':
         # Pixel watershed
         for ai in range(uvf.ant_array.size):
             for pi in range(uvf.polarization_array.size):
-                farr[ai, 0, :, :, pi] += _ws_flag_waterfall(marr[ai, 0, :, :, pi].T,
-                                                            farr[ai, 0, :, :, pi].T, nsig_p).T
+                farr[ai, :, :, pi] += _ws_flag_waterfall(marr[ai, :, :, pi].T,
+                                                         farr[ai, :, :, pi].T, nsig_p).T
         if nsig_f is not None:
             # Channel watershed
-            tempd = uvutils.collapse(marr, avg_method, axis=(0, 1, 3, 4), weights=warr)
-            tempf = np.all(farr, axis=(0, 1, 3, 4))
-            farr[:, :, :, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_f).reshape(1, 1, -1, 1, 1)
+            tempd = uvutils.collapse(marr, avg_method, axis=(0, 2, 3), weights=warr)
+            tempf = np.all(farr, axis=(0, 2, 3))
+            farr[:, :, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_f).reshape(1, -1, 1, 1)
         if nsig_t is not None:
             # Time watershed
-            tempd = uvutils.collapse(marr, avg_method, axis=(0, 1, 2, 4), weights=warr)
-            tempf = np.all(farr, axis=(0, 1, 2, 4))
-            farr[:, :, :, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_t).reshape(1, 1, 1, -1, 1)
+            tempd = uvutils.collapse(marr, avg_method, axis=(0, 1, 3), weights=warr)
+            tempf = np.all(farr, axis=(0, 1, 3))
+            farr[:, :, :, :] += _ws_flag_waterfall(tempd, tempf, nsig_t).reshape(1, 1, -1, 1)
     elif uvf_m.type == 'waterfall':
         # Pixel watershed
         for pi in range(uvf.polarization_array.size):
