@@ -76,6 +76,7 @@ def flag_xants(uv, xants, inplace=True, run_check=True,
                         run_check_acceptability=run_check_acceptability)
         else:
             uvo = UVFlag(uv, mode='flag')
+            uvo.use_future_array_shapes()
     else:
         uvo = uv
 
@@ -1027,9 +1028,11 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
     if not isinstance(uvf, (list, tuple, np.ndarray)):
         uvf = [uvf]
     net_flags = UVFlag(uv, mode='flag', copy_flags=keep_existing, history=history)
+    net_flags.use_future_array_shapes()
     for uvf_i in uvf:
         if isinstance(uvf_i, str):
             uvf_i = UVFlag(uvf_i)  # Read file
+            uvf_i.use_future_array_shapes()
         elif not isinstance(uvf_i, UVFlag):
             raise ValueError('Input to apply_flag must be UVFlag or path to UVFlag file.')
         if uvf_i.mode != 'flag':
@@ -1169,6 +1172,7 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
     except KeyError:
         raise KeyError('Algorithm not found in list of available functions.')
     uvf = UVFlag(uv)
+    uvf.use_future_array_shapes()
     if issubclass(uv.__class__, UVData):
         uvf.weights_array = uv.nsample_array * np.logical_not(uv.flag_array).astype(np.float64)
     else:
@@ -1641,6 +1645,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             elif dtype=='uvdata':
                 uv = UVData()
                 uv.read(uv_files, read_data=False)
+                uv.use_future_array_shapes()
             else:
                 raise ValueError("%s is an invalid dtype. Must be 'uvcal' or 'uvdata'."%dtype)
     no_uvf_apriori = (uvf_apriori is None)
@@ -1651,6 +1656,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             if uv_files is not None:
                 if issubclass(uv.__class__, UVData):
                     uv.read(uv_files, read_data=False)
+                    uv.use_future_array_shapes()
                 else:
                     uv.read_calfits(uv_files)
                     uv.use_future_array_shapes()
@@ -1691,6 +1697,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                     if calculate_uvf_apriori:
                         # then extract the flags for the chunk of baselines we are on
                         uvf_apriori_chunk = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+                        uvf_apriori_chunk.use_future_array_shapes()
                         # waterfall them
                         uvf_apriori_chunk.to_waterfall(method='and', keep_pol=False, run_check=run_check,
                                                 check_extra=check_extra,
@@ -1743,6 +1750,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             if uvf_apriori is None:
                 if calculate_uvf_apriori:
                      uvf_apriori = UVFlag(uv, mode='flag', copy_flags=True, label='A priori flags.')
+                     uvf_apriori.use_future_array_shapes()
                      uvf_apriori.to_waterfall(method='and', keep_pol=False, run_check=run_check,
                                              check_extra=check_extra,
                                              run_check_acceptability=run_check_acceptability)
@@ -2200,10 +2208,12 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         uvlist = data_files
         uvtemp = UVData()
         uvtemp.read(uvlist[0], read_data=False)
+        uvtemp.use_future_array_shapes()
     elif model_files is not None:
         uvlist = model_files
         uvtemp = UVData()
         uvtemp.read(uvlist[0], read_data=False)
+        uvtemp.use_future_array_shapes()
     elif ocalfits_files is not None:
         uvlist = ocalfits_files
         uvtemp = UVCal()
@@ -2369,6 +2379,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     uvc_a.read_calfits(acalfits_files)
     uvc_a.use_future_array_shapes()
     uvf_apriori = UVFlag(uvc_a, mode='flag', copy_flags=True, label='A priori flags.')
+    uvf_apriori.use_future_array_shapes()
     uvf_ag, uvf_agf = xrfi_pipe(uvc_a, alg='detrend_medfilt', Kt=kt_size, Kf=kf_size, xants=xants,
                                 cal_mode='gain', sig_init=sig_init, sig_adj=sig_adj,
                                 label='Abscal gains, round 1.', **check_kwargs)
@@ -2520,6 +2531,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     # Read metadata from first file to get integrations per file.
     uvtemp = UVData()
     uvtemp.read(data_files[0], read_data=False)
+    uvtemp.use_future_array_shapes()
     nintegrations = len(data_files) * uvtemp.Ntimes
     # Calculate number of files to drop on edges, rounding up.
     ndrop = int(np.ceil(kt_size / uvtemp.Ntimes))
@@ -2635,7 +2647,9 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
             files1 = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
             files2 = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
             uvf1 = UVFlag(files1)
+            uvf1.use_future_array_shapes()
             uvf2 = UVFlag(files2)
+            uvf2.use_future_array_shapes()
             uvf2.metric_array = np.where(np.isinf(uvf2.metric_array), uvf1.metric_array,
                                          uvf2.metric_array)
             filled_metrics.append(uvf2)
@@ -2643,10 +2657,12 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
             # some flags only exist in round2 (data for example).
             files = [glob.glob(d + '/*' + ext + '2.h5')[0] for d in xrfi_dirs]
             filled_metrics.append(UVFlag(files))
+            filled_metrics[-1].use_future_array_shapes()
         elif np.all([len(f) > 0 for f in files1_all]):
             # some flags only exist in round1 (if we chose median filtering only for example).
             files = [glob.glob(d + '/*' + ext + '1.h5')[0] for d in xrfi_dirs]
             filled_metrics.append(UVFlag(files))
+            filled_metrics[-1].use_future_array_shapes()
         else:
             filled_metrics.append(None)
     filled_metrics_that_exist = [f for f in filled_metrics if f is not None]
@@ -2673,7 +2689,9 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
             try:
                 ext_here = f'{mext.replace("metrics", "flags")}{rnd}.h5'
                 files = [glob.glob(f'{d}/*.{ext_here}')[0] for d in xrfi_dirs]
-                uvf_total |= UVFlag(files)
+                uvf_here = UVFlag(files)
+                uvf_here.use_future_array_shapes()
+                uvf_total |= uvf_here
             except IndexError:
                 pass
 
