@@ -70,8 +70,8 @@ def test_uvflag():
     uvf.to_flag()
     xant = uvf.ant_1_array[0]
     xrfi.flag_xants(uvf, xant)
-    assert np.all(uvf.flag_array[uvf.ant_1_array == xant, :, :, :])
-    assert np.all(uvf.flag_array[uvf.ant_2_array == xant, :, :, :])
+    assert np.all(uvf.flag_array[uvf.ant_1_array == xant, :, :])
+    assert np.all(uvf.flag_array[uvf.ant_2_array == xant, :, :])
 
 
 def test_input_error():
