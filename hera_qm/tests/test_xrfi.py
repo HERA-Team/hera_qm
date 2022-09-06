@@ -809,7 +809,7 @@ def test_flag_apply():
     uvf = UVFlag(uv, mode='flag')
     uvf.use_future_array_shapes()
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvf.flag_array[:, :, 0, :] = True
+    uvf.flag_array[:, 0, :] = True
     uvf2 = xrfi.flag_apply(uvf, uv, return_net_flags=True)
     assert np.allclose(uv.flag_array, uvf2.flag_array)
 
@@ -821,7 +821,7 @@ def test_flag_apply():
     uvf = UVFlag(uv, mode='flag')
     uvf.use_future_array_shapes()
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvf.flag_array[:, :, 0, :, :] = True
+    uvf.flag_array[:, 0, :, :] = True
     uvf2 = xrfi.flag_apply(uvf, uv, return_net_flags=True)
     assert np.allclose(uv.flag_array, uvf2.flag_array)
 
@@ -834,8 +834,8 @@ def test_flag_apply():
     uvf.use_future_array_shapes()
     uvf.flag_array[:, 0, :] = True
     xrfi.flag_apply(uvf, uv)
-    assert np.allclose(uv.flag_array[:, :, 0, :], True)
-    assert np.allclose(uv.flag_array[:, :, 1:, :], False)
+    assert np.allclose(uv.flag_array[:, 0, :], True)
+    assert np.allclose(uv.flag_array[:, 1:, :], False)
 
     uv = UVCal()
     uv.read_calfits(test_c_file)
@@ -845,8 +845,8 @@ def test_flag_apply():
     uvf.use_future_array_shapes()
     uvf.flag_array[:, 0, :] = True
     xrfi.flag_apply(uvf, uv)
-    assert np.allclose(uv.flag_array[:, :, 0, :, :], True)
-    assert np.allclose(uv.flag_array[:, :, 1:, :, :], False)
+    assert np.allclose(uv.flag_array[:, 0, :, :], True)
+    assert np.allclose(uv.flag_array[:, 1:, :, :], False)
 
     # catch errors
     pytest.raises(ValueError, xrfi.flag_apply, uvf, 2)
