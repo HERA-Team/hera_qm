@@ -15,4 +15,5 @@ dependencies:
   - scikit-learn # from hera_cal
   - scipy
   - pip:
+    - hera-calibration
     - uvtools
