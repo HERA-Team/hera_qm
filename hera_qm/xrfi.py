@@ -1183,8 +1183,8 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
             for ind, ipol in zip((ind1, ind2), pol):
                 if len(ind) == 0:
                     continue
-                flags = uv.flag_array[ind, 0, :, ipol]
-                uvf.metric_array[ind, 0, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
+                flags = uv.flag_array[ind, :, ipol]
+                uvf.metric_array[ind, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
 
     elif issubclass(uv.__class__, UVCal):
         if cal_mode == 'tot_chisq':
@@ -1192,23 +1192,23 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
                              check_extra=check_extra,
                              run_check_acceptability=run_check_acceptability)
             for pi in range(uv.Njones):
-                data = np.abs(uv.total_quality_array[0, :, :, pi].T)
-                flags = np.all(uv.flag_array[:, 0, :, :, pi], axis=0).T
+                data = np.abs(uv.total_quality_array[:, :, pi].T)
+                flags = np.all(uv.flag_array[:, :, :, pi], axis=0).T
                 uvf.metric_array[:, :, pi] = alg_func(data, flags=flags, **kwargs)
         else:
             for ai in range(uv.Nants_data):
                 for pi in range(uv.Njones):
                     # Note transposes are due to freq, time dimensions rather than the
                     # expected time, freq
-                    flags = uv.flag_array[ai, 0, :, :, pi].T
+                    flags = uv.flag_array[ai, :, :, pi].T
                     if cal_mode == 'gain':
-                        data = np.abs(uv.gain_array[ai, 0, :, :, pi].T)
+                        data = np.abs(uv.gain_array[ai, :, :, pi].T)
                     elif cal_mode == 'chisq':
-                        data = np.abs(uv.quality_array[ai, 0, :, :, pi].T)
+                        data = np.abs(uv.quality_array[ai, :, :, pi].T)
                     else:
                         raise ValueError('When calculating metric for UVCal object, '
                                          'cal_mode must be "gain", "chisq", or "tot_chisq".')
-                    uvf.metric_array[ai, 0, :, :, pi] = alg_func(data, flags=flags, **kwargs).T
+                    uvf.metric_array[ai, :, :, pi] = alg_func(data, flags=flags, **kwargs).T
     if run_check:
         uvf.check(check_extra=check_extra,
                   run_check_acceptability=run_check_acceptability)
