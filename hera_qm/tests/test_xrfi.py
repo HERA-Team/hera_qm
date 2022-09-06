@@ -95,8 +95,8 @@ def test_not_inplace_uvflag():
     uvf.use_future_array_shapes()
     xant = uvf.ant_1_array[0]
     uvf2 = xrfi.flag_xants(uvf, xant, inplace=False)
-    assert np.all(uvf2.flag_array[uvf2.ant_1_array == xant, :, :, :])
-    assert np.all(uvf2.flag_array[uvf2.ant_2_array == xant, :, :, :])
+    assert np.all(uvf2.flag_array[uvf2.ant_1_array == xant, :, :])
+    assert np.all(uvf2.flag_array[uvf2.ant_2_array == xant, :, :])
 
 
 def test_not_inplace_uvdata():
@@ -105,8 +105,8 @@ def test_not_inplace_uvdata():
     uv.use_future_array_shapes()
     xant = uv.get_ants()[0]
     uv2 = xrfi.flag_xants(uv, xant, inplace=False)
-    assert np.all(uv2.flag_array[uv2.ant_1_array == xant, :, :, :])
-    assert np.all(uv2.flag_array[uv2.ant_2_array == xant, :, :, :])
+    assert np.all(uv2.flag_array[uv2.ant_1_array == xant, :, :])
+    assert np.all(uv2.flag_array[uv2.ant_2_array == xant, :, :])
 
 
 def test_resolve_xrfi_path_given():
