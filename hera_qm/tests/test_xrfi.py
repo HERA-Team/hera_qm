@@ -998,9 +998,9 @@ def test_calculate_metric_gains():
     uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', Kt=3, Kf=3)
     assert uvf.mode == 'metric'
     assert uvf.type == 'antenna'
-    wf = uvc.gain_array[0, 0, :, :, 0]
+    wf = uvc.gain_array[0, :, :, 0]
     filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3, Kf=3)
-    assert np.allclose(filtered, uvf.metric_array[0, 0, :, :, 0])
+    assert np.allclose(filtered, uvf.metric_array[0, :, :, 0])
 
 
 def test_calculate_metric_chisq():
@@ -1012,9 +1012,9 @@ def test_calculate_metric_chisq():
                                 Kt=3, Kf=3)
     assert uvf.mode == 'metric'
     assert uvf.type == 'antenna'
-    wf = uvc.quality_array[0, 0, :, :, 0]
+    wf = uvc.quality_array[0, :, :, 0]
     filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3, Kf=3)
-    assert np.allclose(filtered, uvf.metric_array[0, 0, :, :, 0])
+    assert np.allclose(filtered, uvf.metric_array[0, :, :, 0])
 
 
 def test_calculate_metric_tot_chisq():
@@ -1026,7 +1026,7 @@ def test_calculate_metric_tot_chisq():
                                 Kt=3, Kf=3)
     assert uvf.mode == 'metric'
     assert uvf.type == 'waterfall'
-    filtered = xrfi.detrend_medfilt(np.abs(uvc.total_quality_array[0, :, :, 0]).T,
+    filtered = xrfi.detrend_medfilt(np.abs(uvc.total_quality_array[:, :, 0]).T,
                                     Kt=3, Kf=3)
     assert np.allclose(filtered, uvf.metric_array[:, :, 0])
 
@@ -1453,6 +1453,7 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
         uvf = UVFlag(out)
+        uvf.use_future_array_shapes()
         uvf_list2.append(uvf)
         uvf_list2_names.append(out)
         assert uvf.label == label
