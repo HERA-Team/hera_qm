@@ -66,6 +66,7 @@ def test_uvcal():
 
 def test_uvflag():
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
     uvf.to_flag()
     xant = uvf.ant_1_array[0]
     xrfi.flag_xants(uvf, xant)
@@ -79,6 +80,7 @@ def test_input_error():
 
 def test_uvflag_waterfall_error():
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
     uvf.to_waterfall()
     uvf.to_flag()
     pytest.raises(ValueError, xrfi.flag_xants, uvf, 0)
@@ -86,11 +88,13 @@ def test_uvflag_waterfall_error():
 
 def test_uvflag_not_flag_error():
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
     pytest.raises(ValueError, xrfi.flag_xants, uvf, 0)
 
 
 def test_not_inplace_uvflag():
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
     xant = uvf.ant_1_array[0]
     uvf2 = xrfi.flag_xants(uvf, xant, inplace=False)
     assert np.all(uvf2.flag_array[uvf2.ant_1_array == xant, :, :, :])
@@ -556,7 +560,9 @@ def test_watershed_flag():
     uv.read_miriad(test_d_file)
     uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this')
+    uvm.use_future_array_shapes()
     uvf = UVFlag(uv, mode='flag')
+    uvf.use_future_array_shapes()
 
     # set metric and flag arrays to specific values
     uvm.metric_array = np.zeros_like(uvm.metric_array)
@@ -609,7 +615,9 @@ def test_watershed_flag():
     uvc.read_calfits(test_c_file)
     uvc.use_future_array_shapes()
     uvm = UVFlag(uvc, history='I made this')
+    uvm.use_future_array_shapes()
     uvf = UVFlag(uvc, mode='flag')
+    uvf.use_future_array_shapes()
 
     # set metric and flag arrays to specific values
     uvm.metric_array = np.zeros_like(uvm.metric_array)
@@ -659,7 +667,9 @@ def test_watershed_flag():
     uv.read_miriad(test_d_file)
     uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this', waterfall=True)
+    uvm.use_future_array_shapes()
     uvf = UVFlag(uv, mode='flag', waterfall=True)
+    uvf.use_future_array_shapes()
 
     # set metric and flag arrays to specific values
     uvm.metric_array = np.zeros_like(uvm.metric_array)
@@ -901,6 +911,7 @@ def test_flag_apply():
     uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag')
+    uvf.use_future_array_shapes()
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
     uvf.flag_array[:, :, 0, :] = True
     uvf2 = xrfi.flag_apply(uvf, uv, return_net_flags=True)
@@ -912,6 +923,7 @@ def test_flag_apply():
     uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag')
+    uvf.use_future_array_shapes()
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
     uvf.flag_array[:, :, 0, :, :] = True
     uvf2 = xrfi.flag_apply(uvf, uv, return_net_flags=True)
@@ -923,6 +935,7 @@ def test_flag_apply():
     uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag', waterfall=True)
+    uvf.use_future_array_shapes()
     uvf.flag_array[:, 0, :] = True
     xrfi.flag_apply(uvf, uv)
     assert np.allclose(uv.flag_array[:, :, 0, :], True)
@@ -933,6 +946,7 @@ def test_flag_apply():
     uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag', waterfall=True)
+    uvf.use_future_array_shapes()
     uvf.flag_array[:, 0, :] = True
     xrfi.flag_apply(uvf, uv)
     assert np.allclose(uv.flag_array[:, :, 0, :, :], True)
@@ -1289,6 +1303,7 @@ def test_xrfi_run_yaml_flags(tmpdir):
                 out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
                 assert os.path.exists(out)
                 uvf = UVFlag(out)
+                uvf.use_future_array_shapes()
                 assert uvf.label == label
                 # check that all flags in frequency regions are set to True.
                 # only check init flags, apriori flags, and round 2 flags.
@@ -1387,6 +1402,7 @@ def test_xrfi_run(tmpdir):
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1411,6 +1427,7 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
         uvf = UVFlag(out)
+        uvf.use_future_array_shapes()
         uvf_list1.append(uvf)
         uvf_list1_names.append(out)
         assert uvf.label == label
@@ -1458,6 +1475,7 @@ def test_xrfi_run(tmpdir):
       if 'cross' in ext or 'combined' in ext:
           assert os.path.exists(out)
           uvf = UVFlag(out)
+          uvf.use_future_array_shapes()
           assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1472,6 +1490,7 @@ def test_xrfi_run(tmpdir):
       if 'auto' in ext or 'combined' in ext:
           assert os.path.exists(out)
           uvf = UVFlag(out)
+          uvf.use_future_array_shapes()
           assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1492,6 +1511,7 @@ def test_xrfi_run(tmpdir):
         if 'cross' not in ext and 'v_' not in ext and 'auto' not in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1507,6 +1527,7 @@ def test_xrfi_run(tmpdir):
          and 'ox_' not in ext and 'og_' not in ext and not 'omnical' in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1520,6 +1541,7 @@ def test_xrfi_run(tmpdir):
         if 'cross' in ext or 'combined' in ext or 'auto' in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1542,6 +1564,7 @@ def test_xrfi_run(tmpdir):
         if 'cross' in ext or 'combined' in ext or 'auto' in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1565,6 +1588,7 @@ def test_xrfi_run(tmpdir):
         if ('cross' in ext or 'combined' in ext or 'auto' in ext) and '1' not in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -2463,6 +2487,7 @@ def fake_waterfall():
     # generate a dummy metric waterfall
     np.random.seed(0)
     uvm = UVFlag(test_f_file)
+    uvm.use_future_array_shapes()
     uvm.to_waterfall()
 
     # populate with noise and add bad times / channels
@@ -2541,6 +2566,7 @@ def test_threshold_wf_detrend_no_check():
     # generate a dummy metric waterfall
     np.random.seed(0)
     uvm = UVFlag(test_f_file)
+    uvm.use_future_array_shapes()
     uvm.to_waterfall()
 
     # populate with noise and add bad times / channels
@@ -2562,6 +2588,7 @@ def test_threshold_wf_exceptions():
     # generate a dummy metric waterfall
     np.random.seed(0)
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
 
     # exceptions
     pytest.raises(ValueError, xrfi.threshold_wf, uvf)  # UVFlag object but not a waterfall
@@ -2647,6 +2674,7 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
                 out = outdir / '.'.join([obs, ext, 'h5'])
                 assert os.path.exists(out)
                 uvf = UVFlag(str(out))
+                uvf.use_future_array_shapes()
                 assert uvf.label == label
             shutil.rmtree(outdir)  # cleanup
 
@@ -2665,6 +2693,7 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
                 out = outdir / '.'.join([obs, ext, 'h5'])
                 assert os.path.exists(out)
                 uvf = UVFlag(str(out))
+                uvf.use_future_array_shapes()
                 assert uvf.label == label
             shutil.rmtree(outdir)  # cleanup
 
@@ -2683,5 +2712,6 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
                 out = outdir / '.'.join([obs, ext, 'h5'])
                 assert os.path.exists(out)
                 uvf = UVFlag(str(out))
+                uvf.use_future_array_shapes()
                 assert uvf.label == label
             shutil.rmtree(outdir)  # cleanup
