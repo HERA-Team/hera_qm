@@ -6,7 +6,7 @@ conda info -a
 conda create --name=${ENV_NAME}  python=$PYTHON --quiet
 conda env update -n ${ENV_NAME} -f ci/${ENV_NAME}.yml
 source activate ${ENV_NAME}
-
+pip install hera-calibration --no-deps
 
 conda list -n ${ENV_NAME}
 # check that the python version matches the desired one; exit immediately if not
