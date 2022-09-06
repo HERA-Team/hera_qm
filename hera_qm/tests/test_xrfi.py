@@ -1848,7 +1848,7 @@ def test_day_threshold_run(tmpdir):
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
     uvc.use_future_array_shapes()
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -1930,7 +1930,7 @@ def test_day_threshold_run_yaml(tmpdir):
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
     uvc.use_future_array_shapes()
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -1995,7 +1995,7 @@ def test_day_threshold_run_data_only(tmpdir):
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
     uvc.use_future_array_shapes()
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -2065,7 +2065,7 @@ def test_day_threshold_run_cal_only(tmpdir):
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
     uvc.use_future_array_shapes()
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -2133,7 +2133,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
     uvc.use_future_array_shapes()
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -2509,7 +2509,7 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
         uvc.use_future_array_shapes()
-        dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+        dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
         uvc.time_array += obsi * dt
         uvc.write_calfits(ocalfits_files[obsi])
         uvc.write_calfits(acalfits_files[obsi])
