@@ -6,11 +6,11 @@ dependencies:
   - astropy>=3.2.3
   - h5py
   - matplotlib
-  - numpy>=1.10
+  - numpy>=1.23
   - pip
   - pytest
   - pytest-cov
-  - pyuvdata
+  - pyuvdata>=2.2.9
   - scikit-learn # from hera_cal
   - scipy
   - pip:
