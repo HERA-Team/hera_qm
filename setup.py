@@ -3,14 +3,9 @@ import os
 import sys
 import os.path as op
 import json
+from pathlib import Path
 
 sys.path.append('hera_qm')
-import version  # noqa
-
-data = [version.git_origin, version.git_hash, version.git_description, version.git_branch]
-with open(op.join('hera_qm', 'GIT_INFO'), 'w') as outfile:
-    json.dump(data, outfile)
-
 
 def package_files(package_dir, subdirectory):
     # walk the input package_dir/subdirectory
@@ -25,6 +20,8 @@ def package_files(package_dir, subdirectory):
 
 
 data_files = package_files('hera_qm', 'data')
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 setup_args = {
     'name': 'hera_qm',
@@ -32,6 +29,8 @@ setup_args = {
     'url': 'https://github.com/HERA-Team/hera_qm',
     'license': 'BSD',
     'description': 'HERA Data Quality Metrics.',
+    'long_description': long_description,
+    'long_description_content_type': 'text/markdown',
     'package_dir': {'hera_qm': 'hera_qm'},
     'packages': ['hera_qm'],
     'include_package_data': True,
@@ -49,7 +48,6 @@ setup_args = {
                 'scripts/xrfi_h3ca_rtp_run.py',
                 'scripts/xrfi_run_data_only.py'
                 ],
-    'version': version.version,
     'package_data': {'hera_qm': data_files},
     'setup_requires': ['pytest-runner'],
     'install_requires': [

@@ -11,7 +11,7 @@ from pyuvdata import UVCal
 from pyuvdata import UVFlag
 from . import utils as qm_utils
 from pyuvdata import utils as uvutils
-from .version import hera_qm_version_str
+from . import __version__
 from .metrics_io import process_ex_ants
 from . import metrics_io
 import warnings
@@ -2010,7 +2010,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     # construct history
     if history is None:
         history = ''
-    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    history = 'Flagging command: "' + history + '", Using ' + __version__
 
     # Combine excluded antenna indices from ex_ants, metrics_file, and a_priori_flag_yaml
     xants = process_ex_ants(ex_ants=ex_ants, metrics_files=metrics_files)
@@ -2350,7 +2350,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     None
 
     """
-    history = 'Flagging command: "' + flag_command + '", Using ' + hera_qm_version_str
+    history = 'Flagging command: "' + flag_command + '", Using ' + __version__
     xants = process_ex_ants(ex_ants=ex_ants, metrics_files=metrics_file)
 
     # Make sure input files are sorted
@@ -2613,7 +2613,7 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
     None
 
     """
-    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    history = 'Flagging command: "' + history + '", Using ' + __version__
     data_files = sorted(data_files)
     xrfi_dirs = [resolve_xrfi_path('', dfile, jd_subdir=True) for dfile in data_files]
     basename = '.'.join(os.path.basename(data_files[0]).split('.')[0:2])
@@ -2827,7 +2827,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
         uvd.use_future_array_shapes()
 
     # append to history
-    history = 'Flagging command: "' + history + '", Using ' + hera_qm_version_str
+    history = 'Flagging command: "' + history + '", Using ' + __version__
 
     # Flag on data
     if indata is not None:

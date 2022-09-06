@@ -13,7 +13,7 @@ import copy
 import re
 import yaml
 from collections import OrderedDict
-from .version import hera_qm_version_str
+from . import __version__
 from . import utils as qm_utils
 
 
@@ -284,7 +284,7 @@ def write_metric_file(filename, input_dict, overwrite=False):
                                                                       'hera_qm.metrics_io'))
             header['history'].attrs['key_is_string'] = True
 
-            header['version'] = qm_utils._str_to_bytes(input_dict.pop('version', hera_qm_version_str))
+            header['version'] = qm_utils._str_to_bytes(input_dict.pop('version', __version__))
             header['version'].attrs['key_is_string'] = True
 
             # Create group for metrics data in file

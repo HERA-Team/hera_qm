@@ -757,7 +757,10 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
         # calculate LST grid in hours from time grid and lat_lon_alt
         lst_array = uvutils.get_lst_for_time(uv.time_array, *lat_lon_alt_degrees) * 12 / np.pi
     else:
-        lst_array = np.unique(uv.lst_array) * 12  / np.pi
+        # Can't just use np.unique because it also sorts the lsts by value.
+        # This recipe preserves the original order of the lsts.
+        indices = np.unique(uv.lst_array, return_index=True)[1]
+        lst_array = np.array([uv.lst_array[index] for index in sorted(indices)]) * 12 / np.pi
 
     time_array = np.unique(uv.time_array)
     # loop over spws to apply frequency flags.

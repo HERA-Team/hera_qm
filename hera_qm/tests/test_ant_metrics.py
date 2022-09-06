@@ -10,6 +10,7 @@ from hera_qm import ant_metrics
 from hera_qm import metrics_io
 from hera_qm.data import DATA_PATH
 import hera_qm.tests as qmtest
+from hera_cal.io import HERADataFastReader
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
@@ -216,7 +217,6 @@ def test_init():
             assert am.datafile_list_diff is None
             assert am.hd_diff is None
         assert am.history == ''
-        assert 'Git hash' in am.version_str
 
         # test antennas and baselines
         true_antnums = [51, 87, 116, 93, 65, 85, 53, 160, 36, 83, 135, 157, 98, 117, 68]
@@ -299,6 +299,49 @@ def test_iterative_antenna_metrics_and_flagging():
     # assert am.removal_iteration[68, 'Jnn'] == -1
     # assert am.removal_iteration[68, 'Jee'] == -1
 
+def test_using_datacontainers():
+    def compare_ams(am1, am2):
+        assert am1.crossed_ants == am2.crossed_ants
+        assert am1.dead_ants == am2.dead_ants
+        assert am1.xants == am2.xants
+        for i in am1.all_metrics:
+            for metric in am1.all_metrics[i]:
+                for ant in am1.all_metrics[i][metric]:
+                    m1 = am1.all_metrics[i][metric][ant]
+                    m2 = am2.all_metrics[i][metric][ant]
+                    assert (m1 == m2) or (np.isnan(m1) and np.isnan(m2))
+
+    # compare datacontainers to loading within the object
+    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
+             'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
+    am1 = ant_metrics.AntennaMetrics(**files)
+    am1.iterative_antenna_metrics_and_flagging()
+
+    hd_sum = HERADataFastReader(files['sum_files'])
+    hd_diff = HERADataFastReader(files['diff_files'])
+    sum_data, sum_flags, _ = hd_sum.read(read_nsamples=False)
+    diff_data, diff_flags, _ = hd_diff.read(read_nsamples=False)
+    am2 = ant_metrics.AntennaMetrics(**files, sum_data=sum_data, diff_data=diff_data, 
+                                     sum_flags=sum_flags, diff_flags=diff_flags)
+    am2.iterative_antenna_metrics_and_flagging()
+    
+    compare_ams(am1, am2)
+
+    # compare providing only diff_flags to providing only sum_flags
+    am1 = ant_metrics.AntennaMetrics(**files, sum_data=sum_data, diff_data=diff_data, 
+                                     sum_flags=sum_flags)
+    am2 = ant_metrics.AntennaMetrics(**files, sum_data=sum_data, diff_data=diff_data, 
+                                     diff_flags=diff_flags)
+    compare_ams(am1, am2)
+
+    # test errors
+    with pytest.raises(ValueError):
+        am = ant_metrics.AntennaMetrics(**files, Nbls_per_load=10, sum_data=sum_data)
+        am = ant_metrics.AntennaMetrics(**files, Nfiles_per_load=2, sum_data=sum_data)    
+    with pytest.raises(KeyError):
+        am = ant_metrics.AntennaMetrics(**files, sum_data={})
+
+
 
 def test_ant_metrics_run_and_load_antenna_metrics():
     files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
@@ -327,10 +370,10 @@ def test_ant_metrics_run_and_load_antenna_metrics():
 
     # test a priori flagging via YAML
     four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
-    apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_old_pols.yaml')
+    apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_sample.yaml')
     am = ant_metrics.ant_metrics_run(four_pol_uvh5, diff_files=four_pol_uvh5, overwrite=True, a_priori_xants_yaml=apf_yaml, verbose=True)
     am_hdf5 = ant_metrics.load_antenna_metrics(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
-    for ant in [(0, 'Jxx'), (0, 'Jyy'), (10, 'Jxx'), (10, 'Jyy'), (1, 'Jxx'), (3, 'Jyy')]:
+    for ant in [(0, 'Jee'), (0, 'Jnn'), (10, 'Jee'), (10, 'Jnn'), (1, 'Jee'), (3, 'Jnn')]:
         assert ant in am_hdf5['xants']
         assert am_hdf5['removal_iteration'][ant] == -1
 

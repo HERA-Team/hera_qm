@@ -7,7 +7,7 @@ import numpy as np
 from pyuvdata import UVData
 import copy
 from . import utils
-from . import version
+from . import __version__
 
 
 def check_noise_variance(uvd):
@@ -212,7 +212,7 @@ def sequential_diff(data, t_int=None, axis=(0,), pad=True, run_check=True, histo
 
         # add to history
         uvd.history = "Took sequential difference with hera_qm [{}]\n{}\n{}\n{}" \
-                      .format(version.git_hash[:10], history, '-' * 50, uvd.history)
+                      .format(__version__, history, '-' * 50, uvd.history)
 
         return uvd
 

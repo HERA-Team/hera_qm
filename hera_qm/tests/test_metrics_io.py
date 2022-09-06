@@ -12,7 +12,7 @@ import pyuvdata.tests as uvtest
 from hera_qm.data import DATA_PATH
 from hera_qm import metrics_io
 import hera_qm.tests as qmtest
-from hera_qm.version import hera_qm_version_str
+from hera_qm import __version__
 
 
 class dummy_class(object):
@@ -228,7 +228,7 @@ def test_write_then_recursive_load_dict_to_group_no_nested_dicts():
     test_scalar = 'hello world'
     path = '/'
     good_dict = {'filestem': test_scalar, 'history': "this is a test",
-                 'version': hera_qm_version_str}
+                 'version': __version__}
     metrics_io.write_metric_file(test_file, good_dict)
     with h5py.File(test_file, 'r') as h5file:
         read_dict = metrics_io._recursively_load_dict_to_group(h5file, '/Header/')
@@ -244,7 +244,7 @@ def test_write_then_recursive_load_dict_to_group_with_nested_dicts():
     test_scalar = 'hello world'
     path = '/'
     good_dict = {'filestem': test_scalar, 'history': "this is a test",
-                 'version': hera_qm_version_str, '1': {'filestem': test_scalar}}
+                 'version': __version__, '1': {'filestem': test_scalar}}
     metrics_io.write_metric_file(test_file, good_dict)
     with h5py.File(test_file, 'r') as h5file:
         read_dict = metrics_io._recursively_load_dict_to_group(h5file, '/Header/')
@@ -272,7 +272,7 @@ def test_write_then_load_metric_file_hdf5():
     test_scalar = 'hello world'
     path = '/'
     good_dict = {'filestem': test_scalar, 'history': "this is a test",
-                 'version': hera_qm_version_str, 'all_metrics': {'filestem': test_scalar}}
+                 'version': __version__, 'all_metrics': {'filestem': test_scalar}}
     metrics_io.write_metric_file(test_file, good_dict)
     read_dict = metrics_io.load_metric_file(test_file)
     for key in good_dict:

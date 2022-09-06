@@ -7,7 +7,7 @@ import numpy as np
 from pyuvdata import UVCal
 import astropy.stats as astats
 from collections import OrderedDict as odict
-from .version import hera_qm_version_str
+from . import __version__
 from . import utils
 import pickle as pkl
 import json
@@ -445,7 +445,7 @@ class OmniCal_Metrics(object):
         self.filedir = os.path.dirname(omni_calfits)
         self.filestem = '.'.join(os.path.basename(omni_calfits).split('.')[:-1])
         self.filename = os.path.basename(omni_calfits)
-        self.version_str = hera_qm_version_str
+        self.version_str = __version__
         self.history = history
         self.firstcal_file = None
 
