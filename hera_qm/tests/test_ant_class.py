@@ -229,3 +229,26 @@ def test_auto_rfi_checker():
     for ant in auto_class.ants:
         if ant not in [(36, 'Jee'), (83, 'Jee')] and ant not in auto_class.bad_ants:
             assert ant in auto_rfi_class.good_ants
+
+def test_even_odd_zeros_checker():
+    even, odd = {}, {}
+    for bl in [(0, 1, 'ee'), (0, 2, 'ee'), (0, 3, 'ee'), (1, 2, 'ee'), (1, 3, 'ee'), (2, 3, 'ee')]:
+        even[bl] = np.ones((2, 1024))
+        odd[bl] = np.ones((2, 1024))
+
+    for bl in [(0, 3, 'ee'), (1, 3, 'ee'), (2, 3, 'ee')]:
+        even[bl][:, 0:512] = 0
+
+    for bl in [(0, 1, 'ee'), (0, 2, 'ee'), (0, 3, 'ee')]:
+        odd[bl][:, 100:105] = 0
+
+    sums, diff = {}, {}
+    for bl in even:
+        sums[bl] = even[bl] + odd[bl]
+        diff[bl] = even[bl] - odd[bl]
+
+    zeros_class = ant_class.even_odd_zeros_checker(sums, diff, good=(0, 2), suspect=(2, 8))
+    assert zeros_class[0, 'Jee'] == 'suspect'
+    assert zeros_class[1, 'Jee'] == 'good'
+    assert zeros_class[2, 'Jee'] == 'good'
+    assert zeros_class[3, 'Jee'] == 'bad'
