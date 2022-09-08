@@ -6,6 +6,7 @@
 import numpy as np
 from scipy.ndimage import median_filter
 import warnings
+from . import xrfi
 
 
 def _check_antpol(ap):
@@ -320,3 +321,57 @@ def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, fi
 
     return antenna_bounds_checker(relative_slopes, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
+def auto_rfi_checker(data, good=(0, 0.1), suspect=(0.1, 0.2), nsig=6, antenna_class=None, flag_threshold=0.1, 
+                     kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0, -2700e-9, 2700e-9],
+                     filter_half_widths=[200e-9, 200e-9, 200e-9], eigenval_cutoff=[1e-9]):
+    """
+    Classifies ant-pols as good, suspect, or bad based on the fraction of channels flagged.
+    Flagging takes place in two steps: (1) "channel_diff_flagger" is used to 
+    (2) "dpss_flagger" is used with the array averaged flags to refine initial per-antenna flags
+ 
+    Arguments:
+        data: DataContainer containing antenna autocorrelations (other baselines ignored)
+        good: 2-tuple or list of 2-tuple, default=(0, 0.1)
+            2-tuple or list of 2-tuple bounds for ranges considered good.
+        suspect: 2-tuple or list of 2-tuple, default=(0.1, 0.2)
+            Bounds for ranges considered suspect.
+        nsig: float, default=6
+            The number of sigma in the metric above which to flag pixels. Used in both steps.
+        antenna_class: AntennaClassification, default=None
+            Optional AntennaClassification object. If provided, the flagging method chosen will skip antennas marked "bad".
+            Used in both steps
+        flag_threshold: float, default=0.1
+            The fraction of flags required to trigger a broadcast across all auto-correlations for
+            a given (time, frequency) pixel in the combined flag array. Used in both steps
+        kernel_widths: list
+            Half-width of the convolution kernels used to produce model. True kernel width is (2 * kernel_width + 1)
+            Only used in the "channel_diff_flagger" step
+        mode: str, default='dpss_solve'
+            Method used to solve for DPSS model components. Options are 'dpss_matrix', 'dpss_solve', and 'dpss_leastsq'.
+            Only used in "dpss_flagger" step
+        filter_centers: array-like
+            list of floats of centers of delay filter windows in nanosec. Only used in "dpss_flagger"
+        filter_half_widths: array-like
+            list of floats of half-widths of delay filter windows in nanosec. Only used in "dpss_flagger"
+        
+    Returns:
+        AntennaClassification with "good", "suspect", and "bad" ant-pols based on the absolute fraction of 
+        the band that is flagged
+    """
+    # Flag using convolution kernels
+    antenna_flags, array_flags = xrfi.flag_autos(data, flag_method="channel_diff_flagger", nsig=nsig, antenna_class=antenna_class,
+                                     flag_threshold=flag_threshold, kernel_widths=kernel_widths)
+
+    # Override antenna flags with array-wide flags for next step
+    for key in antenna_flags.keys():
+        antenna_flags[key] = array_flags
+
+    # Flag using DPSS filters
+    antenna_flags, _ = xrfi.flag_autos(data, freqs=data.freqs, flag_method="dpss_flagger", nsig=nsig, antenna_class=antenna_class,
+                                        filter_centers=filter_centers, filter_half_widths=filter_half_widths,
+                                        eigenval_cutoff=eigenval_cutoff, flags=antenna_flags, mode=mode)
+
+    # Calculate the fraction of the band that is flagged
+    flagged_fraction = {bls: np.mean(flags) for bls, flags in antenna_flags.items()}
+
+    return antenna_bounds_checker(flagged_fraction, good=good, suspect=suspect, bad=(-np.inf, np.inf))
