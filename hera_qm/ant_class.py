@@ -375,3 +375,55 @@ def auto_rfi_checker(data, good=(0, 0.1), suspect=(0.1, 0.2), nsig=6, antenna_cl
     flagged_fraction = {bls: np.mean(flags) for bls, flags in antenna_flags.items()}
 
     return antenna_bounds_checker(flagged_fraction, good=good, suspect=suspect, bad=(-np.inf, np.inf))
+
+def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
+    '''Classifies ant-pols as good, suspect, or bad based on the maximum number of zeros
+    that appear in single-time even or odd visibility spectra. That maximum is assigned
+    to antennas in order of the total number of zeros in baselines that antenna participates
+    in, so antennas with more zeros overall are blamed for a particular baseline having zeros.
+    
+    Arguments:
+        sum_data: DataContainer containing full visibility data set
+        diff_data: DataContainer containing time-interleaved difference visibility data
+        good: 2-tuple or list of 2-tuples of ranges of the maximum number of zeros in an 
+            even or odd spectrum attributed to a given antenna. Default is to allow at most
+            2 zeros in a spectrum which cannot be attributed to the other antenna involved.
+        suspect: 2-tuple or list of 2-tuples of ranges for the maximum number of zeros
+            attributable to given antenna considered suspect. Default is 8. Ant-pols
+            in both the good and suspect ranges are good, all others are bad.
+            
+    Returns:
+        AntennaClassification with "good", "suspect", and "bad" ant-pols based on number of zeros
+    '''
+    from hera_cal.utils import split_bl
+    ants = sorted(set([ant for bl in sum_data for ant in split_bl(bl)]))
+    zero_count_by_ant = {ant: 0 for ant in ants}
+    max_zeros_per_spectrum = {}
+    
+    # calculate the maximum number of zeros per spectrum for each baseline in the odd or even data,
+    # as well as the total number of zeros in baselines each antenna is involved in
+    for bl in sum_data:
+        even_zeros  = np.sum((sum_data[bl] + diff_data[bl]) == 0, axis=1)
+        odd_zeros = np.sum((sum_data[bl] - diff_data[bl]) == 0, axis=1)
+        max_zeros_per_spectrum[bl] = np.max([even_zeros, odd_zeros])
+        for ant in split_bl(bl):
+            zero_count_by_ant[ant] += np.sum([even_zeros, odd_zeros])
+    
+    # sort dictionary of antennas by number of even/odd visibility zeros it participates in
+    zero_count_by_ant = {k: v for k, v in sorted(zero_count_by_ant.items(), key=lambda item: item[1], reverse=True)}
+    
+    # Loop over antennas in order of zero_count_by_ant, calculating the maximum number of zeros in a spectrum
+    # attributable to that antenna. After calculating this for each antenna, all baselines involving that
+    # antenna are removed from bls_with_zeros. In this way, a baseline's zeros are only attributed to one antenna
+    most_zeros = {}
+    bls_with_zeros = set([bl for bl in sum_data if max_zeros_per_spectrum[bl] > 0])
+    for ant in zero_count_by_ant:
+        remaining_max_zeros = [max_zeros_per_spectrum[bl] for bl in bls_with_zeros if ant in split_bl(bl)]
+        if len(remaining_max_zeros) > 0:
+            most_zeros[ant] = np.max(remaining_max_zeros)
+            bls_with_zeros = set([bl for bl in bls_with_zeros if ant not in split_bl(bl)])
+        else:
+            most_zeros[ant] = 0
+    
+    # run and return classifier
+    return antenna_bounds_checker(most_zeros, good=good, suspect=suspect, bad=(0, np.inf))
