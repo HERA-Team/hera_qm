@@ -321,9 +321,9 @@ def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, fi
 
     return antenna_bounds_checker(relative_slopes, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
-def auto_rfi_checker(data, good=(0, 0.1), suspect=(0.1, 0.2), nsig=6, antenna_class=None, flag_threshold=0.1, 
-                     kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0, -2700e-9, 2700e-9],
-                     filter_half_widths=[200e-9, 200e-9, 200e-9], eigenval_cutoff=[1e-9]):
+def auto_rfi_checker(data, good=(0, 0.1), suspect=(0.1, 0.2), nsig=6, antenna_class=None, flag_broadcast_thresh=0.1, 
+                     kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0],
+                     filter_half_widths=[200e-9], eigenval_cutoff=[1e-9]):
     """
     Classifies ant-pols as good, suspect, or bad based on the fraction of channels flagged.
     Flagging takes place in two steps: (1) "channel_diff_flagger" is used to 
@@ -340,18 +340,18 @@ def auto_rfi_checker(data, good=(0, 0.1), suspect=(0.1, 0.2), nsig=6, antenna_cl
         antenna_class: AntennaClassification, default=None
             Optional AntennaClassification object. If provided, the flagging method chosen will skip antennas marked "bad".
             Used in both steps
-        flag_threshold: float, default=0.1
+        flag_broadcast_thresh: float, default=0.1
             The fraction of flags required to trigger a broadcast across all auto-correlations for
             a given (time, frequency) pixel in the combined flag array. Used in both steps
         kernel_widths: list
             Half-width of the convolution kernels used to produce model. True kernel width is (2 * kernel_width + 1)
             Only used in the "channel_diff_flagger" step
-        mode: str, default='dpss_solve'
+        mode: str, default='dpss_matrix'
             Method used to solve for DPSS model components. Options are 'dpss_matrix', 'dpss_solve', and 'dpss_leastsq'.
             Only used in "dpss_flagger" step
-        filter_centers: array-like
+        filter_centers: array-like, default=[0]
             list of floats of centers of delay filter windows in nanosec. Only used in "dpss_flagger"
-        filter_half_widths: array-like
+        filter_half_widths: array-like, default=[200e-9]
             list of floats of half-widths of delay filter windows in nanosec. Only used in "dpss_flagger"
         
     Returns:
@@ -360,7 +360,7 @@ def auto_rfi_checker(data, good=(0, 0.1), suspect=(0.1, 0.2), nsig=6, antenna_cl
     """
     # Flag using convolution kernels
     antenna_flags, array_flags = xrfi.flag_autos(data, flag_method="channel_diff_flagger", nsig=nsig, antenna_class=antenna_class,
-                                     flag_threshold=flag_threshold, kernel_widths=kernel_widths)
+                                     flag_broadcast_thresh=flag_broadcast_thresh, kernel_widths=kernel_widths)
 
     # Override antenna flags with array-wide flags for next step
     for key in antenna_flags.keys():
