@@ -13,6 +13,7 @@ dependencies:
   - scikit-learn # from hera_cal
   - pytest-cov
   - pyyaml
+  - hera-filters
   - pip:
     - git+https://github.com/HERA-Team/uvtools
     - git+https://github.com/HERA-Team/hera_cal

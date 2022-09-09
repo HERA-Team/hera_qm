@@ -197,6 +197,38 @@ def test_auto_slope_checker():
     for ant in {(65, 'Jnn'), (116, 'Jee'), (93, 'Jnn'), (65, 'Jee'), (93, 'Jee'), (116, 'Jnn')}:
         assert ant in auto_slope_class.bad_ants
 
+def test_auto_rfi_checker():
+    hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
+    data, _, _ = hd.read(read_flags=False, read_nsamples=False)
+
+    # Get bad antennas
+    auto_power_class = ant_class.auto_power_checker(data, good=(2, 30), suspect=(1, 80))
+    auto_slope_class = ant_class.auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=20)  # smaller edge cut due to downsampling
+    auto_class = auto_power_class + auto_slope_class
+
+    # Modify metadata to compensate for down-selection
+    data.times /= 5
+
+    # Artificially add RFI to autos
+    idx = np.arange(0, data.freqs.shape[0], 10)
+    data[(36, 36, 'ee')][:, idx] *= 1.2 # Bad auto
+    idx = np.arange(0, data.freqs.shape[0], 30)
+    data[(83, 83, 'ee')][:, idx] *= 1.2 # Suspect auto
+
+    # Run RFI checker
+    auto_rfi_class = ant_class.auto_rfi_checker(data, antenna_class=auto_class, kernel_widths=[1, 2], filter_centers=[0, 2700e-9, -2700e-9],
+                                                filter_half_widths=[200e-9, 200e-9, 200e-9])
+    assert (36, 'Jee') in auto_rfi_class.bad_ants
+    assert (83, 'Jee') in auto_rfi_class.suspect_ants
+
+    # Make sure antennas that were previously marked bad are still marked bad
+    for ant in auto_class.bad_ants:
+        assert ant in auto_rfi_class.bad_ants
+    
+    # Show that all other antennas are marked "good"
+    for ant in auto_class.ants:
+        if ant not in [(36, 'Jee'), (83, 'Jee')] and ant not in auto_class.bad_ants:
+            assert ant in auto_rfi_class.good_ants
 
 def test_even_odd_zeros_checker():
     even, odd = {}, {}
