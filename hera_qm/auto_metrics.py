@@ -272,21 +272,19 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
     ######################################################
 
     # Delay import of hera_cal funcitons to minimize circular dependency
-    from hera_cal.io import HERAData
+    from hera_cal.io import HERADataFastReader
     from hera_cal.utils import split_pol
 
     # Figure out which baselines to load, if not all
-    hd = HERAData(sorted(raw_auto_files))
+    hd = HERADataFastReader(sorted(raw_auto_files))
     bls = hd.bls
-    if len(hd.filepaths) > 1:  # in this caes, hd.bls will be a dictionary mapping filename to baselines
-        bls = set([bl for bls in bls.values() for bl in bls])
     auto_bls = sorted([bl for bl in bls if (bl[0] == bl[1]) and (split_pol(bl[2])[0] == split_pol(bl[2])[1])])
     pols = set([bl[2] for bl in auto_bls])
     if np.all([bl in auto_bls for bl in bls]):
         auto_bls = None  # just load the whole file, which is faster
 
     # Load data
-    autos, _, _ = hd.read(axis='blt', bls=auto_bls)
+    autos, _, _ = hd.read(bls=auto_bls, read_data=True, read_flags=False, read_nsamples=False)
     wf_shape = next(iter(autos.values())).shape
 
     # Compute initial set of flags using edge_cut
