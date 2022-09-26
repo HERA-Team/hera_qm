@@ -224,6 +224,7 @@ def antenna_bounds_checker(data, **kwargs):
     '''
     
     classifiction_dict = {cls: set([]) for cls in kwargs}
+    _data = {}
     for ant, val in data.items():
         # check that key is either a valid ant-pol tuple of an autocorrelation tuple
         try:
@@ -238,7 +239,8 @@ def antenna_bounds_checker(data, **kwargs):
                     raise ValueError
             except:
                 raise ValueError(f'{ant} is not a valid ant-pol tuple nor a valid autocorrelation key.')
-        
+        _data[ant] = val
+
         # classify antenna
         for cls, bounds in kwargs.items():
             if _is_bound(bounds):
@@ -253,7 +255,9 @@ def antenna_bounds_checker(data, **kwargs):
             if ant in classifiction_dict[cls]:
                 break
     
-    return AntennaClassification(**classifiction_dict)
+    ac = AntennaClassification(**classifiction_dict)
+    ac._data = _data
+    return ac
 
 
 def auto_power_checker(data, good=(5, 30), suspect=(1, 80), int_count=None):
