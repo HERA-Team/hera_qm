@@ -314,14 +314,15 @@ def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, fi
     auto_bls = [bl for bl in data if (bl[0] == bl[1]) and (split_pol(bl[2])[0] == split_pol(bl[2])[1])]
 
     # compute relative slope over the band
-    relative_slopes = {}
+    relative_slopes = {bl: 0 for bl in auto_bls}
     for bl in auto_bls:
         mean_data = np.mean(data[bl], axis=0)
         med_filt = median_filter(mean_data, size=filt_size)[edge_cut:-edge_cut]
         fit = np.polyfit(np.linspace(-.5, .5, len(mean_data))[edge_cut:-edge_cut], med_filt, 1)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="invalid value encountered")
-            relative_slopes[bl] = (fit[0] / fit[1] if np.isfinite(fit[1]) else np.sign(fit[0]) * np.inf)
+            if not np.all(med_filt == 0):
+                relative_slopes[bl] = (fit[0] / fit[1] if np.isfinite(fit[1]) else np.sign(fit[0]) * np.inf)
 
     return antenna_bounds_checker(relative_slopes, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
