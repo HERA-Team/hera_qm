@@ -268,18 +268,12 @@ class AntennaMetrics():
             self.datafile_list_diff = diff_files
             self.hd_diff = HERADataFastReader(diff_files)
 
-        # save sum_data, etc. internally. Typically these are None.
-        self.sum_data = sum_data
-        self.diff_data = diff_data
-        self.sum_flags = sum_flags
-        self.diff_flags = diff_flags
-
-        # make sure sum_data is sensible and that the algorithm
-        if (self.sum_data is not None):
+        # make sure sum_data is sensible
+        if (sum_data is not None):
             if (Nfiles_per_load is not None) or (Nbls_per_load is not None):
                 raise ValueError('sum_data was provided, skipping data loading, so Nbls_per_load and Nfiles_per_load must be None.')
             for bl in self.bls:
-                if bl not in self.sum_data:
+                if bl not in sum_data:
                     raise KeyError(f'{bl} is in sum_files but not in sum_data. sum_data should come from sum_files.')
 
         # Figure out polarizations in the data
@@ -315,7 +309,8 @@ class AntennaMetrics():
 
         # Load and summarize data and convert into correlation matrices
         self._load_corr_matrices(Nbls_per_load=Nbls_per_load, Nfiles_per_load=Nfiles_per_load,
-                                 time_alg=time_alg, freq_alg=freq_alg)
+                                 time_alg=time_alg, freq_alg=freq_alg, sum_data=sum_data,
+                                 diff_data=diff_data, sum_flags=sum_flags, diff_flags=diff_flags)
 
     def _reset_summary_stats(self):
         """Reset all the internal summary statistics back to empty."""
@@ -328,10 +323,11 @@ class AntennaMetrics():
             self.xants.append(ant)
             self.removal_iteration[ant] = -1
 
-    def _load_files_and_update_corr_stats(self, corr_stats, sum_files, diff_files, bl_load_groups):
+    def _load_files_and_update_corr_stats(self, corr_stats, sum_files, diff_files, bl_load_groups,
+                                          sum_data=None, diff_data=None, sum_flags=None, diff_flags=None):
         """Loop over baseline groups, loading sum/diff files and extending the existing corr_stats dict of lists.
         """
-        if self.sum_data is None:
+        if sum_data is None:
             # loop over baseline groups
             for blg in bl_load_groups:
                 # load sum files
@@ -352,18 +348,19 @@ class AntennaMetrics():
                 for bl, stat in calc_corr_stats(data_sum, data_diff=data_diff, flags=flags).items():
                     corr_stats[bl].extend([stat] * len(data_sum.times))
         else:
-            # use self.sum_data, self.diff_data, self.sum_flags, and self.diff_flags
-            flags = deepcopy(self.sum_flags)
-            if (self.diff_flags is not None) and flags is None:
-                flags = self.diff_flags
-            elif (flags is not None) and (self.diff_flags is not None):
-                for bl in self.diff_flags:
-                    flags[bl] |= self.diff_flags[bl]
+            # use sum_data, diff_data, sum_flags, and diff_flags
+            flags = deepcopy(sum_flags)
+            if (diff_flags is not None) and flags is None:
+                flags = diff_flags
+            elif (flags is not None) and (diff_flags is not None):
+                for bl in diff_flags:
+                    flags[bl] |= diff_flags[bl]
             # compute corr_stats and append them to list, weighting by the number of integrations
-            for bl, stat in calc_corr_stats(self.sum_data, data_diff=self.diff_data, flags=flags).items():
-                corr_stats[bl].extend([stat] * len(self.sum_data.times))
+            for bl, stat in calc_corr_stats(sum_data, data_diff=diff_data, flags=flags).items():
+                corr_stats[bl].extend([stat] * len(sum_data.times))
 
-    def _load_corr_matrices(self, Nbls_per_load=None, Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean):
+    def _load_corr_matrices(self, Nbls_per_load=None, Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean,
+                            sum_data=None, diff_data=None, sum_flags=None, diff_flags=None):
         """Loop through groups of baselines to calculate self.corr_matrices using calc_corr_stats().
         """
         # chunk baseline load groups
@@ -387,7 +384,8 @@ class AntennaMetrics():
         # load data and calculate corr_stats
         corr_stats = {bl: [] for bl in self.bls}
         for sum_file_group, diff_file_group in zip(sum_files, diff_files):
-            self._load_files_and_update_corr_stats(corr_stats, sum_file_group, diff_file_group, bl_load_groups)
+            self._load_files_and_update_corr_stats(corr_stats, sum_file_group, diff_file_group, bl_load_groups,
+                                                   sum_data=sum_data, diff_data=diff_data, sum_flags=sum_flags, diff_flags=diff_flags)
 
         # reduce to a single stat per baseline (rather than per baseline, per file group)
         corr_stats = {bl: time_alg(corr_stats[bl]) for bl in self.bls}
