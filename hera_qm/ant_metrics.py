@@ -104,10 +104,10 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
         flags_here = ~np.isfinite(data_sum[bl])
         if flags is not None:
             flags_here |= flags[bl]
-        data_sum_here = np.where(flags_here, data_sum[bl], np.nan)
+        data_sum_here = np.where(flags_here, np.nan, data_sum[bl])
 
         # check to see if the sum file is mostly zeros, in which case the antenna is totally dead
-        if np.all(flags_here) or np.mean(data_sum_here[~flags_here]) > 0.5:
+        if np.all(flags_here) or np.mean(data_sum_here[~flags_here] == 0) > 0.5:
             corr_stats[bl] = 0
             continue
 
