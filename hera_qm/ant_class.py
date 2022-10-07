@@ -415,7 +415,7 @@ def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
         odd_zeros = np.sum((sum_data[bl] - diff_data[bl]) == 0, axis=1)
         max_zeros_per_spectrum[bl] = np.max([even_zeros, odd_zeros])
         for ant in split_bl(bl):
-            zero_count_by_ant[ant] += np.sum([even_zeros, odd_zeros])
+            zero_count_by_ant[ant] += max_zeros_per_spectrum[bl]
     
     # sort dictionary of antennas by number of even/odd visibility zeros it participates in
     zero_count_by_ant = {k: v for k, v in sorted(zero_count_by_ant.items(), key=lambda item: item[1], reverse=True)}
