@@ -328,8 +328,8 @@ def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, fi
 
 from hera_qm.ant_class import antenna_bounds_checker
 def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna_class=None, flag_broadcast_thresh=0.5, 
-                     kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0],
-                     filter_half_widths=[200e-9], eigenval_cutoff=[1e-9]):
+                     kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0], filter_half_widths=[200e-9], 
+                     eigenval_cutoff=[1e-9], cache=None):
     """
     Classifies ant-pols as good, suspect, or bad based on the fraction of channels flagged in that are not among the 
     array-broadcast flags (i.e. channels flagged for >50% of antennas). Flagging takes place in two steps: 
@@ -376,7 +376,7 @@ def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna
     # Flag using DPSS filters
     antenna_flags, array_flags = xrfi.flag_autos(data, freqs=data.freqs, flag_method="dpss_flagger", nsig=nsig, antenna_class=antenna_class,
                                                  filter_centers=filter_centers, filter_half_widths=filter_half_widths,
-                                                 eigenval_cutoff=eigenval_cutoff, flags=antenna_flags, mode=mode)
+                                                 eigenval_cutoff=eigenval_cutoff, flags=antenna_flags, mode=mode, cache=cache)
     
     
     # Calculate the excess fraction of the band that is flagged

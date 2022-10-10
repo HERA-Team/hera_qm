@@ -231,7 +231,7 @@ def robust_divide(num, den):
 
 def dpss_flagger(data, noise, freqs, filter_centers, filter_half_widths, flags=None,
                  nsig=6, mode="dpss_solve", eigenval_cutoff=[1e-9],
-                 suppression_factors=[1e-9], cache={}):
+                 suppression_factors=[1e-9], cache=None):
     """
     Identify RFI in visibilities by filtering data with discrete prolate spheroidal sequences. Returns a boolean array of flags
     with values of True indicating channels flagged for RFI
