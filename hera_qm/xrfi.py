@@ -261,8 +261,10 @@ def dpss_flagger(data, noise, freqs, filter_centers, filter_half_widths, flags=N
     suppression_factors: array-like, default=[1e-9]
         Specifies the fractional residuals of model to leave in the data. For example, 1e-6 means that the filter
         will leave in 1e-6 of data fitted by the model.
-    cache: dictionary, default={}
-        dictionary for caching fitting matrices.
+    cache: dictionary, default=None
+        Dictionary for caching fitting matrices. By default this value is None to prevent the size of the cached
+        matrices from getting too large. By passing in a cache dictionary, this function could be much faster, but
+        the memory requirement will also increase.
 
     Returns:
     -------

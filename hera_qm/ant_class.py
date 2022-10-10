@@ -360,6 +360,10 @@ def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna
             list of floats of centers of delay filter windows in nanosec. Only used in "dpss_flagger"
         filter_half_widths: array-like, default=[200e-9]
             list of floats of half-widths of delay filter windows in nanosec. Only used in "dpss_flagger"
+        cache: dictionary, default=None
+            Dictionary for caching fitting matrices. By default this value is None to prevent the size of the cached
+            matrices from getting too large. By passing in a cache dictionary, this function could be much faster, but
+            the memory requirement will also increase.
         
     Returns:
         AntennaClassification with "good", "suspect", and "bad" ant-pols based on the absolute fraction of 
