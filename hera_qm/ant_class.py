@@ -6,6 +6,7 @@
 import numpy as np
 from scipy.ndimage import median_filter
 import warnings
+from . import xrfi
 
 
 def _check_antpol(ap):
@@ -223,6 +224,7 @@ def antenna_bounds_checker(data, **kwargs):
     '''
     
     classifiction_dict = {cls: set([]) for cls in kwargs}
+    _data = {}
     for ant, val in data.items():
         # check that key is either a valid ant-pol tuple of an autocorrelation tuple
         try:
@@ -237,7 +239,8 @@ def antenna_bounds_checker(data, **kwargs):
                     raise ValueError
             except:
                 raise ValueError(f'{ant} is not a valid ant-pol tuple nor a valid autocorrelation key.')
-        
+        _data[ant] = val
+
         # classify antenna
         for cls, bounds in kwargs.items():
             if _is_bound(bounds):
@@ -252,7 +255,9 @@ def antenna_bounds_checker(data, **kwargs):
             if ant in classifiction_dict[cls]:
                 break
     
-    return AntennaClassification(**classifiction_dict)
+    ac = AntennaClassification(**classifiction_dict)
+    ac._data = _data
+    return ac
 
 
 def auto_power_checker(data, good=(5, 30), suspect=(1, 80), int_count=None):
@@ -309,17 +314,79 @@ def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, fi
     auto_bls = [bl for bl in data if (bl[0] == bl[1]) and (split_pol(bl[2])[0] == split_pol(bl[2])[1])]
 
     # compute relative slope over the band
-    relative_slopes = {}
+    relative_slopes = {bl: 0 for bl in auto_bls}
     for bl in auto_bls:
         mean_data = np.mean(data[bl], axis=0)
         med_filt = median_filter(mean_data, size=filt_size)[edge_cut:-edge_cut]
         fit = np.polyfit(np.linspace(-.5, .5, len(mean_data))[edge_cut:-edge_cut], med_filt, 1)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="invalid value encountered")
-            relative_slopes[bl] = (fit[0] / fit[1] if np.isfinite(fit[1]) else np.sign(fit[0]) * np.inf)
+            if not np.all(med_filt == 0):
+                relative_slopes[bl] = (fit[0] / fit[1] if np.isfinite(fit[1]) else np.sign(fit[0]) * np.inf)
 
     return antenna_bounds_checker(relative_slopes, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
+from hera_qm.ant_class import antenna_bounds_checker
+def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna_class=None, flag_broadcast_thresh=0.5, 
+                     kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0], filter_half_widths=[200e-9], 
+                     eigenval_cutoff=[1e-9], cache={}):
+    """
+    Classifies ant-pols as good, suspect, or bad based on the fraction of channels flagged in that are not among the 
+    array-broadcast flags (i.e. channels flagged for >50% of antennas). Flagging takes place in two steps: 
+    (1) "channel_diff_flagger" is used to get an initial set of flags and
+    (2) "dpss_flagger" is used with the array averaged flags to refine initial per-antenna flags
+ 
+    Arguments:
+        data: DataContainer containing antenna autocorrelations (other baselines ignored)
+        good: 2-tuple or list of 2-tuple, default=(0, 0.01)
+            2-tuple or list of 2-tuple bounds for ranges considered good.
+        suspect: 2-tuple or list of 2-tuple, default=(0.01, 0.02)
+            Bounds for ranges considered suspect.
+        nsig: float, default=6
+            The number of sigma in the metric above which to flag pixels. Used in both steps.
+        antenna_class: AntennaClassification, default=None
+            Optional AntennaClassification object. If provided, the flagging method chosen will skip antennas marked "bad".
+            Used in both steps
+        flag_broadcast_thresh: float, default=0.5
+            The fraction of flags required to trigger a broadcast across all auto-correlations for
+            a given (time, frequency) pixel in the combined flag array. Used in both steps.
+        kernel_widths: list
+            Half-width of the convolution kernels used to produce model. True kernel width is (2 * kernel_width + 1)
+            Only used in the "channel_diff_flagger" step
+        mode: str, default='dpss_matrix'
+            Method used to solve for DPSS model components. Options are 'dpss_matrix', 'dpss_solve', and 'dpss_leastsq'.
+            Only used in "dpss_flagger" step
+        filter_centers: array-like, default=[0]
+            list of floats of centers of delay filter windows in nanosec. Only used in "dpss_flagger"
+        filter_half_widths: array-like, default=[200e-9]
+            list of floats of half-widths of delay filter windows in nanosec. Only used in "dpss_flagger"
+        cache: dictionary, default=None
+            Dictionary for caching fitting matrices. By default this value is None to prevent the size of the cached
+            matrices from getting too large. By passing in a cache dictionary, this function could be much faster, but
+            the memory requirement will also increase.
+        
+    Returns:
+        AntennaClassification with "good", "suspect", and "bad" ant-pols based on the absolute fraction of 
+        the band that is flagged
+    """
+    # Flag using convolution kernels
+    antenna_flags, array_flags = xrfi.flag_autos(data, flag_method="channel_diff_flagger", nsig=nsig, antenna_class=antenna_class,
+                                                 flag_broadcast_thresh=flag_broadcast_thresh, kernel_widths=kernel_widths)
+
+    # Override antenna flags with array-wide flags for next step
+    for key in antenna_flags.keys():
+        antenna_flags[key] = array_flags
+
+    # Flag using DPSS filters
+    antenna_flags, array_flags = xrfi.flag_autos(data, freqs=data.freqs, flag_method="dpss_flagger", nsig=nsig, antenna_class=antenna_class,
+                                                 filter_centers=filter_centers, filter_half_widths=filter_half_widths,
+                                                 eigenval_cutoff=eigenval_cutoff, flags=antenna_flags, mode=mode, cache=cache)
+    
+    
+    # Calculate the excess fraction of the band that is flagged
+    flagged_fraction = {bls: np.mean(flags | array_flags) - np.mean(array_flags) for bls, flags in antenna_flags.items()}
+
+    return antenna_bounds_checker(flagged_fraction, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
 def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
     '''Classifies ant-pols as good, suspect, or bad based on the maximum number of zeros
@@ -352,7 +419,7 @@ def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
         odd_zeros = np.sum((sum_data[bl] - diff_data[bl]) == 0, axis=1)
         max_zeros_per_spectrum[bl] = np.max([even_zeros, odd_zeros])
         for ant in split_bl(bl):
-            zero_count_by_ant[ant] += np.sum([even_zeros, odd_zeros])
+            zero_count_by_ant[ant] += max_zeros_per_spectrum[bl]
     
     # sort dictionary of antennas by number of even/odd visibility zeros it participates in
     zero_count_by_ant = {k: v for k, v in sorted(zero_count_by_ant.items(), key=lambda item: item[1], reverse=True)}
