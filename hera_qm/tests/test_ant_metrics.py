@@ -26,14 +26,9 @@ def test_calc_corr_stats():
                 (0, 1, 'nn'): np.array([[False, False], [False, False]])}
 
     # test normal operation
-    corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff,flags)
+    corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff)
     assert corr_stats[(0,1,'ee')] == 1
     assert corr_stats[(0,1,'nn')] == pytest.approx(0.9578,abs=1e-2)
-
-    # test with flags
-    flags[(0,1,'nn')][1,0] = True
-    corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff,flags)
-    assert corr_stats[(0,1,'nn')] == pytest.approx(0.9457,abs=1e-2)
 
     # test no diff data
     corr_stats = ant_metrics.calc_corr_stats(data_sum)
@@ -209,13 +204,10 @@ def test_init():
 
         # test metadata
         assert am.datafile_list_sum == [to_load['sum_files']]
-        assert am.hd_sum is not None
         if to_load['diff_files'] is not None:
             assert am.datafile_list_diff == [to_load['diff_files']]
-            assert am.hd_sum is not None
         else:
             assert am.datafile_list_diff is None
-            assert am.hd_diff is None
         assert am.history == ''
 
         # test antennas and baselines
@@ -239,34 +231,31 @@ def test_init():
         # test errors in parsing apriori xants
         with pytest.raises(ValueError):
             ant_metrics.AntennaMetrics(**to_load, apriori_xants=(9, 'Jnn'))
-        with pytest.raises(ValueError):
+        with pytest.raises(AssertionError):
             ant_metrics.AntennaMetrics(**to_load, apriori_xants=[(9, 10, 'nn')])
         with pytest.raises(ValueError):
             ant_metrics.AntennaMetrics(**to_load, apriori_xants=[1.0])
 
         # test _reset_summary_stats
         for ant in am.apriori_xants:
-            assert am.removal_iteration[ant] == -1
             assert ant in am.xants
+            assert am.xants[ant] == -1
         assert am.crossed_ants == []
         assert am.dead_ants == []
         assert am.iter == 0
         assert am.all_metrics == {}
         assert am.final_metrics == {}
 
-        # test Nbls_per_load and Nfiles_per_load
-        am2 = ant_metrics.AntennaMetrics(**to_load, Nbls_per_load=100, Nfiles_per_load=1)
-        for pol in am.corr_matrices:
-            np.testing.assert_array_equal(am.corr_matrices[pol], am2.corr_matrices[pol])
-
 
 def test_iterative_antenna_metrics_and_flagging():
     files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
              'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
     am = ant_metrics.AntennaMetrics(**files)
+    print(am.corr_matrices['ee'])
 
     # try normal operation
     am.iterative_antenna_metrics_and_flagging(verbose=True, crossCut=0., deadCut=.4, )
+    print(am.corr_matrices['ee'])
     for ap in ['Jnn', 'Jee']:
         assert (93, ap) in am.dead_ants
         assert (93, ap) in am.xants
@@ -301,9 +290,9 @@ def test_iterative_antenna_metrics_and_flagging():
 
 def test_using_datacontainers():
     def compare_ams(am1, am2):
-        assert am1.crossed_ants == am2.crossed_ants
-        assert am1.dead_ants == am2.dead_ants
-        assert am1.xants == am2.xants
+        assert sorted(am1.crossed_ants) == sorted(am2.crossed_ants)
+        assert sorted(am1.dead_ants) == sorted(am2.dead_ants)
+        assert sorted(am1.xants) == sorted(am2.xants)
         for i in am1.all_metrics:
             for metric in am1.all_metrics[i]:
                 for ant in am1.all_metrics[i][metric]:
@@ -319,26 +308,15 @@ def test_using_datacontainers():
 
     hd_sum = HERADataFastReader(files['sum_files'])
     hd_diff = HERADataFastReader(files['diff_files'])
-    sum_data, sum_flags, _ = hd_sum.read(read_nsamples=False)
-    diff_data, diff_flags, _ = hd_diff.read(read_nsamples=False)
-    am2 = ant_metrics.AntennaMetrics(**files, sum_data=sum_data, diff_data=diff_data, 
-                                     sum_flags=sum_flags, diff_flags=diff_flags)
+    sum_data, _, _ = hd_sum.read(read_flags=False, read_nsamples=False)
+    diff_data, _, _ = hd_diff.read(read_flags=False, read_nsamples=False)
+    am2 = ant_metrics.AntennaMetrics(**files, sum_data=sum_data, diff_data=diff_data)
     am2.iterative_antenna_metrics_and_flagging()
     
     compare_ams(am1, am2)
 
-    # compare providing only diff_flags to providing only sum_flags
-    am1 = ant_metrics.AntennaMetrics(**files, sum_data=sum_data, diff_data=diff_data, 
-                                     sum_flags=sum_flags)
-    am2 = ant_metrics.AntennaMetrics(**files, sum_data=sum_data, diff_data=diff_data, 
-                                     diff_flags=diff_flags)
-    compare_ams(am1, am2)
-
     # test errors
-    with pytest.raises(ValueError):
-        am = ant_metrics.AntennaMetrics(**files, Nbls_per_load=10, sum_data=sum_data)
-        am = ant_metrics.AntennaMetrics(**files, Nfiles_per_load=2, sum_data=sum_data)    
-    with pytest.raises(KeyError):
+    with pytest.raises(AssertionError):
         am = ant_metrics.AntennaMetrics(**files, sum_data={})
 
 
@@ -362,7 +340,6 @@ def test_ant_metrics_run_and_load_antenna_metrics():
     assert set(am.datafile_list_sum) == set(am_hdf5['datafile_list_sum'])
     assert set(am.datafile_list_diff) == set(am_hdf5['datafile_list_diff'])
 
-    assert qmtest.recursive_compare_dicts(am.removal_iteration, am_hdf5['removal_iteration'])
     assert qmtest.recursive_compare_dicts(am.final_metrics, am_hdf5['final_metrics'])
     assert qmtest.recursive_compare_dicts(am.all_metrics, am_hdf5['all_metrics'])
 

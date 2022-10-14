@@ -66,9 +66,8 @@ def get_ant_metrics_dict():
     return metrics_dict
 
 
-def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, freq_alg=np.nanmean):
-    """Calculate correlation values for all baselines, the average cross-correlation between
-    even and
+def calc_corr_stats(data_sum, data_diff=None):
+    """For all baselines, calculate average cross-correlation between even and odd in order to identify ?
 
     Parameters
     ----------
@@ -79,17 +78,6 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
         Maps baseline keys e.g. (0, 1, 'ee') to numpy arrays of shape (Ntimes, Nfreqs)
         If not provided, data_sum will be broken into interleaving timesteps.
         Corresponds to the even-odd output from the correlator.
-    flags : dictionary or hera_cal DataContainer, optional
-        Times or frequencies to exclude from the calculation of the correlation metrics.
-        If not None, should have the same keys and same array shapes as data_sum
-    time_alg : function, optional
-        Function used to reduce a 2D or 1D numpy array to a single number.
-        To handle flags properly, should be the "nan" version of the function.
-    freq_alg : function, optional
-        Function that reduces a 1D array to a single number or a 2D array to a 1D
-        array using the axis kwarg. If its the same as time_alg, the 2D --> float
-        version will be used (no axis kwarg). To handle flags properly, should be
-        the "nan" version of the function.
 
     Returns
     -------
@@ -101,38 +89,25 @@ def calc_corr_stats(data_sum, data_diff=None, flags=None, time_alg=np.nanmean, f
     corr_stats = {}
     for bl in data_sum:
         # turn flags and other non-finite data into nans
-        flags_here = ~np.isfinite(data_sum[bl])
-        if flags is not None:
-            flags_here |= flags[bl]
-        data_sum_here = np.where(flags_here, np.nan, data_sum[bl])
-
-        # check to see if the sum file is mostly zeros, in which case the antenna is totally dead
-        if np.all(flags_here) or np.mean(data_sum_here[~flags_here] == 0) > 0.5:
-            corr_stats[bl] = 0
-            continue
+        data_sum_here = data_sum[bl]
 
         # split into even and odd
         if data_diff is not None:
-            data_diff_here = np.where(np.isfinite(data_diff[bl]), data_diff[bl], np.nan)
-            even = (data_sum_here + data_diff_here) / 2
-            odd = (data_sum_here - data_diff_here) / 2
-        if data_diff is None:
-            # interleave, dropping last integraiton if there are an odd number
+            data_diff_here = data_diff[bl]
+            even = data_sum_here + data_diff_here
+            odd = data_sum_here - data_diff_here
+        else:
+            # interleave, dropping last integration if there are an odd number
             last_int = (data_sum_here.shape[0] // 2) * 2
             even = data_sum_here[0:last_int:2, :]
             odd = data_sum_here[1:last_int:2, :]
 
         # normalize (reduces the impact of RFI by making every channel equally weighted)
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="invalid value encountered in true_divide")
-            even /= np.abs(even)
-            odd /= np.abs(odd)
+        np.divide(even, np.abs(even), out=even)
+        np.divide(odd, np.abs(odd), out=odd)
 
         # reduce to a scalar statistic
-        if time_alg == freq_alg:  # if they are the same algorithm, do it globally
-            corr_stats[bl] = np.abs(time_alg(even * np.conj(odd)))
-        else:
-            corr_stats[bl] = np.abs(time_alg(freq_alg(even * np.conj(odd), axis=1)))
+        corr_stats[bl] = np.abs(np.sum(even * np.conj(odd))) / even.size
 
     return corr_stats
 
@@ -173,9 +148,8 @@ class AntennaMetrics():
     with all four polarizations.
     """
 
-    def __init__(self, sum_files, diff_files=None, apriori_xants=[], Nbls_per_load=None,
-                 Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean,
-                 sum_data=None, diff_data=None, sum_flags=None, diff_flags=None):
+    def __init__(self, sum_files, diff_files=None, apriori_xants=[],
+                 sum_data=None, diff_data=None):
         """Initilize an AntennaMetrics object and load mean visibility amplitudes.
 
         Parameters
@@ -190,19 +164,6 @@ class AntennaMetrics():
             List of integer antenna numbers or antpol tuples e.g. (0, 'Jee') to mark
             as excluded apriori. These are included in self.xants, but not
             self.dead_ants or self.crossed_ants when writing results to disk.
-        Nbls_per_load : integer, optional
-            Number of baselines to load simultaneously. Trades speed for memory
-            efficiency. Default None means load all baselines.
-        Nfiles_per_load : integer, optional
-            Number of files to load simultaneously and reduce to corr_stats.
-            If None, all files are loaded simultaneously. If not None, then
-            corr_stats are averaged in time with np.nanmean.
-        time_alg : function, optional
-            Averaging function along the time axis for producing correlation stats.
-            See calc_corr_stats() for more details.
-        freq_alg : function, optional
-            Averaging function along the frequency axis for producing correlation stats.
-            See calc_corr_stats() for more details.
         sum_data : hera_cal DataContainer, optional
             Use this data instead of loading data form sum_files (which is used only for metadata).
             This option is indended for interactive use when the data are already in memory.
@@ -210,10 +171,6 @@ class AntennaMetrics():
             Nbls_per_load must both be None if this is provided.
         diff_data : hera_cal DataContainer, optional
             Same as sum_data, but for the diff files.
-        sum_flags : hera_cal DataContainer, optional
-            Same as sum_data, but for flags instead of data
-        diff_flags : hera_cal DataContainer, optional
-            Same as sum_flags, but for the diff files.
 
         Attributes
         ----------
@@ -254,27 +211,29 @@ class AntennaMetrics():
         # Instantiate HERAData object and figure out baselines
         if isinstance(sum_files, str):
             sum_files = [sum_files]
+        self.datafile_list_sum = sum_files  # XXX prefer not to have dummy file names
         if isinstance(diff_files, str):
             diff_files = [diff_files]
-        if (diff_files is not None) and (len(diff_files) != len(sum_files)):
-            raise ValueError(f'The number of sum files ({len(sum_files)}) does not match the number of diff files ({len(diff_files)}).')
-        self.datafile_list_sum = sum_files
-        self.hd_sum = HERADataFastReader(sum_files)
-        self.bls = self.hd_sum.bls
-        if diff_files is None or len(diff_files) == 0:
-            self.datafile_list_diff = None
-            self.hd_diff = None
+        if (diff_files is not None):
+            assert len(diff_files) == len(sum_files), f'Number of sum files ({len(sum_files)}) does not match number of diff files ({len(diff_files)}).'
+            self.datafile_list_diff = diff_files  # XXX prefer not to have dummy file names
         else:
-            self.datafile_list_diff = diff_files
-            self.hd_diff = HERADataFastReader(diff_files)
+            self.datafile_list_diff = None
 
-        # make sure sum_data is sensible
-        if (sum_data is not None):
-            if (Nfiles_per_load is not None) or (Nbls_per_load is not None):
-                raise ValueError('sum_data was provided, skipping data loading, so Nbls_per_load and Nfiles_per_load must be None.')
-            for bl in self.bls:
-                if bl not in sum_data:
-                    raise KeyError(f'{bl} is in sum_files but not in sum_data. sum_data should come from sum_files.')
+        if sum_data is None:
+            # load sum files
+            hd_sum = HERADataFastReader(sum_files)
+            sum_data, _, _ = hd_sum.read(read_flags=False, read_nsamples=False)
+            del hd_sum
+
+        # load diff files, if appropraite
+        if diff_data is None and diff_files is not None:
+            hd_diff = HERADataFastReader(diff_files)
+            diff_data, _, _ = hd_diff.read(read_flags=False, read_nsamples=False)
+            del hd_diff
+
+        self.bls = list(sum_data.keys())
+        assert len(self.bls) > 0, 'Make sure we have data'
 
         # Figure out polarizations in the data
         self.pols = set([bl[2] for bl in self.bls])
@@ -288,17 +247,15 @@ class AntennaMetrics():
         self.ants_per_antpol = {antpol: sorted([ant for ant in self.ants if ant[1] == antpol]) for antpol in self.antpols}
 
         # Parse apriori_xants
-        if not (isinstance(apriori_xants, list) or isinstance(apriori_xants, np.ndarray)):
-            raise ValueError('apriori_xants must be a list or numpy array.')
-        self.apriori_xants = set([])
+        self.apriori_xants = set()
         for ant in apriori_xants:
             if isinstance(ant, int):
-                for ap in self.antpols:
-                    self.apriori_xants.add((ant, ap))
+                self.apriori_xants.update(set((ant, ap) for ap in self.antpols))
             elif isinstance(ant, tuple):
-                if (len(ant) != 2) or (comply_pol(ant[1]) not in self.antpols):
-                    raise ValueError(f'{ant} is not a valid entry in apriori_xants.')
-                self.apriori_xants.add((ant[0], comply_pol(ant[1])))
+                assert len(ant) == 2
+                ap = comply_pol(ant[1])
+                assert ap in self.antpols
+                self.apriori_xants.add((ant[0], ap))
             else:
                 raise ValueError(f'{ant} is not a valid entry in apriori_xants.')
 
@@ -308,101 +265,37 @@ class AntennaMetrics():
         self._reset_summary_stats()
 
         # Load and summarize data and convert into correlation matrices
-        self._load_corr_matrices(Nbls_per_load=Nbls_per_load, Nfiles_per_load=Nfiles_per_load,
-                                 time_alg=time_alg, freq_alg=freq_alg, sum_data=sum_data,
-                                 diff_data=diff_data, sum_flags=sum_flags, diff_flags=diff_flags)
+        self._update_corr_stats(sum_data=sum_data, diff_data=diff_data)
 
-    def _reset_summary_stats(self):
+    def _reset_summary_stats(self, flag_val=np.nan):
         """Reset all the internal summary statistics back to empty."""
-        self.xants, self.crossed_ants, self.dead_ants = [], [], []
+        # xants stores removed antennas and the iteration they were removed
+        self.xants = {ant: -1 for ant in self.apriori_xants}
+        self.crossed_ants = []
+        self.dead_ants = []
         self.iter = 0
-        self.removal_iteration = {}
         self.all_metrics = {}
         self.final_metrics = {}
-        for ant in self.apriori_xants:
-            self.xants.append(ant)
-            self.removal_iteration[ant] = -1
+        self.corr_matrices = {self.join_pol(ap1, ap2): np.full((len(self.ants_per_antpol[ap1]),
+                                                                len(self.ants_per_antpol[ap2])),
+                                                                flag_val)
+                              for ap1 in self.antpols for ap2 in self.antpols}
 
-    def _load_files_and_update_corr_stats(self, corr_stats, sum_files, diff_files, bl_load_groups,
-                                          sum_data=None, diff_data=None, sum_flags=None, diff_flags=None):
-        """Loop over baseline groups, loading sum/diff files and extending the existing corr_stats dict of lists.
+    def _update_corr_stats(self, sum_data, diff_data=None):
+        """Extend the existing corr_stats dict of lists.
         """
-        if sum_data is None:
-            # loop over baseline groups
-            for blg in bl_load_groups:
-                # load sum files
-                hd_sum = self.HERADataFastReader(sum_files)
-                data_sum, flags, _ = hd_sum.read(bls=blg, read_nsamples=False)
-                del hd_sum
 
-                # load diff files, if appropraite
-                data_diff = None
-                if diff_files is not None:
-                    hd_diff = self.HERADataFastReader(diff_files)
-                    data_diff, flags_diff, _ = hd_diff.read(bls=blg, read_nsamples=False)
-                    del hd_diff
-                    for bl in flags:
-                        flags[bl] |= flags_diff[bl]
-
-                # compute corr_stats and append them to list, weighting by the number of integrations
-                for bl, stat in calc_corr_stats(data_sum, data_diff=data_diff, flags=flags).items():
-                    corr_stats[bl].extend([stat] * len(data_sum.times))
-        else:
-            # use sum_data, diff_data, sum_flags, and diff_flags
-            flags = deepcopy(sum_flags)
-            if (diff_flags is not None) and flags is None:
-                flags = diff_flags
-            elif (flags is not None) and (diff_flags is not None):
-                for bl in diff_flags:
-                    flags[bl] |= diff_flags[bl]
-            # compute corr_stats and append them to list, weighting by the number of integrations
-            for bl, stat in calc_corr_stats(sum_data, data_diff=diff_data, flags=flags).items():
-                corr_stats[bl].extend([stat] * len(sum_data.times))
-
-    def _load_corr_matrices(self, Nbls_per_load=None, Nfiles_per_load=None, time_alg=np.nanmean, freq_alg=np.nanmean,
-                            sum_data=None, diff_data=None, sum_flags=None, diff_flags=None):
-        """Loop through groups of baselines to calculate self.corr_matrices using calc_corr_stats().
-        """
-        # chunk baseline load groups
-        bl_load_groups = [None]  # load all baselines simultaneously
-        if Nbls_per_load is not None:
-            bl_load_groups = [self.bls[i:i + Nbls_per_load]
-                              for i in range(0, len(self.bls), Nbls_per_load)]
-
-        # chunk file load groups
-        sum_files = deepcopy(self.datafile_list_sum)
-        diff_files = deepcopy(self.datafile_list_diff)
-        if Nfiles_per_load is not None:
-            chunker = lambda paths: [paths[i:i + Nfiles_per_load] for i in range(0, len(paths), Nfiles_per_load)]
-            sum_files = chunker(sum_files)
-            if diff_files is not None:
-                diff_files = chunker(diff_files)
-        # turn diff_files into a list of Nones to enable the zip below
-        if diff_files is None:
-            diff_files = [None for i in range(len(sum_files))]
-
-        # load data and calculate corr_stats
-        corr_stats = {bl: [] for bl in self.bls}
-        for sum_file_group, diff_file_group in zip(sum_files, diff_files):
-            self._load_files_and_update_corr_stats(corr_stats, sum_file_group, diff_file_group, bl_load_groups,
-                                                   sum_data=sum_data, diff_data=diff_data, sum_flags=sum_flags, diff_flags=diff_flags)
-
-        # reduce to a single stat per baseline (rather than per baseline, per file group)
-        corr_stats = {bl: time_alg(corr_stats[bl]) for bl in self.bls}
-
+        corr_stats = calc_corr_stats(sum_data, diff_data)
         # convert from corr stats to corr matrices
         self.ant_to_index = {ant: i for ants in self.ants_per_antpol.values() for i, ant in enumerate(ants)}
-        self.corr_matrices = {self.join_pol(ap1, ap2): np.full((len(self.ants_per_antpol[ap1]), len(self.ants_per_antpol[ap2])), np.nan)
-                              for ap1 in self.antpols for ap2 in self.antpols}
         for bl in corr_stats:
-            if bl[0] != bl[1]:  # ignore autocorrelations
-                ant1, ant2 = self.split_bl(bl)
-                self.corr_matrices[bl[2]][self.ant_to_index[ant1], self.ant_to_index[ant2]] = corr_stats[bl]
-        for pol, cm in self.corr_matrices.items(): 
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message="Mean of empty slice")
-                self.corr_matrices[pol] = np.nanmean([cm, cm.T], axis=0)  # symmetrize
-        self.corr_matrices_for_xpol = deepcopy(self.corr_matrices)
+            if bl[0] == bl[1]:  # ignore autocorrelations
+                continue
+            pol = bl[2]
+            ant1, ant2 = self.split_bl(bl)
+            self.corr_matrices[pol][self.ant_to_index[ant1], self.ant_to_index[ant2]] = corr_stats[bl]
+            self.corr_matrices[pol][self.ant_to_index[ant2], self.ant_to_index[ant1]] = corr_stats[bl]
+        self.corr_matrices_for_xpol = deepcopy(self.corr_matrices)  # XXX why
 
     def _find_totally_dead_ants(self, verbose=False):
         """Flag antennas whose median correlation coefficient is 0.0.
@@ -414,30 +307,29 @@ class AntennaMetrics():
         for pol in self.same_pols:
             # median over one antenna dimension
             med_corr_matrix = np.nanmedian(self.corr_matrices[pol], axis=0)
-            is_dead = (med_corr_matrix == 0) | ~np.isfinite(med_corr_matrix)
+            is_dead = (med_corr_matrix == 0)
             antpol = self.split_pol(pol)[0]
             dead_ants = [self.ants_per_antpol[antpol][i] for i in np.argwhere(is_dead)[:, 0]]
             for dead_ant in dead_ants:
                 self._flag_corr_matrices(dead_ant)
-                self.xants.append(dead_ant)
+                self.xants[dead_ant] = -1
                 self.dead_ants.append(dead_ant)
-                self.removal_iteration[dead_ant] = -1
                 if verbose:
                     print(f'Antenna {dead_ant} appears totally dead and is removed.')
 
-    def _flag_corr_matrices(self, ant_to_flag):
-        """Sets all rows and columns in self.corr_matrices corresponding to the antenna to np.nan.
+    def _flag_corr_matrices(self, ant_to_flag, flag_val=np.nan):
+        """Sets all rows and columns in self.corr_matrices corresponding to the antenna to zero.
         """
         for pol in self.corr_matrices:
             ap1, ap2 = self.split_pol(pol)
             if ant_to_flag[1] == ap1:
-                self.corr_matrices[pol][self.ant_to_index[ant_to_flag], :] = np.nan
+                self.corr_matrices[pol][self.ant_to_index[ant_to_flag], :] = flag_val
             if ant_to_flag[1] == ap2:
-                self.corr_matrices[pol][:, self.ant_to_index[ant_to_flag]] = np.nan
+                self.corr_matrices[pol][:, self.ant_to_index[ant_to_flag]] = flag_val
 
             # flag both polarizations for the xpol calculation to match previous versions of this algorithm
-            self.corr_matrices_for_xpol[pol][self.ant_to_index[(ant_to_flag[0], ap1)], :] = np.nan
-            self.corr_matrices_for_xpol[pol][:, self.ant_to_index[(ant_to_flag[0], ap2)]] = np.nan
+            self.corr_matrices_for_xpol[pol][self.ant_to_index[(ant_to_flag[0], ap1)], :] = flag_val
+            self.corr_matrices_for_xpol[pol][:, self.ant_to_index[(ant_to_flag[0], ap2)]] = flag_val
 
     def _corr_metrics_per_ant(self):
         """Computes dictionary indexed by (ant, antpol) of the averaged unflagged correlation statistic.
@@ -449,8 +341,7 @@ class AntennaMetrics():
                 warnings.filterwarnings("ignore", message="Mean of empty slice")
                 mean_corr_matrix = np.nanmean(self.corr_matrices[pol], axis=0)
             antpol = self.split_pol(pol)[0]
-            for ant, metric in zip(self.ants_per_antpol[antpol], mean_corr_matrix):
-                per_ant_mean_corr_metrics[ant] = metric
+            per_ant_mean_corr_metrics.update(dict(zip(self.ants_per_antpol[antpol], mean_corr_matrix)))
         return per_ant_mean_corr_metrics
 
     def _corr_cross_pol_metrics_per_ant(self):
@@ -469,32 +360,23 @@ class AntennaMetrics():
             cross_pol_metrics = np.nanmax(np.nanmean(matrix_pol_diffs, axis=1), axis=0)
 
         per_ant_corr_cross_pol_metrics = {}
-        for antpol, ants in self.ants_per_antpol.items():
-            for ant, metric in zip(ants, cross_pol_metrics):
-                per_ant_corr_cross_pol_metrics[ant] = metric
+        for _, ants in self.ants_per_antpol.items():
+            per_ant_corr_cross_pol_metrics.update(dict(zip(ants, cross_pol_metrics)))
         return per_ant_corr_cross_pol_metrics
 
     def _run_all_metrics(self):
         """Local call for all metrics as part of iterative flagging method.
         """
-        # Compute all raw metrics
-        metNames = []
-        metVals = []
-        metNames.append('corr')
-        metVals.append(self._corr_metrics_per_ant())
-        metNames.append('corrXPol')
-        metVals.append(self._corr_cross_pol_metrics_per_ant())
-
         # Save all metrics
-        metrics = {}
-        for metric, metName in zip(metVals, metNames):
-            metrics[metName] = metric
-            for key in metric:
-                if np.isfinite(metric[key]):
-                    if metName in self.final_metrics:
-                        self.final_metrics[metName][key] = metric[key]
-                    else:
-                        self.final_metrics[metName] = {key: metric[key]}
+        metrics = {
+            'corr': self._corr_metrics_per_ant(),
+            'corrXPol': self._corr_cross_pol_metrics_per_ant(),
+        }
+        for name, metric in metrics.items():
+            noninf_metric = {k:v for k, v in metric.items() if np.isfinite(v)}
+            if not name in self.final_metrics:
+                self.final_metrics[name] = {}
+            self.final_metrics[name].update(noninf_metric)
         self.all_metrics.update({self.iter: metrics})
 
     def iterative_antenna_metrics_and_flagging(self, crossCut=0, deadCut=0.4, verbose=False):
@@ -509,7 +391,6 @@ class AntennaMetrics():
             Cut in correlation metric below which antennas are most likely dead / not correlating.
             Default is 0.4.
         """
-        self._reset_summary_stats()
         self._find_totally_dead_ants(verbose=verbose)
         self.crossCut, self.deadCut = crossCut, deadCut
 
@@ -522,7 +403,7 @@ class AntennaMetrics():
 
             # Find most likely dead/crossed antenna
             deadMetrics = {ant: metric for ant, metric in self.all_metrics[iteration]['corr'].items() if np.isfinite(metric)}
-            crossMetrics = {ant: np.nanmax(metric) for ant, metric in self.all_metrics[iteration]['corrXPol'].items() if np.isfinite(metric)}
+            crossMetrics = {ant: np.max(metric) for ant, metric in self.all_metrics[iteration]['corrXPol'].items() if np.isfinite(metric)}
             if (len(deadMetrics) == 0) or (len(crossMetrics) == 0):
                 break  # no unflagged antennas remain
             worstDeadAnt = min(deadMetrics, key=deadMetrics.get)
@@ -534,18 +415,16 @@ class AntennaMetrics():
             if (worstCrossCutDiff <= worstDeadCutDiff) and (worstCrossCutDiff < 0):
                 for antpol in self.antpols:  # if crossed remove both polarizations
                     crossed_ant = (worstCrossAnt[0], antpol)
-                    self.xants.append(crossed_ant)
+                    self.xants[crossed_ant] = iteration
                     self.crossed_ants.append(crossed_ant)
-                    self.removal_iteration[crossed_ant] = iteration
                     self._flag_corr_matrices(crossed_ant)
                     if verbose:
                         print(f'On iteration {iteration} we flag {crossed_ant} with cross-pol corr metric of {crossMetrics[worstCrossAnt]}.')
             elif (worstDeadCutDiff < worstCrossCutDiff) and (worstDeadCutDiff < 0):
                 dead_ants = set([worstDeadAnt])
                 for dead_ant in dead_ants:
-                    self.xants.append(dead_ant)
+                    self.xants[dead_ant] = iteration
                     self.dead_ants.append(dead_ant)
-                    self.removal_iteration[dead_ant] = iteration
                     self._flag_corr_matrices(dead_ant)
                     if verbose:
                         print(f'On iteration {iteration} we flag {dead_ant} with corr metric z of {deadMetrics[worstDeadAnt]}.')
@@ -566,12 +445,12 @@ class AntennaMetrics():
             Whether to overwrite an existing file. Default is False.
 
         """
-        out_dict = {'xants': self.xants}
+        out_dict = {'xants': list(self.xants.keys())}
         out_dict['crossed_ants'] = self.crossed_ants
         out_dict['dead_ants'] = self.dead_ants
         out_dict['final_metrics'] = self.final_metrics
         out_dict['all_metrics'] = self.all_metrics
-        out_dict['removal_iteration'] = self.removal_iteration
+        out_dict['removal_iteration'] = self.xants
         out_dict['cross_pol_cut'] = self.crossCut
         out_dict['dead_ant_cut'] = self.deadCut
         out_dict['datafile_list_sum'] = self.datafile_list_sum
@@ -583,7 +462,7 @@ class AntennaMetrics():
 
 def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants_yaml=None,
                     crossCut=0.0, deadCut=0.4, metrics_path='', extension='.ant_metrics.hdf5',
-                    overwrite=False, Nbls_per_load=None, Nfiles_per_load=None, history='', verbose=True):
+                    overwrite=False, history='', verbose=True):
     """
     Run a series of ant_metrics tests on a given set of input files.
 
@@ -620,13 +499,6 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
         File extension to add to output files. Default is ant_metrics.hdf5.
     overwrite: bool, optional
         Whether to overwrite existing ant_metrics files. Default is False.
-    Nbls_per_load : integer, optional
-        Number of baselines to load simultaneously. Trades speed for memory
-        efficiency. Default None means load all baselines.
-    Nfiles_per_load : integer, optional
-        Number of files to load simultaneously and reduce to corr_stats.
-        If None, all files are loaded simultaneously. If not None, then
-        corr_stats are averaged in time with np.nanmean.
     history : str, optional
         The history the add to metrics. Default is nothing (empty string).
     verbose : bool, optional
@@ -639,8 +511,7 @@ def ant_metrics_run(sum_files, diff_files=None, apriori_xants=[], a_priori_xants
         apriori_xants = list(set(list(apriori_xants) + apaf))
 
     # run ant metrics
-    am = AntennaMetrics(sum_files, diff_files, apriori_xants=apriori_xants,
-                        Nbls_per_load=Nbls_per_load, Nfiles_per_load=Nfiles_per_load)
+    am = AntennaMetrics(sum_files, diff_files, apriori_xants=apriori_xants)
     am.iterative_antenna_metrics_and_flagging(crossCut=crossCut, deadCut=deadCut, verbose=verbose)
     am.history = am.history + history
 
