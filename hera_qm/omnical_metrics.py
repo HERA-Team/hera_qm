@@ -175,8 +175,9 @@ def load_firstcal_gains(fc_file):
     """
     uvf = UVCal()
     uvf.read_calfits(fc_file)
+    uvf.use_future_array_shapes()
     freqs = uvf.freq_array.squeeze()
-    fc_gains = np.moveaxis(uvf.gain_array, 2, 3)[:, 0, :, :, 0]
+    fc_gains = np.moveaxis(uvf.gain_array, 1, 2)[:, :, :, 0]
     d_nu = np.mean(freqs[1:] - freqs[:-1])
     d_phi = np.abs(np.mean(np.angle(fc_gains)[:, :, 1:] - np.angle(fc_gains)[:, :, :-1], axis=2))
     fc_delays = (d_phi / d_nu) / (2 * np.pi)
@@ -451,6 +452,7 @@ class OmniCal_Metrics(object):
         # Instantiate Data Object
         self.uv = UVCal()
         self.uv.read_calfits(omni_calfits)
+        self.uv.use_future_array_shapes()
 
         # Get relevant metadata
         self.Nants = self.uv.Nants_data
@@ -464,10 +466,10 @@ class OmniCal_Metrics(object):
         self.ant_array = self.uv.ant_array
 
         # Get omnical gains, move time axis in front of freq axis
-        self.omni_gains = np.moveaxis(self.uv.gain_array, 2, 3)[:, 0, :, :, :]
+        self.omni_gains = np.moveaxis(self.uv.gain_array, 1, 2)[:, :, :, :]
 
         # Assign total chisq array
-        self.chisq = np.moveaxis(self.uv.quality_array, 2, 3)[:, 0, :, :, :]
+        self.chisq = np.moveaxis(self.uv.quality_array, 1, 2)[:, :, :, :]
         self.chisq_tavg = np.median(self.chisq, axis=1)
 
     def run_metrics(self, fcfiles=None, cut_edges=True, Ncut=100,

@@ -777,9 +777,9 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
         flagged_channels = flagged_channels[(flagged_channels>=0) & (flagged_channels<=uv.Nfreqs)]
         if len(flagged_channels) > 0:
             if issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline'):
-                uv.flag_array[:, 0, flagged_channels, :] = True
+                uv.flag_array[:, flagged_channels, :] = True
             elif issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
-                uv.flag_array[:, 0, flagged_channels, :, :] = True
+                uv.flag_array[:, flagged_channels, :, :] = True
             elif isinstance(uv, UVFlag) and uv.type == 'waterfall':
                 uv.flag_array[:, flagged_channels] = True
     if flag_times:
@@ -796,9 +796,9 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
             flagged_times = time_array[flagged_integrations]
             for time in flagged_times:
                 if issubclass(uv.__class__, UVData) or (isinstance(uv, UVFlag) and uv.type == 'baseline'):
-                    uv.flag_array[uv.time_array == time, :, :, :] = True
+                    uv.flag_array[uv.time_array == time, :, :] = True
                 elif issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
-                    uv.flag_array[:, :, :, uv.time_array == time, :] = True
+                    uv.flag_array[:, :, uv.time_array == time, :] = True
             if isinstance(uv, UVFlag) and uv.type == 'waterfall':
                 uv.flag_array[flagged_integrations, :] = True
 
@@ -829,12 +829,12 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
                 blt_selection = np.logical_or(uv.ant_1_array == antnum, uv.ant_2_array == antnum)
                 if np.any(blt_selection):
                     for bltind in np.where(blt_selection)[0]:
-                        uv.flag_array[bltind, :, :, pol_selection] = True
+                        uv.flag_array[bltind, :, pol_selection] = True
             elif issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
                 ant_selection = uv.ant_array == antnum
                 if np.any(ant_selection):
                     for antind in np.where(ant_selection)[0]:
-                        uv.flag_array[antind, :, :, :, pol_selection] =True
+                        uv.flag_array[antind, :, :, pol_selection] =True
         if throw_away_flagged_ants:
             if ant_indices_only:
                 if issubclass(uv.__class__, UVCal) or (isinstance(uv, UVFlag) and uv.type == 'antenna'):
