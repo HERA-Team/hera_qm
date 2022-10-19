@@ -348,7 +348,7 @@ def auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125), flag_spe
     from hera_cal.utils import split_bl
     auto_bls = set([bl for bl in data if split_bl(bl)[0] == split_bl(bl)[1]])
     auto_pols = set([bl[2] for bl in auto_bls])
-    ex_bls = set([bl for bl in auto_bls if (antenna_class[utils.split_bl(bl)[0]] == 'bad' if antenna_class is not None else False)])
+    ex_bls = set([bl for bl in auto_bls if (antenna_class[split_bl(bl)[0]] == 'bad' if antenna_class is not None else False)])
         
     # compute normalized reference bandpass of good antennas for each polarization
     template_bandpasses = {pol: np.where((flag_spectrum if flag_spectrum is not None else False), np.nan, 
