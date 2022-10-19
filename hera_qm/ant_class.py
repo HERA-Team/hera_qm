@@ -326,7 +326,48 @@ def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, fi
 
     return antenna_bounds_checker(relative_slopes, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
-from hera_qm.ant_class import antenna_bounds_checker
+
+def auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125), flag_spectrum=None, antenna_class=None):
+    """
+    Classifies ant-pols as good, bad, or suspect based on their dissimilarity to the mean unflagged autocorrelation. 
+    
+    Arguments:
+        data: DataContainer containing antenna autocorrelations (other baselines ignored)
+        good: 2-tuple or list of 2-tuple, default=(0, 0.0625)
+            2-tuple or list of 2-tuple bounds for ranges considered good.
+        suspect: 2-tuple or list of 2-tuple, default=(0.0625, 0.125)
+            Bounds for ranges considered suspect.
+        flag_spectrum: optional numpy array of shape (Nfreqs,) where True is antenna contaminated by RFI
+        antenna_class: AntennaClassification, default=None
+            Optional AntennaClassification object. If provided, antennas marked "bad" will be excluded from the median auto.
+        
+    Returns:
+        AntennaClassification with "good", "suspect", and "bad" ant-pols based on their bandpass shape
+    """
+    # figure out baselines, pols, etc.
+    from hera_cal.utils import split_bl
+    auto_bls = set([bl for bl in data if split_bl(bl)[0] == split_bl(bl)[1]])
+    auto_pols = set([bl[2] for bl in auto_bls])
+    ex_bls = set([bl for bl in auto_bls if (antenna_class[split_bl(bl)[0]] == 'bad' if antenna_class is not None else False)])
+        
+    # compute normalized reference bandpass of good antennas for each polarization
+    template_bandpasses = {pol: np.where((flag_spectrum if flag_spectrum is not None else False), np.nan, 
+                                         np.nanmean([data[bl] for bl in auto_bls if bl[2] == pol and bl not in ex_bls], 
+                                                      axis=(0, 1))) for pol in auto_pols}
+    template_bandpasses = {pol: template_bandpasses[pol] / np.nanmean(template_bandpasses[pol]) for pol in auto_pols}
+
+    # compute per-auto distance from reference bandpass
+    distance_metrics = {}
+    for i, bl in enumerate(auto_bls):
+        bandpass = np.where((flag_spectrum if flag_spectrum is not None else False), np.nan, np.mean(data[bl], axis=0))
+        bandpass /= np.nanmean(bandpass)
+        distance = (np.nanmean(np.abs(bandpass - template_bandpasses[bl[2]])**2))**.5
+        distance_metrics[bl] = distance if np.isfinite(distance) else np.inf
+
+    # classify based on distances
+    return antenna_bounds_checker(distance_metrics, good=good, suspect=suspect, bad=(-np.inf, np.inf))
+
+
 def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna_class=None, flag_broadcast_thresh=0.5, 
                      kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0], filter_half_widths=[200e-9], 
                      eigenval_cutoff=[1e-9], cache={}):
