@@ -4,6 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - astropy>=3.2.3
+  - astropy-healpix
   - h5py
   - matplotlib
   - numpy>=1.23

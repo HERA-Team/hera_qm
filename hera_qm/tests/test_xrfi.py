@@ -48,27 +48,30 @@ pytestmark = pytest.mark.filterwarnings(
 def test_uvdata():
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     xant = uv.get_ants()[0]
     xrfi.flag_xants(uv, xant)
-    assert np.all(uv.flag_array[uv.ant_1_array == xant, :, :, :])
-    assert np.all(uv.flag_array[uv.ant_2_array == xant, :, :, :])
+    assert np.all(uv.flag_array[uv.ant_1_array == xant, :, :])
+    assert np.all(uv.flag_array[uv.ant_2_array == xant, :, :])
 
 
 def test_uvcal():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     xant = uvc.ant_array[0]
     xrfi.flag_xants(uvc, xant)
-    assert np.all(uvc.flag_array[0, :, :, :, :])
+    assert np.all(uvc.flag_array[0, :, :, :])
 
 
 def test_uvflag():
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
     uvf.to_flag()
     xant = uvf.ant_1_array[0]
     xrfi.flag_xants(uvf, xant)
-    assert np.all(uvf.flag_array[uvf.ant_1_array == xant, :, :, :])
-    assert np.all(uvf.flag_array[uvf.ant_2_array == xant, :, :, :])
+    assert np.all(uvf.flag_array[uvf.ant_1_array == xant, :, :])
+    assert np.all(uvf.flag_array[uvf.ant_2_array == xant, :, :])
 
 
 def test_input_error():
@@ -77,6 +80,7 @@ def test_input_error():
 
 def test_uvflag_waterfall_error():
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
     uvf.to_waterfall()
     uvf.to_flag()
     pytest.raises(ValueError, xrfi.flag_xants, uvf, 0)
@@ -84,24 +88,27 @@ def test_uvflag_waterfall_error():
 
 def test_uvflag_not_flag_error():
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
     pytest.raises(ValueError, xrfi.flag_xants, uvf, 0)
 
 
 def test_not_inplace_uvflag():
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
     xant = uvf.ant_1_array[0]
     uvf2 = xrfi.flag_xants(uvf, xant, inplace=False)
-    assert np.all(uvf2.flag_array[uvf2.ant_1_array == xant, :, :, :])
-    assert np.all(uvf2.flag_array[uvf2.ant_2_array == xant, :, :, :])
+    assert np.all(uvf2.flag_array[uvf2.ant_1_array == xant, :, :])
+    assert np.all(uvf2.flag_array[uvf2.ant_2_array == xant, :, :])
 
 
 def test_not_inplace_uvdata():
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     xant = uv.get_ants()[0]
     uv2 = xrfi.flag_xants(uv, xant, inplace=False)
-    assert np.all(uv2.flag_array[uv2.ant_1_array == xant, :, :, :])
-    assert np.all(uv2.flag_array[uv2.ant_2_array == xant, :, :, :])
+    assert np.all(uv2.flag_array[uv2.ant_1_array == xant, :, :])
+    assert np.all(uv2.flag_array[uv2.ant_2_array == xant, :, :])
 
 
 def test_resolve_xrfi_path_given():
@@ -551,8 +558,66 @@ def test_watershed_flag():
     # generate a metrics and flag UVFlag object
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this')
+    uvm.use_future_array_shapes()
     uvf = UVFlag(uv, mode='flag')
+    uvf.use_future_array_shapes()
+
+    # set metric and flag arrays to specific values
+    uvm.metric_array = np.zeros_like(uvm.metric_array)
+    uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
+    uvm.metric_array[0, 1, 0] = 7.
+    uvf.flag_array[0, 0, 0] = True
+
+    # run watershed flag
+    xrfi.watershed_flag(uvm, uvf, nsig_p=2., inplace=True)
+
+    # check answer
+    flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
+    flag_array[0, :2, 0] = True
+    assert np.allclose(uvf.flag_array, flag_array)
+
+    # test flagging channels adjacent to fully flagged ones
+    uvm.metric_array = np.zeros_like(uvm.metric_array)
+    uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
+    uvm.metric_array[:, 1, :] = 1.
+    uvf.flag_array[:, 0, :] = True
+
+    # run watershed flag
+    xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_f=0.5, inplace=True)
+
+    # check answer
+    flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
+    flag_array[:, :2, :] = True
+    assert np.allclose(uvf.flag_array, flag_array)
+
+    # test flagging times adjacent to fully flagged ones
+    uvm.metric_array = np.zeros_like(uvm.metric_array)
+    uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
+    times = np.unique(uv.time_array)
+    inds1 = np.where(uv.time_array == times[0])[0]
+    inds2 = np.where(uv.time_array == times[1])[0]
+    uvm.metric_array[inds2, :, 0] = 1.
+    uvf.flag_array[inds1, :, 0] = True
+
+    # run watershed flag
+    xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_t=0.5, inplace=True)
+
+    # check answer
+    flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
+    flag_array[inds1, :, 0] = True
+    flag_array[inds2, :, 0] = True
+    assert np.allclose(uvf.flag_array, flag_array)
+
+    # test antenna type objects
+    uvc = UVCal()
+    uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
+    uvm = UVFlag(uvc, history='I made this')
+    uvm.use_future_array_shapes()
+    uvf = UVFlag(uvc, mode='flag')
+    uvf.use_future_array_shapes()
 
     # set metric and flag arrays to specific values
     uvm.metric_array = np.zeros_like(uvm.metric_array)
@@ -571,89 +636,40 @@ def test_watershed_flag():
     # test flagging channels adjacent to fully flagged ones
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvm.metric_array[:, :, 1, :] = 1.
-    uvf.flag_array[:, :, 0, :] = True
-
-    # run watershed flag
-    xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_f=0.5, inplace=True)
-
-    # check answer
-    flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    flag_array[:, :, :2, :] = True
-    assert np.allclose(uvf.flag_array, flag_array)
-
-    # test flagging times adjacent to fully flagged ones
-    uvm.metric_array = np.zeros_like(uvm.metric_array)
-    uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    times = np.unique(uv.time_array)
-    inds1 = np.where(uv.time_array == times[0])[0]
-    inds2 = np.where(uv.time_array == times[1])[0]
-    uvm.metric_array[inds2, 0, :, 0] = 1.
-    uvf.flag_array[inds1, 0, :, 0] = True
-
-    # run watershed flag
-    xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_t=0.5, inplace=True)
-
-    # check answer
-    flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    flag_array[inds1, 0, :, 0] = True
-    flag_array[inds2, 0, :, 0] = True
-    assert np.allclose(uvf.flag_array, flag_array)
-
-    # test antenna type objects
-    uvc = UVCal()
-    uvc.read_calfits(test_c_file)
-    uvm = UVFlag(uvc, history='I made this')
-    uvf = UVFlag(uvc, mode='flag')
-
-    # set metric and flag arrays to specific values
-    uvm.metric_array = np.zeros_like(uvm.metric_array)
-    uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvm.metric_array[0, 0, 0, 1, 0] = 7.
-    uvf.flag_array[0, 0, 0, 0, 0] = True
-
-    # run watershed flag
-    xrfi.watershed_flag(uvm, uvf, nsig_p=2., inplace=True)
-
-    # check answer
-    flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    flag_array[0, 0, 0, :2, 0] = True
-    assert np.allclose(uvf.flag_array, flag_array)
-
-    # test flagging channels adjacent to fully flagged ones
-    uvm.metric_array = np.zeros_like(uvm.metric_array)
-    uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvm.metric_array[:, :, 1, :, :] = 1.
-    uvf.flag_array[:, :, 0, :, :] = True
+    uvm.metric_array[:, 1, :, :] = 1.
+    uvf.flag_array[:, 0, :, :] = True
 
     # run watershed flag
     uvf2 = xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_f=0.5, inplace=False)
 
     # check answer
     flag_array = np.zeros_like(uvf2.flag_array, dtype=np.bool_)
-    flag_array[:, :, :2, :, :] = True
+    flag_array[:, :2, :, :] = True
     assert np.allclose(uvf2.flag_array, flag_array)
     del(uvf2)
 
     # test flagging times adjacent to fully flagged ones
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvm.metric_array[:, :, :, 1, :] = 1.
-    uvf.flag_array[:, :, :, 0, :] = True
+    uvm.metric_array[:, :, 1, :] = 1.
+    uvf.flag_array[:, :, 0, :] = True
 
     # run watershed flag
     xrfi.watershed_flag(uvm, uvf, nsig_p=2., nsig_t=0.5, inplace=True)
 
     # check answer
     flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    flag_array[:, :, :, :2, :] = True
+    flag_array[:, :, :2, :] = True
     assert np.allclose(uvf.flag_array, flag_array)
 
     # test waterfall types
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this', waterfall=True)
+    uvm.use_future_array_shapes()
     uvf = UVFlag(uv, mode='flag', waterfall=True)
+    uvf.use_future_array_shapes()
 
     # set metric and flag arrays to specific values
     uvm.metric_array = np.zeros_like(uvm.metric_array)
@@ -702,6 +718,7 @@ def test_watershed_flag_errors():
     # setup
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this')
     uvf = UVFlag(uv, mode='flag')
     uvf2 = UVFlag(uv, mode='flag', waterfall=True)
@@ -798,6 +815,7 @@ def test_flag():
     # setup
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this')
 
     # initialize array with specific values
@@ -834,6 +852,7 @@ def test_flag():
     # test channel flagging in antenna type
     uv = UVCal()
     uv.read_calfits(test_c_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this')
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvm.metric_array[:, :, 0, :, :] = 7.
@@ -855,6 +874,7 @@ def test_flag():
     # test channel flagging in waterfall type
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uvm = UVFlag(uv, history='I made this', waterfall=True)
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     uvm.metric_array[:, 0, :] = 7.
@@ -888,41 +908,49 @@ def test_flag_apply():
     # test applying to UVData
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag')
+    uvf.use_future_array_shapes()
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvf.flag_array[:, :, 0, :] = True
+    uvf.flag_array[:, 0, :] = True
     uvf2 = xrfi.flag_apply(uvf, uv, return_net_flags=True)
     assert np.allclose(uv.flag_array, uvf2.flag_array)
 
     # test applying to UVCal
     uv = UVCal()
     uv.read_calfits(test_c_file)
+    uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag')
+    uvf.use_future_array_shapes()
     uvf.flag_array = np.zeros_like(uvf.flag_array, dtype=np.bool_)
-    uvf.flag_array[:, :, 0, :, :] = True
+    uvf.flag_array[:, 0, :, :] = True
     uvf2 = xrfi.flag_apply(uvf, uv, return_net_flags=True)
     assert np.allclose(uv.flag_array, uvf2.flag_array)
 
     # test applying to waterfalls
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag', waterfall=True)
+    uvf.use_future_array_shapes()
     uvf.flag_array[:, 0, :] = True
     xrfi.flag_apply(uvf, uv)
-    assert np.allclose(uv.flag_array[:, :, 0, :], True)
-    assert np.allclose(uv.flag_array[:, :, 1:, :], False)
+    assert np.allclose(uv.flag_array[:, 0, :], True)
+    assert np.allclose(uv.flag_array[:, 1:, :], False)
 
     uv = UVCal()
     uv.read_calfits(test_c_file)
+    uv.use_future_array_shapes()
     uv.flag_array = np.zeros_like(uv.flag_array, dtype=np.bool_)
     uvf = UVFlag(uv, mode='flag', waterfall=True)
+    uvf.use_future_array_shapes()
     uvf.flag_array[:, 0, :] = True
     xrfi.flag_apply(uvf, uv)
-    assert np.allclose(uv.flag_array[:, :, 0, :, :], True)
-    assert np.allclose(uv.flag_array[:, :, 1:, :, :], False)
+    assert np.allclose(uv.flag_array[:, 0, :, :], True)
+    assert np.allclose(uv.flag_array[:, 1:, :, :], False)
 
     # catch errors
     pytest.raises(ValueError, xrfi.flag_apply, uvf, 2)
@@ -951,6 +979,7 @@ def test_calculate_metric_vis():
     # setup
     uv = UVData()
     uv.read_miriad(test_d_file)
+    uv.use_future_array_shapes()
     # Use Kt=3 because test file only has three times
     uvf = xrfi.calculate_metric(uv, 'detrend_medfilt', Kt=3)
     assert uvf.mode == 'metric'
@@ -958,43 +987,46 @@ def test_calculate_metric_vis():
     inds = uv.antpair2ind(uv.ant_1_array[0], uv.ant_2_array[0])
     wf = uv.get_data(uv.ant_1_array[0], uv.ant_2_array[0])
     filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3)
-    assert np.allclose(filtered, uvf.metric_array[inds, 0, :, 0])
+    assert np.allclose(filtered, uvf.metric_array[inds, :, 0])
 
 
 def test_calculate_metric_gains():
     # Cal gains version
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', Kt=3, Kf=3)
     assert uvf.mode == 'metric'
     assert uvf.type == 'antenna'
-    wf = uvc.gain_array[0, 0, :, :, 0]
+    wf = uvc.gain_array[0, :, :, 0]
     filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3, Kf=3)
-    assert np.allclose(filtered, uvf.metric_array[0, 0, :, :, 0])
+    assert np.allclose(filtered, uvf.metric_array[0, :, :, 0])
 
 
 def test_calculate_metric_chisq():
     # Cal chisq version
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', cal_mode='chisq',
                                 Kt=3, Kf=3)
     assert uvf.mode == 'metric'
     assert uvf.type == 'antenna'
-    wf = uvc.quality_array[0, 0, :, :, 0]
+    wf = uvc.quality_array[0, :, :, 0]
     filtered = xrfi.detrend_medfilt(np.abs(wf), Kt=3, Kf=3)
-    assert np.allclose(filtered, uvf.metric_array[0, 0, :, :, 0])
+    assert np.allclose(filtered, uvf.metric_array[0, :, :, 0])
 
 
 def test_calculate_metric_tot_chisq():
     # Cal total chisq version
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf = xrfi.calculate_metric(uvc, 'detrend_medfilt', cal_mode='tot_chisq',
                                 Kt=3, Kf=3)
     assert uvf.mode == 'metric'
     assert uvf.type == 'waterfall'
-    filtered = xrfi.detrend_medfilt(np.abs(uvc.total_quality_array[0, :, :, 0]).T,
+    filtered = xrfi.detrend_medfilt(np.abs(uvc.total_quality_array[:, :, 0]).T,
                                     Kt=3, Kf=3)
     assert np.allclose(filtered, uvf.metric_array[:, :, 0])
 
@@ -1002,6 +1034,7 @@ def test_calculate_metric_tot_chisq():
 def test_calculate_metric_errors():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     pytest.raises(ValueError, xrfi.calculate_metric, 5, 'detrend_medfilt')
     pytest.raises(KeyError, xrfi.calculate_metric, uvc, 'my_awesome_algorithm')
     pytest.raises(ValueError, xrfi.calculate_metric, uvc, 'detrend_medfilt',
@@ -1011,6 +1044,7 @@ def test_calculate_metric_errors():
 def test_xrfi_h1c_pipe_no_summary():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf_f, uvf_wf = xrfi.xrfi_h1c_pipe(uvc, Kt=3, return_summary=False)
     assert uvf_f.mode == 'flag'
     assert uvf_f.type == 'antenna'
@@ -1022,6 +1056,7 @@ def test_xrfi_h1c_pipe_no_summary():
 def test_xrfi_h1c_pipe_summary():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf_f, uvf_wf, uvf_w = xrfi.xrfi_h1c_pipe(uvc, Kt=3, return_summary=True)
     assert uvf_f.mode == 'flag'
     assert uvf_f.type == 'antenna'
@@ -1036,6 +1071,7 @@ def test_xrfi_h1c_pipe_summary():
 def test_xrfi_h1c_idr2_2_pipe():
     uvc = UVCal()
     uvc.read_calfits(test_c_file)
+    uvc.use_future_array_shapes()
     uvf_m, uvf_f = xrfi.xrfi_pipe(uvc, Kt=3)
     assert uvf_m.mode == 'metric'
     assert uvf_f.mode == 'flag'
@@ -1267,6 +1303,7 @@ def test_xrfi_run_yaml_flags(tmpdir):
                 out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
                 assert os.path.exists(out)
                 uvf = UVFlag(out)
+                uvf.use_future_array_shapes()
                 assert uvf.label == label
                 # check that all flags in frequency regions are set to True.
                 # only check init flags, apriori flags, and round 2 flags.
@@ -1365,6 +1402,7 @@ def test_xrfi_run(tmpdir):
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1389,6 +1427,7 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
         uvf = UVFlag(out)
+        uvf.use_future_array_shapes()
         uvf_list1.append(uvf)
         uvf_list1_names.append(out)
         assert uvf.label == label
@@ -1414,6 +1453,7 @@ def test_xrfi_run(tmpdir):
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         assert os.path.exists(out)
         uvf = UVFlag(out)
+        uvf.use_future_array_shapes()
         uvf_list2.append(uvf)
         uvf_list2_names.append(out)
         assert uvf.label == label
@@ -1436,6 +1476,7 @@ def test_xrfi_run(tmpdir):
       if 'cross' in ext or 'combined' in ext:
           assert os.path.exists(out)
           uvf = UVFlag(out)
+          uvf.use_future_array_shapes()
           assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1450,6 +1491,7 @@ def test_xrfi_run(tmpdir):
       if 'auto' in ext or 'combined' in ext:
           assert os.path.exists(out)
           uvf = UVFlag(out)
+          uvf.use_future_array_shapes()
           assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1470,6 +1512,7 @@ def test_xrfi_run(tmpdir):
         if 'cross' not in ext and 'v_' not in ext and 'auto' not in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1485,6 +1528,7 @@ def test_xrfi_run(tmpdir):
          and 'ox_' not in ext and 'og_' not in ext and not 'omnical' in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1498,6 +1542,7 @@ def test_xrfi_run(tmpdir):
         if 'cross' in ext or 'combined' in ext or 'auto' in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1520,6 +1565,7 @@ def test_xrfi_run(tmpdir):
         if 'cross' in ext or 'combined' in ext or 'auto' in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1543,6 +1589,7 @@ def test_xrfi_run(tmpdir):
         if ('cross' in ext or 'combined' in ext or 'auto' in ext) and '1' not in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out)
+            uvf.use_future_array_shapes()
             assert uvf.label == label
     # cleanup
     for ext, label in ext_labels.items():
@@ -1894,6 +1941,7 @@ def test_day_threshold_run(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -1903,7 +1951,8 @@ def test_day_threshold_run(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.use_future_array_shapes()
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -1974,6 +2023,7 @@ def test_day_threshold_run_yaml(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -1983,7 +2033,8 @@ def test_day_threshold_run_yaml(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.use_future_array_shapes()
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -2037,6 +2088,7 @@ def test_day_threshold_run_data_only(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -2046,7 +2098,8 @@ def test_day_threshold_run_data_only(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.use_future_array_shapes()
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -2105,6 +2158,7 @@ def test_day_threshold_run_cal_only(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -2114,7 +2168,8 @@ def test_day_threshold_run_cal_only(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.use_future_array_shapes()
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -2171,6 +2226,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     # Need to adjust time arrays when duplicating files
     uvd = UVData()
     uvd.read_uvh5(data_files[0])
+    uvd.use_future_array_shapes()
     dt = (uvd.time_array.max() - uvd.time_array.min()) + uvd.integration_time.mean() / (24. * 3600.)
     uvd.time_array += dt
     uvd.set_lsts_from_time_array()
@@ -2180,7 +2236,8 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     uvd.write_uvh5(model_file)
     uvc = UVCal()
     uvc.read_calfits(ocal_file)
-    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+    uvc.use_future_array_shapes()
+    dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
@@ -2227,6 +2284,7 @@ def test_xrfi_h1c_run_no_filename():
     # test no filename provided
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     pytest.raises(AssertionError, xrfi.xrfi_h1c_run, uvd,
                   'Just as test.', filename=None)
 
@@ -2235,6 +2293,7 @@ def test_xrfi_h1c_run_filename_not_string():
     # filename is not a string
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd,
                   history='Just a test.', filename=5)
 
@@ -2243,6 +2302,7 @@ def test_xrfi_h1c_run_uvfits_no_xrfi_path():
     # test uvfits file and no xrfi path
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     basename = utils.strip_extension(test_uvfits_file)
     outtest = basename + '.flags.h5'
     if os.path.exists(outtest):
@@ -2269,6 +2329,7 @@ def test_xrfi_h1c_run_uvfits_xrfi_path():
     # test uvfits file with xrfi path
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     basename = utils.strip_extension(os.path.basename(test_uvfits_file))
     outtest = os.path.join(xrfi_path, basename) + '.flags.h5'
     if os.path.exists(outtest):
@@ -2283,8 +2344,10 @@ def test_xrfi_h1c_run_miriad_model():
     # miriad model file test
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     ext = 'flag'
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     basename = os.path.basename(utils.strip_extension(test_d_file))
     outtest = '.'.join([os.path.join(xrfi_path, basename), ext])
     if os.path.exists(outtest):
@@ -2299,6 +2362,7 @@ def test_xrfi_h1c_run_uvfits_model():
     # uvfits model file test
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     ext = 'flag'
     basename = os.path.basename(utils.strip_extension(test_uvfits_file))
     outtest = '.'.join([os.path.join(xrfi_path, basename), ext])
@@ -2314,6 +2378,7 @@ def test_xrfi_h1c_run_incorrect_model():
     # incorrect model
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     bad_uvfits_test = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcA.uvfits')
     pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd, history='Just a test.',
                   filename=test_d_file, model_file=bad_uvfits_test,
@@ -2324,6 +2389,7 @@ def test_xrfi_h1c_run_input_calfits():
     # input calfits
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     ext = 'flag'
     cbasename = os.path.basename(utils.strip_extension(test_c_file))
     outtest1 = '.'.join([os.path.join(xrfi_path, cbasename), 'x', ext])
@@ -2344,6 +2410,7 @@ def test_xrfi_h1c_run_incorrect_calfits():
     # check for calfits with incorrect time/freq axes
     uvd = UVData()
     uvd.read_miriad(test_d_file)
+    uvd.use_future_array_shapes()
     bad_calfits = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
     pytest.raises(ValueError, xrfi.xrfi_h1c_run, uvd, history='Just a test.',
                   filename=test_d_file, calfits_file=bad_calfits,
@@ -2421,6 +2488,7 @@ def fake_waterfall():
     # generate a dummy metric waterfall
     np.random.seed(0)
     uvm = UVFlag(test_f_file)
+    uvm.use_future_array_shapes()
     uvm.to_waterfall()
 
     # populate with noise and add bad times / channels
@@ -2499,6 +2567,7 @@ def test_threshold_wf_detrend_no_check():
     # generate a dummy metric waterfall
     np.random.seed(0)
     uvm = UVFlag(test_f_file)
+    uvm.use_future_array_shapes()
     uvm.to_waterfall()
 
     # populate with noise and add bad times / channels
@@ -2520,6 +2589,7 @@ def test_threshold_wf_exceptions():
     # generate a dummy metric waterfall
     np.random.seed(0)
     uvf = UVFlag(test_f_file)
+    uvf.use_future_array_shapes()
 
     # exceptions
     pytest.raises(ValueError, xrfi.threshold_wf, uvf)  # UVFlag object but not a waterfall
@@ -2542,13 +2612,15 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
     for obsi in range(len(fake_obses)):
         uvc = UVCal()
         uvc.read_calfits(test_c_file)
-        dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time / (24. * 3600.)
+        uvc.use_future_array_shapes()
+        dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
         uvc.time_array += obsi * dt
         uvc.write_calfits(ocalfits_files[obsi])
         uvc.write_calfits(acalfits_files[obsi])
 
         uv = UVData()
         uv.read(test_uvh5_file)
+        uv.use_future_array_shapes()
         uv.time_array += obsi * dt
         uv.set_lsts_from_time_array()
         uv.write_uvh5(model_files[obsi])
@@ -2603,6 +2675,7 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
                 out = outdir / '.'.join([obs, ext, 'h5'])
                 assert os.path.exists(out)
                 uvf = UVFlag(str(out))
+                uvf.use_future_array_shapes()
                 assert uvf.label == label
             shutil.rmtree(outdir)  # cleanup
 
@@ -2621,6 +2694,7 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
                 out = outdir / '.'.join([obs, ext, 'h5'])
                 assert os.path.exists(out)
                 uvf = UVFlag(str(out))
+                uvf.use_future_array_shapes()
                 assert uvf.label == label
             shutil.rmtree(outdir)  # cleanup
 
@@ -2639,5 +2713,6 @@ def test_xrfi_h3c_idr2_1_run(tmp_path):
                 out = outdir / '.'.join([obs, ext, 'h5'])
                 assert os.path.exists(out)
                 uvf = UVFlag(str(out))
+                uvf.use_future_array_shapes()
                 assert uvf.label == label
             shutil.rmtree(outdir)  # cleanup
