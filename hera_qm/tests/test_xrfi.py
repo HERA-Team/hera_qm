@@ -2504,6 +2504,9 @@ def fake_waterfall():
     uvm.freq_array = np.linspace(np.amin(uvm.freq_array),
                                  np.amax(uvm.freq_array),
                                  uvm.Nfreqs)
+    if hasattr(uvm, "channel_width"):
+        delta_freq = uvm.freq_array[1] - uvm.freq_array[0]
+        uvm.channel_width = np.full(uvm.Nfreqs, delta_freq, dtype=uvm.freq_array.dtype)
     uvm.time_array = np.linspace(np.amin(uvm.time_array),
                                  np.amax(uvm.time_array),
                                  uvm.Ntimes)

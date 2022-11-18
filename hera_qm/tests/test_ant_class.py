@@ -197,6 +197,27 @@ def test_auto_slope_checker():
     for ant in {(65, 'Jnn'), (116, 'Jee'), (93, 'Jnn'), (65, 'Jee'), (93, 'Jee'), (116, 'Jnn')}:
         assert ant in auto_slope_class.bad_ants
 
+
+def test_auto_shape_checker():
+    from hera_qm.data import DATA_PATH
+    hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
+    hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
+    data, _, _ = hd.read(read_flags=False, read_nsamples=False)
+    auto_slope_class = ant_class.auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=20) 
+    auto_power_class = ant_class.auto_power_checker(data, good=(2, 30), suspect=(1, 80))
+    flag_spectrum = np.mean(data[36,36,'nn'], axis=0) > 1.5e7
+    auto_shape_class = ant_class.auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125), 
+                                                    flag_spectrum=flag_spectrum,
+                                                    antenna_class=(auto_slope_class + auto_power_class))
+    for ant in {(160, 'Jee'), (83, 'Jee'), (68, 'Jnn'), (85, 'Jee'), (98, 'Jee'), (135, 'Jee'), (157, 'Jee'), (160, 'Jnn'), (36, 'Jee'), (85, 'Jnn'), 
+                (83, 'Jnn'), (98, 'Jnn'), (117, 'Jee'), (87, 'Jnn'), (53, 'Jee'), (135, 'Jnn'), (157, 'Jnn'), (36, 'Jnn'), (117, 'Jnn'), (53, 'Jnn')}:
+        assert ant in auto_shape_class.good_ants
+    for ant in {(68, 'Jee'), (87, 'Jee'), (51, 'Jee'), (51, 'Jnn')}:
+        assert ant in auto_shape_class.suspect_ants
+    for ant in {(116, 'Jee'), (116, 'Jnn'), (93, 'Jee'), (65, 'Jee'), (65, 'Jnn'), (93, 'Jnn')}:
+        assert ant in auto_shape_class.bad_ants
+
+
 def test_auto_rfi_checker():
     hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
     data, _, _ = hd.read(read_flags=False, read_nsamples=False)
