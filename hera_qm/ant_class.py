@@ -368,20 +368,20 @@ def auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125), flag_spe
     return antenna_bounds_checker(distance_metrics, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
 
-def auto_rfi_checker(data, good=(-0.02, 0.01), suspect=(-0.04, 0.02), nsig=6, antenna_class=None, flag_broadcast_thresh=0.5, 
+def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna_class=None, flag_broadcast_thresh=0.5, 
                      kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0], filter_half_widths=[200e-9], 
                      eigenval_cutoff=[1e-9], cache={}):
     """
-    Classifies ant-pols as good, suspect, or bad based on the excess (or deficit) of fraction of channels flagged on that auto
-    that are not among the array-broadcast flags (i.e. channels flagged for >50% of antennas). Flagging takes place in two steps: 
+    Classifies ant-pols as good, suspect, or bad based on the fraction of channels flagged in that are not among the 
+    array-broadcast flags (i.e. channels flagged for >50% of antennas). Flagging takes place in two steps: 
     (1) "channel_diff_flagger" is used to get an initial set of flags and
     (2) "dpss_flagger" is used with the array averaged flags to refine initial per-antenna flags
  
     Arguments:
         data: DataContainer containing antenna autocorrelations (other baselines ignored)
-        good: 2-tuple or list of 2-tuple, default=(-0.02, 0.01)
+        good: 2-tuple or list of 2-tuple, default=(0, 0.01)
             2-tuple or list of 2-tuple bounds for ranges considered good.
-        suspect: 2-tuple or list of 2-tuple, default=(-0.04, 0.02)
+        suspect: 2-tuple or list of 2-tuple, default=(0.01, 0.02)
             Bounds for ranges considered suspect.
         nsig: float, default=6
             The number of sigma in the metric above which to flag pixels. Used in both steps.
@@ -424,8 +424,8 @@ def auto_rfi_checker(data, good=(-0.02, 0.01), suspect=(-0.04, 0.02), nsig=6, an
                                                  eigenval_cutoff=eigenval_cutoff, flags=antenna_flags, mode=mode, cache=cache)
     
     
-    # Calculate the excess (or deficit) fraction of the band that is flagged
-    flagged_fraction = {bls: np.mean(flags) - np.mean(array_flags) for bls, flags in antenna_flags.items()}
+    # Calculate the excess fraction of the band that is flagged
+    flagged_fraction = {bls: np.mean(flags | array_flags) - np.mean(array_flags) for bls, flags in antenna_flags.items()}
 
     return antenna_bounds_checker(flagged_fraction, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
