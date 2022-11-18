@@ -67,7 +67,7 @@ def get_ant_metrics_dict():
 
 
 def calc_corr_stats(data_sum, data_diff=None):
-    """For all baselines, calculate average cross-correlation between even and odd in order to identify ?
+    """For all baselines, calculate average cross-correlation between even and odd in order to identify dead, cross-polarized, and non-time-locked antennas.
 
     Parameters
     ----------
