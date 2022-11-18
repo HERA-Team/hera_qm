@@ -237,12 +237,11 @@ def test_auto_rfi_checker():
     data[(83, 83, 'ee')][:, idx] *= 1.2 # Suspect auto
 
     # Run RFI checker
-    auto_rfi_class = ant_class.auto_rfi_checker(data, antenna_class=auto_class, good=(-.2, 0.1), suspect=(-.4, 0.2),
+    auto_rfi_class = ant_class.auto_rfi_checker(data, antenna_class=auto_class, good=(0, 0.1), suspect=(0.1, 0.2),
                                                 kernel_widths=[1, 2], filter_centers=[0, 2700e-9, -2700e-9],
                                                 filter_half_widths=[200e-9, 200e-9, 200e-9])
-    assert auto_rfi_class.bad_ants == set([(68, 'Jnn'), (116, 'Jee'), (68, 'Jee'), (36, 'Jee'), (65, 'Jnn'),
-                                           (135, 'Jee'), (93, 'Jnn'), (65, 'Jee'), (93, 'Jee'), (116, 'Jnn')])
-    assert auto_rfi_class.suspect_ants == set([(83, 'Jee')])
+    assert (36, 'Jee') in auto_rfi_class.bad_ants
+    assert (83, 'Jee') in auto_rfi_class.suspect_ants
 
     # Make sure antennas that were previously marked bad are still marked bad
     for ant in auto_class.bad_ants:
@@ -250,7 +249,7 @@ def test_auto_rfi_checker():
     
     # Show that all other antennas are marked "good"
     for ant in auto_class.ants:
-        if ant not in auto_rfi_class.suspect_ants and ant not in auto_rfi_class.bad_ants:
+        if ant not in [(36, 'Jee'), (83, 'Jee')] and ant not in auto_class.bad_ants:
             assert ant in auto_rfi_class.good_ants
 
 def test_even_odd_zeros_checker():
