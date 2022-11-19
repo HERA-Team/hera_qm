@@ -276,17 +276,27 @@ def test_iterative_antenna_metrics_and_flagging():
     assert am.final_metrics['corrXPol'][(87, 'Jnn')] == am.all_metrics[3]['corrXPol'][(87, 'Jnn')]
     assert am.final_metrics['corrXPol'][(87, 'Jee')] == am.all_metrics[3]['corrXPol'][(87, 'Jee')]
 
-    # test _find_totally_dead_ants
-    # for bl in am.corr_stats:
-    #     if 68 in bl:
-    #         am.corr_stats[bl] = 0.0
-    # am.iterative_antenna_metrics_and_flagging(verbose=True)
-    # assert (68, 'Jnn') in am.xants
-    # assert (68, 'Jee') in am.xants
-    # assert (68, 'Jnn') in am.dead_ants
-    # assert (68, 'Jee') in am.dead_ants
-    # assert am.removal_iteration[68, 'Jnn'] == -1
-    # assert am.removal_iteration[68, 'Jee'] == -1
+def test_find_totally_dead_ants():
+    files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
+             'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}
+
+    hd_sum = HERADataFastReader(files['sum_files'])
+    hd_diff = HERADataFastReader(files['diff_files'])
+    sum_data, _, _ = hd_sum.read(read_flags=False, read_nsamples=False)
+    diff_data, _, _ = hd_diff.read(read_flags=False, read_nsamples=False)
+    for bl in sum_data:
+        if 68 in bl:
+            sum_data[bl] = np.zeros_like(sum_data[bl])
+            diff_data[bl] = np.zeros_like(diff_data[bl])
+
+    am = ant_metrics.AntennaMetrics(**files, sum_data=sum_data, diff_data=diff_data)
+    am.iterative_antenna_metrics_and_flagging(verbose=True)
+    assert (68, 'Jnn') in am.xants
+    assert (68, 'Jee') in am.xants
+    assert (68, 'Jnn') in am.dead_ants
+    assert (68, 'Jee') in am.dead_ants
+    assert am.xants[68, 'Jnn'] == -1
+    assert am.xants[68, 'Jee'] == -1
 
 def test_using_datacontainers():
     def compare_ams(am1, am2):
