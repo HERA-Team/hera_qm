@@ -307,7 +307,7 @@ class AntennaMetrics():
         for pol in self.same_pols:
             # median over one antenna dimension
             med_corr_matrix = np.nanmedian(self.corr_matrices[pol], axis=0)
-            is_dead = (med_corr_matrix == 0)
+            is_dead = (med_corr_matrix == 0) | ~np.isfinite(med_corr_matrix)
             antpol = self.split_pol(pol)[0]
             dead_ants = [self.ants_per_antpol[antpol][i] for i in np.argwhere(is_dead)[:, 0]]
             for dead_ant in dead_ants:
