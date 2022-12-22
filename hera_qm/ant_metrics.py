@@ -67,7 +67,10 @@ def get_ant_metrics_dict():
 
 
 def calc_corr_stats(data_sum, data_diff=None):
-    """For all baselines, calculate average cross-correlation between even and odd in order to identify dead, cross-polarized, and non-time-locked antennas.
+    """For all baselines, calculate average cross-correlation between even and odd in order 
+    to identify dead, cross-polarized, and non-time-locked antennas. Time and channels where
+    either the even or odd data (or both) are zero are ignored, but if either even or odd 
+    is entirely zero, the corr_stat will be np.nan.
 
     Parameters
     ----------
@@ -102,12 +105,9 @@ def calc_corr_stats(data_sum, data_diff=None):
             even = data_sum_here[0:last_int:2, :]
             odd = data_sum_here[1:last_int:2, :]
 
-        # normalize (reduces the impact of RFI by making every channel equally weighted)
-        np.divide(even, np.abs(even), out=even)
-        np.divide(odd, np.abs(odd), out=odd)
-
-        # reduce to a scalar statistic
-        corr_stats[bl] = np.abs(np.sum(even * np.conj(odd))) / even.size
+        # reduce to a scalar statistic, normalized to reduce the impact of RFI by equally weighting channels
+        product = even * np.conj(odd)
+        corr_stats[bl] = np.abs(np.nanmean(np.where(product == 0, np.nan, product / np.abs(product))))
 
     return corr_stats
 
