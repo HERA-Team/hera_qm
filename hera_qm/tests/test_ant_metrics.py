@@ -22,8 +22,6 @@ def test_calc_corr_stats():
                 (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0]])}
     data_diff = {(0, 1, 'ee'): np.array([[0.0, 1.0 + 1.0j], [1.0, 3.0]]),
                 (0, 1, 'nn'): np.array([[3.0, 1.0j], [0.0, 2.0]])}
-    flags = {(0, 1, 'ee'): np.array([[False, False], [False, False]]),
-                (0, 1, 'nn'): np.array([[False, False], [False, False]])}
 
     # test normal operation
     corr_stats = ant_metrics.calc_corr_stats(data_sum,data_diff)
@@ -42,6 +40,14 @@ def test_calc_corr_stats():
     assert corr_stats[(0,1,'nn')] == pytest.approx(1,abs=1e-2)
     assert corr_stats[(0,1,'ee')] == pytest.approx(0.9238,abs=1e-2)
 
+    # test zero/nan handling
+    data_sum = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j], [10.0, 30.0]]),
+                (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0]])}
+    data_diff = {(0, 1, 'ee'): np.array([[20, 10.0 + 10.0j], [10.0, 29.0]]),
+                (0, 1, 'nn'): np.array([[10.0j, 10.0], [20.0 + 100j, 10.0]])}
+    corr_stats = ant_metrics.calc_corr_stats(data_sum, data_diff)
+    assert np.isfinite(corr_stats[(0, 1, 'ee')])
+    assert not np.isfinite(corr_stats[(0, 1, 'nn')])
 
 # def test_corr_metrics():
 #     corr_stats = {(0, 1, 'ee'): 1.0,
