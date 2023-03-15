@@ -13,6 +13,7 @@ import pickle as pkl
 import json
 import copy
 import os
+import warnings
 
 
 def get_omnical_metrics_dict():
@@ -173,15 +174,18 @@ def load_firstcal_gains(fc_file):
     fc_pol : int
         The polarization of the .calfits file.
     """
-    uvf = UVCal()
-    uvf.read_calfits(fc_file)
-    uvf.use_future_array_shapes()
-    freqs = uvf.freq_array.squeeze()
-    fc_gains = np.moveaxis(uvf.gain_array, 1, 2)[:, :, :, 0]
-    d_nu = np.mean(freqs[1:] - freqs[:-1])
+    uvc = UVCal()
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", "The shapes of several attributes"
+        )
+        uvc.read_calfits(fc_file)
+    uvc.use_future_array_shapes()
+    fc_gains = np.moveaxis(uvc.gain_array, 1, 2)[:, :, :, 0]
+    d_nu = np.mean(uvc.freq_array[1:] - uvc.freq_array[:-1])
     d_phi = np.abs(np.mean(np.angle(fc_gains)[:, :, 1:] - np.angle(fc_gains)[:, :, :-1], axis=2))
     fc_delays = (d_phi / d_nu) / (2 * np.pi)
-    fc_pol = uvf.jones_array[0]
+    fc_pol = uvc.jones_array[0]
     return fc_delays, fc_gains, fc_pol
 
 
@@ -451,8 +455,7 @@ class OmniCal_Metrics(object):
 
         # Instantiate Data Object
         self.uv = UVCal()
-        self.uv.read_calfits(omni_calfits)
-        self.uv.use_future_array_shapes()
+        self.uv.read_calfits(omni_calfits, use_future_array_shapes=True)
 
         # Get relevant metadata
         self.Nants = self.uv.Nants_data

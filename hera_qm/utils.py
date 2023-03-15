@@ -735,40 +735,24 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     # check that uv is UVData or UVCal
     if not issubclass(uv.__class__, (UVData, UVCal, UVFlag)):
         raise NotImplementedError("uv must be a UVData, UVCal, or UVFlag object.")
-    # only support single spw right now.
-    if issubclass(uv.__class__, (UVData, UVCal)) and uv.Nspws > 1:
-        raise NotImplementedError("apply_yaml_flags does not support multiple spws at this time.")
+
+    # this is a no-op if it's already using future shapes
+    uv.use_future_array_shapes()
+
     # if UVCal provided and lst_array is None, get lst_array from times.
     # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
     if unflag_first:
         uv.flag_array[:] = np.zeros_like(uv.flag_array, dtype=bool)
-    if uv.lst_array is None:
-        if lat_lon_alt_degrees is None:
-            if telescope_name is None:
-                telescope_name = uv.telescope_name
-            if telescope_name.upper() in KNOWN_TELESCOPES:
-                lat = KNOWN_TELESCOPES[telescope_name.upper()]['latitude'] * 180 / np.pi
-                lon = KNOWN_TELESCOPES[telescope_name.upper()]['longitude'] * 180 / np.pi
-                alt = KNOWN_TELESCOPES[telescope_name.upper()]['altitude']
-                lat_lon_alt_degrees = np.asarray([lat, lon, alt])
-            else:
-                raise NotImplementedError(f'No known position for telescope {telescope_name}. lat_lon_alt_degrees must be specified.')
 
-        # calculate LST grid in hours from time grid and lat_lon_alt
-        lst_array = uvutils.get_lst_for_time(uv.time_array, *lat_lon_alt_degrees) * 12 / np.pi
-    else:
-        # Can't just use np.unique because it also sorts the lsts by value.
-        # This recipe preserves the original order of the lsts.
-        indices = np.unique(uv.lst_array, return_index=True)[1]
-        lst_array = np.array([uv.lst_array[index] for index in sorted(indices)]) * 12 / np.pi
+    # Can't just use np.unique because it also sorts the lsts by value.
+    # This recipe preserves the original order of the lsts.
+    indices = np.unique(uv.lst_array, return_index=True)[1]
+    lst_array = np.array([uv.lst_array[index] for index in sorted(indices)]) * 12 / np.pi
 
     time_array = np.unique(uv.time_array)
     # loop over spws to apply frequency flags.
     if flag_freqs:
-        if len(uv.freq_array.shape) == 2:
-            freqs = uv.freq_array[0]
-        else:
-            freqs = uv.freq_array
+        freqs = uv.freq_array
         flagged_channels = metrics_io.read_a_priori_chan_flags(a_priori_flag_yaml, freqs=freqs)
         if np.any(flagged_channels >= uv.Nfreqs):
             warnings.warn("Flagged channels were provided that exceed the maximum channel index. These flags are being dropped!")
