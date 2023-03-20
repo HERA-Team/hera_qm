@@ -54,7 +54,7 @@ setup_args = {
         'astropy>=5.0.4',
         'h5py>=3.1',
         'pyyaml',
-        'numpy>=1.19',
+        'numpy>=1.23',
         'pyuvdata>=2.3',
         'hera_filters',
     ],

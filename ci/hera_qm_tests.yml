@@ -7,7 +7,7 @@ dependencies:
   - astropy-healpix
   - h5py>=3.1
   - matplotlib
-  - numpy>=1.23  # TODO: this is higher than is specified in the setup.py. Should the setup be updated?
+  - numpy>=1.23
   - pip
   - pytest
   - pytest-cov
