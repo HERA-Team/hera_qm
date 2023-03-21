@@ -26,7 +26,7 @@ required dependencies. See below for manual dependency management.
 If you are using `conda`, you may wish to install the following dependencies manually
 to avoid them being installed automatically by `pip`::
 
-    $ conda install -c conda-forge "numpy>=1.10" "astropy>=3.2.3" "aipy>=3.0rc2" h5py pyuvdata pyyaml
+    $ conda install -c conda-forge "numpy>=1.23" "astropy>=5.0.4" "h5py>=3.1" "pyuvdata>=2.3" pyyaml
 
 ### Developing
 If you are developing `hera_qm`, it is preferred that you do so in a fresh `conda`

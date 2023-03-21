@@ -3,15 +3,15 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - astropy>=3.2.3
+  - astropy>=5.0.4
   - astropy-healpix
-  - h5py
+  - h5py>=3.1
   - matplotlib
   - numpy>=1.23
   - pip
   - pytest
   - pytest-cov
-  - pyuvdata>=2.2.9
+  - pyuvdata>=2.3
   - scikit-learn # from hera_cal
   - scipy
   - pip:

@@ -19,7 +19,7 @@ import pyuvdata.utils as uvutils
 pytestmark = pytest.mark.filterwarnings(
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
     "ignore:telescope_location is not set. Using known values for HERA.",
-    "ignore:antenna_positions is not set. Using known values for HERA."
+    "ignore:antenna_positions is not set. Using known values for HERA.",
 )
 
 def test_get_metrics_ArgumentParser_ant_metrics():
@@ -283,8 +283,7 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
     integration_flags = [0, 1] # integrations from yaml file that should be flagged.
     ant_flags = [0, 10, [1, 'Jee'], [3, 'Jnn']]
     uvd = UVData()
-    uvd.read(test_d_file)
-    uvd.use_future_array_shapes()
+    uvd.read(test_d_file, use_future_array_shapes=True)
     uvd = utils.apply_yaml_flags(uvd, test_flag, flag_freqs=flag_freqs, flag_times=flag_times,
                                 flag_ants=flag_ants, unflag_first=True)
     if 'no_integrations' not in test_flag:
@@ -354,17 +353,11 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
     "a_priori_flags_no_flags.yaml"
     ],
 )
-@pytest.mark.parametrize("new_metadata", [True, False])
-def test_apply_yaml_flags_uvcal(filein, new_metadata):
+def test_apply_yaml_flags_uvcal(filein):
     test_flag = os.path.join(DATA_PATH, filein)
     test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
     uvc = UVCal()
-    uvc.read_calfits(test_c_file)
-    uvc.use_future_array_shapes()
-    if not new_metadata:
-        uvc.telescope_location = None
-        uvc.antenna_positions = None
-        uvc.lst_array = None
+    uvc.read_calfits(test_c_file, use_future_array_shapes=True)
 
     uvc = utils.apply_yaml_flags(uvc, test_flag, unflag_first=True)
     freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
@@ -416,20 +409,10 @@ def test_apply_yaml_flags_errors():
     test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
     # check NotImplementedErrors
     uvc = UVCal()
-    uvc.read_calfits(test_c_file)
-    uvc.use_future_array_shapes()
+    uvc.read_calfits(test_c_file, use_future_array_shapes=True)
     # check that setting uv to an object that is not a subclass of UVCal or UVData throws a NotImplementedError
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
-    # check that not providing lat_lon_alt_degrees and a telescope location that is not in the pyuvdata.KNOWN_TELESCOPES dict
-    # throws a NotImplementedError
-    # must remove the `lst_array` from the cal object first to test this
-    uvc2 = uvc.copy()
-    uvc2.lst_array = None
-    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc2, test_flag_jds, None, 'MITEOR')
-    # check that more then a single spw throws a NotImplementedError
-    uvc.Nspws = 2
-    pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, test_flag_jds)
-    uvc.Nspws = 1
+
     # check warning for negative integrations
     for warn_yaml in ['a_priori_flags_maximum_channels.yaml', 'a_priori_flags_maximum_integrations.yaml',
                       'a_priori_flags_negative_channels.yaml', 'a_priori_flags_negative_integrations.yaml']:
