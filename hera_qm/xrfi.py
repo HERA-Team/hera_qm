@@ -22,6 +22,11 @@ from hera_filters import dspec
 from scipy.ndimage.filters import convolve
 from copy import deepcopy
 
+if hasattr(UVCal(), "read"):
+    uvcal_read_method = "read"
+else:
+    uvcal_read_method = "read_calfits"
+
 #############################################################################
 # Utility functions
 #############################################################################
@@ -1860,7 +1865,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
             if dtype=='uvcal':
                 uv = UVCal()
                 # No partial i/o for uvcal yet.
-                uv.read_calfits(uv_files, use_future_array_shapes=True)
+                getattr(uv, uvcal_read_method)(uv_files, use_future_array_shapes=True)
                 if a_priori_flag_yaml is not None:
                     uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
                                                    flag_ants=not(ignore_xants_override),
@@ -1880,7 +1885,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
                 if issubclass(uv.__class__, UVData):
                     uv.read(uv_files, read_data=False, use_future_array_shapes=True)
                 else:
-                    uv.read_calfits(uv_files, use_future_array_shapes=True)
+                    getattr(uv, uvcal_read_method)(uv_files, use_future_array_shapes=True)
                     if a_priori_flag_yaml is not None:
                         uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
                                                        flag_ants=not(ignore_xants_override),
@@ -2448,11 +2453,11 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     elif ocalfits_files is not None:
         uvlist = ocalfits_files
         uvtemp = UVCal()
-        uvtemp.read_calfits(uvlist[0], use_future_array_shapes=True)
+        getattr(uvtemp, uvcal_read_method)(uvlist[0], use_future_array_shapes=True)
     elif acalfits_files is not None:
         uvlist = acalfits_files
         uvtemp = UVCal()
-        uvtemp.read_calfits(uvlist[0], use_future_array_shapes=True)
+        getattr(uvtemp, uvcal_read_method)(uvlist[0], use_future_array_shapes=True)
     nintegrations = len(uvlist) * uvtemp.Ntimes
     # Determine the actual files to store
     # We will drop kt_size / (integrations per file) files at the start and
@@ -2605,7 +2610,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
     # Initial run on cal data products
     # Calculate metric on abscal data
     uvc_a = UVCal()
-    uvc_a.read_calfits(acalfits_files, use_future_array_shapes=True)
+    getattr(uvc_a, uvcal_read_method)(acalfits_files, use_future_array_shapes=True)
     uvf_apriori = UVFlag(
         uvc_a, mode='flag', copy_flags=True, label='A priori flags.', use_future_array_shapes=True
     )
@@ -2618,7 +2623,7 @@ def xrfi_h3c_idr2_1_run(ocalfits_files, acalfits_files, model_files, data_files,
 
     # Calculate metric on omnical data
     uvc_o = UVCal()
-    uvc_o.read_calfits(ocalfits_files, use_future_array_shapes=True)
+    getattr(uvc_o, uvcal_read_method)(ocalfits_files, use_future_array_shapes=True)
     flag_apply(uvf_apriori, uvc_o, keep_existing=True, run_check=run_check,
                check_extra=check_extra,
                run_check_acceptability=run_check_acceptability)
@@ -2931,7 +2936,7 @@ def day_threshold_run(data_files, history, nsig_f=7., nsig_t=7.,
             abs_in = '.'.join([basename, incal_ext, 'calfits'])
             abs_out = '.'.join([basename, outcal_ext, 'calfits'])
             # abscal flagging only happens if the abscal files exist.
-            uvc_a.read_calfits(abs_in, use_future_array_shapes=True)
+            getattr(uvc_a, uvcal_read_method)(abs_in, use_future_array_shapes=True)
 
             # select the times from the file we are going to flag
             uvf_file = uvf_total.select(times=uvc_a.time_array, inplace=False)
@@ -3118,7 +3123,7 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     # Flag on gain solutions and chisquared values
     if calfits_file is not None:
         uvc = UVCal()
-        uvc.read_calfits(calfits_file, use_future_array_shapes=True)
+        getattr(uvc, uvcal_read_method)(calfits_file, use_future_array_shapes=True)
         if indata is not None:
             if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array),
                                 atol=1e-5, rtol=0)
