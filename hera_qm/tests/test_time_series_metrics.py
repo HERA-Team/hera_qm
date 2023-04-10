@@ -13,3 +13,14 @@ def test_true_stretches():
     assert time_series_metricstrue_stretches(np.array([True, False, False, True])) == [slice(0, 1, None), slice(3, 4, None)]
     assert time_series_metricstrue_stretches(np.array([False, True, True, False])) == [slice(1, 3, None)]
 
+def test_impose_max_flag_gap():
+    np.testing.assert_array_equal(impose_max_flag_gap(np.array([False, True, False, True, False, False]), max_flag_gap=0),
+                                  np.array([True, True, True, True, False, False]))
+    np.testing.assert_array_equal(impose_max_flag_gap(np.array([False, False, True, False, True, False]), max_flag_gap=0),
+                                  np.array([False, False, True, True, True, True]))
+    np.testing.assert_array_equal(impose_max_flag_gap(np.array([False, False, True, False, True, False]), max_flag_gap=1),
+                                  np.array([False, False, True, False, True, False]))
+    np.testing.assert_array_equal(impose_max_flag_gap(np.array([False, False, True, True, True, False]), max_flag_gap=2),
+                                  np.array([False, False, True, True, True, True]))
+
+
