@@ -10,18 +10,20 @@ from scipy.ndimage import convolve
 def true_stretches(bool_arr):
     '''Returns a list of slices corresponding to contiguous sequences where bool_arr is True.'''
     # find the indices where bool_arr changes from True to False or vice versa
-    diff = np.diff(bool_arr.astype(int))
+    ba = np.array(bool_arr)
+    diff = np.diff(ba.astype(int))
     starts = np.where(diff == 1)[0] + 1
     ends = np.where(diff == -1)[0]
     
     # handle first and last values
-    if bool_arr[0]:
+    if ba[0]:
         starts = np.insert(starts, 0, 0)
-    if bool_arr[-1]:
+    if ba[-1]:
         ends = np.append(ends, len(bool_arr) - 1)
 
     stretches = [slice(starts[i], ends[i] + 1) for i in range(len(starts))]
     return stretches
+
 
 def impose_max_flag_gap(flags, max_flag_gap=30):
     '''Adds flags to limit the largest possible number of flagged files between unflagged files.
@@ -40,6 +42,7 @@ def impose_max_flag_gap(flags, max_flag_gap=30):
                 flags[bs.stop:] = True
                 
     return flags
+
 
 def metric_convolution_flagging(metric, starting_flags, ok_range, sigma=30, max_flag_gap=30):
     '''Grows flags by looking at whether the given metric returns to some OK range in the 
