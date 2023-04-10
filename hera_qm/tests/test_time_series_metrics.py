@@ -25,3 +25,16 @@ def test_impose_max_flag_gap():
                                   np.array([False, False, True, True, True, True]))
 
 
+def test_metric_convolution_flagging():
+    metric = np.concatenate([[0] * 10, [15, 3, 15], [0] * 10, [3, 15] * 10, [0]]).astype(float)
+    starting_flags = metric > 12
+    new_flags = time_series_metrics.metric_convolution_flagging(metric, starting_flags, [0, 4], sigma=1)
+    assert np.all(new_flags[10:13])
+    assert new_flags[-1]
+    new_flags = time_series_metrics.metric_convolution_flagging(metric, starting_flags, [0, 4], sigma=.1)
+    assert ~new_flags[11]
+    assert ~new_flags[-1]
+    new_flags = time_series_metrics.metric_convolution_flagging(metric, starting_flags, [0, 4], sigma=.1, max_flag_gap=0)
+    assert np.all(new_flags[0:13])
+    assert np.all(~new_flags[14:24])
+    assert np.all(new_flags[24:])
