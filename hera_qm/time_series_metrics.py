@@ -26,7 +26,7 @@ def true_stretches(bool_arr):
 
 
 def impose_max_flag_gap(flags, max_flag_gap=30):
-    '''Adds flags to limit the largest possible number of flagged files between unflagged files.
+    '''Adds flags to limit the largest possible number of flagged times between unflagged times.
     
     Arguments:
         flags_in: 1D boolean numpy array of starting flags (modified in place)
@@ -36,7 +36,7 @@ def impose_max_flag_gap(flags, max_flag_gap=30):
     for bs in bad_stretches:
         if bs.stop - bs.start > max_flag_gap:
             # figure out whether to flag everything before or after this gap
-            if np.sum(~flags[bs.stop:]) > np.sum(~flags[:bs.start]):
+            if np.sum(~flags[bs.stop:]) >= np.sum(~flags[:bs.start]):
                 flags[:bs.start] = True
             else:
                 flags[bs.stop:] = True
