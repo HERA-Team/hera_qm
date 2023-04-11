@@ -51,7 +51,7 @@ def metric_convolution_flagging(metric, starting_flags, ok_range, sigma=30, max_
     Arguments:
         metric: 1D numpy array of floats containing the per-file metric values used for flagging.
         starting_flags: 1D numpy array of booleans of initial flags
-        ok_range: length-2 tuple of metric range outside of which flags are flags are considered bad
+        ok_range: length-2 tuple of convolved metric range outside of which flags are considered bad
         sigma: standard deviation of metric Gaussian smoothing scale (in units of integrations)
         max_flag_gap: integer maximum allowed sequential flags (default 30)
     Returns:
