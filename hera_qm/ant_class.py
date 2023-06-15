@@ -480,3 +480,79 @@ def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
     
     # run and return classifier
     return antenna_bounds_checker(most_zeros, good=good, suspect=suspect, bad=(0, np.inf))
+
+
+def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=None, antenna_class=None,
+                                          xengine_chans=96, bad_xengine_zcut=10):
+    '''Classifies ant-pols as good or bad based on whether an an x-engine shows excess power
+    in the diffs beyond what is expected from thermal noise. This is useful for detecting
+    anomolous data in either the evens or the odds, like stale packets. The failure is attributed
+    the the antennas that participate in the most such anomolous diffs. 
+    
+     Arguments:
+        sum_data: DataContainer containing full visibility data set (only autos are used)
+        diff_data: DataContainer containing time-interleaved difference visibility data
+        flag_waterfall: boolean numpy array (nTimes, nChans) of integrations and channels to
+            ignore when calculating per-x-engine statistics. Default None means use the whole waterfall.
+        antenna_class: Optional AntennaClassification object. If provided, ant-pols marked "bad" will be
+            excluded from the calculated statistics and will not be classified here.
+        xengine_chans: Number of channels in a given x-engine. Must evenly divide the second dimension
+            of the data waterfalls. 
+        bad_xengine_zcut: Cut in number of sigmas beyond which a given x-engine is considered "bad".
+                
+     Returns:
+         AntennaClassification with "good" and "bad" ant-pols, where "bad" has at least one bad x-engine
+     '''
+    from hera_cal.utils import split_bl
+    from hera_cal.noise import predict_noise_variance_from_autos
+    ants = sorted(set([ant for bl in sum_data for ant in split_bl(bl)]))
+    bad_xengines_per_ant = {ant: 0 for ant in ants}
+    bad_xengines_per_baseline = {}
+    
+    for bl in diff_data:
+        ant1, ant2 = utils.split_bl(bl)
+        if (ant1 == ant2):
+            continue
+        if antenna_class is not None:
+            if (ant1 in antenna_class.bad_ants) or (ant2 in antenna_class.bad_ants):
+                continue
+        
+        # compute per-channel z-score
+        predicted_std = (predict_noise_variance_from_autos(bl, sum_data))**.5
+        # The |diff| is Rayleigh-distributed with mean sigma * sqrt(pi/2) and variance sigma^2*(4-pi)/2
+        # In this case, sigma = predicted_std / sqrt(2)
+        predicted_mean_of_abs = predicted_std * np.sqrt(np.pi / 4)
+        predicted_std_of_abs = predicted_std * np.sqrt((4 - np.pi) / 4)
+        zscore = np.where(flag_waterfall, np.nan, (np.abs(diff_data[bl]) - predicted_mean_of_abs) / predicted_std_of_abs)
+    
+        # compute per-xengine z-score
+        reshaped_zscore = zscore.reshape(zscore.shape[0], -1, xengine_chans)
+        unflagged_chan_count = np.sum(np.isfinite(reshaped_zscore), axis=-1)
+        average_abs_zscore  = np.nanmean(np.abs(reshaped_zscore), axis=-1)
+        # If the z-score above is Gaussian with mean 0 and sigma=1 (which is an approximation), then this quantity is 
+        # half-normal distributed, which means that it has mean sqrt(2/pi) and variance (1-2/pi) / Nsamples
+        zscore_by_xengine = (average_abs_zscore - np.sqrt(2 / np.pi)) / np.sqrt((1 - 2/np.pi) / unflagged_chan_count)
+        bad_xengines_per_baseline[bl] = np.nansum(zscore_by_xengine > bad_xengine_zcut)
+        bad_xengines_per_ant[ant1] += bad_xengines_per_baseline[bl]
+        bad_xengines_per_ant[ant2] += bad_xengines_per_baseline[bl]
+       
+    # sort dictionary of antennas by number of even/odd visibility zeros it participates in
+    bad_xengines_per_ant = {k: v for k, v in sorted(bad_xengines_per_ant.items(), key=lambda item: item[1], reverse=True)}
+    
+    # Loop over antennas in order of bad_xengines_per_ant, calculating the maximum number of bad x-engines in a waterfall
+    # attributable to that antenna. After calculating this for each antenna, all baselines involving that antenna are
+    # removed from bad_xengines_per_baseline. In this way, a baseline's bad x-engines are only attributed to one antenna
+    most_bad_xengines = {}
+    bls_with_bad_xengines = set([bl for bl in bad_xengines_per_baseline if bad_xengines_per_baseline[bl] > 0])
+    
+    for ant in bad_xengines_per_ant:
+        remaining_bad_xengines = [bad_xengines_per_baseline[bl] for bl in bls_with_bad_xengines if ant in split_bl(bl)]
+        if len(remaining_bad_xengines) > 0:
+            # this antenna is involved in at least one baseline with this number of bad x-engines
+            most_bad_xengines[ant] = np.max(remaining_bad_xengines)
+            bls_with_bad_xengines = set([bl for bl in bls_with_bad_xengines if ant not in split_bl(bl)])
+        else:
+            most_bad_xengines[ant] = 0
+    
+    # run and return classifier
+    return antenna_bounds_checker(most_bad_xengines, good=(0, 0), bad=(1, np.inf))
