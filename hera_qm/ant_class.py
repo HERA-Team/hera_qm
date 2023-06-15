@@ -510,7 +510,7 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
     bad_xengines_per_baseline = {}
     
     for bl in diff_data:
-        ant1, ant2 = utils.split_bl(bl)
+        ant1, ant2 = split_bl(bl)
         if (ant1 == ant2):
             continue
         if antenna_class is not None:
