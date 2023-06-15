@@ -7,7 +7,9 @@ import pytest
 import numpy as np
 from hera_qm import ant_class
 from hera_cal import io
+from hera_cal.datacontainer import DataContainer
 from hera_qm.data import DATA_PATH
+import copy
 
 
 def test_check_antpol():
@@ -274,3 +276,37 @@ def test_even_odd_zeros_checker():
     assert zeros_class[1, 'Jee'] == 'good'
     assert zeros_class[2, 'Jee'] == 'good'
     assert zeros_class[3, 'Jee'] == 'bad'
+
+
+def test_non_noiselike_diff_by_xengine_checker():
+    np.random.seed(21)
+    sums = DataContainer({(ant1, ant2, 'ee'): (np.ones((2, 1536), dtype=complex) if ant1 != ant2 else np.ones((2, 1536)) * 100) 
+                          for ant1 in range(10) for ant2 in range(ant1, 10)})
+    diffs = DataContainer({})
+
+    sums.freqs = np.linspace(50e6, 225e6, 1536)
+    sums.times = np.array([2459866.32713241, 2459866.32724426])
+    sums.times_by_bl = {bl[0:2]: sums.times for bl in sums}
+
+    for bl in sums:
+        sigma = np.sqrt(sums[bl[0], bl[0], 'ee'] * sums[bl[1], bl[1], 'ee'] / np.median(np.diff(sums.freqs)) / (np.median(np.diff(sums.times)) * 24 * 3600))
+        if bl[0] != bl[1]:
+            sums[bl] += sigma / 2**.5 * np.random.randn(2, 1536) + 1.0j * sigma / 2**.5 * np.random.randn(2, 1536)
+            diffs[bl] = sigma / 2**.5 * np.random.randn(2, 1536) + 1.0j * sigma / 2**.5 * np.random.randn(2, 1536)
+            if (3 in bl) or (7 in bl) or (8 in bl):
+                diffs[bl][:, 96:192] = sums[bl][:, 96:192]
+                
+        else:
+            diffs[bl] = np.zeros_like(sums[bl])
+        
+    ac = ant_class.non_noiselike_diff_by_xengine_checker(sums, diffs)
+    for ant in [0, 1, 2, 4, 5, 6, 9]:
+        assert ac[(ant, 'Jee')] == 'good'
+    for ant in [3, 7, 8]:
+        assert ac[(ant, 'Jee')] == 'bad'
+        
+    ac = ant_class.non_noiselike_diff_by_xengine_checker(sums, diffs, antenna_class=ant_class.AntennaClassification(bad=[(3, 'Jee')]))
+    for ant in [0, 1, 2, 4, 5, 6, 9]:
+        assert ac[(ant, 'Jee')] == 'good'
+    for ant in [7, 8]:
+        assert ac[(ant, 'Jee')] == 'bad'
