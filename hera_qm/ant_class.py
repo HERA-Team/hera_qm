@@ -506,7 +506,7 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
     from hera_cal.utils import split_bl
     from hera_cal.noise import predict_noise_variance_from_autos
     ants = sorted(set([ant for bl in sum_data for ant in split_bl(bl)]))
-    bad_xengines_per_ant = {ant: 0 for ant in ants}
+    bad_xengines_per_ant = {ant: 0 for ant in ants if (antenna_class is None or ant not in antenna_class.bad_ants)}
     bad_xengines_per_baseline = {}
     
     for bl in diff_data:
