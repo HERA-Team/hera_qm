@@ -5,3 +5,4 @@ PULL ANTPOLS:/home/obs/src/RTP/scripts/hera/pull_antpols_simple.py -p xx -a 9,10
   Downselected to specific frequencies using pyuvdata.
   Read/written with pyuvdata version: 1.1.  Git origin: git@github.com:HERA-Team/pyuvdata.git.  Git hash: f0ce5e984235ad274ece7b55032b679864f799f0.  Git branch: master.  Git description: v1.1-507-gf0ce5e9.
   Read/written with pyuvdata version: 1.2.1.  Git origin: git@github.com:HERA-Team/pyuvdata.git.  Git hash: 5b7e3ccb875e34ccb4e16f7bf0d5594033fcf536.  Git branch: master.  Git description: v1.2-490-g5b7e3cc.
+  Read/written with pyuvdata version: 2.4.1.dev0+g11b8ea5d.dirty.
