@@ -162,8 +162,7 @@ def uvflag_flag_waterfall_miriad(uvflag_flag_waterfall_miriad_main):
 
 @pytest.fixture(scope="session")
 def uvcal_calfits_main():
-    uvc = UVCal()
-    uvc.read_calfits(test_c_file, use_future_array_shapes=True)
+    uvc = UVCal.from_file(test_c_file, use_future_array_shapes=True)
     yield uvc
 
     # clean up when done
@@ -2117,8 +2116,7 @@ def test_day_threshold_run(tmpdir):
     uvd.write_uvh5(data_files[1])
     model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
     uvd.write_uvh5(model_file)
-    uvc = UVCal()
-    uvc.read_calfits(ocal_file, use_future_array_shapes=True)
+    uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
@@ -2196,8 +2194,7 @@ def test_day_threshold_run_yaml(tmpdir):
     uvd.write_uvh5(data_files[1])
     model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
     uvd.write_uvh5(model_file)
-    uvc = UVCal()
-    uvc.read_calfits(ocal_file, use_future_array_shapes=True)
+    uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
@@ -2258,8 +2255,7 @@ def test_day_threshold_run_data_only(tmpdir):
     uvd.write_uvh5(data_files[1])
     model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
     uvd.write_uvh5(model_file)
-    uvc = UVCal()
-    uvc.read_calfits(ocal_file, use_future_array_shapes=True)
+    uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
@@ -2283,12 +2279,8 @@ def test_day_threshold_run_data_only(tmpdir):
 def test_day_threshold_run_cal_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
-    metadata_messages = [
-        "telescope_location is not set. Using known values for HERA.",
-        "antenna_positions is not set. Using known values for HERA."
-    ]
     mess1 = ['This object is already a waterfall']
-    messages = metadata_messages + 2 * mess1 + metadata_messages + 6 * mess1  + metadata_messages
+    messages = 8 * mess1
     # Spoof the files - run xrfi_run twice on spoofed files.
     tmp_path = tmpdir.strpath
     fake_obses = ['zen.2457698.40355.HH', 'zen.2457698.41101.HH']
@@ -2325,8 +2317,7 @@ def test_day_threshold_run_cal_only(tmpdir):
     uvd.write_uvh5(data_files[1])
     model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
     uvd.write_uvh5(model_file)
-    uvc = UVCal()
-    uvc.read_calfits(ocal_file, use_future_array_shapes=True)
+    uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
@@ -2390,8 +2381,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     uvd.write_uvh5(data_files[1])
     model_file = os.path.join(tmp_path, fake_obses[1] + '.omni_vis.uvh5')
     uvd.write_uvh5(model_file)
-    uvc = UVCal()
-    uvc.read_calfits(ocal_file, use_future_array_shapes=True)
+    uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
