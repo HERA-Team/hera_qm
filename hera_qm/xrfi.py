@@ -19,7 +19,7 @@ import glob
 import re
 import copy
 from hera_filters import dspec
-from scipy.ndimage.filters import convolve
+from scipy.ndimage import convolve
 from copy import deepcopy
 
 if hasattr(UVCal(), "read"):
