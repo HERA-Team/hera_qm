@@ -12,7 +12,6 @@ dependencies:
   - pytest
   - pytest-cov
   - pyyaml
-  - hera-filters
   - pip:
     - hera-calibration
     - uvtools
