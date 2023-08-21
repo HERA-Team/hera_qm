@@ -3,17 +3,17 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - astropy>=5.0.4
-  - astropy-healpix
-  - h5py>=3.8
-  - matplotlib
   - numpy>=1.23
   - pip
+  - astropy>=5.0.4
+  - h5py>=3.9
+  - pyuvdata>=2.3
+  - scipy
   - pytest
   - pytest-cov
-  - pyuvdata>=2.3
-  - scikit-learn # from hera_cal
-  - scipy
+  - pyyaml
+  - hera-filters
   - pip:
     - hera-calibration
     - uvtools
+    - hera-filters

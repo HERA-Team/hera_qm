@@ -6,14 +6,14 @@ dependencies:
   - numpy>=1.23
   - pip
   - astropy>=5.0.4
-  - h5py>=3.1
+  - h5py>=3.9
   - pyuvdata>=2.3
   - scipy
   - pytest
-  - scikit-learn # from hera_cal
   - pytest-cov
   - pyyaml
   - hera-filters
   - pip:
-    - git+https://github.com/HERA-Team/uvtools
-    - git+https://github.com/HERA-Team/hera_cal
+    - hera-calibration
+    - uvtools
+    - hera-filters
