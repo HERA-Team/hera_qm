@@ -229,8 +229,6 @@ def test_auto_rfi_checker():
     auto_slope_class = ant_class.auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=20)  # smaller edge cut due to downsampling
     auto_class = auto_power_class + auto_slope_class
 
-    print(auto_class)
-
     # Modify metadata to compensate for down-selection
     data.times /= 5
 
