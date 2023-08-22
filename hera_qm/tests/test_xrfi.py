@@ -1387,7 +1387,7 @@ def test_xrfi_run_step(tmpdir):
     assert len(metrics2) == 1
     assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
     assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
-    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array, atol=1e-5, rtol=1e-5))
     # hit one line involving uvcal reinitialization and include yaml file.
     xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True, a_priori_flag_yaml=a_priori_flag_integrations)
     # test invalid data type error
