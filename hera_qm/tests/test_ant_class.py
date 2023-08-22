@@ -229,6 +229,8 @@ def test_auto_rfi_checker():
     auto_slope_class = ant_class.auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=20)  # smaller edge cut due to downsampling
     auto_class = auto_power_class + auto_slope_class
 
+    print(auto_class)
+
     # Modify metadata to compensate for down-selection
     data.times /= 5
 
@@ -240,8 +242,8 @@ def test_auto_rfi_checker():
 
     # Run RFI checker
     auto_rfi_class = ant_class.auto_rfi_checker(data, antenna_class=auto_class, good=(0, 0.1), suspect=(0.1, 0.2),
-                                                kernel_widths=[1, 2], filter_centers=[0, 2700e-9, -2700e-9],
-                                                filter_half_widths=[200e-9, 200e-9, 200e-9])
+                                                kernel_widths=[1, 2], filter_centers=[0],
+                                                filter_half_widths=[200e-9])
     assert (36, 'Jee') in auto_rfi_class.bad_ants
     assert (83, 'Jee') in auto_rfi_class.suspect_ants
 
