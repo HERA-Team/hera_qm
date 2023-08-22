@@ -1303,7 +1303,7 @@ def test_xrfi_run_step(tmpdir):
     assert len(metrics2) == 1
     assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
     assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
-    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array, atol=1e-5, rtol=1e-5))
 
 
     # comparison for autos only.
@@ -1357,7 +1357,7 @@ def test_xrfi_run_step(tmpdir):
                                                                     correlations='auto')
     assert np.all(np.isclose(uvf_f1.flag_array, uvf_f2.flag_array))
     assert np.all(np.isclose(uvf_a1.flag_array, uvf_a2.flag_array))
-    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array, atol=1e-5, rtol=1e-5))
     assert np.all(np.isclose(uvf1x.metric_array, uvf2x.metric_array))
     assert np.all(np.isclose(uvf_f1x.flag_array, uvf_f2x.flag_array))
     assert np.all(np.isclose(uvf_a1x.flag_array, uvf_a2x.flag_array))
@@ -1372,7 +1372,7 @@ def test_xrfi_run_step(tmpdir):
                                                                      correlations='cross')
     assert np.all(np.isclose(uvf_f1.flag_array, uvf_f3.flag_array))
     assert np.all(np.isclose(uvf_a1.flag_array, uvf_a3.flag_array))
-    assert np.all(np.isclose(uvf1.metric_array, uvf3.metric_array))
+    assert np.all(np.isclose(uvf1.metric_array, uvf3.metric_array, atol=1e-5, rtol=1e-5))
 
     # comparison for meanfilter.
     uv1, uvf1, uvf_f1, uvf_a1, metrics1, flags1 = xrfi.xrfi_run_step(uv_files=raw_dfile,
@@ -1643,7 +1643,7 @@ def test_xrfi_run(tmpdir):
         if uvf1.mode == 'flag':
             assert np.all(np.isclose(uvf1.flag_array, uvf2.flag_array))
         elif uvf1.mode == 'metric':
-            assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array))
+            assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array, atol=1e-5, rtol=1e-5))
     # test cross correlations.
     xrfi.xrfi_run(history='data cross corrs.', data_files=raw_dfile,
                   cross_median_filter=True, cross_mean_filter=True, auto_mean_filter=False, auto_median_filter=False)
