@@ -107,7 +107,12 @@ def calc_corr_stats(data_sum, data_diff=None):
 
         # reduce to a scalar statistic, normalized to reduce the impact of RFI by equally weighting channels
         product = even * np.conj(odd)
-        corr_stats[bl] = np.abs(np.nanmean(np.where(product == 0, np.nan, product / np.abs(product))))
+        where_nonzero = (product != 0)
+        if np.any(where_nonzero):
+            ratio = product / np.abs(product)
+            corr_stats[bl] = np.abs(np.mean(ratio[where_nonzero]))
+        else:
+            corr_stats[bl] = np.nan
 
     return corr_stats
 
