@@ -1641,9 +1641,9 @@ def test_xrfi_run(tmpdir):
     # compare
     for uvf1, uvf2 in zip(uvf_list1, uvf_list2):
         if uvf1.mode == 'flag':
-            assert np.all(np.isclose(uvf1.flag_array, uvf2.flag_array))
+            np.testing.assert_allclose(uvf1.flag_array, uvf2.flag_array)
         elif uvf1.mode == 'metric':
-            assert np.all(np.isclose(uvf1.metric_array, uvf2.metric_array, atol=1e-5, rtol=1e-5))
+            np.testing.assert_allclose(uvf1.metric_array, uvf2.metric_array, atol=1e-5, rtol=1e-5)
     # test cross correlations.
     xrfi.xrfi_run(history='data cross corrs.', data_files=raw_dfile,
                   cross_median_filter=True, cross_mean_filter=True, auto_mean_filter=False, auto_median_filter=False)
