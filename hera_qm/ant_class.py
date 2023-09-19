@@ -483,7 +483,7 @@ def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
 
 
 def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=None, antenna_class=None,
-                                          xengine_chans=96, bad_xengine_zcut=10):
+                                          xengine_chans=96, bad_xengine_zcut=10, assume_same_dt=False):
     '''Classifies ant-pols as good or bad based on whether an an x-engine shows excess power
     in the diffs beyond what is expected from thermal noise. This is useful for detecting
     anomolous data in either the evens or the odds, like stale packets. The failure is attributed
@@ -499,15 +499,29 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
         xengine_chans: Number of channels in a given x-engine. Must evenly divide the second dimension
             of the data waterfalls. 
         bad_xengine_zcut: Cut in number of sigmas beyond which a given x-engine is considered "bad".
+        assume_same_dt: Boolean parameter that determines whether or not all baselines within sum_data
+            have the same integration time. If True, argument can provide a mild speed-up. Default is False.
                 
      Returns:
          AntennaClassification with "good" and "bad" ant-pols, where "bad" has at least one bad x-engine
      '''
+    from astropy import units
     from hera_cal.utils import split_bl
-    from hera_cal.noise import predict_noise_variance_from_autos
+    from hera_cal.noise import predict_noise_variance_from_autos, infer_dt
     ants = sorted(set([ant for bl in sum_data for ant in split_bl(bl)]))
     bad_xengines_per_ant = {ant: 0 for ant in ants if (antenna_class is None or ant not in antenna_class.bad_ants)}
     bad_xengines_per_baseline = {}
+
+    # Get integration time
+    if assume_same_dt:
+        bl = list(sum_data.times_by_bl.keys())[0]
+        dt = infer_dt(sum_data.times_by_bl, bl) * units.si.day.in_units(units.si.s)
+    else:
+        dt = None
+    
+    # Get channel width
+    assert(len(sum_data.freqs) > 1)
+    df = np.median(np.ediff1d(sum_data.freqs))
     
     for bl in diff_data:
         ant1, ant2 = split_bl(bl)
@@ -518,7 +532,7 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
                 continue
         
         # compute per-channel z-score
-        predicted_std = (predict_noise_variance_from_autos(bl, sum_data))**.5
+        predicted_std = (predict_noise_variance_from_autos(bl, sum_data, df=df, dt=dt))**.5
         # The |diff| is Rayleigh-distributed with mean sigma * sqrt(pi/2) and variance sigma^2*(4-pi)/2
         # In this case, sigma = predicted_std / sqrt(2)
         predicted_mean_of_abs = predicted_std * np.sqrt(np.pi / 4)
