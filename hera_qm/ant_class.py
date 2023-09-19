@@ -483,7 +483,7 @@ def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
 
 
 def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=None, antenna_class=None,
-                                          xengine_chans=96, bad_xengine_zcut=10):
+                                          xengine_chans=96, bad_xengine_zcut=10, assume_same_dt=False):
     '''Classifies ant-pols as good or bad based on whether an an x-engine shows excess power
     in the diffs beyond what is expected from thermal noise. This is useful for detecting
     anomolous data in either the evens or the odds, like stale packets. The failure is attributed
@@ -499,7 +499,9 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
         xengine_chans: Number of channels in a given x-engine. Must evenly divide the second dimension
             of the data waterfalls. 
         bad_xengine_zcut: Cut in number of sigmas beyond which a given x-engine is considered "bad".
-                
+        assume_same_dt: Boolean parameter that, if True, assumes that all baselines within sum_data
+            have the same integration time. Can provide a moderate speed-up of this function if True. 
+            Default is False.
      Returns:
          AntennaClassification with "good" and "bad" ant-pols, where "bad" has at least one bad x-engine
      '''
