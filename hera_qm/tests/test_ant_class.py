@@ -304,6 +304,13 @@ def test_non_noiselike_diff_by_xengine_checker():
         assert ac[(ant, 'Jee')] == 'good'
     for ant in [3, 7, 8]:
         assert ac[(ant, 'Jee')] == 'bad'
+
+    # Check that using assume_same_dt yields the same result
+    ac = ant_class.non_noiselike_diff_by_xengine_checker(sums, diffs, assume_same_dt=True)
+    for ant in [0, 1, 2, 4, 5, 6, 9]:
+        assert ac[(ant, 'Jee')] == 'good'
+    for ant in [3, 7, 8]:
+        assert ac[(ant, 'Jee')] == 'bad'
         
     ac = ant_class.non_noiselike_diff_by_xengine_checker(sums, diffs, antenna_class=ant_class.AntennaClassification(bad=[(3, 'Jee')]))
     for ant in [0, 1, 2, 4, 5, 6, 9]:
