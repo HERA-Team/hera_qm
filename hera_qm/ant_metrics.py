@@ -459,7 +459,7 @@ class AntennaMetrics():
         out_dict['cross_pol_cut'] = self.crossCut
         out_dict['dead_ant_cut'] = self.deadCut
         out_dict['datafile_list_sum'] = self.datafile_list_sum
-        out_dict['datafile_list_diff'] = self.datafile_list_diff
+        out_dict['datafile_list_diff'] = (self.datafile_list_diff if self.datafile_list_diff is not None else [""])
         out_dict['history'] = self.history
 
         metrics_io.write_metric_file(filename, out_dict, overwrite=overwrite)
