@@ -282,6 +282,7 @@ def test_iterative_antenna_metrics_and_flagging():
     assert am.final_metrics['corrXPol'][(87, 'Jnn')] == am.all_metrics[3]['corrXPol'][(87, 'Jnn')]
     assert am.final_metrics['corrXPol'][(87, 'Jee')] == am.all_metrics[3]['corrXPol'][(87, 'Jee')]
 
+@pytest.mark.filterwarnings("ignore:All-NaN slice encountered")
 def test_find_totally_dead_ants():
     files = {'sum_files': DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5',
              'diff_files': DATA_PATH + '/zen.2459122.49827.diff.downselected.uvh5'}

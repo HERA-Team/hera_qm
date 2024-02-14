@@ -14,16 +14,20 @@ import hera_qm.tests as qmtest
 from hera_qm import metrics_io
 import sys
 import pytest
+import warnings
 
 pytestmark = pytest.mark.filterwarnings(
-    "ignore:telescope_location is not set. Using known values for HERA.",
-    "ignore:antenna_positions is not set. Using known values for HERA."
+    "ignore:.*Using known values for HERA",
+    "ignore:.*Increasing the bound and calling fit again may find a better value",
+    "ignore:.*Decreasing the bound and calling fit again may find a better value",
+    
 )
 
 @pytest.fixture(scope='function')
 def firstcal_setup():
     infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
     FC = firstcal_metrics.FirstCalMetrics(infile)
+    
     out_dir = os.path.join(DATA_PATH, 'test_output')
 
     class DataHolder():
@@ -88,22 +92,26 @@ def test_write_load_metrics(firstcal_setup):
     if os.path.isfile(outfile):
         os.remove(outfile)
     # write json
-    firstcal_setup.FC.write_metrics(filename=outfile, filetype='json')
+    with pytest.warns(PendingDeprecationWarning, match="JSON-type files can still be written but are no longer written by default"):
+        firstcal_setup.FC.write_metrics(filename=outfile, filetype='json')
     assert os.path.isfile(outfile)
     # load json
-    firstcal_setup.FC.load_metrics(filename=outfile)
+    with pytest.warns(PendingDeprecationWarning, match="JSON-type files can still be read but are no longer written by default"):
+        firstcal_setup.FC.load_metrics(filename=outfile)
     assert len(firstcal_setup.FC.metrics.keys()) == num_keys
     # erase
     os.remove(outfile)
+
     # write pickle
     outfile = os.path.join(firstcal_setup.out_dir, 'firstcal_metrics.pkl')
     if os.path.isfile(outfile):
         os.remove(outfile)
-
-    firstcal_setup.FC.write_metrics(filename=outfile, filetype='pkl')
+    with pytest.warns(PendingDeprecationWarning, match="Pickle-type files can still be written but are no longer written by default"):
+        firstcal_setup.FC.write_metrics(filename=outfile, filetype='pkl')
     assert os.path.isfile(outfile)
     # load pickle
-    firstcal_setup.FC.load_metrics(filename=outfile)
+    with pytest.warns(PendingDeprecationWarning, match="Pickle-type files can still be read but are no longer written by default"):
+        firstcal_setup.FC.load_metrics(filename=outfile)
     assert len(firstcal_setup.FC.metrics.keys()) == num_keys
     os.remove(outfile)
 
@@ -124,12 +132,14 @@ def test_write_load_metrics(firstcal_setup):
     outfile = os.path.join(firstcal_setup.out_dir, 'firstcal_metrics.txt')
     pytest.raises(IOError, firstcal_setup.FC.load_metrics, filename=outfile)
     outfile = firstcal_setup.FC.fc_filestem + '.first_metrics.json'
-    firstcal_setup.FC.write_metrics(filetype='json')  # No filename
+    with pytest.warns(PendingDeprecationWarning, match="JSON-type files can still be written but are no longer written by default"):
+        firstcal_setup.FC.write_metrics(filetype='json')  # No filename
     assert os.path.isfile(outfile)
     os.remove(outfile)
 
     outfile = firstcal_setup.FC.fc_filestem + '.first_metrics.pkl'
-    firstcal_setup.FC.write_metrics(filetype='pkl')  # No filename
+    with pytest.warns(PendingDeprecationWarning, match="Pickle-type files can still be written but are no longer written by default"):
+        firstcal_setup.FC.write_metrics(filetype='pkl')  # No filename
     assert os.path.isfile(outfile)
     os.remove(outfile)
 
@@ -256,11 +266,17 @@ def firstcal_twopol():
     del(firstcal_twopol)
 
 
+@pytest.mark.filterwarnings("ignore:All-NaN slice encountered")
+@pytest.mark.filterwarnings("ignore:Mean of empty slice")
+@pytest.mark.filterwarnings("ignore:invalid value encountered in scalar divide")
 def test_init_two_pol(firstcal_twopol):
     assert firstcal_twopol.FC.Nants == 11
     assert len(firstcal_twopol.FC.delays) == 11
 
 
+@pytest.mark.filterwarnings("ignore:All-NaN slice encountered")
+@pytest.mark.filterwarnings("ignore:Mean of empty slice")
+@pytest.mark.filterwarnings("ignore:invalid value encountered in scalar divide")
 def test_run_metrics_two_pols(firstcal_twopol):
     # These results were run with a seed of 0, the seed shouldn't matter
     # but you never know.

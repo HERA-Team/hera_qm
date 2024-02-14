@@ -12,8 +12,7 @@ import pytest
 import numpy as np
 
 pytestmark = pytest.mark.filterwarnings(
-    "ignore:telescope_location is not set. Using known values for HERA.",
-    "ignore:antenna_positions is not set. Using known values for HERA."
+    "ignore:.*Using known values for HERA",
 )
 
 @pytest.fixture(scope='function')

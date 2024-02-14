@@ -20,8 +20,8 @@ pytestmark = pytest.mark.filterwarnings(
 def vismetrics_data():
     data = UVData()
     filename = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-    data.read_miriad(filename)
-    data.use_future_array_shapes()
+    data.read_miriad(filename, use_future_array_shapes=True, check_autos=False)
+
     # massage the object to make it work with check_noise_variance
     data.select(antenna_nums=data.get_ants()[0:10])
     data.select(freq_chans=range(100))
@@ -74,12 +74,17 @@ def test_check_noise_variance_inttime_error(vismetrics_data):
     pytest.raises(NotImplementedError,
                   vis_metrics.check_noise_variance, vismetrics_data.data)
 
-
-def test_vis_bl_cov():
+@pytest.fixture(scope='function')
+def uvd():
     uvd = UVData()
-    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
-    uvd.use_future_array_shapes()
+    uvd.read_miriad(
+        os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'), 
+        projected=False, use_future_array_shapes=True,
+        check_autos=False
+    )
+    return uvd
 
+def test_vis_bl_cov(uvd):
     # test basic execution
     bls = [(0, 1), (11, 12), (12, 13), (13, 14), (23, 24), (24, 25)]
     cov = vis_metrics.vis_bl_bl_cov(uvd, uvd, bls)
@@ -99,11 +104,8 @@ def test_vis_bl_cov():
     assert np.isclose(corr[1, 0, 0, 0], (0.4204243425812837 - 0.3582194575457562j))
 
 
-def test_plot_bl_cov():
+def test_plot_bl_cov(uvd):
     plt = pytest.importorskip("matplotlib.pyplot")
-    uvd = UVData()
-    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
-    uvd.use_future_array_shapes()
 
     # basic execution
     fig, ax = plt.subplots()
@@ -117,11 +119,8 @@ def test_plot_bl_cov():
     plt.close('all')
 
 
-def test_plot_bl_bl_scatter():
+def test_plot_bl_bl_scatter(uvd):
     plt = pytest.importorskip("matplotlib.pyplot")
-    uvd = UVData()
-    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'))
-    uvd.use_future_array_shapes()
 
     # basic execution
     bls = uvd.get_antpairs()[:3]  # should use redundant bls, but this is just a test...
@@ -152,8 +151,7 @@ def test_plot_bl_bl_scatter():
 
 def test_sequential_diff():
     uvd = UVData()
-    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'))
-    uvd.use_future_array_shapes()
+    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'), use_future_array_shapes=True)
 
     # diff across time
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=0, pad=False)

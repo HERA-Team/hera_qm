@@ -220,6 +220,7 @@ def test_auto_shape_checker():
         assert ant in auto_shape_class.bad_ants
 
 
+@pytest.mark.filterwarnings("ignore::numpy.exceptions.ComplexWarning")
 def test_auto_rfi_checker():
     hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
     data, _, _ = hd.read(read_flags=False, read_nsamples=False)

@@ -43,8 +43,7 @@ for cnum, cf, uvf in zip(range(3), test_c_files, test_uvh5_files):
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
-    "ignore:telescope_location is not set. Using known values for HERA.",
-    "ignore:antenna_positions is not set. Using known values for HERA.",
+    "ignore:.*Using known values for HERA",
 )
 
 
@@ -1261,6 +1260,7 @@ def test_xrfi_h1c_idr2_2_pipe(uvcal_calfits):
     assert len(uvf_m.polarization_array) == 1
     assert uvf_m.weights_array.max() == 1.
 
+@pytest.mark.filterwarnings("ignore:K1 value 8 is larger than the data of dimension 3")
 def test_xrfi_run_step(tmpdir):
     # setup files in tmpdir.
     tmp_path = tmpdir.strpath
@@ -2068,6 +2068,7 @@ def test_day_threshold_run(tmpdir):
     uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
+    uvc.set_lsts_from_time_array()
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
@@ -2138,6 +2139,7 @@ def test_day_threshold_run_yaml(tmpdir):
     uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
+    uvc.set_lsts_from_time_array()
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
@@ -2159,7 +2161,7 @@ def test_day_threshold_run_yaml(tmpdir):
         calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
         assert os.path.exists(calfile)
 
-
+@pytest.mark.filterwarnings("ignore:All-NaN slice encountered")
 def test_day_threshold_run_data_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2193,6 +2195,7 @@ def test_day_threshold_run_data_only(tmpdir):
     uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
+    uvc.set_lsts_from_time_array()
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
@@ -2255,6 +2258,7 @@ def test_day_threshold_run_cal_only(tmpdir):
     uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
+    uvc.set_lsts_from_time_array()
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
@@ -2319,6 +2323,7 @@ def test_day_threshold_run_omnivis_only(tmpdir):
     uvc = UVCal.from_file(ocal_file, use_future_array_shapes=True)
     dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
     uvc.time_array += dt
+    uvc.set_lsts_from_time_array()
     ocal_file = os.path.join(tmp_path, fake_obses[1] + '.omni.calfits')
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
@@ -2370,7 +2375,7 @@ def test_xrfi_h1c_run_filename_not_string(uvdata_miriad):
     with pytest.raises(ValueError, match="filename must be string path to file."):
         xrfi.xrfi_h1c_run(uvd, history='Just a test.', filename=5)
 
-
+@pytest.mark.filterwarnings("ignore:Fixing auto-correlations to be be real-only")
 def test_xrfi_h1c_run_uvfits_no_xrfi_path():
     # test uvfits file and no xrfi path
     basename = utils.strip_extension(test_uvfits_file)
@@ -2394,7 +2399,7 @@ def test_xrfi_h1c_run_uvfits_no_xrfi_path():
     os.remove(g_temp)
     os.remove(x_temp)
 
-
+@pytest.mark.filterwarnings("ignore:Fixing auto-correlations to be be real-only")
 def test_xrfi_h1c_run_uvfits_xrfi_path():
     # test uvfits file with xrfi path
     basename = utils.strip_extension(os.path.basename(test_uvfits_file))
@@ -2420,7 +2425,7 @@ def test_xrfi_h1c_run_miriad_model(uvdata_miriad):
                       model_file_format='miriad', xrfi_path=xrfi_path, kt_size=3)
     assert os.path.exists(outtest)
 
-
+@pytest.mark.filterwarnings("ignore:Fixing auto-correlations to be be real-only")
 def test_xrfi_h1c_run_uvfits_model(uvdata_miriad):
     # uvfits model file test
     uvd = uvdata_miriad
@@ -2435,6 +2440,7 @@ def test_xrfi_h1c_run_uvfits_model(uvdata_miriad):
     assert os.path.exists(outtest)
 
 
+@pytest.mark.filterwarnings("ignore:Fixing auto-correlations to be be real-only")
 def test_xrfi_h1c_run_incorrect_model(uvdata_miriad):
     # incorrect model
     uvd = uvdata_miriad
@@ -2668,6 +2674,7 @@ def test_xrfi_h3c_idr2_1_run(tmp_path, uvcal_calfits):
         uvc = uvcal_calfits
         dt = (uvc.time_array.max() - uvc.time_array.min()) + uvc.integration_time.mean() / (24. * 3600.)
         uvc.time_array += obsi * dt
+        uvc.set_lsts_from_time_array()
         uvc.write_calfits(ocalfits_files[obsi])
         uvc.write_calfits(acalfits_files[obsi])
 

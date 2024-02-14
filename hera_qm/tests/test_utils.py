@@ -171,6 +171,7 @@ def test_get_metrics_ArgumentParser_xrfi_h3c_idr2_1_run():
     assert len(args.ocalfits_files) == 2
 
 
+@pytest.mark.filterwarnings("ignore:JSON-type files can still be read but are no longer written by default")
 def test_metrics2mc():
     # test ant metrics
     filename = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
