@@ -11,6 +11,7 @@ from hera_qm import auto_metrics
 from hera_qm import metrics_io
 from hera_qm.data import DATA_PATH
 import hera_qm.tests as qmtest
+import warnings
 
 
 def test_nanmad():
@@ -101,7 +102,10 @@ def test_get_auto_spectra():
 
     # test with totally flagged channel
     flags[:, 1] = True
-    spectra = auto_metrics.get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanmean, scalar_norm=False)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Mean of empty slice")
+        spectra = auto_metrics.get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanmean, scalar_norm=False)
+    
     np.testing.assert_array_equal(spectra[0, 0, 'ee'], 10 * np.array([1., np.nan, 1., 1., 1.]))
     np.testing.assert_array_equal(spectra[1, 1, 'ee'], 10 * np.array([1., np.nan, 1., 1., 1.]))
 
@@ -215,7 +219,10 @@ def test_auto_metrics_run():
     # run main function on downselected H4C data, then read results
     auto_files = glob.glob(os.path.join(DATA_PATH, 'zen.2459122.*.sum.autos.downselected.uvh5'))
     metrics_outfile = os.path.join(DATA_PATH, 'unittest_auto_metrics.h5')
-    ex_ants, modzs, spectra, flags = auto_metrics.auto_metrics_run(metrics_outfile, auto_files,
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="All-NaN slice encountered")
+        warnings.filterwarnings("ignore", message="K1 value 8 is larger than the data of dimension 4; using the size of the data for the kernel size")
+        ex_ants, modzs, spectra, flags = auto_metrics.auto_metrics_run(metrics_outfile, auto_files,
                                                                    median_round_modz_cut=75., mean_round_modz_cut=5.,
                                                                    edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, 
                                                                    chan_thresh_frac=.05, history='unittest', overwrite=True)

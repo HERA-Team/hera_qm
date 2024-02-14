@@ -1,0 +1,49 @@
+name: Run Warnings Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  warnings:
+    name: Warnings Tests
+    env:
+      ENV_NAME: hera_qm_tests
+      PYTHON: ${{ matrix.python-version }}
+      OS: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11"]
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@main
+      with:
+        fetch-depth: 1
+
+    - name: Get Miniconda (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O $HOME/miniconda.sh;
+        bash $HOME/miniconda.sh -b -p $HOME/miniconda
+
+    - name: Setup Environment
+      run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
+        ./ci/install_conda.sh
+
+    - name: Install
+      run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
+        source activate ${ENV_NAME}
+        pip install .
+
+    - name: Run Tests
+      run: |
+        export PATH="$HOME/miniconda/bin:$PATH"
+        source activate $ENV_NAME
+        pytest -W error

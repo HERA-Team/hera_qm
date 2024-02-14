@@ -764,16 +764,21 @@ def modzscore_1d(data, flags=None, kern=8, detrend=True):
         footprint[kern] = 0
         data = np.concatenate([data[kern - 1::-1], data, data[:-kern - 1:-1]])
         # detrend in 1D. Do real/imag regardless of whether data are complex because it's cheap.
-        d_sm_r = median_filter(data.real, footprint=footprint)
-        d_sm_i = median_filter(data.imag, footprint=footprint)
-        d_sm = d_sm_r + 1j * d_sm_i
+        d_sm = median_filter(data.real, footprint=footprint)
+
+        if np.iscomplexobj(data):
+            d_sm_i = median_filter(data.imag, footprint=footprint)
+            d_sm = d_sm + 1j * d_sm_i
         d_rs = data - d_sm
         d_sq = np.abs(d_rs)**2
         # Factor of .456 is to put mod-z scores on same scale as standard deviation.
         sig = np.sqrt(median_filter(d_sq, footprint=footprint) / .456)
         zscore = robust_divide(d_rs, sig)[kern:-kern]
     else:
-        d_rs = data - np.nanmedian(data.real) - 1j * np.nanmedian(data.imag)
+        if np.iscomplexobj(data):
+            d_rs = data - np.nanmedian(data.real) - 1j * np.nanmedian(data.imag)
+        else:
+            d_rs = data - np.nanmedian(data)
         d_sq = np.abs(d_rs)**2
         # Factor of .456 is to put mod-z scores on same scale as standard deviation.
         sig = np.sqrt(np.nanmedian(d_sq) / .456)

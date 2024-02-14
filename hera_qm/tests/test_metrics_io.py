@@ -15,7 +15,7 @@ import hera_qm.tests as qmtest
 from hera_qm import __version__
 
 
-class dummy_class(object):
+class dummy_class:
     """A dummy class to break h5py object types."""
 
     def __init__(self):
@@ -464,6 +464,7 @@ def test_process_ex_ants_bad_string():
 
 
 @pytest.mark.parametrize('extension', ['hdf5', 'json'])
+@pytest.mark.filterwarnings("ignore:JSON-type files can still be read but are no longer written by default.")
 def test_process_ex_ants_string_and_file(extension):
     ex_ants = '0,1'
     met_file = os.path.join(DATA_PATH, f'example_ant_metrics.{extension}')

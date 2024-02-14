@@ -6,7 +6,8 @@
 import pytest
 from astropy.utils import iers
 from astropy.time import Time
-
+import warnings
+import numpy as np
 
 @pytest.fixture(autouse=True, scope="session")
 def setup_and_teardown_package():
@@ -23,6 +24,9 @@ def setup_and_teardown_package():
     except (Exception):
         iers.conf.auto_max_age = None
 
-    yield
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=np.exceptions.ComplexWarning)
+
+        yield
 
     iers.conf.auto_max_age = 30

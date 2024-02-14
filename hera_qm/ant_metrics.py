@@ -109,7 +109,8 @@ def calc_corr_stats(data_sum, data_diff=None):
         product = even * np.conj(odd)
         where_nonzero = (product != 0)
         if np.any(where_nonzero):
-            ratio = product / np.abs(product)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                ratio = product / np.abs(product)
             corr_stats[bl] = np.abs(np.mean(ratio[where_nonzero]))
         else:
             corr_stats[bl] = np.nan
