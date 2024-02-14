@@ -15,6 +15,8 @@ import numpy as np
 from pyuvdata import UVData
 from pyuvdata import UVCal
 import pyuvdata.utils as uvutils
+import warnings
+from pathlib import Path
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
@@ -414,8 +416,14 @@ def test_apply_yaml_flags_errors():
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
 
     # check warning for negative integrations
-    for warn_yaml in ['a_priori_flags_maximum_channels.yaml', 'a_priori_flags_maximum_integrations.yaml',
-                      'a_priori_flags_negative_channels.yaml', 'a_priori_flags_negative_integrations.yaml']:
-        yaml_path = os.path.join(DATA_PATH, warn_yaml)
-        with pytest.warns(None) as record:
-            utils.apply_yaml_flags(uvc, yaml_path, unflag_first=True)
+    with pytest.warns(UserWarning, match='Flagged channels were provided that exceed the maximum channel index'):
+        utils.apply_yaml_flags(uvc, Path(DATA_PATH) / "a_priori_flags_maximum_channels.yaml", unflag_first=True)
+
+    with pytest.warns(UserWarning, match='Flagged channels were provided with a negative channel index'):
+        utils.apply_yaml_flags(uvc, Path(DATA_PATH) / "a_priori_flags_negative_channels.yaml", unflag_first=True)
+
+    with pytest.warns(UserWarning, match='Flagged integrations were provided that exceed the maximum integration index'):
+        utils.apply_yaml_flags(uvc, Path(DATA_PATH) / "a_priori_flags_maximum_integrations.yaml", unflag_first=True)
+
+    with pytest.warns(UserWarning, match='Flagged integrations were provided with a negative integration index'):
+        utils.apply_yaml_flags(uvc, Path(DATA_PATH) / "a_priori_flags_negative_integrations.yaml", unflag_first=True)

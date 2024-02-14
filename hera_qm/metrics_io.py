@@ -1009,7 +1009,8 @@ def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
         Numpy array of integer a priori channel index flags.
     '''
     apcf = []
-    apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
+    with open(a_priori_flags_yaml, 'r') as fl:
+        apf = yaml.safe_load(fl)
 
     # Load channel flags
     if 'channel_flags' in apf:
@@ -1067,7 +1068,8 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
         Numpy array of integer a priori integration index flags.
     '''
     apif = []
-    apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
+    with open(a_priori_flags_yaml, 'r') as fl:
+        apf = yaml.safe_load(fl)
 
     # Load integration flags
     if 'integration_flags' in apf:
@@ -1157,7 +1159,8 @@ def read_a_priori_ant_flags(a_priori_flags_yaml, ant_indices_only=False, by_ant_
     if ant_indices_only and by_ant_pol:
         raise ValueError("ant_indices_only and by_ant_pol can't both be True.")
     apaf = []
-    apf = yaml.safe_load(open(a_priori_flags_yaml, 'r'))
+    with open(a_priori_flags_yaml, 'r') as fl:
+        apf = yaml.safe_load(fl)
 
     # Load antenna flags
     if 'ex_ants' in apf:
