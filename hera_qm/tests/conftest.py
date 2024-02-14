@@ -24,9 +24,6 @@ def setup_and_teardown_package():
     except (Exception):
         iers.conf.auto_max_age = None
 
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=np.exceptions.ComplexWarning)
-
-        yield
+    yield
 
     iers.conf.auto_max_age = 30
