@@ -2771,3 +2771,14 @@ def test_xrfi_h3c_idr2_1_run(tmp_path, uvcal_calfits):
                 uvf = UVFlag(str(out), use_future_array_shapes=True)
                 assert uvf.label == label
             shutil.rmtree(outdir)  # cleanup
+
+@pytest.mark.parametrize("detrend", [False, True])
+def test_modzscore_complex(detrend):
+    rng = np.random.default_rng(12)
+    data = rng.standard_normal(100) + 1j * rng.standard_normal(100)
+
+    zscore = xrfi.modzscore_1d(data, detrend = detrend)
+    assert np.iscomplexobj(zscore)
+    assert np.isclose(np.mean(zscore.real), 0, atol=1e-1)
+    assert np.isclose(np.mean(zscore.imag), 0, atol=1e-1)
+        
