@@ -175,7 +175,7 @@ def test_sequential_diff():
     assert np.isclose(uvd_diff.data_array, uvd_diff2.data_array, atol=1e-5).all()
 
     # test flag propagation
-    uvd.flag_array[uvd.antpair2ind(89, 96, ordered=False)[:1]] = True
+    uvd.flag_array[uvd.antpair2ind(89, 96, ordered=False)][:1] = True
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=(0,), pad=False)
     assert uvd_diff.get_flags(89, 96)[0].all()
     assert not uvd_diff.get_flags(89, 96)[1:].any()

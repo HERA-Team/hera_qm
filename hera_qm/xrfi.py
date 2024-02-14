@@ -1411,8 +1411,14 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
         for key, data in uv.antpairpol_iter():
             ind1, ind2, pol = uv._key2inds(key)
             for ind, ipol in zip((ind1, ind2), pol):
-                if len(ind) == 0:
+                if not ind:
                     continue
+                
+                if isinstance(ipol, slice):
+                    # pyuvdata 3+ returns slices
+                    ipol = ipol.start
+
+                # ipol is a slice object, but has "length" 1
                 flags = uv.flag_array[ind, :, ipol]
                 uvf.metric_array[ind, :, ipol] = alg_func(np.abs(data), flags=flags, **kwargs)
 
