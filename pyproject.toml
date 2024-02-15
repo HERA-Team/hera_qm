@@ -8,7 +8,7 @@ authors=[
     {name = "HERA Team"}
 ]
 description="HERA Data Quality Metrics."
-license= {text= "BSD"}
+license= {text= "MIT"}
 requires-python = ">=3.9"
 dependencies = [
     "numpy>1.23",
