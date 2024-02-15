@@ -74,4 +74,4 @@ ignore = [
 ]
 
 [tool.ruff.lint.pydocstyle]
-convention = numpy
+convention = "numpy"
