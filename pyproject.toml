@@ -1,8 +1,77 @@
 [build-system]
-requires = ["setuptools>=30.3.0", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=60", "wheel", "setuptools_scm>=8.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name="hera_qm"
+authors=[
+    {name = "HERA Team"}
+]
+description="HERA Data Quality Metrics."
+license= {text= "BSD"}
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>1.23",
+    "astropy>=5.0.4",
+    "h5py>=3.1",
+    "pyyaml",
+    "pyuvdata>=2.3",
+    "hera_filters"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dynamic = ["readme", "version"]
+
+[project.urls]
+repository="https://github.com/HERA-Team/hera_qm"
+# documentation="https://hera_qm.readthedocs.io"
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"]}
+
+[project.optional-dependencies]
+tests = [
+    "pytest",
+    "pytest-cov",
+]
+all = [
+    "hera_qm[tests]"
+]
+
+[project.scripts]
+"ant_metrics_run.py" = "hera_qm.scripts.ant_metrics_run:main"
+"auto_metrics_run.py" = "hera_qm.scripts.auto_metrics_run:main"
+"xrfi_run.py" = "hera_qm.scripts.xrfi_run:main"
+"firstcal_metrics_run.py" = "hera_qm.scripts.firstcal_metrics_run:main"
+"auto_view.py" = "hera_qm.scripts.auto_view:main"
+"omnical_metrics_run.py" = "hera_qm.scripts.omnical_metrics_run:main"
+"xrfi_apply.py" = "hera_qm.scripts.xrfi_apply:main"
+"delay_xrfi_h1c_idr2_1_run.py" = "hera_qm.scripts.delay_xrfi_h1c_idr2_1_run:main"
+"xrfi_h1c_run.py" = "hera_qm.scripts.xrfi_h1c_run:main"
+"xrfi_day_threshold_run.py" = "hera_qm.scripts.xrfi_day_threshold_run:main"
+"xrfi_h3c_idr2_1_run.py" = "hera_qm.scripts.xrfi_h3c_idr2_1_run:main"
+"xrfi_h3ca_rtp_run.py" = "hera_qm.scripts.xrfi_h3ca_rtp_run:main"
+"xrfi_run_data_only.py" = "hera_qm.scripts.xrfi_run_data_only:main"
 
 [tool.setuptools_scm]
 write_to = "hera_qm/_version.py"
 parentdir_prefix_version = "hera_qm-"
 fallback_version  = "0.0.0"
+
+
+[tool.pytest.ini_options]
+addopts = "--ignore=hera_qm/scripts --cov=hera_qm --cov-config=.coveragerc"
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+ignore = [
+    "E501",
+    "W503"
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = numpy
