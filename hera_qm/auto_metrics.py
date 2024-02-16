@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2021 the HERA Project
 # Licensed under the MIT License
 
@@ -17,13 +16,13 @@ def nanmad(a, axis=None):
 
 
 def nanmedian_abs_diff(a, axis=0):
-    '''Computes the absolute difference between neighbors along axis, then collapses 
+    '''Computes the absolute difference between neighbors along axis, then collapses
     along that axis with the nanmedian. Useful for studying temporal variability, e.g.'''
     return np.nanmedian(np.abs(np.diff(a, axis=axis)), axis=axis)
 
 
 def nanmean_abs_diff(a, axis=0):
-    '''Computes the absolute difference between neighbors along axis, then collapses 
+    '''Computes the absolute difference between neighbors along axis, then collapses
     along that axis with the nanmean. Useful for studying temporal variability, e.g.'''
     return np.nanmean(np.abs(np.diff(a, axis=axis)), axis=axis)
 
@@ -37,46 +36,46 @@ def _check_only_auto_keys(data):
             raise ValueError(f'{bl} is not an autocorrelation key.')
 
 
-def get_auto_spectra(autos, flag_wf=None, time_avg_func=np.nanmedian, scalar_norm=True, 
+def get_auto_spectra(autos, flag_wf=None, time_avg_func=np.nanmedian, scalar_norm=True,
                      waterfall_norm=False, norm_func=np.nanmedian, ex_ants=[]):
     '''Compute (normalized) spectrum from a set of waterfalls.
-    
+
     Parameters
     ----------
     autos : dictionary or DataContainer
         Maps autocorrelation keys e.g. (1, 1, 'ee') to waterfalls. Imaginary parts ignored.
     flag_wf : ndarray
-        Numpy array the same shape as the waterfalls in autos with flags to be treated as 
+        Numpy array the same shape as the waterfalls in autos with flags to be treated as
         np.nan when performing time_avg_func and freq_avg_func
     time_avg_func : function
         Function for converting a 2D numpy array to a single spectrum, collapsing over the
-        0th (time) dimension. Must take axis=0 kwarg. Should be NaN-aware if flags are included. 
+        0th (time) dimension. Must take axis=0 kwarg. Should be NaN-aware if flags are included.
     scalar_norm : bool
         If True, renormalize each spectrum by norm_func of the antenna's waterfall.
     waterfall_norm : bool
-        If True, renormalize each waterfall for each pol by an average waterfall created 
+        If True, renormalize each waterfall for each pol by an average waterfall created
             using norm_func on all of all waterfalls not in ex_ants.
-    norm_func : function 
-        Function used for normalizing the spectra as described above. Should be NaN-aware if 
+    norm_func : function
+        Function used for normalizing the spectra as described above. Should be NaN-aware if
         flags are included.
     ex_ants : list of integers
         List of antenna numbers to exclude from the average waterfall if waterfall_norm is True.
 
     Returns
     -------
-    auto_spectra : dict 
+    auto_spectra : dict
         Dictionary mapping autocorrelation key e.g. (1, 1, 'ee') to (normalized) spectrum.
-    ''' 
+    '''
     # get wf_shape and make empty flags if not provided
     _check_only_auto_keys(autos)
     wf_shape = next(iter(autos.values())).shape
     if flag_wf is None:
         flag_wf = np.zeros(wf_shape, dtype=bool)
-        
+
     # pre-compute normalizing waterfall for each polarization
     if waterfall_norm:
         wf_norm = {}
-        for pol in set([bl[2] for bl in autos]):
+        for pol in {bl[2] for bl in autos}:
             wf_norm[pol] = []
             for i in range(wf_shape[0]):
                 row_list = [np.where(flag_wf[i, :], np.nan, autos[bl][i, :].real)
@@ -96,10 +95,10 @@ def get_auto_spectra(autos, flag_wf=None, time_avg_func=np.nanmedian, scalar_nor
     return auto_spectra
 
 
-def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedian, metric_func=np.nanmedian, 
+def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedian, metric_func=np.nanmedian,
                          metric_power=1.0, metric_log=False, abs_diff=True):
     '''Computes a modified Z-score of a autocorrelation spectrum compared to all others not in ex_ants.
-    
+
     Parameters
     ----------
     auto_spectra : dictionary
@@ -122,25 +121,25 @@ def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedia
     Returns
     -------
     modzs : dictionary
-        Dictionary mapping autocorrelation keys e.g. (1, 1, 'ee') to float modified z-scores relative 
+        Dictionary mapping autocorrelation keys e.g. (1, 1, 'ee') to float modified z-scores relative
         to all antennas not in ex_ants.
     '''
     # Check if all keys are actually autocorrelations
     _check_only_auto_keys(auto_spectra)
-    
+
     # Get overall spectrum each polarization
-    pols = set([bl[2] for bl in auto_spectra])
-    overall_spectrum = {pol: overall_spec_func([spec for bl, spec in auto_spectra.items() if (bl[2] == pol) 
+    pols = {bl[2] for bl in auto_spectra}
+    overall_spectrum = {pol: overall_spec_func([spec for bl, spec in auto_spectra.items() if (bl[2] == pol)
                                                 and (bl[0] not in ex_ants)], axis=0) for pol in pols}
 
     # Calculate metric of distance between spectra and the mean/median spectrum
     L = lambda x : np.log(x) if metric_log else x
     A = lambda x : np.abs(x) if abs_diff else x
     diff_metrics = {bl: metric_func(A(L(auto_spectra[bl]) - L(overall_spectrum[bl[2]]))**metric_power) for bl in auto_spectra}
-    
+
     # Calculate the modified z-score of that metric
     median_diff_metric = np.median([metric for bl, metric in diff_metrics.items() if bl[0] not in ex_ants])
-    mad_diff_metric = np.median([np.abs(metric - median_diff_metric) for bl, metric in diff_metrics.items() 
+    mad_diff_metric = np.median([np.abs(metric - median_diff_metric) for bl, metric in diff_metrics.items()
                                  if bl[0] not in ex_ants])
     modzs = {bl: (diff_metrics[bl] - median_diff_metric) / mad_diff_metric / 1.4826 for bl in auto_spectra}
     return modzs
@@ -149,7 +148,7 @@ def spectrum_modz_scores(auto_spectra, ex_ants=[], overall_spec_func=np.nanmedia
 def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on_abs_modz=False, overall_spec_func=np.nanmedian,
                             metric_func=np.nanmedian, metric_power=1.0, metric_log=False, abs_diff=True):
     '''Iteratively re-computes modified z-scores for aucorrelation spectra by excluding antennas and recalculating.
-    
+
     Parameters
     ----------
     auto_spectra : dictionary
@@ -177,34 +176,34 @@ def iterative_spectrum_modz(auto_spectra, prior_ex_ants=[], modz_cut=5.0, cut_on
     ex_ants : list of integers
         List of integer antenna numbers that were excluded on final iteration.
     modzs : dictionary
-        Dictionary mapping autocorrelation keys e.g. (1, 1, 'ee') to float modified z-scores relative 
+        Dictionary mapping autocorrelation keys e.g. (1, 1, 'ee') to float modified z-scores relative
         to all antennas not in ex_ants. Returns results for last iteration.
     '''
     ex_ants = deepcopy(prior_ex_ants)
     # add one antenna per loop to ex_ants
     while not np.all([bl[0] in ex_ants for bl in auto_spectra]):
         # compute metric for all autos compared to the distribution of non-ex_ant antennas
-        modzs = spectrum_modz_scores(auto_spectra, ex_ants=ex_ants, overall_spec_func=overall_spec_func, 
-                                     metric_func=metric_func, metric_power=metric_power, 
+        modzs = spectrum_modz_scores(auto_spectra, ex_ants=ex_ants, overall_spec_func=overall_spec_func,
+                                     metric_func=metric_func, metric_power=metric_power,
                                      metric_log=metric_log, abs_diff=abs_diff)
-        
+
         # figure out out worst antenna that's not already in ex_ants
         modzs_no_exants = {k: [v, np.abs(v)][cut_on_abs_modz] for k, v in modzs.items() if k[0] not in ex_ants}
         worst_ant, worst_z = max(modzs_no_exants.items(), key=operator.itemgetter(1))
-        
+
         # cut worst antenna if it's bad enough
         if (worst_z > modz_cut):
             ex_ants.append(worst_ant[0])
         else:
             break
-    
+
     return ex_ants, modzs
 
 
 def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., mean_round_modz_cut=4.,
-                     edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, chan_thresh_frac=.05, 
+                     edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, chan_thresh_frac=.05,
                      history='', overwrite=False):
-    '''Evaluates day-long autocorrelation waterfalls for "outlierness" in shape, power, temporal 
+    '''Evaluates day-long autocorrelation waterfalls for "outlierness" in shape, power, temporal
     variability, and sharp temporal discontinuities. Each of these is assessed by collapsing each
     waterfall to a single spectrum (might be an average, might be an STD, etc.). These are then
     compared to an average spectrum and float difference is then converted into a modified Z-score
@@ -222,7 +221,7 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
         include autocorrelations, but raw data files will work too (just more slowly)
     median_round_modz_cut : float
         Modified Z-score threshold above which to cut an antenna when either of its polarizations exceeds
-        this cut. Used in Round 1 of antenna flagging, which is based on more robust median statistics. 
+        this cut. Used in Round 1 of antenna flagging, which is based on more robust median statistics.
         Meant as only a preliminary cut of antennas to remove the worst offenders before RFI flagging.
         All statistics are still computed for cut antennas, but they are removed from the distributions that
         all other antennas are compared against.
@@ -232,7 +231,7 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
     edge_cut : int
         Number of channels at the high and low edge of the band to flag (i.e. ignore when looking for outliers).
     Kt : int
-        Number of integrations half-width of kernel for med/meanfilt in RFI flagging. 
+        Number of integrations half-width of kernel for med/meanfilt in RFI flagging.
     Kf : int
         Frequency channel half-width of kernel for med/meanfilt in RFI flagging.
     nsig_init : float
@@ -241,7 +240,7 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
         The number of sigma to flag above for points near flagged points. Default is 2.
     chan_thresh_frac : float
         Fraction of times flagged (excluding completely flagged integrations) above which
-        to flag an entire channel. Default .05 means that channels with 5% or more of times flagged 
+        to flag an entire channel. Default .05 means that channels with 5% or more of times flagged
         (excluding completely flagged times) become completely flagged.
     history : str
         String to save in metric_outfile history field.
@@ -279,7 +278,7 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
     hd = HERADataFastReader(sorted(raw_auto_files))
     bls = hd.bls
     auto_bls = sorted([bl for bl in bls if (bl[0] == bl[1]) and (split_pol(bl[2])[0] == split_pol(bl[2])[1])])
-    pols = set([bl[2] for bl in auto_bls])
+    pols = {bl[2] for bl in auto_bls}
     if np.all([bl in auto_bls for bl in bls]):
         auto_bls = None  # just load the whole file, which is faster
 
@@ -297,11 +296,11 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
     ######################################################
 
     # median_spectra_normed are normalized time-averaged bandpasses used to assess bandpass shape
-    median_spectra_normed = get_auto_spectra(autos, flag_wf=ec_flags, time_avg_func=np.nanmedian, scalar_norm=True, 
+    median_spectra_normed = get_auto_spectra(autos, flag_wf=ec_flags, time_avg_func=np.nanmedian, scalar_norm=True,
                                              waterfall_norm=False, norm_func=np.nanmedian)
-    # mad_spectra_normed look at the variability of each waterfall in time, having divided out the average waterfall. 
+    # mad_spectra_normed look at the variability of each waterfall in time, having divided out the average waterfall.
     # These are used to assess bandpass variability over the night.
-    mad_spectra_normed = get_auto_spectra(autos, flag_wf=ec_flags, time_avg_func=nanmad, scalar_norm=True, 
+    mad_spectra_normed = get_auto_spectra(autos, flag_wf=ec_flags, time_avg_func=nanmad, scalar_norm=True,
                                           waterfall_norm=True, norm_func=np.nanmedian, ex_ants=[])
     # median_abs_diff_spectra_normed look at the average integration-to-integration discontinuity, having divided out the
     # average waterfall. These are used to assess the relative amount of temporal discontinuities.
@@ -313,20 +312,20 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
     # Perform round 1 search for outliers, iterating until convergence
     r1_ex_ants = []
     while True:
-        shape_ex_ants, r1_shape_modzs = iterative_spectrum_modz(median_spectra_normed, r1_ex_ants, modz_cut=median_round_modz_cut, 
+        shape_ex_ants, r1_shape_modzs = iterative_spectrum_modz(median_spectra_normed, r1_ex_ants, modz_cut=median_round_modz_cut,
                                                                 abs_diff=True, overall_spec_func=np.nanmedian, metric_func=np.nanmedian,
                                                                 metric_power=1.0, metric_log=False)
 
-        temp_var_ex_ants, r1_temp_var_modzs = iterative_spectrum_modz(mad_spectra_normed, r1_ex_ants, modz_cut=median_round_modz_cut, 
-                                                                      abs_diff=False, overall_spec_func=np.nanmedian, metric_func=np.nanmedian, 
+        temp_var_ex_ants, r1_temp_var_modzs = iterative_spectrum_modz(mad_spectra_normed, r1_ex_ants, modz_cut=median_round_modz_cut,
+                                                                      abs_diff=False, overall_spec_func=np.nanmedian, metric_func=np.nanmedian,
                                                                       metric_power=1.0, metric_log=False)
 
         temp_diff_ex_ants, r1_temp_diff_modzs = iterative_spectrum_modz(median_abs_diff_spectra_normed, r1_ex_ants, modz_cut=median_round_modz_cut,
-                                                                        abs_diff=False, overall_spec_func=np.nanmedian, metric_func=np.nanmedian, 
+                                                                        abs_diff=False, overall_spec_func=np.nanmedian, metric_func=np.nanmedian,
                                                                         metric_power=1.0, metric_log=False)
-        
-        power_ex_ants, r1_power_modzs = iterative_spectrum_modz(median_spectra, r1_ex_ants, modz_cut=median_round_modz_cut, 
-                                                                abs_diff=True, overall_spec_func=np.nanmedian, metric_func=np.nanmedian, 
+
+        power_ex_ants, r1_power_modzs = iterative_spectrum_modz(median_spectra, r1_ex_ants, modz_cut=median_round_modz_cut,
+                                                                abs_diff=True, overall_spec_func=np.nanmedian, metric_func=np.nanmedian,
                                                                 metric_power=1.0, metric_log=True)
 
         updated_ex_ants = list(set(shape_ex_ants) | set(temp_var_ex_ants) | set(temp_diff_ex_ants) | set(power_ex_ants))
@@ -349,13 +348,13 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
     # Compute Statistics and Modified Z-Scores for Round 2
     ######################################################
 
-    # Analogous statistics to the above, but this time using means, etc. instead of medians. These are more sensitive, 
+    # Analogous statistics to the above, but this time using means, etc. instead of medians. These are more sensitive,
     # but less robust to extreme outliers, which are now hopefully mostly gone between the ex_ants and the flagging.
-    mean_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanmean, scalar_norm=True, 
+    mean_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanmean, scalar_norm=True,
                                            waterfall_norm=False, norm_func=np.nanmean)
-    std_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanstd, scalar_norm=True, 
+    std_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanstd, scalar_norm=True,
                                           waterfall_norm=True, norm_func=np.nanmean, ex_ants=r1_ex_ants)
-    mean_abs_diff_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=nanmean_abs_diff, scalar_norm=True, 
+    mean_abs_diff_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=nanmean_abs_diff, scalar_norm=True,
                                                     waterfall_norm=True, norm_func=np.nanmean, ex_ants=r1_ex_ants)
     mean_spectra = get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanmean, scalar_norm=False, waterfall_norm=False)
 
@@ -372,7 +371,7 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
         temp_diff_ex_ants, r2_temp_diff_modzs = iterative_spectrum_modz(mean_abs_diff_spectra_normed, r2_ex_ants, modz_cut=mean_round_modz_cut,
                                                                         abs_diff=False, overall_spec_func=np.nanmean, metric_func=np.nanmean,
                                                                         metric_power=1.0, metric_log=False)
-        
+
         power_ex_ants, r2_power_modzs = iterative_spectrum_modz(mean_spectra, r2_ex_ants, modz_cut=mean_round_modz_cut,
                                                                 overall_spec_func=np.nanmean, metric_func=np.nanmean,
                                                                 metric_power=1.0, metric_log=True)
@@ -383,9 +382,9 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
         else:
             r2_ex_ants = updated_ex_ants
             # recompute statistics that depend on the overall waterfall, and thus on the other antennas
-            std_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanstd, scalar_norm=True, 
+            std_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanstd, scalar_norm=True,
                                                   waterfall_norm=True, norm_func=np.nanmean, ex_ants=r2_ex_ants)
-            mean_abs_diff_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=nanmean_abs_diff, scalar_norm=True, 
+            mean_abs_diff_spectra_normed = get_auto_spectra(autos, flag_wf=flags, time_avg_func=nanmean_abs_diff, scalar_norm=True,
                                                             waterfall_norm=True, norm_func=np.nanmean, ex_ants=r2_ex_ants)
 
     ######################################################
@@ -403,7 +402,7 @@ def auto_metrics_run(metric_outfile, raw_auto_files, median_round_modz_cut=8., m
     parameters = {'median_round_modz_cut': median_round_modz_cut, 'mean_round_modz_cut': mean_round_modz_cut,
                   'edge_cut': edge_cut, 'Kt': Kt, 'Kf': Kf, 'sig_init': sig_init, 'sig_adj': sig_adj,'chan_thresh_frac': chan_thresh_frac}
 
-    out_dict = {'ex_ants': ex_ants, 'modzs': modzs, 'spectra': spectra, 'flags': flags, 
+    out_dict = {'ex_ants': ex_ants, 'modzs': modzs, 'spectra': spectra, 'flags': flags,
                 'datafile_list': raw_auto_files, 'parameters': parameters, 'history': history}
     write_metric_file(metric_outfile, out_dict, overwrite=overwrite)
     return ex_ants, modzs, spectra, flags

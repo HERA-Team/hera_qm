@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2021 the HERA Project
 # Licensed under the MIT License
 """Tests for the antenna_metrics module."""
@@ -105,17 +104,17 @@ def test_get_auto_spectra():
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="Mean of empty slice")
         spectra = auto_metrics.get_auto_spectra(autos, flag_wf=flags, time_avg_func=np.nanmean, scalar_norm=False)
-    
+
     np.testing.assert_array_equal(spectra[0, 0, 'ee'], 10 * np.array([1., np.nan, 1., 1., 1.]))
     np.testing.assert_array_equal(spectra[1, 1, 'ee'], 10 * np.array([1., np.nan, 1., 1., 1.]))
 
 
 def test_spectrum_modz_scores():
-    np.random.seed(21)
+    rng = np.random.default_rng(21)
     bls = [(a, a, 'ee') for a in np.arange(100)]
 
     # test normal operation with one high power antenna
-    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra = {bl: .01 * rng.standard_normal(100) + 1 for bl in bls}
     auto_spectra[(0, 0, 'ee')] += 10
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean)
     for bl in auto_spectra:
@@ -123,9 +122,9 @@ def test_spectrum_modz_scores():
             assert modzs[bl] > 5000
         else:
             assert np.abs(modzs[bl]) < 5
-            
+
     # test with a nan
-    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra = {bl: .01 * rng.standard_normal(100) + 1 for bl in bls}
     auto_spectra[(0, 0, 'ee')] += 10
     auto_spectra[(1, 1, 'ee')][30] = np.nan
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean)
@@ -136,14 +135,14 @@ def test_spectrum_modz_scores():
             assert np.abs(modzs[bl]) < 5
 
     # test with single spectral channel outlier in median mode
-    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra = {bl: .01 * rng.standard_normal(100) + 1 for bl in bls}
     auto_spectra[(0, 0, 'ee')][0] += 10
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmedian, metric_func=np.nanmedian)
     for bl in auto_spectra:
         assert np.abs(modzs[bl]) < 10
-        
+
     # test with single spectral channel outlier in mean mode
-    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra = {bl: .01 * rng.standard_normal(100) + 1 for bl in bls}
     auto_spectra[(0, 0, 'ee')][0] += 10
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, metric_func=np.nanmean)
     for bl in auto_spectra:
@@ -153,7 +152,7 @@ def test_spectrum_modz_scores():
             assert np.abs(modzs[bl]) < 5
 
     # test abs_diff=False
-    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra = {bl: .01 * rng.standard_normal(100) + 1 for bl in bls}
     auto_spectra[(0, 0, 'ee')] -= 10
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, abs_diff=False)
     for bl in auto_spectra:
@@ -163,14 +162,12 @@ def test_spectrum_modz_scores():
             assert np.abs(modzs[bl]) < 5
 
     # test metric_log=True
-    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra = {bl: .01 * rng.standard_normal(100) + 1 for bl in bls}
     auto_spectra[(0, 0, 'ee')] *= 10
     auto_spectra[(1, 1, 'ee')] /= 10
     modzs = auto_metrics.spectrum_modz_scores(auto_spectra, overall_spec_func=np.nanmean, metric_log=True, ex_ants=[0, 1])
     for bl in auto_spectra:
-        if bl == (0, 0, 'ee'):
-            assert modzs[bl] > 500
-        elif bl == (1, 1, 'ee'):
+        if bl == (0, 0, 'ee') or bl == (1, 1, 'ee'):
             assert modzs[bl] > 500
         else:
             assert np.abs(modzs[bl]) < 5
@@ -190,8 +187,8 @@ def test_iterative_spectrum_modz():
     bls = [(a, a, 'ee') for a in np.arange(100)]
 
     # test that antennas get excluded in order of badness
-    np.random.seed(21)
-    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    rng = np.random.default_rng(21)
+    auto_spectra = {bl: .01 * rng.standard_normal(100) + 1 for bl in bls}
     auto_spectra[(0, 0, 'ee')] += 1
     auto_spectra[(1, 1, 'ee')] += 10
     ex_ants, modzs = auto_metrics.iterative_spectrum_modz(auto_spectra, modz_cut=10., overall_spec_func=np.nanmean, metric_func=np.nanmean)
@@ -205,8 +202,7 @@ def test_iterative_spectrum_modz():
             assert np.abs(modzs[bl]) < 10
 
     # test that order of exclusion doesn't matter for final modified Z scores
-    np.random.seed(21)
-    auto_spectra = {bl: .01 * np.random.randn(100) + 1 for bl in bls}
+    auto_spectra = {bl: .01 * rng.standard_normal(100) + 1 for bl in bls}
     auto_spectra[(0, 0, 'ee')] += 1
     auto_spectra[(1, 1, 'ee')] += 10
     ex_ants, modzs_2 = auto_metrics.iterative_spectrum_modz(auto_spectra, modz_cut=10., prior_ex_ants=[0], overall_spec_func=np.nanmean, metric_func=np.nanmean)
@@ -224,7 +220,7 @@ def test_auto_metrics_run():
         warnings.filterwarnings("ignore", message="K1 value 8 is larger than the data of dimension 4; using the size of the data for the kernel size")
         ex_ants, modzs, spectra, flags = auto_metrics.auto_metrics_run(metrics_outfile, auto_files,
                                                                    median_round_modz_cut=75., mean_round_modz_cut=5.,
-                                                                   edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, 
+                                                                   edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0,
                                                                    chan_thresh_frac=.05, history='unittest', overwrite=True)
     metrics_in = metrics_io.load_metric_file(metrics_outfile)
 
@@ -275,7 +271,7 @@ def test_auto_metrics_run():
     assert metrics_in['parameters']['median_round_modz_cut'] == 75.
     assert metrics_in['parameters']['mean_round_modz_cut'] == 5.
     assert metrics_in['parameters']['edge_cut'] == 100
-    assert metrics_in['parameters']['Kt'] == 8 
+    assert metrics_in['parameters']['Kt'] == 8
     assert metrics_in['parameters']['Kf'] == 8
     assert metrics_in['parameters']['sig_init'] == 5.0
     assert metrics_in['parameters']['sig_adj'] == 2.0

@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """Module for general purpose utility functions."""
 
-import re
 import os
 import warnings
 import argparse
@@ -13,7 +11,6 @@ from pyuvdata import UVCal
 from pyuvdata import UVFlag
 from pyuvdata import utils as uvutils
 from . import metrics_io
-from pyuvdata.telescopes import KNOWN_TELESCOPES
 
 def _bytes_to_str(inbyte):
     return inbyte.decode('utf8')

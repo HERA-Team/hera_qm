@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2022 the HERA Project
 # Licensed under the MIT License
 
@@ -19,20 +18,20 @@ def _check_antpol(ap):
         raise ValueError(f"{ap} could not be interpreted as an antpol tuple of the form (1, 'Jee').")
 
 
-class AntennaClassification():
-    '''Object designed for storing a classification of antennas (expressed as ant-pol tuples), generally 
-    into good/suspect/bad categories,though it allows flexibility in what those are called and what other 
-    categories might be included. Enables easy getting and setting via brackets, as well the ability to 
-    combine classifications with the + operator in a way that means that an antenna marked as bad in either 
+class AntennaClassification:
+    '''Object designed for storing a classification of antennas (expressed as ant-pol tuples), generally
+    into good/suspect/bad categories,though it allows flexibility in what those are called and what other
+    categories might be included. Enables easy getting and setting via brackets, as well the ability to
+    combine classifications with the + operator in a way that means that an antenna marked as bad in either
     classification is bad and and that only an antenna marked as good in both classifications remains good.'''
-    
+
     def __init__(self, **kwargs):
-        '''Create an AntennaClassification object using arbitrary classifications as keyword arguments. 
+        '''Create an AntennaClassification object using arbitrary classifications as keyword arguments.
         Antennas belonging to each classification are passed in as lists of ant-pol 2-tuples. For example,
         ant_class = AntennaClassification(good=[(0, 'Jee'), (1, 'Jee')], whatever=[(0, 'Jnn'), (10, 'Jee')]).
         Typical use is to pass in 'good', 'suspect', and/or 'bad' as kwargs, since these are the default
         "quality_classes" which the object knows how to combine. Antennas must be uniquely classified.
-        
+
         Arguments:
             **kwargs: each is a list of ant-pol tuples with a classification given by the keyword argument
         '''
@@ -43,26 +42,26 @@ class AntennaClassification():
                 if ant in self._classification:
                     raise ValueError(f"Antenna {ant} cannot be clasified as {cls} because it is already classified as {self[ant]}")
                 self._classification[ant] = cls
-    
+
     def clear(self):
         '''Empties all classifications and resets default good/suspect/bad labels.'''
         self._classification = {}
         self._GOOD = 'good'
         self._SUSPECT = 'suspect'
         self._BAD = 'bad'
-    
+
     def __getitem__(self, key):
         '''Get classification of a specific ant-pol tuple.'''
         return self._classification[key]
-    
+
     def __setitem__(self, key, value):
         '''Set the classification of a specific ant-pol tuple.'''
         self._classification[key] = value
-    
+
     def __iter__(self):
         '''Iterate over ant-pol tuples.'''
         return iter(self._classification)
-    
+
     @property
     def classes(self):
         '''Set of unique antenna classifications.'''
@@ -72,34 +71,34 @@ class AntennaClassification():
     def ants(self):
         '''Set of all classified ant-pol tuples.'''
         return set(self._classification.keys())
-    
+
     def get_all(self, classification):
         '''Return set of all ant-pol tuples with the given classification.'''
-        return set([ant for ant, cls in self._classification.items() if cls == classification])
-   
+        return {ant for ant, cls in self._classification.items() if cls == classification}
+
     @property
     def good_ants(self):
         '''Set of ant-pol tuples with the current good classification (default "good").'''
         return self.get_all(self._GOOD)
-    
+
     def is_good(self, ant):
         '''Returns True if antenna has the current good classification (default "good"), else False.'''
         return (ant in self._classification) and (self[ant] == self._GOOD)
-    
+
     @property
     def suspect_ants(self):
         '''Set of ant-pol tuples with the current suspect classification (default "suspect").'''
-        return self.get_all(self._SUSPECT)  
+        return self.get_all(self._SUSPECT)
 
     def is_suspect(self, ant):
         '''Returns True if antenna has the current suspect classification (default "suspect"), else False.'''
         return (ant in self._classification) and (self[ant] == self._SUSPECT)
-    
+
     @property
     def bad_ants(self):
         '''Set of ant-pol tuples with the current bad classification (default "bad").'''
         return self.get_all(self._BAD)
-        
+
     def is_bad(self, ant):
         '''Returns True if antenna has the current bad classification (default "bad"), else False.'''
         return (ant in self._classification) and (self[ant] == self._BAD)
@@ -107,7 +106,7 @@ class AntennaClassification():
     def define_quality(self, good='good', suspect='suspect', bad='bad'):
         '''Resets the classifications considered good/suspect/bad. These are used for adding
         together AntennaClassification objects.
-        
+
         Arguments:
             good: string to reset the classification considered good. Default "good".
             suspect: string to reset the classification considered suspect. Default "suspect".
@@ -116,27 +115,26 @@ class AntennaClassification():
         self._GOOD = good
         self._SUSPECT = suspect
         self._BAD = bad
-    
+
     @property
     def quality_classes(self):
         '''3-tuple of classification names considered good, suspect, and bad.'''
         return self._GOOD, self._SUSPECT, self._BAD
-    
+
     def to_quality(self, good_classes=[], suspect_classes=[], bad_classes=[]):
         '''Function to reassigning classifications to good, suspect, or bad. All classifications
         must have a mapping to one of those three, which are by default "good", "suspect", and "bad",
         and can be queried by self.quality_classes and set by self.define_quality().
-        
+
         Arguments:
             good_classes: list of string classfications to be renamed to the current good classification
             suspect_classes: list of string classfications to be renamed to the current suspect classification
-            bad_classes: list of string classfications to be renamed to the current bad classification            
-        '''        
+            bad_classes: list of string classfications to be renamed to the current bad classification
+        '''
         # check to make sure all classes have been sorted into good, suspect, or bad
         for cls in self.classes:
-            if cls not in self.quality_classes:
-                if (cls not in good_classes) and (cls not in suspect_classes) and (cls not in bad_classes):
-                    raise ValueError(f'Unable to convert "{cls}" to one of {self.quality_classes}.')
+            if cls not in self.quality_classes and (cls not in good_classes) and (cls not in suspect_classes) and (cls not in bad_classes):
+                raise ValueError(f'Unable to convert "{cls}" to one of {self.quality_classes}.')
         for new_class, old_classes in zip(self.quality_classes, [good_classes, suspect_classes, bad_classes]):
             for ant, cls in self._classification.items():
                 if cls in old_classes:
@@ -146,7 +144,7 @@ class AntennaClassification():
         '''Combines together two AntennaClassification objects, returning a new one. Both objects
         must have the same quality_classes and all ant-pols in both must belong to those quality classes.
         Ant-pols that are bad in either object are bad in the result. Ant-pols that are good in both objects
-        are good in the result. All other ant-pols are suspect. Antennas that are classified in one object 
+        are good in the result. All other ant-pols are suspect. Antennas that are classified in one object
         but absent from the other are included in the result with their classifications preserved.
         '''
         # make sure both obects are of type AntennaClassification
@@ -158,10 +156,10 @@ class AntennaClassification():
                              {self.quality_classes} is not the same as {other.quality_classes}')
         # make sure all antennas in both objects are either good, suspect, or bad
         for o in [self, other]:
-            if any([cls not in o.quality_classes for cls in o.classes]):
+            if any(cls not in o.quality_classes for cls in o.classes):
                 raise ValueError(f'To add together two AntennaClassification objects, all classes must be one of \
                                  {o.quality_classes}, but one of {o.classes} is not.')
-        
+
         # Figure out which antenna gets which classification in the combined object
         ants_here = set(self.ants)
         ants_there = set(other.ants)
@@ -178,7 +176,7 @@ class AntennaClassification():
                     new_class[ant] = self._GOOD
                 else:
                     new_class[ant] = self._SUSPECT
-        
+
         # Build and return combined object, preserving quality classes
         ac = AntennaClassification(**{qual: [ant for ant in new_class if new_class[ant] == qual] for qual in self.quality_classes})
         ac.define_quality(*self.quality_classes)
@@ -188,7 +186,7 @@ class AntennaClassification():
         outstr = ''
         to_show = [cls for cls in self.quality_classes if cls in self.classes]
         to_show += [cls for cls in self.classes if cls not in self.quality_classes]
-        pols = sorted(set([ant[1] for ant in self.ants]))
+        pols = sorted({ant[1] for ant in self.ants})
         for pol in pols:
             outstr += f'{pol}:\n----------\n'
             for cls in to_show:
@@ -212,18 +210,18 @@ def _is_bound(bound):
 def antenna_bounds_checker(data, **kwargs):
     '''Converts scalar data about antennas to a classification using (potentially disjoint) bounds.
     Example usage: antenna_bounds_checker(data, good=[(.5, 1)], suspect=[(0, .5), (1, 2)], bad=(-np.inf, np.inf))
-    
+
     Arguments:
         data: dictionary mapping ant-pol tuples (or autocorrelation keys) to scalar values
-        kwargs: named antenna classifications and the range or ranges of data values which map to those 
-            categories. Classification bounds are checked in order and the first accepted bound is used, 
+        kwargs: named antenna classifications and the range or ranges of data values which map to those
+            categories. Classification bounds are checked in order and the first accepted bound is used,
             though it is possible for antenna to not get classified. All ranges are inclusive (i.e. >= or <=).
-        
+
     Returns:
         AntennaClassification object using data and bounds to classify antennas in data
     '''
-    
-    classifiction_dict = {cls: set([]) for cls in kwargs}
+
+    classifiction_dict = {cls: set() for cls in kwargs}
     _data = {}
     for ant, val in data.items():
         # check that key is either a valid ant-pol tuple of an autocorrelation tuple
@@ -245,7 +243,7 @@ def antenna_bounds_checker(data, **kwargs):
         for cls, bounds in kwargs.items():
             if _is_bound(bounds):
                 bounds = [bounds]
-            # iterate over (potentially disjoint) bounts in this 
+            # iterate over (potentially disjoint) bounts in this
             for bound in bounds:
                 if not _is_bound(bound):
                     raise ValueError(f'Count not convert {bounds} into a valid range or ranges for {cls} antennas.')
@@ -254,7 +252,7 @@ def antenna_bounds_checker(data, **kwargs):
                     break
             if ant in classifiction_dict[cls]:
                 break
-    
+
     ac = AntennaClassification(**classifiction_dict)
     ac._data = _data
     return ac
@@ -269,9 +267,9 @@ def auto_power_checker(data, good=(5, 30), suspect=(1, 80), int_count=None):
         good: 2-tuple or list of 2-tuple bounds for ranges considered good
         suspect: 2-tuple or list of 2-tuple bounds for ranges considered suspect. Ant-pols
             in both the good and suspect ranges will be labeled good.
-        int_count: Number of samples per integration in correlator. If default None, use 
+        int_count: Number of samples per integration in correlator. If default None, use
             data.times and data.freqs to infer int_count = channel resolution * integration time.
-    
+
     Returns:
         AntennaClassification with "good", "suspect", and "bad" ant-pols based on median power
     '''
@@ -284,7 +282,7 @@ def auto_power_checker(data, good=(5, 30), suspect=(1, 80), int_count=None):
     # get autocorelation keys
     from hera_cal.utils import split_pol
     auto_bls = [bl for bl in data if (bl[0] == bl[1]) and (split_pol(bl[2])[0] == split_pol(bl[2])[1])]
-    
+
     # compute median powers and classify antennas
     auto_med_powers = {bl: np.median(np.abs(data[bl])) / int_count for bl in auto_bls}
     return antenna_bounds_checker(auto_med_powers, good=good, suspect=suspect, bad=(-np.inf, np.inf))
@@ -305,7 +303,7 @@ def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, fi
         edge_cut: integer number of frequency channels to ignore on either side of the band
             when computing slopes.
         filt_size: size of the median filter designed to mitigate RFI before linear filtering
-    
+
     Returns:
         AntennaClassification with "good", "suspect", and "bad" ant-pols based on relative slope
     '''
@@ -329,8 +327,8 @@ def auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=100, fi
 
 def auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125), flag_spectrum=None, antenna_class=None):
     """
-    Classifies ant-pols as good, bad, or suspect based on their dissimilarity to the mean unflagged autocorrelation. 
-    
+    Classifies ant-pols as good, bad, or suspect based on their dissimilarity to the mean unflagged autocorrelation.
+
     Arguments:
         data: DataContainer containing antenna autocorrelations (other baselines ignored)
         good: 2-tuple or list of 2-tuple, default=(0, 0.0625)
@@ -340,25 +338,25 @@ def auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125), flag_spe
         flag_spectrum: optional numpy array of shape (Nfreqs,) where True is antenna contaminated by RFI
         antenna_class: AntennaClassification, default=None
             Optional AntennaClassification object. If provided, antennas marked "bad" will be excluded from the median auto.
-        
+
     Returns:
         AntennaClassification with "good", "suspect", and "bad" ant-pols based on their bandpass shape
     """
     # figure out baselines, pols, etc.
     from hera_cal.utils import split_bl
-    auto_bls = set([bl for bl in data if split_bl(bl)[0] == split_bl(bl)[1]])
-    auto_pols = set([bl[2] for bl in auto_bls])
-    ex_bls = set([bl for bl in auto_bls if (antenna_class[split_bl(bl)[0]] == 'bad' if antenna_class is not None else False)])
-        
+    auto_bls = {bl for bl in data if split_bl(bl)[0] == split_bl(bl)[1]}
+    auto_pols = {bl[2] for bl in auto_bls}
+    ex_bls = {bl for bl in auto_bls if (antenna_class[split_bl(bl)[0]] == 'bad' if antenna_class is not None else False)}
+
     # compute normalized reference bandpass of good antennas for each polarization
-    template_bandpasses = {pol: np.where((flag_spectrum if flag_spectrum is not None else False), np.nan, 
-                                         np.nanmean([data[bl] for bl in auto_bls if bl[2] == pol and bl not in ex_bls], 
+    template_bandpasses = {pol: np.where((flag_spectrum if flag_spectrum is not None else False), np.nan,
+                                         np.nanmean([data[bl] for bl in auto_bls if bl[2] == pol and bl not in ex_bls],
                                                       axis=(0, 1))) for pol in auto_pols}
     template_bandpasses = {pol: template_bandpasses[pol] / np.nanmean(template_bandpasses[pol]) for pol in auto_pols}
 
     # compute per-auto distance from reference bandpass
     distance_metrics = {}
-    for i, bl in enumerate(auto_bls):
+    for _i, bl in enumerate(auto_bls):
         bandpass = np.where((flag_spectrum if flag_spectrum is not None else False), np.nan, np.mean(data[bl], axis=0))
         bandpass /= np.nanmean(bandpass)
         distance = (np.nanmean(np.abs(bandpass - template_bandpasses[bl[2]])**2))**.5
@@ -368,15 +366,15 @@ def auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125), flag_spe
     return antenna_bounds_checker(distance_metrics, good=good, suspect=suspect, bad=(-np.inf, np.inf))
 
 
-def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna_class=None, flag_broadcast_thresh=0.5, 
-                     kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0], filter_half_widths=[200e-9], 
+def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna_class=None, flag_broadcast_thresh=0.5,
+                     kernel_widths=[3, 4, 5], mode='dpss_matrix', filter_centers=[0], filter_half_widths=[200e-9],
                      eigenval_cutoff=[1e-9], cache={}):
     """
-    Classifies ant-pols as good, suspect, or bad based on the fraction of channels flagged in that are not among the 
-    array-broadcast flags (i.e. channels flagged for >50% of antennas). Flagging takes place in two steps: 
+    Classifies ant-pols as good, suspect, or bad based on the fraction of channels flagged in that are not among the
+    array-broadcast flags (i.e. channels flagged for >50% of antennas). Flagging takes place in two steps:
     (1) "channel_diff_flagger" is used to get an initial set of flags and
     (2) "dpss_flagger" is used with the array averaged flags to refine initial per-antenna flags
- 
+
     Arguments:
         data: DataContainer containing antenna autocorrelations (other baselines ignored)
         good: 2-tuple or list of 2-tuple, default=(0, 0.01)
@@ -405,9 +403,9 @@ def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna
             Dictionary for caching fitting matrices. By default this value is None to prevent the size of the cached
             matrices from getting too large. By passing in a cache dictionary, this function could be much faster, but
             the memory requirement will also increase.
-        
+
     Returns:
-        AntennaClassification with "good", "suspect", and "bad" ant-pols based on the absolute fraction of 
+        AntennaClassification with "good", "suspect", and "bad" ant-pols based on the absolute fraction of
         the band that is flagged
     """
     # Flag using convolution kernels
@@ -415,15 +413,15 @@ def auto_rfi_checker(data, good=(0, 0.01), suspect=(0.01, 0.02), nsig=6, antenna
                                                  flag_broadcast_thresh=flag_broadcast_thresh, kernel_widths=kernel_widths)
 
     # Override antenna flags with array-wide flags for next step
-    for key in antenna_flags.keys():
+    for key in antenna_flags:
         antenna_flags[key] = array_flags
 
     # Flag using DPSS filters
     antenna_flags, array_flags = xrfi.flag_autos(data, freqs=data.freqs, flag_method="dpss_flagger", nsig=nsig, antenna_class=antenna_class,
                                                  filter_centers=filter_centers, filter_half_widths=filter_half_widths,
                                                  eigenval_cutoff=eigenval_cutoff, flags=antenna_flags, mode=mode, cache=cache)
-    
-    
+
+
     # Calculate the excess fraction of the band that is flagged
     flagged_fraction = {bls: np.mean(flags | array_flags) - np.mean(array_flags) for bls, flags in antenna_flags.items()}
 
@@ -434,25 +432,25 @@ def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
     that appear in single-time even or odd visibility spectra. That maximum is assigned
     to antennas in order of the total number of zeros in baselines that antenna participates
     in, so antennas with more zeros overall are blamed for a particular baseline having zeros.
-    
+
     Arguments:
         sum_data: DataContainer containing full visibility data set
         diff_data: DataContainer containing time-interleaved difference visibility data
-        good: 2-tuple or list of 2-tuples of ranges of the maximum number of zeros in an 
+        good: 2-tuple or list of 2-tuples of ranges of the maximum number of zeros in an
             even or odd spectrum attributed to a given antenna. Default is to allow at most
             2 zeros in a spectrum which cannot be attributed to the other antenna involved.
         suspect: 2-tuple or list of 2-tuples of ranges for the maximum number of zeros
             attributable to given antenna considered suspect. Default is 8. Ant-pols
             in both the good and suspect ranges are good, all others are bad.
-            
+
     Returns:
         AntennaClassification with "good", "suspect", and "bad" ant-pols based on number of zeros
     '''
     from hera_cal.utils import split_bl
-    ants = sorted(set([ant for bl in sum_data for ant in split_bl(bl)]))
+    ants = sorted({ant for bl in sum_data for ant in split_bl(bl)})
     zero_count_by_ant = {ant: 0 for ant in ants}
     max_zeros_per_spectrum = {}
-    
+
     # calculate the maximum number of zeros per spectrum for each baseline in the odd or even data,
     # as well as the total number of zeros in baselines each antenna is involved in
     for bl in sum_data:
@@ -461,23 +459,23 @@ def even_odd_zeros_checker(sum_data, diff_data, good=(0, 2), suspect=(2, 8)):
         max_zeros_per_spectrum[bl] = np.max([even_zeros, odd_zeros])
         for ant in split_bl(bl):
             zero_count_by_ant[ant] += max_zeros_per_spectrum[bl]
-    
+
     # sort dictionary of antennas by number of even/odd visibility zeros it participates in
-    zero_count_by_ant = {k: v for k, v in sorted(zero_count_by_ant.items(), key=lambda item: item[1], reverse=True)}
-    
+    zero_count_by_ant = dict(sorted(zero_count_by_ant.items(), key=lambda item: item[1], reverse=True))
+
     # Loop over antennas in order of zero_count_by_ant, calculating the maximum number of zeros in a spectrum
     # attributable to that antenna. After calculating this for each antenna, all baselines involving that
     # antenna are removed from bls_with_zeros. In this way, a baseline's zeros are only attributed to one antenna
     most_zeros = {}
-    bls_with_zeros = set([bl for bl in sum_data if max_zeros_per_spectrum[bl] > 0])
+    bls_with_zeros = {bl for bl in sum_data if max_zeros_per_spectrum[bl] > 0}
     for ant in zero_count_by_ant:
         remaining_max_zeros = [max_zeros_per_spectrum[bl] for bl in bls_with_zeros if ant in split_bl(bl)]
         if len(remaining_max_zeros) > 0:
             most_zeros[ant] = np.max(remaining_max_zeros)
-            bls_with_zeros = set([bl for bl in bls_with_zeros if ant not in split_bl(bl)])
+            bls_with_zeros = {bl for bl in bls_with_zeros if ant not in split_bl(bl)}
         else:
             most_zeros[ant] = 0
-    
+
     # run and return classifier
     return antenna_bounds_checker(most_zeros, good=good, suspect=suspect, bad=(0, np.inf))
 
@@ -487,8 +485,8 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
     '''Classifies ant-pols as good or bad based on whether an an x-engine shows excess power
     in the diffs beyond what is expected from thermal noise. This is useful for detecting
     anomolous data in either the evens or the odds, like stale packets. The failure is attributed
-    the the antennas that participate in the most such anomolous diffs. 
-    
+    the the antennas that participate in the most such anomolous diffs.
+
      Arguments:
         sum_data: DataContainer containing full visibility data set (only autos are used)
         diff_data: DataContainer containing time-interleaved difference visibility data
@@ -497,26 +495,27 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
         antenna_class: Optional AntennaClassification object. If provided, ant-pols marked "bad" will be
             excluded from the calculated statistics and will not be classified here.
         xengine_chans: Number of channels in a given x-engine. Must evenly divide the second dimension
-            of the data waterfalls. 
+            of the data waterfalls.
         bad_xengine_zcut: Cut in number of sigmas beyond which a given x-engine is considered "bad".
-                
+
      Returns:
          AntennaClassification with "good" and "bad" ant-pols, where "bad" has at least one bad x-engine
      '''
     from hera_cal.utils import split_bl
     from hera_cal.noise import predict_noise_variance_from_autos
-    ants = sorted(set([ant for bl in sum_data for ant in split_bl(bl)]))
+    ants = sorted({ant for bl in sum_data for ant in split_bl(bl)})
     bad_xengines_per_ant = {ant: 0 for ant in ants if (antenna_class is None or ant not in antenna_class.bad_ants)}
     bad_xengines_per_baseline = {}
-    
+
     for bl in diff_data:
         ant1, ant2 = split_bl(bl)
         if (ant1 == ant2):
             continue
-        if antenna_class is not None:
-            if (ant1 in antenna_class.bad_ants) or (ant2 in antenna_class.bad_ants):
-                continue
-        
+        if antenna_class is not None and (
+            (ant1 in antenna_class.bad_ants) or (ant2 in antenna_class.bad_ants)
+        ):
+            continue
+
         # compute per-channel z-score
         predicted_std = (predict_noise_variance_from_autos(bl, sum_data))**.5
         # The |diff| is Rayleigh-distributed with mean sigma * sqrt(pi/2) and variance sigma^2*(4-pi)/2
@@ -524,35 +523,35 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
         predicted_mean_of_abs = predicted_std * np.sqrt(np.pi / 4)
         predicted_std_of_abs = predicted_std * np.sqrt((4 - np.pi) / 4)
         zscore = np.where(flag_waterfall, np.nan, (np.abs(diff_data[bl]) - predicted_mean_of_abs) / predicted_std_of_abs)
-    
+
         # compute per-xengine z-score
         reshaped_zscore = zscore.reshape(zscore.shape[0], -1, xengine_chans)
         unflagged_chan_count = np.sum(np.isfinite(reshaped_zscore), axis=-1)
         average_abs_zscore  = np.nanmean(np.abs(reshaped_zscore), axis=-1)
-        # If the z-score above is Gaussian with mean 0 and sigma=1 (which is an approximation), then this quantity is 
+        # If the z-score above is Gaussian with mean 0 and sigma=1 (which is an approximation), then this quantity is
         # half-normal distributed, which means that it has mean sqrt(2/pi) and variance (1-2/pi) / Nsamples
         zscore_by_xengine = (average_abs_zscore - np.sqrt(2 / np.pi)) / np.sqrt((1 - 2/np.pi) / unflagged_chan_count)
         bad_xengines_per_baseline[bl] = np.nansum(zscore_by_xengine > bad_xengine_zcut)
         bad_xengines_per_ant[ant1] += bad_xengines_per_baseline[bl]
         bad_xengines_per_ant[ant2] += bad_xengines_per_baseline[bl]
-       
+
     # sort dictionary of antennas by number of even/odd visibility zeros it participates in
-    bad_xengines_per_ant = {k: v for k, v in sorted(bad_xengines_per_ant.items(), key=lambda item: item[1], reverse=True)}
-    
+    bad_xengines_per_ant = dict(sorted(bad_xengines_per_ant.items(), key=lambda item: item[1], reverse=True))
+
     # Loop over antennas in order of bad_xengines_per_ant, calculating the maximum number of bad x-engines in a waterfall
     # attributable to that antenna. After calculating this for each antenna, all baselines involving that antenna are
     # removed from bad_xengines_per_baseline. In this way, a baseline's bad x-engines are only attributed to one antenna
     most_bad_xengines = {}
-    bls_with_bad_xengines = set([bl for bl in bad_xengines_per_baseline if bad_xengines_per_baseline[bl] > 0])
-    
+    bls_with_bad_xengines = {bl for bl in bad_xengines_per_baseline if bad_xengines_per_baseline[bl] > 0}
+
     for ant in bad_xengines_per_ant:
         remaining_bad_xengines = [bad_xengines_per_baseline[bl] for bl in bls_with_bad_xengines if ant in split_bl(bl)]
         if len(remaining_bad_xengines) > 0:
             # this antenna is involved in at least one baseline with this number of bad x-engines
             most_bad_xengines[ant] = np.max(remaining_bad_xengines)
-            bls_with_bad_xengines = set([bl for bl in bls_with_bad_xengines if ant not in split_bl(bl)])
+            bls_with_bad_xengines = {bl for bl in bls_with_bad_xengines if ant not in split_bl(bl)}
         else:
             most_bad_xengines[ant] = 0
-    
+
     # run and return classifier
     return antenna_bounds_checker(most_bad_xengines, good=(0, 0), bad=(1, np.inf))

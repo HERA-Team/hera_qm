@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
@@ -7,7 +6,6 @@ import numpy as np
 from copy import deepcopy
 import os
 import shutil
-import re
 import warnings
 from . import __version__
 from . import utils, metrics_io
@@ -67,9 +65,9 @@ def get_ant_metrics_dict():
 
 
 def calc_corr_stats(data_sum, data_diff=None):
-    """For all baselines, calculate average cross-correlation between even and odd in order 
+    """For all baselines, calculate average cross-correlation between even and odd in order
     to identify dead, cross-polarized, and non-time-locked antennas. Time and channels where
-    either the even or odd data (or both) are zero are ignored, but if either even or odd 
+    either the even or odd data (or both) are zero are ignored, but if either even or odd
     is entirely zero, the corr_stat will be np.nan.
 
     Parameters
@@ -142,7 +140,7 @@ def load_antenna_metrics(filename):
 # High level functionality for HERA
 #######################################################################
 
-class AntennaMetrics():
+class AntennaMetrics:
     """Container for holding data and meta-data for ant metrics calculations.
 
     This class creates an object for holding relevant visibility data and metadata,
@@ -205,7 +203,7 @@ class AntennaMetrics():
             History to append to the metrics files when writing out files.
 
         """
-        
+
         from hera_cal.io import HERADataFastReader
         from hera_cal.utils import split_bl, comply_pol, split_pol, join_pol
         # prevents the need for importing again later
@@ -242,21 +240,21 @@ class AntennaMetrics():
         assert len(self.bls) > 0, 'Make sure we have data'
 
         # Figure out polarizations in the data
-        self.pols = set([bl[2] for bl in self.bls])
+        self.pols = {bl[2] for bl in self.bls}
         self.cross_pols = [pol for pol in self.pols if split_pol(pol)[0] != split_pol(pol)[1]]
         self.same_pols = [pol for pol in self.pols if split_pol(pol)[0] == split_pol(pol)[1]]
 
         # Figure out which antennas are in the data
-        self.ants = sorted(set([ant for bl in self.bls for ant in split_bl(bl)]))
-        self.antnums = sorted(set([ant[0] for ant in self.ants]))
-        self.antpols = sorted(set([ant[1] for ant in self.ants]))
+        self.ants = sorted({ant for bl in self.bls for ant in split_bl(bl)})
+        self.antnums = sorted({ant[0] for ant in self.ants})
+        self.antpols = sorted({ant[1] for ant in self.ants})
         self.ants_per_antpol = {antpol: sorted([ant for ant in self.ants if ant[1] == antpol]) for antpol in self.antpols}
 
         # Parse apriori_xants
         self.apriori_xants = set()
         for ant in apriori_xants:
             if isinstance(ant, int):
-                self.apriori_xants.update(set((ant, ap) for ap in self.antpols))
+                self.apriori_xants.update({(ant, ap) for ap in self.antpols})
             elif isinstance(ant, tuple):
                 assert len(ant) == 2
                 ap = comply_pol(ant[1])
@@ -366,7 +364,7 @@ class AntennaMetrics():
             cross_pol_metrics = np.nanmax(np.nanmean(matrix_pol_diffs, axis=1), axis=0)
 
         per_ant_corr_cross_pol_metrics = {}
-        for _, ants in self.ants_per_antpol.items():
+        for ants in self.ants_per_antpol.values():
             per_ant_corr_cross_pol_metrics.update(dict(zip(ants, cross_pol_metrics)))
         return per_ant_corr_cross_pol_metrics
 
@@ -380,7 +378,7 @@ class AntennaMetrics():
         }
         for name, metric in metrics.items():
             noninf_metric = {k:v for k, v in metric.items() if np.isfinite(v)}
-            if not name in self.final_metrics:
+            if name not in self.final_metrics:
                 self.final_metrics[name] = {}
             self.final_metrics[name].update(noninf_metric)
         self.all_metrics.update({self.iter: metrics})
@@ -427,7 +425,7 @@ class AntennaMetrics():
                     if verbose:
                         print(f'On iteration {iteration} we flag {crossed_ant} with cross-pol corr metric of {crossMetrics[worstCrossAnt]}.')
             elif (worstDeadCutDiff < worstCrossCutDiff) and (worstDeadCutDiff < 0):
-                dead_ants = set([worstDeadAnt])
+                dead_ants = {worstDeadAnt}
                 for dead_ant in dead_ants:
                     self.xants[dead_ant] = iteration
                     self.dead_ants.append(dead_ant)

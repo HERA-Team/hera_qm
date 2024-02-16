@@ -266,8 +266,8 @@ def get_aa(freqs):
     nants = len(prms['antpos'])
     antpos_ideal = n.zeros(shape=(nants, 3), dtype=float)
     tops = {'top_x': 0, 'top_y': 1, 'top_z': 2}
-    for k in prms['antpos_ideal'].keys():
-        for i, m in enumerate(prms['antpos_ideal'][k]):
+    for k in prms['antpos_ideal']:
+        for m in prms['antpos_ideal'][k]:
             antpos_ideal[k, tops[m]] = prms['antpos_ideal'][k][m]
     for i in range(nants):
         beam = prms['beam'](freqs, nside=32, lmax=20, mmax=20, deg=7)

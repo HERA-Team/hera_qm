@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """Tests for the antenna_metrics module."""
@@ -329,7 +328,7 @@ def test_using_datacontainers():
     diff_data, _, _ = hd_diff.read(read_flags=False, read_nsamples=False)
     am2 = ant_metrics.AntennaMetrics(**files, sum_data=sum_data, diff_data=diff_data)
     am2.iterative_antenna_metrics_and_flagging()
-    
+
     compare_ams(am1, am2)
 
     # test errors

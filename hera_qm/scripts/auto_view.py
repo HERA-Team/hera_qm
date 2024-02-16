@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
@@ -9,10 +8,8 @@ import numpy as np
 import re
 import matplotlib as mpl
 import redis as redis_lib
-from hera_mc import mc, sys_handling, cm_utils
+from hera_mc import mc, sys_handling
 from astropy import time
-from matplotlib.colors import LogNorm
-from matplotlib.colors import LinearSegmentedColormap
 import pyuvdata.utils as uvutils
 import aipy.miriad as apm
 
@@ -36,7 +33,7 @@ def main():
         # use a matplotlib backend that doesn't require an X session
         mpl.use('Agg')
     # this has to be called after matplotlibs use()
-    import matplotlib.pyplot as plt  # noqa
+    import matplotlib.pyplot as plt
 
     # Get auto data
     autos = {}
@@ -47,7 +44,7 @@ def main():
     if len(args.files) == 0:
         # No file given, use redis db
         redis = redis_lib.Redis('redishost')
-        keys = [k for k in redis.keys() if k.startswith('visdata')]
+        keys = [k for k in redis if k.startswith('visdata')]
         for key in keys:
             ant = int(re.findall(r'visdata://(\d+)/', key)[0])
             pol = key[-2:]
@@ -64,7 +61,7 @@ def main():
             uvd = apm.UV(fname)
             pol = uvutils.polnum2str(uvd['pol']).lower()
             uvd.select('auto', 1, 1)
-            for (uvw, this_t, (ant1, ant2)), auto, fname in uvd.all(raw=True):
+            for (_uvw, this_t, (ant1, _ant2)), auto, _ in uvd.all(raw=True):
                 try:
                     counts[(ant1, pol)] += 1
                     autos[(ant1, pol)] += auto
@@ -73,7 +70,7 @@ def main():
                     counts[(ant1, pol)] = 1
                     autos[(ant1, pol)] = auto
                     times[(ant1, pol)] = this_t
-        for key in autos.keys():
+        for key in autos:
             autos[key] /= counts[key]
             times[key] /= counts[key]
             amps[key] = np.median(autos[key])
@@ -84,7 +81,7 @@ def main():
         del(uvd)
         del(counts)
 
-    ants = np.unique([ant for (ant, pol) in autos.keys()])
+    ants = np.unique([ant for (ant, pol) in autos])
     # Find most recent time, only keep spectra from that time
     latest = np.max(times.values())
     for key, this_t in times.items():
@@ -172,10 +169,7 @@ def main():
         text = (str(ant) + '\n' + pams[ant] + '\n' + receiverators[ant])
         plt.annotate(text, xy=antpos[ant, 0:2] + [1, 0], textcoords='data',
                     verticalalignment='center')
-    if args.log:
-        label = '10log10(Median Autos)'
-    else:
-        label = 'Median Autos'
+    label = '10log10(Median Autos)' if args.log else 'Median Autos'
     plt.colorbar(ax, label=label)
     xr = antpos[ants_connected, 0].max() - antpos[ants_connected, 0].min()
     yr = antpos[ants_connected, 1].max() - antpos[ants_connected, 1].min()
@@ -220,10 +214,7 @@ def main():
     plt.subplots_adjust(wspace=0)
     # cbar_ax = f.add_axes([.14, .05, .72, .05])
     cbar_ax = fig.add_axes([.13, .05, .67, .05])
-    if args.log:
-        label = '10log10(Median Autos)'
-    else:
-        label = 'Median Autos'
+    label = '10log10(Median Autos)' if args.log else 'Median Autos'
     fig.colorbar(ax, cax=cbar_ax, orientation='horizontal', label=label)
     fig.suptitle(str(latest.datetime) + ' UTC')
     # Add polarization key
@@ -255,10 +246,7 @@ def main():
                 plt.plot(autos[(ant, pol)], pol_colors[pol], label=pol_labels[pol])
             except KeyError:
                 continue
-        if ant in ants_connected:
-            lcolor = 'r'
-        else:
-            lcolor = 'k'
+        lcolor = 'r' if ant in ants_connected else 'k'
         plt.text(0.8, 0.8, str(ant), fontsize=12, transform=ax.transAxes, color=lcolor)
         # Axis stuff
         ax.axes.get_xaxis().set_ticklabels([])
@@ -295,21 +283,18 @@ def main():
         bins = np.logspace(-2, 4, BINS, base=2.)
         for cnt, ant in enumerate(ants):
             ax = plt.subplot(Nrow, Mcol, cnt + 1)
-            for ch in xrange(0, 1024, CHUNK):
+            for ch in range(0, 1024, CHUNK):
                 dchunk = data[ant, POL][ch:ch + CHUNK].flatten()
                 hist, hbins = np.histogram(np.sqrt(dchunk / 2), bins)
                 hist = 10**np.log10(hist + .1)
                 hbins = 0.5 * (hbins[1:] + hbins[:-1])
-                ax.fill_between(np.log2(bins), hist, .1, where=hist > .1, color=rmscolors[j], alpha=.5)
+                ax.fill_between(np.log2(bins), hist, .1, where=hist > .1, color=rmscolors[cnt], alpha=.5)
             bounds = np.where(bins < 2**0, dchunk.size, np.where(bins > 2**2, dchunk.size, 0))
             ax.fill_between(np.log2(bins), bounds, .1, where=bounds > .1, color='black', alpha=.6)
             ax.set_yscale('log')
             plt.xlim(-2, 3)
-            plt.ylim(d.size / 1e2, d.size)
-            if ant in ants_connected:
-                lcolor = 'r'
-            else:
-                lcolor = 'b'
+            plt.ylim(dchunk.size / 1e2, dchunk.size)
+            lcolor = 'r' if ant in ants_connected else 'b'
             plt.text(0.5, 0.8, str(ant), fontsize=12, transform=ax.transAxes, color=lcolor)
             ax.get_yaxis().set_visible(False)
             if cnt < (Nrow - 1) * Mcol:
@@ -317,7 +302,7 @@ def main():
             else:
                 plt.xlabel(r'$V_{\rm rms}$ [bits]')
             plt.grid()
-        fig.suptitle(str(latest.datetime) + ' UTC' + '    {0}'.format(POL) + '; JD=' + str(latest.jd))
+        fig.suptitle(str(latest.datetime) + ' UTC' + '    {}'.format(POL) + '; JD=' + str(latest.jd))
         plt.tight_layout(rect=(0, 0, 1, .95))
 
 
@@ -326,7 +311,7 @@ def main():
             plot_rms(autos_raw, POL=pol)
         else:
             plot_rms(autos, POL=pol)
-        filename = os.path.join(outpath, basename + '.{0}.auto_rms_values.png'.format(pol))
+        filename = os.path.join(outpath, basename + '.{}.auto_rms_values.png'.format(pol))
         plt.savefig(filename)
 
     # ID some potential baddies

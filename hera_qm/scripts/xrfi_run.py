@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
@@ -15,7 +14,7 @@ def main():
     xrfi.xrfi_run(args.ocalfits_files,
                 args.acalfits_files,
                 args.model_files,
-                args.data_files, 
+                args.data_files,
                 a_priori_flag_yaml=args.a_priori_flag_yaml,
                 a_priori_ants_only=not(args.a_apriori_times_and_freqs),
                 use_cross_pol_vis=not(args.skip_cross_pol_vis),

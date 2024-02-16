@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """Module for computing metrics on omnical calibration solutions."""
@@ -72,18 +71,18 @@ def load_omnical_metrics(filename):
 
     # load json
     if filetype == 'json':
-        with open(filename, 'r') as f:
+        with open(filename) as f:
             metrics = json.load(f, object_pairs_hook=odict)
 
         # ensure keys of ant_dicts are not strings
         # loop over pols
-        for key, metric in metrics.items():
+        for metric in metrics.values():
             # loop over items in each pol metric dict
-            for key2 in metric.keys():
+            for key2 in metric:
                 if isinstance(metric[key2], (dict, odict)):
-                    if isinstance(list(metric[key2].values())[0], list):
+                    if isinstance(next(iter(metric[key2].values())), list):
                         metric[key2] = odict([(int(i), np.array(metric[key2][i])) for i in metric[key2]])
-                    elif isinstance(list(metric[key2].values())[0], (str, np.unicode_)):
+                    elif isinstance(next(iter(metric[key2].values())), (str, np.str_)):
                         metric[key2] = odict([(int(i), metric[key2][i].astype(np.complex128)) for i in metric[key2]])
 
                 elif isinstance(metric[key2], list):
@@ -95,7 +94,7 @@ def load_omnical_metrics(filename):
             inp = pkl.Unpickler(f)
             metrics = inp.load()
     else:
-        raise IOError("Filetype not recognized, try a json or pkl file")
+        raise OSError("Filetype not recognized, try a json or pkl file")
 
     return metrics
 
@@ -128,13 +127,13 @@ def write_metrics(metrics, filename=None, filetype='json'):
         # change ndarrays to lists
         metrics_out = copy.deepcopy(metrics)
         # loop over pols
-        for pol in metrics_out.keys():
+        for pol in metrics_out:
             # loop over keys
-            for key in metrics_out[pol].keys():
+            for key in metrics_out[pol]:
                 if isinstance(metrics_out[pol][key], np.ndarray):
                     metrics_out[pol][key] = metrics[pol][key].tolist()
                 elif isinstance(metrics_out[pol][key], (dict, odict)):
-                    if list(metrics_out[pol][key].values())[0].dtype == complex:
+                    if next(iter(metrics_out[pol][key].values())).dtype == complex:
                         metrics_out[pol][key] = odict([(j, metrics_out[pol][key][j].astype(str)) for j in metrics_out[pol][key]])
                     metrics_out[pol][key] = odict([(str(j), metrics_out[pol][key][j].tolist()) for j in metrics_out[pol][key]])
                 elif isinstance(metrics_out[pol][key], (bool, np.bool_)):
@@ -254,7 +253,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         for label in ax.get_xticklabels():
             label.set_rotation(20)
         ax.set_ylim(0, ymax)
-        ax.set_title("{0}".format(metrics['filename']))
+        ax.set_title("{}".format(metrics['filename']))
 
     if plot_type == 'hist':
         ylines = np.array(list(metrics['ant_phs_hists'].values()))
@@ -265,7 +264,7 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         ax1 = fig.add_axes([0.99, 0.1, 0.03, 0.8])
         ax1.axis('off')
         ax1.legend(np.concatenate(plist), metrics['ant_array'])
-        ax.set_title("gain phase histogram for {0}".format(metrics['filename']))
+        ax.set_title("gain phase histogram for {}".format(metrics['filename']))
 
     if plot_type == 'ft':
         ylines = np.abs(np.array(list(metrics['ant_gain_fft'].values())))
@@ -278,12 +277,12 @@ def plot_phs_metric(metrics, plot_type='std', ax=None, save=False,
         ax1 = fig.add_axes([0.99, 0.1, 0.03, 0.8])
         ax1.axis('off')
         ax1.legend(np.concatenate(plist), metrics['ant_array'])
-        ax.set_title("abs val of FT(complex gains) for {0}".format(metrics['filename']))
+        ax.set_title("abs val of FT(complex gains) for {}".format(metrics['filename']))
 
     if save is True:
         if fname is None:
             fname = (utils.strip_extension(metrics['filename'])
-                     + '.phs_{0}.png'.format(plot_type))
+                     + '.phs_{}.png'.format(plot_type))
         if outpath is None:
             fname = os.path.join(metrics['filedir'], fname)
         else:
@@ -360,7 +359,7 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
     ax.set_xticklabels(metrics['ant_array'])
     [t.set_rotation(20) for t in ax.get_xticklabels()]
     ax.set_ylim(0, ymax)
-    ax.set_title("{0}".format(metrics['filename']))
+    ax.set_title("{}".format(metrics['filename']))
 
     if save is True:
         if fname is None:
@@ -378,7 +377,7 @@ def plot_chisq_metric(metrics, ax=None, save=False, fname=None, outpath=None,
         return fig
 
 
-class OmniCal_Metrics(object):
+class OmniCal_Metrics:
     """Class for computing and storing omnical metrics.
 
     This class provides methods for storing omnical gain solutions
@@ -829,7 +828,7 @@ class OmniCal_Metrics(object):
         if ants is None:
             ants = np.arange(self.Nants)
         else:
-            ants = np.array(list(map(lambda x: np.where(self.ant_array == x)[0][0], ants)))
+            ants = np.array([np.where(self.ant_array == x)[0][0] for x in ants])
 
         if plot_type == 'phs':
             # make grid and plot
@@ -845,7 +844,7 @@ class OmniCal_Metrics(object):
             ax1 = ax.figure.add_axes([0.99, 0.1, 0.03, 0.8])
             ax1.axis('off')
             ax1.legend(plist, self.ant_array[ants])
-            ax.set_title("{0} : JD={1} : {2} pol".format(self.filename, self.times[time_index], self.pols[pol_index]))
+            ax.set_title("{} : JD={} : {} pol".format(self.filename, self.times[time_index], self.pols[pol_index]))
 
         elif plot_type == 'amp':
             # make grid and plot
@@ -861,11 +860,11 @@ class OmniCal_Metrics(object):
             ax1 = ax.figure.add_axes([0.99, 0.1, 0.03, 0.8])
             ax1.axis('off')
             ax1.legend(plist, self.ant_array[ants])
-            ax.set_title("{0} : JD={1} : {2} pol".format(self.filename, self.times[time_index], self.pols[pol_index]))
+            ax.set_title("{} : JD={} : {} pol".format(self.filename, self.times[time_index], self.pols[pol_index]))
 
         if save is True:
             if fname is None:
-                fname = utils.strip_extension(self.filename) + '.gain_{0}.png'.format(plot_type)
+                fname = utils.strip_extension(self.filename) + '.gain_{}.png'.format(plot_type)
             if outpath is None:
                 fname = os.path.join(self.filedir, fname)
             else:
@@ -920,7 +919,7 @@ class OmniCal_Metrics(object):
         if ants is None:
             ants = np.arange(self.Nants)
         else:
-            ants = np.array(list(map(lambda x: np.where(self.ant_array == x)[0][0], ants)))
+            ants = np.array([np.where(self.ant_array == x)[0][0] for x in ants])
 
         # make grid and plots
         ax.grid(True)
@@ -930,7 +929,7 @@ class OmniCal_Metrics(object):
         ax.set_xlabel('frequency [MHz]', fontsize=14)
         ax.set_ylabel('chi-square avg over time', fontsize=14)
         ax.set_ylim(0, ylim * 2)
-        ax.set_title("{0} : {1} pol".format(self.filename, self.pols[pol_index]))
+        ax.set_title("{} : {} pol".format(self.filename, self.pols[pol_index]))
 
         ax = ax.figure.add_axes([0.99, 0.1, 0.02, 0.8])
         ax.axis('off')
@@ -1000,7 +999,7 @@ def omnical_metrics_run(files, args, history):
     for i, filename in enumerate(files):
         om = OmniCal_Metrics(filename, history=history)
         if args.fc_files is not None:
-            fc_files = list(map(lambda x: x.split(','), args.fc_files.split('|')))
+            fc_files = [x.split(',') for x in args.fc_files.split('|')]
             full_metrics = om.run_metrics(fcfiles=fc_files[i],
                                           cut_edges=args.no_bandcut is False,
                                           phs_std_cut=args.phs_std_cut,
@@ -1011,7 +1010,7 @@ def omnical_metrics_run(files, args, history):
                                           chisq_std_zscore_cut=args.chisq_std_zscore_cut)
 
         # iterate over pols
-        for p, pol in enumerate(full_metrics.keys()):
+        for _p, pol in enumerate(full_metrics.keys()):
             if args.make_plots is True:
                 om.plot_metrics(full_metrics[pol])
 
