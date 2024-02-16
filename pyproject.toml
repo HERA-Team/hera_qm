@@ -67,10 +67,56 @@ addopts = "--ignore=hera_qm/scripts --cov=hera_qm --cov-config=.coveragerc"
 line-length = 88
 target-version = "py39"
 
+
 [tool.ruff.lint]
+select = [
+    "A",
+    "ARG",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "FA",
+    "FURB",
+    "I002",
+    "ICN002",
+    "ICN003",
+    "LOG", # log messages
+    "N8",  # invalid variable names
+    "N999", # invalid module name
+    "NPY",  # numpy-specific checks
+    "PERF", # performance
+    "PIE",  # flake8-pie
+    "RUF",  # ruf-specific rules
+    "SIM",  # flake8-simplify
+    "UP",   # pyupgrade
+    "W",    # pycodestyle warnings
+]
+
 ignore = [
     "E501",
-    "W503"
+    "B018",    # useless epression
+    "B006",    # mutable argument default !!!!
+    "N813",    # camelcase imported as lowercase
+    "N802",    # invalid function name
+    "N803",    # invalid argument name
+    "N806",    # non-lowercase variable in function
+    "PERF401", # manual list comprehension
+    "A001",    # variable shadowing builtin
+    "E702",    # multiple statements on one line with semicolon
+    "E731",    # lambda assignment
+    "E722",    # bare except
+    "SIM105",  # suppressable exception
+    "RUF005",  # collection literal concatenation
+    "PERF203", # try-except in loop
+    "B904",    # raise witout from inside except
+    "E721",    # type-comparison
+    "B028",    # no explicit stack-level
+    "ARG001",  # unused function argument
+    "F841",    # unused variable
+    "UP032",   # use fstrings
+    "C901",    # complex structure
 ]
 
 [tool.ruff.lint.pydocstyle]
