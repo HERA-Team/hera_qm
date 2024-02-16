@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
@@ -24,7 +23,7 @@ def omnical_data():
     out_dir = os.path.join(DATA_PATH, 'test_output')
     OM = omnical_metrics.OmniCal_Metrics(oc_file)
 
-    class DataHolder():
+    class DataHolder:
         def __init__(self, OM, fc_file, fc_file_bad, fc_fileyy, oc_file, out_dir):
             self.OM = OM
             self.fc_file = fc_file
@@ -356,7 +355,7 @@ def omnicalrun_data():
     oc_basename = os.path.basename(oc_file)
     out_dir = os.path.join(DATA_PATH, 'test_output')
 
-    class DataHolder(object):
+    class DataHolder:
         def __init__(self, fc_file, oc_file, oc_filedir, oc_basename, out_dir):
             self.fc_file = fc_file
             self.oc_file = oc_file
@@ -425,7 +424,7 @@ def test_firstcal_metrics_run(omnicalrun_data):
     os.remove(outfile)
 
     # test w/ options
-    arguments = '--fc_files={0} --no_bandcut --phs_std_cut=0.5 --chisq_std_zscore_cut=4.0'.format(omnicalrun_data.fc_file)
+    arguments = '--fc_files={} --no_bandcut --phs_std_cut=0.5 --chisq_std_zscore_cut=4.0'.format(omnicalrun_data.fc_file)
     cmd = ' '.join([arguments, omnicalrun_data.oc_file])
     args = a.parse_args(cmd.split())
     history = cmd
@@ -437,7 +436,7 @@ def test_firstcal_metrics_run(omnicalrun_data):
     os.remove(outfile)
 
     # test make plots
-    arguments = '--fc_files={0} --make_plots'.format(omnicalrun_data.fc_file)
+    arguments = '--fc_files={} --make_plots'.format(omnicalrun_data.fc_file)
     cmd = ' '.join([arguments, omnicalrun_data.oc_file])
     args = a.parse_args(cmd.split())
     history = cmd

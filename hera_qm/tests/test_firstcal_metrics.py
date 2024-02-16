@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
@@ -14,23 +13,22 @@ import hera_qm.tests as qmtest
 from hera_qm import metrics_io
 import sys
 import pytest
-import warnings
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore:.*Using known values for HERA",
     "ignore:.*Increasing the bound and calling fit again may find a better value",
     "ignore:.*Decreasing the bound and calling fit again may find a better value",
-    
+
 )
 
 @pytest.fixture(scope='function')
 def firstcal_setup():
     infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
     FC = firstcal_metrics.FirstCalMetrics(infile)
-    
+
     out_dir = os.path.join(DATA_PATH, 'test_output')
 
-    class DataHolder():
+    class DataHolder:
         def __init__(self, FC, infile, out_dir):
             self.FC = FC
             self.infile = infile
@@ -64,7 +62,7 @@ def test_run_metrics(firstcal_setup):
     assert np.isclose(1.0, firstcal_setup.FC.metrics['nn']['std_cut'])
     assert np.isclose(firstcal_setup.FC.metrics['nn']['agg_std'], 0.044662349588061437)
     assert np.isclose(firstcal_setup.FC.metrics['nn']['max_std'], 0.089829821120782846)
-    assert 'nn' == firstcal_setup.FC.metrics['nn']['pol']
+    assert firstcal_setup.FC.metrics['nn']['pol'] == 'nn'
 
     # Test bad ants detection
     firstcal_setup.FC.delay_fluctuations[0, :] *= 1000
@@ -231,17 +229,15 @@ def test_rotated_metrics():
     FC = firstcal_metrics.FirstCalMetrics(infile)
     FC.run_metrics(std_cut=0.5)
     # test pickup of rotant key
-    assert 'rot_ants' in FC.metrics['ee'].keys()
+    assert 'rot_ants' in FC.metrics['ee']
     # test rotants is correct
     assert [43] == FC.metrics['ee']['rot_ants']
 
 
 def test_delay_smoothing():
     infile = os.path.join(DATA_PATH, 'zen.2457555.50099.yy.HH.uvcA.first.calfits')
-    np.random.seed(0)
     FC = firstcal_metrics.FirstCalMetrics(infile, use_gp=False)
     assert np.isclose(FC.delay_fluctuations[0, 0], 0.043740587980040324, atol=0.000001)
-    np.random.seed(0)
     FC = firstcal_metrics.FirstCalMetrics(infile, use_gp=True)
     assert np.isclose(FC.delay_fluctuations[0, 0], 0.024669144881121961, atol=0.000001)
 
@@ -252,7 +248,7 @@ def firstcal_twopol():
     FC = firstcal_metrics.FirstCalMetrics(infile)
     out_dir = os.path.join(DATA_PATH, 'test_output')
 
-    class DataHolder(object):
+    class DataHolder:
         def __init__(self, FC, infile, out_dir):
             self.FC = FC
             self.infile = infile
@@ -281,7 +277,6 @@ def test_run_metrics_two_pols(firstcal_twopol):
     # These results were run with a seed of 0, the seed shouldn't matter
     # but you never know.
     two_pol_known_results = os.path.join(DATA_PATH, 'example_two_polarization_firstcal_results.hdf5')
-    np.random.seed(0)
     firstcal_twopol.FC.run_metrics(std_cut=.5)
     known_output = metrics_io.load_metric_file(two_pol_known_results)
 

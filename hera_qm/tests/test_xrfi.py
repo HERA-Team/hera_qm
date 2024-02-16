@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 import pytest
@@ -45,6 +44,8 @@ pytestmark = pytest.mark.filterwarnings(
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
     "ignore:.*Using known values for HERA",
 )
+
+rng = np.random.default_rng(0)
 
 
 @pytest.fixture(scope="session")
@@ -346,7 +347,7 @@ def test_check_convolve_dims_1D():
             nwarnings=1
     ):
         K = xrfi._check_convolve_dims(d, size + 1)
-    assert K == size
+    assert size == K
 
 
 def test_check_convolve_dims_kernel_not_given():
@@ -358,8 +359,8 @@ def test_check_convolve_dims_kernel_not_given():
             nwarnings=2
     ):
         K1, K2 = xrfi._check_convolve_dims(d)
-    assert K1 == size
-    assert K2 == size
+    assert size == K1
+    assert size == K2
 
 
 def test_check_convolve_dims_Kt_too_big():
@@ -407,10 +408,12 @@ def test_dpss_flagger():
     df = np.diff(freqs)[0]
     dt = 10
 
+
     # Generate fake auto-correlation  data with realistic noise
     intcnt = df * dt
     data = np.sin(freqs[None, :] / 50e6) + 5
-    data += np.random.normal(0, data / np.sqrt(intcnt / 2), size=data.shape)
+
+    data += rng.normal(0, data / np.sqrt(intcnt / 2), size=data.shape)
 
     # Add RFI to a few channels
     midx = [25, 125, 198, 259, 345, 398]
@@ -451,7 +454,7 @@ def test_channel_diff_flagger():
     # Generate fake auto-correlation  data with realistic noise
     intcnt = df * dt
     data = np.sin(freqs[None, :] / 50e6) + 5
-    data += np.random.normal(0, data / np.sqrt(intcnt / 2), size=data.shape)
+    data += rng.normal(0, data / np.sqrt(intcnt / 2), size=data.shape)
 
     # Add RFI to a few channels
     midx = [25, 125, 198, 259, 345, 398]
@@ -495,7 +498,7 @@ def test_flag_autos():
     assert len(ant_flags) == len(autos)
 
     # Check antenna weights of a bad antenna are set to 0
-    bad_ant = list(auto_power_class.bad_ants)[0]
+    bad_ant = next(iter(auto_power_class.bad_ants))
     assert np.allclose(ant_flags[bad_ant], np.ones_like(ant_flags[bad_ant], dtype=bool))
 
     # Confirm bad antennas are excluded from array averaged weights
@@ -687,8 +690,8 @@ def test_detrend_meanfilt_flags(fake_data):
 
 def test_zscore_full_array(fake_data):
     # Make some fake data
-    np.random.seed(182)
-    fake_data[...] = np.random.randn(fake_data.shape[0], fake_data.shape[1])
+    rng.seed(182)
+    fake_data[...] = rng.standard_normal((fake_data.shape[0], fake_data.shape[1]))
     out = xrfi.zscore_full_array(fake_data)
     fake_mean = np.mean(fake_data)
     fake_std = np.std(fake_data)
@@ -697,8 +700,8 @@ def test_zscore_full_array(fake_data):
 
 def test_zscore_full_array_flags(fake_data):
     # Make some fake data
-    np.random.seed(182)
-    fake_data[...] = np.random.randn(fake_data.shape[0], fake_data.shape[1])
+    rng.seed(182)
+    fake_data[...] = rng.standard_normal((fake_data.shape[0], fake_data.shape[1]))
     flags = np.zeros(fake_data.shape, dtype=np.bool_)
     flags[45, 33] = True
     out = xrfi.zscore_full_array(fake_data, flags=flags)
@@ -711,8 +714,8 @@ def test_zscore_full_array_flags(fake_data):
 
 def test_zscore_full_array_modified(fake_data):
     # Make some fake data
-    np.random.seed(182)
-    fake_data[...] = np.random.randn(fake_data.shape[0], fake_data.shape[1])
+    rng.seed(182)
+    fake_data[...] = rng.standard_normal((fake_data.shape[0], fake_data.shape[1]))
     out = xrfi.zscore_full_array(fake_data, modified=True)
     fake_med = np.median(fake_data)
     fake_mad = np.median(np.abs(fake_data - fake_med))
@@ -721,8 +724,8 @@ def test_zscore_full_array_modified(fake_data):
 
 def test_zscore_full_array_modified_complex(fake_data):
     # Make some fake data
-    np.random.seed(182)
-    rands = np.random.randn(100, 100)
+    rng.seed(182)
+    rands = rng.standard_normal((100, 100))
     fake_data = rands + 1j * rands
     out = xrfi.zscore_full_array(fake_data, modified=True)
     fake_med = np.median(rands)
@@ -732,8 +735,8 @@ def test_zscore_full_array_modified_complex(fake_data):
 
 def test_modzscore_1d_no_detrend():
     npix = 1000
-    np.random.seed(182)
-    data = np.random.randn(npix)
+    rng.seed(182)
+    data = rng.standard_normal(npix)
     data[50] = 500
     out = xrfi.modzscore_1d(data, detrend=False)
     assert out.shape == (npix,)
@@ -743,8 +746,8 @@ def test_modzscore_1d_no_detrend():
 
 def test_modzscore_1d():
     npix = 1000
-    np.random.seed(182)
-    data = np.random.randn(npix)
+    rng.seed(182)
+    data = rng.standard_normal(npix)
     data[50] = 500
     data += .1 * np.arange(npix)
     out = xrfi.modzscore_1d(data)
@@ -971,9 +974,9 @@ def test_ws_flag_waterfall():
 
 def test_xrfi_waterfall():
     # test basic functions
-    np.random.seed(21)
+    rng.seed(21)
     data = 100 * np.ones((10, 10))
-    data += np.random.randn(10, 10)
+    data += rng.standard_normal((10, 10))
     data[3, 3] += 100
     data[3, 4] += 3
     flags = xrfi.xrfi_waterfall(data)
@@ -987,9 +990,9 @@ def test_xrfi_waterfall():
 
 def test_xrfi_waterfall_prior_flags():
     # test with prior flags
-    np.random.seed(21)
+    rng.seed(21)
     data = 100 * np.ones((10, 10))
-    data += np.random.randn(10, 10)
+    data += rng.standard_normal(data.shape)
     prior_flags = np.zeros((10, 10), dtype=bool)
     prior_flags[3, 3] = True
     data[3, 4] += 3
@@ -1157,8 +1160,8 @@ def test_flag_apply(
 
 
 def test_simple_flag_waterfall():
-    np.random.seed(21)
-    data = np.random.randn(100, 100)
+    rng.seed(21)
+    data = rng.standard_normal((100, 100))
     data[3:, 10] += 200  # this tests spectral thresholding
     data[70, 20:] += 100  # this tests temporal thresholding
     data[50:55, 50] += 10  # this tests chanchan_thresh_frac
@@ -1473,17 +1476,17 @@ def test_xrfi_run_yaml_flags(tmpdir):
             warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in subtract")
             warnings.filterwarnings("ignore", category=RuntimeWarning, message="Mean of empty slice")
             warnings.filterwarnings("ignore", category=RuntimeWarning, message="Degrees of freedom <= 0 for slice")
-            
+
             warnings.filterwarnings("ignore", category=AstropyUserWarning)
-            
+
             xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
-                          a_priori_flag_yaml=test_flag, history='Just a test', 
+                          a_priori_flag_yaml=test_flag, history='Just a test',
                           kt_size=3, throw_away_edges=False)
 
 
         for ext, label in ext_labels.items():
             # by default, only cross median filter / mean filter is not performed.
-            if not ext in['cross_metrics1', 'cross_flags1']:
+            if ext not in ['cross_metrics1', 'cross_flags1']:
                 out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
                 assert os.path.exists(out)
                 uvf = UVFlag(out, use_future_array_shapes=True)
@@ -1492,7 +1495,7 @@ def test_xrfi_run_yaml_flags(tmpdir):
                 # only check init flags, apriori flags, and round 2 flags.
                 # other round 1 flags are derived from metrics and won't necessarily
                 # have data /cal flags in them.
-                if 'flag' in ext and ('apriori' in ext or '2' in ext or 'flags1' == ext):
+                if 'flag' in ext and ('apriori' in ext or '2' in ext or ext == 'flags1'):
                     for region in freq_regions:
                         selection = (uvf.freq_array[0] >= region[0]) & (uvf.freq_array[0] <= region[-1])
                         assert np.all(uvf.flag_array[:, selection, :])
@@ -1501,7 +1504,7 @@ def test_xrfi_run_yaml_flags(tmpdir):
                     for integration in integration_flags:
                         assert np.all(uvf.flag_array[integration, :, :])
         # cleanup
-        for ext, label in ext_labels.items():
+        for ext in ext_labels:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             if os.path.exists(out):
                 os.remove(out)
@@ -1509,7 +1512,7 @@ def test_xrfi_run_yaml_flags(tmpdir):
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
-    
+
     # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
     tmp_path = tmpdir.strpath
     fake_obs = 'zen.2457698.40355.HH'
@@ -1572,13 +1575,13 @@ def test_xrfi_run(tmpdir):
                   'v_metrics2': 'Omnical visibility solutions, mean filter.'}
     for ext, label in ext_labels.items():
         # by default, only cross median filter / mean filter is not performed.
-        if not ext in['cross_metrics1', 'cross_flags1']:
+        if ext not in ['cross_metrics1', 'cross_flags1']:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
             uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1598,7 +1601,7 @@ def test_xrfi_run(tmpdir):
         uvf_list1_names.append(out)
         assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1617,7 +1620,7 @@ def test_xrfi_run(tmpdir):
         uvf_list2_names.append(out)
         assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1637,7 +1640,7 @@ def test_xrfi_run(tmpdir):
           uvf = UVFlag(out, use_future_array_shapes=True)
           assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
           os.remove(out)
@@ -1651,7 +1654,7 @@ def test_xrfi_run(tmpdir):
           uvf = UVFlag(out, use_future_array_shapes=True)
           assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
       out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
       if os.path.exists(out):
           os.remove(out)
@@ -1671,7 +1674,7 @@ def test_xrfi_run(tmpdir):
             uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1681,12 +1684,12 @@ def test_xrfi_run(tmpdir):
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if 'cross' not in ext and 'v_' not in ext and 'auto' not in ext\
-         and 'ox_' not in ext and 'og_' not in ext and not 'omnical' in ext:
+         and 'ox_' not in ext and 'og_' not in ext and 'omnical' not in ext:
             assert os.path.exists(out)
             uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1699,7 +1702,7 @@ def test_xrfi_run(tmpdir):
             uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1721,7 +1724,7 @@ def test_xrfi_run(tmpdir):
             uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1744,7 +1747,7 @@ def test_xrfi_run(tmpdir):
             uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1757,7 +1760,7 @@ def test_xrfi_run(tmpdir):
             uvf = UVFlag(out)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1770,7 +1773,7 @@ def test_xrfi_run(tmpdir):
             uvf = UVFlag(out)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1778,13 +1781,13 @@ def test_xrfi_run(tmpdir):
     xrfi.xrfi_run(acalfits_files=acal_file, ocalfits_files=ocal_file,
                   data_files=raw_dfile, history='data and omni/abs cal.', cross_median_filter=True)
     for ext, label in ext_labels.items():
-        if not 'v_' in ext:
+        if 'v_' not in ext:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
             uvf = UVFlag(out)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1798,7 +1801,7 @@ def test_xrfi_run(tmpdir):
             uvf = UVFlag(out)
             assert uvf.label == label
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1812,7 +1815,7 @@ def test_xrfi_run_edgeflag(tmpdir):
     # first try out a single file.
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
-    
+
     # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
     tmp_path = tmpdir.strpath
     fake_obs = 'zen.2457698.40355.HH'
@@ -1872,9 +1875,9 @@ def test_xrfi_run_edgeflag(tmpdir):
                   'v_flags2': 'Omnical visibility solutions, mean filter. Flags.',
                   'v_metrics1': 'Omnical visibility solutions, median filter.',
                   'v_metrics2': 'Omnical visibility solutions, mean filter.'}
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         # by default, only cross median filter / mean filter is not performed.
-        if not ext in['cross_metrics1', 'cross_flags1']:
+        if ext not in ['cross_metrics1', 'cross_flags1']:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
             uvf = UVFlag(out)
@@ -1886,7 +1889,7 @@ def test_xrfi_run_edgeflag(tmpdir):
                 assert not np.all(uvf.flag_array[2:-2])
 
     # cleanup
-    for ext, label in ext_labels.items():
+    for ext in ext_labels:
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
         if os.path.exists(out):
             os.remove(out)
@@ -1929,7 +1932,7 @@ def test_xrfi_run_multifile(tmpdir):
     # test xrfi_run with multiple files
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
-    
+
     # Spoof a couple files to use as extra inputs (xrfi_run needs two cal files and two data-like files)
     tmp_path = tmpdir.strpath
     fake_obses = ['zen.2457698.40355191.HH', 'zen.2457698.40367619.HH', 'zen.2457698.40380046.HH']
@@ -2081,7 +2084,7 @@ def test_day_threshold_run(tmpdir):
         UserWarning,
         match="This object is already a waterfall",
         nwarnings=8
-    ):    
+    ):
         # TODO: these three warnings should be checked.
         warnings.filterwarnings("ignore", category=AstropyUserWarning)
         warnings.filterwarnings("ignore", category=RuntimeWarning, message="Mean of empty slice")
@@ -2100,7 +2103,7 @@ def test_day_threshold_run(tmpdir):
     basename = '.'.join(fake_obses[0].split('.')[0:-2]) + '.total_threshold_and_a_priori_flags.h5'
     outfile = os.path.join(tmp_path, basename)
     assert os.path.exists(outfile)
-        
+
     for fake_obs in fake_obses:
         calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
         assert os.path.exists(calfile)
@@ -2348,9 +2351,7 @@ def test_xrfi_h1c_run():
 
     # catch no provided data file for flagging
     with check_warnings(UserWarning, match=['indata is None']*100 + ['K1 value 8']*91):
-        xrfi.xrfi_h1c_run(None, **{'filename': test_d_file, 'history': 'Just a test.',
-                                   'model_file': test_d_file, 'model_file_format': 'miriad',
-                                   'xrfi_path': xrfi_path})
+        xrfi.xrfi_h1c_run(None, filename=test_d_file, history='Just a test.', model_file=test_d_file, model_file_format='miriad', xrfi_path=xrfi_path)
 
 
 def test_xrfi_h1c_run_no_indata():
@@ -2547,13 +2548,13 @@ def test_xrfi_h1c_apply_errors():
 @pytest.fixture(scope='function')
 def fake_waterfall(uvflag_f):
     # generate a dummy metric waterfall
-    np.random.seed(0)
+    rng.seed(0)
     uvm = uvflag_f
     uvm.to_waterfall()
 
     # populate with noise and add bad times / channels
     # Note we're breaking the object here to get larger time dimension. But should be ok for test.
-    uvm.metric_array = np.random.chisquare(100, 10000).reshape((100, 100, 1)) / 100
+    uvm.metric_array = rng.chisquare(100, 10000).reshape((100, 100, 1)) / 100
 
     # The fake data changes properties of the object.
     # We need to make the object self consistent
@@ -2628,13 +2629,13 @@ def test_threshold_wf_detrend(fake_waterfall):
 
 def test_threshold_wf_detrend_no_check(uvflag_f):
     # generate a dummy metric waterfall
-    np.random.seed(0)
+    rng.seed(0)
     uvm = uvflag_f
     uvm.to_waterfall()
 
     # populate with noise and add bad times / channels
     # Note we're breaking the object here to get larger time dimension. But should be ok for test.
-    uvm.metric_array = np.random.chisquare(100, 10000).reshape((100, 100, 1)) / 100
+    uvm.metric_array = rng.chisquare(100, 10000).reshape((100, 100, 1)) / 100
 
     # test with detrend
     uvm.metric_array[50, :] += .5  # should get this
@@ -2648,8 +2649,6 @@ def test_threshold_wf_detrend_no_check(uvflag_f):
 
 
 def test_threshold_wf_exceptions(uvflag_f):
-    # generate a dummy metric waterfall
-    np.random.seed(0)
     uvf = uvflag_f
 
     # exceptions
@@ -2781,4 +2780,3 @@ def test_modzscore_complex(detrend):
     assert np.iscomplexobj(zscore)
     assert np.isclose(np.mean(zscore.real), 0, atol=1e-1)
     assert np.isclose(np.mean(zscore.imag), 0, atol=1e-1)
-        

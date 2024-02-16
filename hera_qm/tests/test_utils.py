@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
 import pytest
 import os
-import pyuvdata.tests as uvtest
 from hera_qm import utils
 from hera_qm.data import DATA_PATH
 from hera_qm.ant_metrics import get_ant_metrics_dict
@@ -15,7 +13,6 @@ import numpy as np
 from pyuvdata import UVData
 from pyuvdata import UVCal
 import pyuvdata.utils as uvutils
-import warnings
 from pathlib import Path
 
 pytestmark = pytest.mark.filterwarnings(
@@ -176,7 +173,7 @@ def test_metrics2mc():
     # test ant metrics
     filename = os.path.join(DATA_PATH, 'example_ant_metrics.hdf5')
     d = utils.metrics2mc(filename, ftype='ant')
-    assert set(d.keys()) == set(['ant_metrics', 'array_metrics'])
+    assert set(d.keys()) == {'ant_metrics', 'array_metrics'}
     assert len(d['array_metrics']) == 0
     ant_metrics_list = get_ant_metrics_dict()
     for k in set(d['ant_metrics'].keys()):
@@ -185,10 +182,10 @@ def test_metrics2mc():
     # test firstcal metrics
     filename = os.path.join(DATA_PATH, 'example_firstcal_metrics.json')
     d = utils.metrics2mc(filename, ftype='firstcal')
-    assert set(d.keys()) == set(['ant_metrics', 'array_metrics'])
-    firstcal_array_metrics = set(['firstcal_metrics_agg_std_y',
+    assert set(d.keys()) == {'ant_metrics', 'array_metrics'}
+    firstcal_array_metrics = {'firstcal_metrics_agg_std_y',
                                   'firstcal_metrics_good_sol_y',
-                                  'firstcal_metrics_max_std_y'])
+                                  'firstcal_metrics_max_std_y'}
     assert set(d['array_metrics'].keys()) == firstcal_array_metrics
     firstcal_metrics_list = get_firstcal_metrics_dict()
     firstcal_ant_metrics = set(firstcal_metrics_list.keys()) - firstcal_array_metrics
@@ -201,19 +198,19 @@ def test_metrics2mc():
     # test omnical metrics
     filename = os.path.join(DATA_PATH, 'example_omnical_metrics.json')
     d = utils.metrics2mc(filename, ftype='omnical')
-    assert set(d.keys()) == set(['ant_metrics', 'array_metrics'])
+    assert set(d.keys()) == {'ant_metrics', 'array_metrics'}
     om = 'omnical_metrics_'
-    assert set(d['array_metrics'].keys()) == set([om + 'chisq_tot_avg_XX',
+    assert set(d['array_metrics'].keys()) == {om + 'chisq_tot_avg_XX',
                                                   om + 'chisq_good_sol_XX',
                                                   om + 'chisq_tot_avg_YY',
                                                   om + 'chisq_good_sol_YY',
                                                   om + 'ant_phs_std_max_XX',
                                                   om + 'ant_phs_std_good_sol_XX',
                                                   om + 'ant_phs_std_max_YY',
-                                                  om + 'ant_phs_std_good_sol_YY'])
-    assert set(d['ant_metrics'].keys()) == set([om + 'chisq_ant_avg',
+                                                  om + 'ant_phs_std_good_sol_YY'}
+    assert set(d['ant_metrics'].keys()) == {om + 'chisq_ant_avg',
                                                 om + 'chisq_ant_std',
-                                                om + 'ant_phs_std'])
+                                                om + 'ant_phs_std'}
     assert len(d['ant_metrics'][om + 'chisq_ant_avg']) == 32
 
     # Hit the exceptions

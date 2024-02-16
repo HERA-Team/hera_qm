@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 import hera_qm.tests as qmtest
@@ -10,7 +9,6 @@ from hera_qm.data import DATA_PATH
 import os
 import copy
 import pytest
-from scipy import stats
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
@@ -41,7 +39,7 @@ def vismetrics_data():
         ind = data._key2inds(key)[0]
         data.data_array[ind, :, 0] = ant_dat[key[0]] * ant_dat[key[1]].conj()
 
-    class DataHolder(object):
+    class DataHolder:
         def __init__(self, data, data1, data2):
             self.data = data
             self.data1 = data1
@@ -78,7 +76,7 @@ def test_check_noise_variance_inttime_error(vismetrics_data):
 def uvd():
     uvd = UVData()
     uvd.read_miriad(
-        os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'), 
+        os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'),
         projected=False, use_future_array_shapes=True,
         check_autos=False
     )
@@ -189,11 +187,11 @@ def test_sequential_diff():
     uvn.flag_array[:] = False
     f = np.arange(uvn.Nfreqs)
     t = np.arange(uvn.Ntimes)
-    np.random.seed(0)
+    rng = np.random.default_rng(0)
     for bl in uvn.get_antpairs():
         # generate random noise
-        n = (stats.norm.rvs(0, 1 / np.sqrt(2), uvn.Ntimes * uvn.Nfreqs)
-             + 1j * stats.norm.rvs(0, 1 / np.sqrt(2), uvn.Ntimes * uvn.Nfreqs)).reshape(uvn.Ntimes, uvn.Nfreqs)
+        n = (rng.normal(0, 1 / np.sqrt(2), uvn.Ntimes * uvn.Nfreqs)
+             + 1j * rng.normal(0, 1 / np.sqrt(2), uvn.Ntimes * uvn.Nfreqs)).reshape(uvn.Ntimes, uvn.Nfreqs)
 
         # generate smooth signal
         s = np.exp(1j * f[None, :] / 100.0 + 1j * t[:, None] / 10.0)

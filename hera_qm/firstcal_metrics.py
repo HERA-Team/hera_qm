@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
@@ -276,7 +275,7 @@ def plot_zscores(metrics, fname=None, plot_type='full', ax=None, figsize=(10, 6)
         return fig
 
 
-class FirstCalMetrics(object):
+class FirstCalMetrics:
     """Object to store and compute FirstCal metric data.
 
     The FirstCalMetrics class is used for holding firstcal data, running metrics,
@@ -476,10 +475,7 @@ class FirstCalMetrics(object):
 
             # Given delay standard dev. cut, find "bad" ants
             # also determine if full solultion is bad
-            if max_std > std_cut:
-                good_sol = False
-            else:
-                good_sol = True
+            good_sol = not max_std > std_cut
 
             bad_ants = []
             for ant in ant_std:
@@ -546,7 +542,7 @@ class FirstCalMetrics(object):
         else:
             raise ValueError("Output filetype is not an accepted value. "
                              "Allowed values are: ['json', 'pkl', 'h5', 'hdf5'] "
-                             "Received value: {0}".format(filetype))
+                             "Received value: {}".format(filetype))
         metrics_io.write_metric_file(filename=filename,
                                      input_dict=self.metrics,
                                      overwrite=overwrite)
@@ -648,7 +644,7 @@ class FirstCalMetrics(object):
                 # or rounding.
                 # We choose a 7 decimal precision to give ~10ms precision
                 # in the JDs
-                time_str = "{0:.7f}".format(t)
+                time_str = "{:.7f}".format(t)
                 time_std_d[time_str] = time_std[i]
 
             ant_avg = ant_avg_d
@@ -809,7 +805,7 @@ class FirstCalMetrics(object):
             raise NameError("You need to run FirstCalMetrics.run_metrics() "
                             + "in order to plot delay z_scores")
         if pol is None:
-            pol = list(self.metrics.keys())[0]
+            pol = next(iter(self.metrics.keys()))
         fig = plot_zscores(self.metrics[pol], fname=fname, plot_type=plot_type, ax=ax, figsize=figsize,
                            save=save, kwargs=kwargs, plot_abs=plot_abs)
         return fig
@@ -840,7 +836,7 @@ class FirstCalMetrics(object):
             raise NameError("You need to run FirstCalMetrics.run_metrics() "
                             + "in order to plot delay stds")
         if pol is None:
-            pol = list(self.metrics.keys())[0]
+            pol = next(iter(self.metrics.keys()))
         fig = plot_stds(self.metrics[pol], fname=fname, ax=ax, xaxis=xaxis, kwargs=kwargs, save=save)
         return fig
 

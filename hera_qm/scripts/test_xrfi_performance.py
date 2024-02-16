@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
@@ -8,8 +7,8 @@ import numpy as np
 import pylab as plt
 import hera_qm.tests as qmtest
 from inspect import getargspec
-
-np.random.seed(0)
+import capo
+rng = np.random.default_rng(0)
 
 SIZE = 100
 VERBOSE = False
@@ -22,12 +21,12 @@ def get_accuracy(flags, rfi, verbose=VERBOSE):
     m[rfi] = 0
     false_positive = float(np.sum(m)) / (m.size - len(rfi[0]))
     if verbose:
-        print('\t Found RFI: %1.3f\n\t False Positive: %1.3f' % (correctly_flagged, false_positive))
+        print('\t Found RFI: {:1.3f}\n\t False Positive: {:1.3f}'.format(correctly_flagged, false_positive))
     return correctly_flagged, false_positive
 
 
 def fake_flags(SIZE):
-    fakeflags = np.random.randint(0, 2, size=(SIZE, SIZE)).astype(bool)
+    fakeflags = rng.integers(0, 2, size=(SIZE, SIZE)).astype(bool)
     return fakeflags
 
 
@@ -40,7 +39,7 @@ def plot_waterfall(data, flags, mx=10, drng=10, mode='lin'):
     plt.colorbar()
     plt.subplot(122)
     capo.plot.waterfall(flags, mode='lin', mx=10, drng=10)
-    plt.imshow(f, aspect='auto', cmap='jet')
+    plt.imshow(flags, aspect='auto', cmap='jet')
     plt.colorbar()
     plt.show()
 
@@ -54,7 +53,7 @@ def plot_result(flags, rfi):
     plt.show()
 
 
-class Template():
+class Template:
 
     def setUp(self):
         raise unittest.SkipTest  # setUp has to be overridden to actually run a test
@@ -157,13 +156,14 @@ class Template():
 class TestSparseScatter(Template, unittest.TestCase):
 
     def setUp(self):
-        np.random.seed(0)
+        rng = np.random.default_rng(0)
+
         RFI = 50
         NTRIALS = 10
         NSIG = 10
 
         def rfi_gen():
-            for ind in xrange(NTRIALS):
+            for _ind in range(NTRIALS):
                 data = np.array(qmtest.real_noise((SIZE, SIZE)))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
@@ -185,7 +185,7 @@ class TestDenseScatter(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for ind in xrange(NTRIALS):
+            for _ind in xrange(NTRIALS):
                 data = qmtest.real_noise((SIZE, SIZE))
                 rfi = (np.random.randint(SIZE, size=RFI),
                        np.random.randint(SIZE, size=RFI))
@@ -209,7 +209,7 @@ class TestCluster(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for ind in xrange(NTRIALS):
+            for _ind in xrange(NTRIALS):
                 data = qmtest.real_noise((SIZE, SIZE))
                 xpos, ypos = (np.random.randint(SIZE - 1, size=RFI),
                               np.random.randint(SIZE - 1, size=RFI))
@@ -236,7 +236,7 @@ class TestLines(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for ind in xrange(NTRIALS):
+            for _ind in xrange(NTRIALS):
                 data = qmtest.real_noise((SIZE, SIZE))
                 xpos, ypos = (np.random.randint(SIZE, size=RFI),
                               np.random.randint(SIZE, size=RFI))
@@ -264,7 +264,7 @@ class TestBackground(Template, unittest.TestCase):
         NSIG = 10
 
         def rfi_gen():
-            for ind in xrange(NTRIALS):
+            for _ind in xrange(NTRIALS):
                 sin_t = np.sin(np.linspace(0, 2 * np.pi, SIZE))
                 sin_t.shape = (-1, 1)
                 sin_f = np.sin(np.linspace(0, 4 * np.pi, SIZE))

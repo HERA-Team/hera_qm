@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
@@ -26,7 +25,7 @@ from . import vis_metrics  # noqa
 from . import ant_metrics  # noqa
 from . import auto_metrics  # noqa
 from . import firstcal_metrics  # noqa
-from . import omnical_metrics  # noqa 
+from . import omnical_metrics  # noqa
 from . import metrics_io  # noqa
 from . import ant_class  # noqa
 from . import time_series_metrics  # noqa

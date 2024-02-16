@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """Module for computing visibility metrics."""
@@ -40,8 +39,8 @@ def check_noise_variance(uvd):
         inds = uvd.antpair2ind(key[0], key[1])
         integration_time = uvd.integration_time[inds]
         if not len(set(integration_time)) == 1:
-            raise NotImplementedError(("Integration times which vary with "
-                                       "time are currently not supported."))
+            raise NotImplementedError("Integration times which vary with "
+                                       "time are currently not supported.")
         else:
             integration_time = integration_time[0]
         w = uvd.get_nsamples(key)
@@ -274,7 +273,7 @@ def vis_bl_bl_cov(uvd1, uvd2, bls, iterax=None, return_corr=False):
         "uvd1 and uvd2 must be single-polarization objects"
     assert isinstance(bls, (list, np.ndarray)), "bls must be a list of baselines"
     if isinstance(bls[0], (int, np.integer)):
-        bls = [uvd.baseline_to_antnums(bl) for bl in bls]
+        bls = [uvd1.baseline_to_antnums(bl) for bl in bls]
     assert iterax in [None, 'time', 'freq'], \
         "iterax {} not recognized".format(iterax)
     assert uvd1.Ntimes == uvd2.Ntimes, "Ntimes must agree between uvd1 and uvd2"
@@ -457,10 +456,7 @@ def plot_bl_bl_cov(uvd1, uvd2, bls, plot_corr=False, ax=None, cmap='viridis',
     # colorbar
     if colorbar:
         cbar = fig.colorbar(cax, ax=ax)
-        if plot_corr:
-            action = "corr"
-        else:
-            action = "cov"
+        action = "corr" if plot_corr else "cov"
         label = r"$\rm {}\ {}(V_{{1}}, V_{{2}})\ [{}\ \cdot\ {}]$" \
                 .format(component, action, uvd1.vis_units, uvd2.vis_units)
         cbar.set_label(label, fontsize=12)

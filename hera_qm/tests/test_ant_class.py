@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2022 the HERA Project
 # Licensed under the MIT License
 """Tests for the antenna_metrics module."""
@@ -9,7 +8,6 @@ from hera_qm import ant_class
 from hera_cal import io
 from hera_cal.datacontainer import DataContainer
 from hera_qm.data import DATA_PATH
-import copy
 
 
 def test_check_antpol():
@@ -28,11 +26,11 @@ def test_AntennaClassification():
     # test that that doubled antenna raises error
     with pytest.raises(ValueError):
         ant_class.AntennaClassification(good=[(1, 'Jee')], bad=[(1, 'Jee')])
-            
+
     ac = ant_class.AntennaClassification(good=[(0, 'Jnn'), (0, 'Jee')],
-                                         bad=[(1,'Jee'), (1, 'Jnn')], 
+                                         bad=[(1,'Jee'), (1, 'Jnn')],
                                          suspect=[(2, 'Jee')],
-                                         weird=[(2, 'Jnn')])  
+                                         weird=[(2, 'Jnn')])
 
     # test string
     assert 'good' in str(ac)
@@ -54,20 +52,20 @@ def test_AntennaClassification():
     assert len(list(ac.__iter__())) == 6
 
     # test classes
-    assert ac.classes == set(['good', 'bad', 'suspect', 'weird'])
+    assert ac.classes == {'good', 'bad', 'suspect', 'weird'}
 
     # test ants
-    assert set(ac.ants) == set([(0, 'Jee'), (0, 'Jnn'),
+    assert set(ac.ants) == {(0, 'Jee'), (0, 'Jnn'),
                                 (1, 'Jee'), (1, 'Jnn'),
-                                (2, 'Jee'), (2, 'Jnn')])
+                                (2, 'Jee'), (2, 'Jnn')}
 
     # test get_all
-    assert ac.get_all('weird') == set([(2, 'Jnn')])
+    assert ac.get_all('weird') == {(2, 'Jnn')}
 
     # test good_ants, suspect_ants, bad_ants
-    assert ac.good_ants == set([(0, 'Jee'), (0, 'Jnn')])
-    assert ac.suspect_ants == set([(2, 'Jee')])
-    assert ac.bad_ants == set([(1, 'Jee'), (1, 'Jnn')])
+    assert ac.good_ants == {(0, 'Jee'), (0, 'Jnn')}
+    assert ac.suspect_ants == {(2, 'Jee')}
+    assert ac.bad_ants == {(1, 'Jee'), (1, 'Jnn')}
 
     # test is_good, is_bad, is_suspect
     assert ac.is_good((0, 'Jee'))
@@ -86,7 +84,7 @@ def test_AntennaClassification():
     with pytest.raises(ValueError):
         ac.to_quality()
     ac.to_quality(suspect_classes=['suspect', 'weird'])
-                
+
     # test clear
     ac.define_quality(good='lep', suspect='korf', bad='pillot')
     ac.clear()
@@ -97,10 +95,10 @@ def test_AntennaClassification():
 
 def test_AntennaClassification_add():
     ac1 = ant_class.AntennaClassification(good=[(0, 'Jnn'), (0, 'Jee'), (1, 'Jnn')],
-                                      bad=[(1,'Jee')], 
+                                      bad=[(1,'Jee')],
                                       weird=[(2, 'Jee'), (2, 'Jnn')])
     ac2 = ant_class.AntennaClassification(good=[(0, 'Jnn')],
-                                          bad=[(1,'Jee'), (0, 'Jee'), (2, 'Jee')], 
+                                          bad=[(1,'Jee'), (0, 'Jee'), (2, 'Jee')],
                                           weird=[(1, 'Jnn'), (2, 'Jnn')])
     # test wrong type error
     with pytest.raises(TypeError):
@@ -176,10 +174,10 @@ def test_auto_power_checker():
 
     for ant in {(36, 'Jee'), (36, 'Jnn'), (51, 'Jnn'), (83, 'Jee'), (83, 'Jnn'), (87, 'Jee'), (98, 'Jee'), (98, 'Jnn'), (117, 'Jnn'), (135, 'Jnn'), (160, 'Jee')}:
         assert ant in auto_power_class.good_ants
-    
+
     for ant in {(51, 'Jee'), (53, 'Jee'), (53, 'Jnn'), (85, 'Jee'), (85, 'Jnn'), (87, 'Jnn'), (117, 'Jee'), (157, 'Jee'), (157, 'Jnn'), (160, 'Jnn')}:
         assert ant in auto_power_class.suspect_ants
-    
+
     for ant in {(65, 'Jee'), (65, 'Jnn'), (68, 'Jee'), (68, 'Jnn'), (93, 'Jee'), (93, 'Jnn'), (116, 'Jee'), (116, 'Jnn'), (135, 'Jee')}:
         assert ant in auto_power_class.bad_ants
 
@@ -192,10 +190,10 @@ def test_auto_slope_checker():
     for ant in {(83, 'Jee'), (160, 'Jee'), (85, 'Jee'), (98, 'Jee'), (83, 'Jnn'), (160, 'Jnn'), (85, 'Jnn'), (98, 'Jnn'), (36, 'Jee'), (135, 'Jee'), (157, 'Jee'),
                 (51, 'Jee'), (87, 'Jnn'), (36, 'Jnn'), (135, 'Jnn'), (157, 'Jnn'), (117, 'Jee'), (53, 'Jee'), (51, 'Jnn'), (117, 'Jnn'), (53, 'Jnn')}:
         assert ant in auto_slope_class.good_ants
-    
+
     for ant in {(68, 'Jee'), (87, 'Jee'), (68, 'Jnn')}:
         assert ant in auto_slope_class.suspect_ants
-    
+
     for ant in {(65, 'Jnn'), (116, 'Jee'), (93, 'Jnn'), (65, 'Jee'), (93, 'Jee'), (116, 'Jnn')}:
         assert ant in auto_slope_class.bad_ants
 
@@ -205,13 +203,13 @@ def test_auto_shape_checker():
     hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
     hd = io.HERADataFastReader(DATA_PATH + '/zen.2459122.49827.sum.downselected.uvh5')
     data, _, _ = hd.read(read_flags=False, read_nsamples=False)
-    auto_slope_class = ant_class.auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=20) 
+    auto_slope_class = ant_class.auto_slope_checker(data, good=(-.2, .2), suspect=(-.4, .4), edge_cut=20)
     auto_power_class = ant_class.auto_power_checker(data, good=(2, 30), suspect=(1, 80))
     flag_spectrum = np.mean(data[36,36,'nn'], axis=0) > 1.5e7
-    auto_shape_class = ant_class.auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125), 
+    auto_shape_class = ant_class.auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125),
                                                     flag_spectrum=flag_spectrum,
                                                     antenna_class=(auto_slope_class + auto_power_class))
-    for ant in {(160, 'Jee'), (83, 'Jee'), (68, 'Jnn'), (85, 'Jee'), (98, 'Jee'), (135, 'Jee'), (157, 'Jee'), (160, 'Jnn'), (36, 'Jee'), (85, 'Jnn'), 
+    for ant in {(160, 'Jee'), (83, 'Jee'), (68, 'Jnn'), (85, 'Jee'), (98, 'Jee'), (135, 'Jee'), (157, 'Jee'), (160, 'Jnn'), (36, 'Jee'), (85, 'Jnn'),
                 (83, 'Jnn'), (98, 'Jnn'), (117, 'Jee'), (87, 'Jnn'), (53, 'Jee'), (135, 'Jnn'), (157, 'Jnn'), (36, 'Jnn'), (117, 'Jnn'), (53, 'Jnn')}:
         assert ant in auto_shape_class.good_ants
     for ant in {(68, 'Jee'), (87, 'Jee'), (51, 'Jee'), (51, 'Jnn')}:
@@ -249,7 +247,7 @@ def test_auto_rfi_checker():
     # Make sure antennas that were previously marked bad are still marked bad
     for ant in auto_class.bad_ants:
         assert ant in auto_rfi_class.bad_ants
-    
+
     # Show that all other antennas are marked "good"
     for ant in auto_class.ants:
         if ant not in [(36, 'Jee'), (83, 'Jee')] and ant not in auto_class.bad_ants:
@@ -280,8 +278,8 @@ def test_even_odd_zeros_checker():
 
 
 def test_non_noiselike_diff_by_xengine_checker():
-    np.random.seed(21)
-    sums = DataContainer({(ant1, ant2, 'ee'): (np.ones((2, 1536), dtype=complex) if ant1 != ant2 else np.ones((2, 1536)) * 100) 
+    rng = np.random.default_rng(21)
+    sums = DataContainer({(ant1, ant2, 'ee'): (np.ones((2, 1536), dtype=complex) if ant1 != ant2 else np.ones((2, 1536)) * 100)
                           for ant1 in range(10) for ant2 in range(ant1, 10)})
     diffs = DataContainer({})
 
@@ -292,20 +290,20 @@ def test_non_noiselike_diff_by_xengine_checker():
     for bl in sums:
         sigma = np.sqrt(sums[bl[0], bl[0], 'ee'] * sums[bl[1], bl[1], 'ee'] / np.median(np.diff(sums.freqs)) / (np.median(np.diff(sums.times)) * 24 * 3600))
         if bl[0] != bl[1]:
-            sums[bl] += sigma / 2**.5 * np.random.randn(2, 1536) + 1.0j * sigma / 2**.5 * np.random.randn(2, 1536)
-            diffs[bl] = sigma / 2**.5 * np.random.randn(2, 1536) + 1.0j * sigma / 2**.5 * np.random.randn(2, 1536)
+            sums[bl] += sigma / 2**.5 * rng.standard_normal((2, 1536)) + 1.0j * sigma / 2**.5 * rng.standard_normal((2, 1536))
+            diffs[bl] = sigma / 2**.5 * rng.standard_normal((2, 1536)) + 1.0j * sigma / 2**.5 * rng.standard_normal((2, 1536))
             if (3 in bl) or (7 in bl) or (8 in bl):
                 diffs[bl][:, 96:192] = sums[bl][:, 96:192]
-                
+
         else:
             diffs[bl] = np.zeros_like(sums[bl])
-        
+
     ac = ant_class.non_noiselike_diff_by_xengine_checker(sums, diffs)
     for ant in [0, 1, 2, 4, 5, 6, 9]:
         assert ac[(ant, 'Jee')] == 'good'
     for ant in [3, 7, 8]:
         assert ac[(ant, 'Jee')] == 'bad'
-        
+
     ac = ant_class.non_noiselike_diff_by_xengine_checker(sums, diffs, antenna_class=ant_class.AntennaClassification(bad=[(3, 'Jee')]))
     for ant in [0, 1, 2, 4, 5, 6, 9]:
         assert ac[(ant, 'Jee')] == 'good'

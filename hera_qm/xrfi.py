@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """Module for performing RFI identification and excision."""
@@ -22,10 +21,7 @@ from hera_filters import dspec
 from scipy.ndimage import convolve
 from copy import deepcopy
 
-if hasattr(UVCal(), "read"):
-    uvcal_read_method = "read"
-else:
-    uvcal_read_method = "read_calfits"
+uvcal_read_method = "read" if hasattr(UVCal(), "read") else "read_calfits"
 
 #############################################################################
 # Utility functions
@@ -181,8 +177,8 @@ def _check_convolve_dims(data, K1=None, K2=None):
         warnings.warn("No K1 input provided. Using the size of the data for the "
                       "kernel size.")
         K1 = data.shape[0]
-    elif K1 > data.shape[0]:
-        warnings.warn("K1 value {0:d} is larger than the data of dimension {1:d}; "
+    elif data.shape[0] < K1:
+        warnings.warn("K1 value {:d} is larger than the data of dimension {:d}; "
                       "using the size of the data for the kernel size".format(K1, data.shape[0]))
         K1 = data.shape[0]
     elif K1 < 1:
@@ -191,8 +187,8 @@ def _check_convolve_dims(data, K1=None, K2=None):
         warnings.warn("No K2 input provided. Using the size of the data for the "
                       "kernel size.")
         K2 = data.shape[1]
-    elif (data.ndim == 2) and (K2 > data.shape[1]):
-        warnings.warn("K2 value {0:d} is larger than the data of dimension {1:d}; "
+    elif (data.ndim == 2) and (data.shape[1] < K2):
+        warnings.warn("K2 value {:d} is larger than the data of dimension {:d}; "
                       "using the size of the data for the kernel size".format(K2, data.shape[1]))
         K2 = data.shape[1]
     elif (data.ndim == 2) and (K2 < 1):
@@ -247,7 +243,7 @@ def dpss_flagger(data, noise, freqs, filter_centers, filter_half_widths, flags=N
     data: np.ndarray
         2D data array of the shape (time, frequency)
     noise: np.ndarray, default=None
-        2D array for containing an estimate of the noise standard deviation of the data. 
+        2D array for containing an estimate of the noise standard deviation of the data.
         Must be the same shape as the data.
     freqs: np.ndarray
         1D array of frequencies present in the data in units of Hz
@@ -256,7 +252,7 @@ def dpss_flagger(data, noise, freqs, filter_centers, filter_half_widths, flags=N
     filter_half_widths: array-like
         list of floats of half-widths of delay filter windows in nanosec
     flags: np.ndarray
-        2D array of boolean flags to be interpretted as mask for data. 
+        2D array of boolean flags to be interpretted as mask for data.
         Must be the same shape as data.
     nsig: float, default=6
         The number of sigma in the metric above which to flag pixels.
@@ -290,17 +286,17 @@ def dpss_flagger(data, noise, freqs, filter_centers, filter_half_widths, flags=N
         raise TypeError('Input flag array must be type bool')
     else:
         wgts = np.array(np.logical_not(flags), dtype=np.float64)
-    
+
     # Compute model and residuals
     model, _, _ = dspec.fourier_filter(
         freqs, data, wgts, filter_centers, filter_half_widths, mode=mode,
         suppression_factors=suppression_factors, eigenval_cutoff=eigenval_cutoff, cache=cache,
     )
-    res = data - model    
-    
+    res = data - model
+
     # Use smooth model to noise standard deviation without RFI
     sigma = np.abs(model) * (noise / data)
-    
+
     # Determine weights
     return np.where(res > sigma * nsig, True, False)
 
@@ -321,7 +317,7 @@ def channel_diff_flagger(data, noise, nsig=6, kernel_widths=[3, 4, 5], flags=Non
     kernel_widths: list, default=[3, 4, 5]
         Half-width of the convolution kernels used to produce model. True kernel width is (2 * kernel_width + 1)
     flags: np.ndarray, default=None
-        2D array of boolean flags to be interpretted as mask for data. 
+        2D array of boolean flags to be interpretted as mask for data.
         Must be the same shape as data.
 
     Returns:
@@ -368,7 +364,7 @@ def flag_autos(data, flag_method="channel_diff_flagger", nsig=6, int_count=None,
                flag_broadcast_thresh=0.1, **flag_kwargs):
     """
     Driver function for identifying RFI in auto-correlations. Flags auto-correlations on a per antenna basis using
-    a given function and consolidates the weights into a single array-wide weights array. Returns a dictionary of 
+    a given function and consolidates the weights into a single array-wide weights array. Returns a dictionary of
     boolean flag arrays and an array averaged flag array where channels flagged in "flag_threshold" fraction of antennas
     will be flagged in the array averaged flag array.
 
@@ -542,6 +538,7 @@ def detrend_deriv(data, flags=None, dt=True, df=True):
     _ = _check_convolve_dims(data, 1, 1)  # Just check data dims
     if not (dt or df):
         raise ValueError("dt and df cannot both be False when calling detrend_deriv")
+
     if df:
         # take gradient along frequency
         d_df = np.gradient(data, axis=1)
@@ -627,7 +624,7 @@ def detrend_medfilt(data, flags=None, Kt=8, Kf=8):
 
     Kt, Kf = _check_convolve_dims(data, Kt, Kf)
     footprint = np.ones((2 * Kt + 1, 2 * Kf + 1))
-    footprint[Kt, Kf] = 0    
+    footprint[Kt, Kf] = 0
     if np.iscomplexobj(data):
         d_sm_r = median_filter(data.real, footprint=footprint, mode='reflect')
         d_sm_i = median_filter(data.imag, footprint=footprint, mode='reflect')
@@ -858,10 +855,7 @@ def watershed_flag(uvf_m, uvf_f, nsig_p=2., nsig_f=None, nsig_t=None, avg_method
                          'are: ' + str(uvf_m.metric_array.shape) + ' and '
                          + str(uvf_f.flag_array.shape))
     # Handle in place
-    if inplace:
-        uvf = uvf_f
-    else:
-        uvf = uvf_f.copy()
+    uvf = uvf_f if inplace else uvf_f.copy()
 
     # Convenience
     farr = uvf.flag_array
@@ -1293,9 +1287,9 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
 
 
 def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut=0, chan_thresh_frac=1.0):
-    '''XRFI-lite: performs median and mean filtering on a single waterfall, with 
+    '''XRFI-lite: performs median and mean filtering on a single waterfall, with
     watershed expansion of flags, and spectral and temporal thresholding.
-    
+
     Parameters
     ----------
     data : 2D numpy array of floats or complex numbers
@@ -1318,19 +1312,19 @@ def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut
     -------
     flags : 2D numpy array of booleans
         Final waterfall of flags with the same shape as the data.
-        
+
     '''
     # Perform medfilt-based RFI excision with watershed growth of flags
     medfilt_metric = detrend_medfilt(data, Kt=Kt, Kf=Kf)
     medfilt_flags = (np.abs(medfilt_metric) > sig_init)
     medfilt_flags |= _ws_flag_waterfall(medfilt_metric, medfilt_flags, nsig=sig_adj)
-    
+
     # Perform meanfilt-based RFI excision with watershed growth of flags
     meanfilt_metric = detrend_meanfilt(data, flags=medfilt_flags, Kt=Kt, Kf=Kf)
-    flags = medfilt_flags | (np.abs(meanfilt_metric) > sig_init) 
+    flags = medfilt_flags | (np.abs(meanfilt_metric) > sig_init)
     flags |= _ws_flag_waterfall(meanfilt_metric, flags, nsig=sig_adj)
-    
-    # Perform spectral thresholding 
+
+    # Perform spectral thresholding
     combined_metric = np.where(medfilt_flags, medfilt_metric, meanfilt_metric)
     spec = np.nanmedian(combined_metric, axis=0)
     zspec = modzscore_1d(spec, detrend=False)
@@ -1347,7 +1341,7 @@ def simple_flag_waterfall(data,  Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0, edge_cut
     if edge_cut > 0:
         flags[:, :edge_cut] = True
         flags[:, -edge_cut:] = True
-    
+
     # Flag channels that are flagged more than chan_thresh_frac (excluding completely flagged times)
     min_flags_per_chan = np.min(np.sum(flags, axis=0))
     chan_thresh = min_flags_per_chan + chan_thresh_frac * (flags.shape[0] - min_flags_per_chan)
@@ -1418,7 +1412,7 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
             for ind, ipol in zip((ind1, ind2), pol):
                 if ind is None or len(ind)==0:
                     continue
-                
+
                 if isinstance(ipol, slice):
                     # pyuvdata 3+ returns slices
                     ipol = ipol.start
@@ -1819,7 +1813,7 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
     a_priori_ants_only : bool, optional
         if True, only apply antenna flags from apriori yaml.
     ignore_xants_override : bool, optional
-        If True, will not apply xants or get xants from the a_priori_flag_yaml. 
+        If True, will not apply xants or get xants from the a_priori_flag_yaml.
         Used for redundantly averaged data and/or omnical visibility solutions where
         baseline keys represent multiple redundant antnena pairs and it is presumed
         that bad antenna exclusion was already performed.
@@ -1864,44 +1858,39 @@ def xrfi_run_step(uv_files=None, uv=None, uvf_apriori=None,
         flags = []
     if metrics is None:
         metrics = []
-    if (xants is None) or (ignore_xants_override):
-        xants_here = []
-    else:
-        xants_here = copy.deepcopy(xants)
-    if uv is None:
+    xants_here = [] if xants is None or ignore_xants_override else copy.deepcopy(xants)
+    if uv is None and uv_files is not None:
         # if no uv is provided, we should try loading it from the file specified
         # by uv_file.
-        if uv_files is not None:
-            # initialize appropriately if a string was provided.
-            if dtype=='uvcal':
-                uv = UVCal()
-                # No partial i/o for uvcal yet.
+        # initialize appropriately if a string was provided.
+        if dtype=='uvcal':
+            uv = UVCal()
+            # No partial i/o for uvcal yet.
+            getattr(uv, uvcal_read_method)(uv_files, use_future_array_shapes=True)
+            if a_priori_flag_yaml is not None:
+                uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
+                                                flag_ants=not(ignore_xants_override),
+                                                flag_times=not(a_priori_ants_only),
+                                                flag_freqs=not(a_priori_ants_only))
+        elif dtype=='uvdata':
+            uv = UVData()
+            uv.read(uv_files, read_data=False, use_future_array_shapes=True)
+        else:
+            raise ValueError("%s is an invalid dtype. Must be 'uvcal' or 'uvdata'."%dtype)
+    no_uvf_apriori = (uvf_apriori is None)
+    # now, assuming uv was either provided or successfully loaded.
+    if uv is not None:
+        # if we want, we can reinitialize uv
+        if reinitialize and uv_files is not None:
+            if issubclass(uv.__class__, UVData):
+                uv.read(uv_files, read_data=False, use_future_array_shapes=True)
+            else:
                 getattr(uv, uvcal_read_method)(uv_files, use_future_array_shapes=True)
                 if a_priori_flag_yaml is not None:
                     uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
                                                    flag_ants=not(ignore_xants_override),
                                                    flag_times=not(a_priori_ants_only),
                                                    flag_freqs=not(a_priori_ants_only))
-            elif dtype=='uvdata':
-                uv = UVData()
-                uv.read(uv_files, read_data=False, use_future_array_shapes=True)
-            else:
-                raise ValueError("%s is an invalid dtype. Must be 'uvcal' or 'uvdata'."%dtype)
-    no_uvf_apriori = (uvf_apriori is None)
-    # now, assuming uv was either provided or successfully loaded.
-    if uv is not None:
-        # if we want, we can reinitialize uv
-        if reinitialize:
-            if uv_files is not None:
-                if issubclass(uv.__class__, UVData):
-                    uv.read(uv_files, read_data=False, use_future_array_shapes=True)
-                else:
-                    getattr(uv, uvcal_read_method)(uv_files, use_future_array_shapes=True)
-                    if a_priori_flag_yaml is not None:
-                        uv = qm_utils.apply_yaml_flags(uv, a_priori_flag_yaml,
-                                                       flag_ants=not(ignore_xants_override),
-                                                       flag_times=not(a_priori_ants_only),
-                                                       flag_freqs=not(a_priori_ants_only))
         # The following code applies if uv is a UVData object.
         if issubclass(uv.__class__, UVData):
             bls = uv.get_antpairpols()
@@ -2059,7 +2048,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
              auto_median_filter=True, auto_mean_filter=True,
              cross_median_filter=False, cross_mean_filter=True,
              history=None, wf_method='quadmean', Nwf_per_load=None,
-             xrfi_path='', kt_size=8, kf_size=8, 
+             xrfi_path='', kt_size=8, kf_size=8,
              sig_init_med=10.0, sig_adj_med=4.0, sig_init_mean=5.0, sig_adj_mean=2.0,
              ex_ants=None, metrics_files=[],
              output_prefixes=None, throw_away_edges=True, clobber=False,
@@ -2210,7 +2199,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         with these antennas will be set to True. Default is None (i.e., no antennas
         will be excluded).
     metrics_files : str or list of strings, optional
-        path or list of paths to file(s) containing ant_metrics or auto_metrics readable by 
+        path or list of paths to file(s) containing ant_metrics or auto_metrics readable by
         metrics_io.load_metric_file. Used for finding ex_ants and is combined with antennas
         excluded via ex_ants. Flags of visibilities formed with these antennas will be set
         to True. Default is [] (no metrics files used, no antennas excluded).
@@ -2248,15 +2237,15 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         raise ValueError("Must provide at least one of the following; ocalfits_files, acalfits_files, model_files, data_files")
 
     # recast strings as lists of strings
-    if isinstance(acalfits_files, (str, np.string_)):
+    if isinstance(acalfits_files, (str, np.bytes_)):
         acalfits_files = [acalfits_files]
-    if isinstance(ocalfits_files, (str, np.string_)):
+    if isinstance(ocalfits_files, (str, np.bytes_)):
         ocalfits_files = [ocalfits_files]
-    if isinstance(model_files, (str, np.string_)):
+    if isinstance(model_files, (str, np.bytes_)):
         model_files = [model_files]
-    if isinstance(data_files, (str, np.string_)):
+    if isinstance(data_files, (str, np.bytes_)):
         data_files = [data_files]
-    if isinstance(output_prefixes, (str, np.string_)):
+    if isinstance(output_prefixes, (str, np.bytes_)):
         output_prefixes = [output_prefixes]
 
     # ensure that an optional output prefix if no data file is provided.
@@ -2277,11 +2266,11 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
         xants = list(set(list(xants) + metrics_io.read_a_priori_ant_flags(a_priori_flag_yaml, ant_indices_only=True)))
 
     # build dictionary of common kwargs for xrfi_run_step
-    xrfi_run_step_kwargs = {'kt_size': kt_size, 'kf_size': kf_size, 'xants': xants, 
-                            'wf_method': wf_method, 'Nwf_per_load': Nwf_per_load,  'a_priori_flag_yaml': a_priori_flag_yaml, 
-                            'a_priori_ants_only': a_priori_ants_only, 'use_cross_pol_vis': use_cross_pol_vis, 
+    xrfi_run_step_kwargs = {'kt_size': kt_size, 'kf_size': kf_size, 'xants': xants,
+                            'wf_method': wf_method, 'Nwf_per_load': Nwf_per_load,  'a_priori_flag_yaml': a_priori_flag_yaml,
+                            'a_priori_ants_only': a_priori_ants_only, 'use_cross_pol_vis': use_cross_pol_vis,
                             'run_check': run_check, 'check_extra': check_extra, 'run_check_acceptability': run_check_acceptability}
-        
+
     # vdict stores all of the outputs (metrics, flags etc...) All possible products
     # are ultimately referenced by vdict but could be set to None. Outputs set to None are simply
     # not written and can be used to determine whether steps depending on them should be run.
@@ -2290,16 +2279,16 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     'uvf_metrics2': None, 'uvf_f2': None, 'uvf_fws2': None,
     'uvf_combined2': None, 'uvc_o':None, 'uvc_a':None, 'uvc_v':None, 'uv_v':None, 'uv_d':None} # keep all the variables here.
 
-    def _run_all_filters(median_round, 
-                         omnical_filter, omnical_chi2_filter, omnical_zscore_filter, 
+    def _run_all_filters(median_round,
+                         omnical_filter, omnical_chi2_filter, omnical_zscore_filter,
                          abscal_filter, abscal_chi2_filter, abscal_zscore_filter,
                          omnivis_filter, cross_filter, auto_filter):
         '''This function runs all possible filters, updating vdict as appropriate'''
-        
+
         # Start with empty list of flags and metrics for later combination
         metrics = []
         flags = []
-        
+
         # Modify these labels and parameters based on whether we're doing mean- or median-based statistics
         label = {True: 'median', False: 'mean'}[median_round]
         rnd = {True: '', False: '2'}[median_round]
@@ -2351,15 +2340,15 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                 xrfi_run_step(uv=vdict['uv_d'], uv_files=data_files, alg=alg,  dtype='uvdata', correlations='auto', metrics=metrics, flags=flags, uvf_apriori=vdict[start_flag_name],
                               reinitialize=True, label=f'Autocorr, {label} filter.', apply_uvf_apriori=True, **xrfi_run_step_kwargs)
 
-        # Now that we've had a chance to load in all of the provided data products and run filters when specified, 
+        # Now that we've had a chance to load in all of the provided data products and run filters when specified,
         # we combine the metrics computed so far into a combined metrics object, using the metrics list.
         if len(metrics) > 0:
             if len(metrics) > 1:
                 vdict[f'uvf_metrics{rnd}'] = metrics[-1].combine_metrics(metrics[:-1], method='quadmean', inplace=False)
             else:
                 vdict[f'uvf_metrics{rnd}'] = copy.deepcopy(metrics[-1])
-            
-            # Prep starting flags for combined metrics    
+
+            # Prep starting flags for combined metrics
             if median_round:
                 flags_for_combined_metrics = ~vdict[f'uvf_metrics{rnd}'].weights_array[:, :, 0].astype(np.bool_)
             else:
@@ -2377,7 +2366,7 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                                                                                    Kt=kt_size, Kf=kf_size)
             vdict[f'uvf_f{rnd}'] = flag(vdict[f'uvf_metrics{rnd}'], nsig_p=xrfi_run_step_kwargs['sig_init'], run_check=run_check,
                                         check_extra=check_extra, run_check_acceptability=run_check_acceptability)
-            vdict[f'uvf_fws{rnd}'] = watershed_flag(vdict[f'uvf_metrics{rnd}'], vdict[f'uvf_f{rnd}'], nsig_p=xrfi_run_step_kwargs['sig_adj'], 
+            vdict[f'uvf_fws{rnd}'] = watershed_flag(vdict[f'uvf_metrics{rnd}'], vdict[f'uvf_f{rnd}'], nsig_p=xrfi_run_step_kwargs['sig_adj'],
                                                     inplace=False, run_check=run_check, check_extra=check_extra,
                                                     run_check_acceptability=run_check_acceptability)
             vdict[f'uvf_fws{rnd}'].label = f'Flags from combined metrics, round {rndnum}.'
@@ -2389,19 +2378,19 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                 for flg in flags[1:]:
                     vdict[final_flag_name] |= flg
             vdict[final_flag_name].label = f'ORd flags, round {rndnum}.'
-                  
+
     ########################
     # RUN MEDIAN ROUND
     ########################
 
     # settings for median round
-    xrfi_run_step_kwargs['modified_z_score'] =  True 
+    xrfi_run_step_kwargs['modified_z_score'] =  True
     xrfi_run_step_kwargs['calculate_uvf_apriori'] = True
     xrfi_run_step_kwargs['sig_init'] = sig_init_med
     xrfi_run_step_kwargs['sig_adj'] = sig_adj_med
 
-    _run_all_filters(True, 
-                     omnical_median_filter, omnical_chi2_median_filter, omnical_zscore_filter, 
+    _run_all_filters(True,
+                     omnical_median_filter, omnical_chi2_median_filter, omnical_zscore_filter,
                      abscal_median_filter, abscal_chi2_median_filter, abscal_zscore_filter,
                      omnivis_median_filter, cross_median_filter, auto_median_filter)
     spoof_init = (vdict['uvf_init'] is None)
@@ -2412,14 +2401,14 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
     ########################
 
     # settings for median round
-    xrfi_run_step_kwargs['modified_z_score'] =  False 
+    xrfi_run_step_kwargs['modified_z_score'] =  False
     xrfi_run_step_kwargs['calculate_uvf_apriori'] = False
     xrfi_run_step_kwargs['sig_init'] = sig_init_mean
     xrfi_run_step_kwargs['sig_adj'] = sig_adj_mean
 
     # Now perform the mean filtering after median filtering.
-    _run_all_filters(False, 
-                     omnical_mean_filter, omnical_chi2_mean_filter, omnical_zscore_filter, 
+    _run_all_filters(False,
+                     omnical_mean_filter, omnical_chi2_mean_filter, omnical_zscore_filter,
                      abscal_mean_filter, abscal_chi2_mean_filter, abscal_zscore_filter,
                      omnivis_mean_filter, cross_mean_filter, auto_mean_filter)
     vdict['uvf_init'] = median_round_flags_copy  # prevents this from getting modified above
@@ -2517,12 +2506,11 @@ def xrfi_run(ocalfits_files=None, acalfits_files=None, model_files=None,
                 lower_flag_ind = np.max([uvtemp.Ntimes - (kt_size - uvtemp.Ntimes * (len(all_files) - 1 - night_index)), 0])
                 # flag all integrations below kernel_size - ntimes x (number of files from beginning of night)
                 upper_flag_ind = np.min([np.max([kt_size - uvtemp.Ntimes * night_index, 0]), uvtemp.Ntimes])
-                if throw_away_edges:
-                    if (ext == 'flags2.h5'):
-                        if lower_flag_ind < uvtemp.Ntimes and lower_flag_ind >=  0:
-                            uvf_out.flag_array[lower_flag_ind:] = True
-                        if upper_flag_ind > 0:
-                            uvf_out.flag_array[:upper_flag_ind] = True
+                if throw_away_edges and (ext == 'flags2.h5'):
+                    if lower_flag_ind < uvtemp.Ntimes and lower_flag_ind >=  0:
+                        uvf_out.flag_array[lower_flag_ind:] = True
+                    if upper_flag_ind > 0:
+                        uvf_out.flag_array[:upper_flag_ind] = True
                 outfile = '.'.join([basename, ext])
                 outpath = os.path.join(dirname, outfile)
                 uvf_out.history += history
@@ -3111,12 +3099,14 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     # Flag on model visibilities
     if model_file is not None:
         uvm = UVData.from_file(model_file, use_future_array_shapes=True)
-        if indata is not None:
-            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array),
-                                atol=1e-5, rtol=0)
-                    and np.allclose(uvd.freq_array, uvm.freq_array, atol=1., rtol=0)):
-                raise ValueError('Time and frequency axes of model vis file must match'
-                                 'the data file.')
+        if indata is not None and not (
+            np.allclose(np.unique(uvd.time_array), np.unique(uvm.time_array), atol=1e-5, rtol=0
+        ) and np.allclose(
+            uvd.freq_array, uvm.freq_array, atol=1., rtol=0)
+        ):
+            raise ValueError(
+                'Time and frequency axes of model vis file must match the data file.'
+            )
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvm, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,
                                       freq_threshold=freq_threshold, time_threshold=time_threshold,
@@ -3135,12 +3125,14 @@ def xrfi_h1c_run(indata, history, infile_format='miriad', extension='flags.h5',
     if calfits_file is not None:
         uvc = UVCal()
         getattr(uvc, uvcal_read_method)(calfits_file, use_future_array_shapes=True)
-        if indata is not None:
-            if not (np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array),
-                                atol=1e-5, rtol=0)
-                    and np.allclose(uvd.freq_array, uvc.freq_array, atol=1., rtol=0)):
-                raise ValueError('Time and frequency axes of calfits file must match'
-                                 'the data file.')
+        if indata is not None and not (
+            np.allclose(np.unique(uvd.time_array), np.unique(uvc.time_array), atol=1e-5, rtol=0
+        ) and np.allclose(
+            uvd.freq_array, uvc.freq_array, atol=1., rtol=0)
+        ):
+            raise ValueError(
+                'Time and frequency axes of calfits file must match the data file.'
+            )
         # By default, runs on gains
         uvf_f, uvf_wf = xrfi_h1c_pipe(uvd, Kt=kt_size, Kf=kf_size, sig_init=sig_init,
                                       sig_adj=sig_adj, px_threshold=px_threshold,

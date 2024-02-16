@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2023 the HERA Project
 # Licensed under the MIT License
 """Tests for the time_series_metrics module."""
 
-import pytest
 import numpy as np
 from hera_qm import time_series_metrics
 

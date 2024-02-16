@@ -1,10 +1,8 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
 import sys
-import numpy as np
 from hera_qm import utils as qm_utils
 from hera_qm import xrfi
 from hera_cal import delay_filter

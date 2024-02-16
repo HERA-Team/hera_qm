@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 """I/O Handler for all metrics that can be stored as (nested) dictionaries."""
@@ -135,8 +134,8 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
 
             if isinstance(in_dict[key], compressable_types):
                 try:
-                    if np.issubdtype(np.asarray(in_dict[key]).dtype, np.unicode_):
-                        in_dict[key] = np.asarray(in_dict[key]).astype(np.string_)
+                    if np.issubdtype(np.asarray(in_dict[key]).dtype, np.str_):
+                        in_dict[key] = np.asarray(in_dict[key]).astype(np.bytes_)
 
                     dset = h5file[path].create_dataset(key_str,
                                                        data=in_dict[key],
@@ -145,9 +144,9 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
                     # Used to parse keys saved to dicts when reading
                     dset.attrs['key_is_string'] = isinstance(key, str)
                 except TypeError as err:
-                    raise TypeError("Input dictionary key: {0} does not have "
+                    raise TypeError("Input dictionary key: {} does not have "
                                     "compatible dtype. Received this error: "
-                                    "{1}".format(key, err))
+                                    "{}".format(key, err))
             else:
                 if isinstance(in_dict[key], str):
                     in_dict[key] = qm_utils._str_to_bytes(in_dict[key])
@@ -176,7 +175,7 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
             _recursively_save_dict_to_group(h5file, path + key_str + '/',
                                             in_dict[key])
         else:
-            raise TypeError("Cannot save key {0} with type {1} at path {2}"
+            raise TypeError("Cannot save key {} with type {} at path {}"
                             .format(key, type(in_dict[key]), path))
     return
 
@@ -247,7 +246,7 @@ def write_metric_file(filename, input_dict, overwrite=False):
 
     """
     if os.path.exists(filename) and not overwrite:
-        raise IOError('File exists and overwrite set to False.')
+        raise OSError('File exists and overwrite set to False.')
     input_dict = copy.deepcopy(input_dict)
     if filename.split('.')[-1] == 'json':
         warnings.warn("JSON-type files can still be written "
@@ -272,7 +271,7 @@ def write_metric_file(filename, input_dict, overwrite=False):
         if filename.split('.')[-1] not in ('hdf5', 'h5'):
             filename += '.hdf5'
             if os.path.exists(filename) and not overwrite:
-                raise IOError('File exists and overwrite set to False.')
+                raise OSError('File exists and overwrite set to False.')
 
         with h5py.File(filename, 'w') as outfile:
             header = outfile.create_group('Header')
@@ -355,14 +354,11 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
                 out_dict[out_key] = item[()]
 
         elif isinstance(item, h5py.Group):
-            if item.attrs['key_is_string']:
-                out_key = str(key)
-            else:
-                out_key = _parse_key(key)
+            out_key = str(key) if item.attrs['key_is_string'] else _parse_key(key)
             out_dict[out_key] = _recursively_load_dict_to_group(h5file, (path + key + '/'),
                                                                 group_is_ordered=item.attrs["group_is_ordered"])
         else:
-            raise TypeError("The HDF5 path: {0} is not associated with either "
+            raise TypeError("The HDF5 path: {} is not associated with either "
                             "a dataset or group object. "
                             "Please verify input file.".format(path))
     return out_dict
@@ -394,7 +390,7 @@ def _parse_key(key):
             ant, pol = matches[0][1:-1].split(",")
             # extract just polarization character
             pol = pol[-2]
-            return tuple((int(ant), str(pol)))
+            return (int(ant), str(pol))
         except IndexError:
             # treat it as a string
             return str(key)
@@ -484,9 +480,9 @@ def _recursively_parse_json(in_dict):
                     else:
                         out_dict[out_key] = in_dict[key]
                 except (SyntaxError, NameError):
-                    warnings.warn("The key: {0} has a value which "
+                    warnings.warn("The key: {} has a value which "
                                   "could not be parsed, added"
-                                  " the value as a string: {1}"
+                                  " the value as a string: {}"
                                   .format(key, str(in_dict[key])))
                     out_dict[out_key] = str(in_dict[key])
             else:
@@ -559,7 +555,7 @@ def _parse_dict(input_str, value_type=int):
         ant, pol = entry[0][1:-1].split(",")
         # further refine pol -- get just the polarization, not the quotes
         pol = pol[-2]
-        key = tuple((int(ant), str(pol)))
+        key = (int(ant), str(pol))
         value = value_type(entry[1])
         output[key] = value
 
@@ -622,7 +618,7 @@ def _parse_list_of_antpols(input_str):
     for entry in entries:
         ant, pol = entry[1:-1].split(",")
         pol = pol[-2]
-        li.append(tuple((int(ant), str(pol))))
+        li.append((int(ant), str(pol)))
 
     return li
 
@@ -658,7 +654,7 @@ def _parse_list_of_list_of_antpairs(input_str):
         tuples = re.findall(tuple_regex, li)
         for tup in tuples:
             ant1, ant2 = tup.split(",")
-            sublist.append(tuple((int(ant1), int(ant2))))
+            sublist.append((int(ant1), int(ant2)))
         output.append(sublist)
     return output
 
@@ -790,7 +786,7 @@ def _load_json_metrics(filename):
         A dictionary with values cast as types made from hera_qm.
 
     """
-    with open(filename, 'r') as infile:
+    with open(filename) as infile:
         jsonMetrics = json.load(infile)
     metric_dict = _recursively_parse_json(jsonMetrics)
 
@@ -849,21 +845,20 @@ def _recursively_validate_dict(in_dict):
         return tuple([int(ant) for ant in split[0:-1]]) + (split[-1],)
 
     for key in in_dict:
-        if key in ['history', 'version']:
-            if isinstance(in_dict[key], bytes):
-                in_dict[key] = qm_utils._bytes_to_str(in_dict[key])
+        if key in ['history', 'version'] and isinstance(in_dict[key], bytes):
+            in_dict[key] = qm_utils._bytes_to_str(in_dict[key])
 
         if key == 'reds':
             in_dict[key] = _reds_dict_to_list(in_dict[key])
 
         if key in antpair_keys and key != 'reds':
-            in_dict[key] = [tuple((int(a1), int(a2)))
+            in_dict[key] = [(int(a1), int(a2))
                             for pair in in_dict[key]
                             for a1, a2 in pair]
 
         if key in antpol_keys:
-            in_dict[key] = [tuple((int(ant), qm_utils._bytes_to_str(pol)))
-                            if isinstance(pol, bytes) else tuple((int(ant), (pol)))
+            in_dict[key] = [(int(ant), qm_utils._bytes_to_str(pol))
+                            if isinstance(pol, bytes) else (int(ant), (pol))
                             for ant, pol in in_dict[key]]
 
         if key in antpol_dict_keys:
@@ -923,10 +918,7 @@ def load_metric_file(filename):
             metric_dict = _recursively_load_dict_to_group(infile, "/Header/")
             metric_item = infile["/Metrics/"]
             if hasattr(metric_item, 'attrs'):
-                if 'group_is_ordered' in metric_item.attrs:
-                    group_is_ordered = metric_item.attrs["group_is_ordered"]
-                else:
-                    group_is_ordered = False
+                group_is_ordered = metric_item.attrs.get('group_is_ordered', False)
             else:
                 group_is_ordered = False
             metric_dict.update(
@@ -954,16 +946,15 @@ def process_ex_ants(ex_ants=None, metrics_files=[]):
     xants : list of ints
         A list of antenna numbers to be excluded from analysis.
     """
-    xants = set([])
-    if ex_ants is not None:
-        if ex_ants != '':
-            for ant in ex_ants.split(','):
-                try:
-                    if int(ant) not in xants:
-                        xants.add(int(ant))
-                except ValueError:
-                    raise AssertionError(
-                        "ex_ants must be a comma-separated list of ints")
+    xants = set()
+    if ex_ants is not None and ex_ants != '':
+        for ant in ex_ants.split(','):
+            try:
+                if int(ant) not in xants:
+                    xants.add(int(ant))
+            except ValueError:
+                raise AssertionError(
+                    "ex_ants must be a comma-separated list of ints")
     if metrics_files is not None:
         if isinstance(metrics_files, str):
             metrics_files = [metrics_files]
@@ -974,12 +965,12 @@ def process_ex_ants(ex_ants=None, metrics_files=[]):
                         # load from an ant_metrics file
                         if 'xants' in infile['Metrics']:
                             # Just take the antenna number, flagging both polarizations
-                            xants |= set([ant[0] for ant in infile['Metrics']['xants']])
-                        # load from an auto_metrics file                            
+                            xants |= {ant[0] for ant in infile['Metrics']['xants']}
+                        # load from an auto_metrics file
                         elif 'ex_ants' in infile['Metrics'] and 'r2_ex_ants' in infile['Metrics']['ex_ants']:
                             # Auto metrics reports just antenna numbers
                             xants |= set(infile['Metrics']['ex_ants']['r2_ex_ants'])
-                
+
                 except: # fallback for the old JSON style
                     metrics = load_metric_file(mf)
                     # load from an ant_metrics file
@@ -990,7 +981,7 @@ def process_ex_ants(ex_ants=None, metrics_files=[]):
                     elif 'ex_ants' in metrics and 'r2_ex_ants' in metrics['ex_ants']:
                         for ant in metrics['ex_ants']['r2_ex_ants']:
                             xants.add(int(ant))  # Auto metrics reports just antenna numbers
-    return sorted(list(xants))
+    return sorted(xants)
 
 
 def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
@@ -1009,7 +1000,7 @@ def read_a_priori_chan_flags(a_priori_flags_yaml, freqs=None):
         Numpy array of integer a priori channel index flags.
     '''
     apcf = []
-    with open(a_priori_flags_yaml, 'r') as fl:
+    with open(a_priori_flags_yaml) as fl:
         apf = yaml.safe_load(fl)
 
     # Load channel flags
@@ -1068,7 +1059,7 @@ def read_a_priori_int_flags(a_priori_flags_yaml, times=None, lsts=None):
         Numpy array of integer a priori integration index flags.
     '''
     apif = []
-    with open(a_priori_flags_yaml, 'r') as fl:
+    with open(a_priori_flags_yaml) as fl:
         apf = yaml.safe_load(fl)
 
     # Load integration flags
@@ -1159,7 +1150,7 @@ def read_a_priori_ant_flags(a_priori_flags_yaml, ant_indices_only=False, by_ant_
     if ant_indices_only and by_ant_pol:
         raise ValueError("ant_indices_only and by_ant_pol can't both be True.")
     apaf = []
-    with open(a_priori_flags_yaml, 'r') as fl:
+    with open(a_priori_flags_yaml) as fl:
         apf = yaml.safe_load(fl)
 
     # Load antenna flags

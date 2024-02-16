@@ -66,7 +66,9 @@ addopts = "--ignore=hera_qm/scripts --cov=hera_qm --cov-config=.coveragerc"
 [tool.ruff]
 line-length = 88
 target-version = "py39"
-
+exclude = [
+    "hera_qm/scripts/test_xrfi_performance.py",
+]
 
 [tool.ruff.lint]
 select = [
@@ -74,15 +76,12 @@ select = [
     "ARG",
     "B",
     "C",
-    "D",
     "E",
     "F",
     "FA",
-    "FURB",
     "I002",
     "ICN002",
     "ICN003",
-    "LOG", # log messages
     "N8",  # invalid variable names
     "N999", # invalid module name
     "NPY",  # numpy-specific checks
@@ -99,6 +98,7 @@ ignore = [
     "B018",    # useless epression
     "B006",    # mutable argument default !!!!
     "N813",    # camelcase imported as lowercase
+    "N801",    # use CamelCase for class names
     "N802",    # invalid function name
     "N803",    # invalid argument name
     "N806",    # non-lowercase variable in function
@@ -117,6 +117,8 @@ ignore = [
     "F841",    # unused variable
     "UP032",   # use fstrings
     "C901",    # complex structure
+    "RUF012",  # use ClassVar
+    "SIM108",  # use ternary if then else
 ]
 
 [tool.ruff.lint.pydocstyle]

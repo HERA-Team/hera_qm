@@ -1,4 +1,3 @@
-# -*- mode: python; coding: utf-8 -*
 # Copyright (c) 2019 the HERA Project
 # Licensed under the MIT License
 
@@ -6,8 +5,6 @@
 import pytest
 from astropy.utils import iers
 from astropy.time import Time
-import warnings
-import numpy as np
 
 @pytest.fixture(autouse=True, scope="session")
 def setup_and_teardown_package():
