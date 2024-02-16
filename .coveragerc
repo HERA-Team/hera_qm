@@ -2,8 +2,10 @@
 omit =
      */tests/*
      */data/*
-
+     */scripts/*
+     
 [report]
 omit =
      */tests/*
      */data/*
+     */scripts/*
