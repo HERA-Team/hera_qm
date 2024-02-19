@@ -202,6 +202,7 @@ def test_iterative_spectrum_modz():
             assert np.abs(modzs[bl]) < 10
 
     # test that order of exclusion doesn't matter for final modified Z scores
+    rng = np.random.default_rng(21)
     auto_spectra = {bl: .01 * rng.standard_normal(100) + 1 for bl in bls}
     auto_spectra[(0, 0, 'ee')] += 1
     auto_spectra[(1, 1, 'ee')] += 10

@@ -690,7 +690,7 @@ def test_detrend_meanfilt_flags(fake_data):
 
 def test_zscore_full_array(fake_data):
     # Make some fake data
-    rng.seed(182)
+    rng = np.random.default_rng(182)
     fake_data[...] = rng.standard_normal((fake_data.shape[0], fake_data.shape[1]))
     out = xrfi.zscore_full_array(fake_data)
     fake_mean = np.mean(fake_data)
@@ -700,7 +700,7 @@ def test_zscore_full_array(fake_data):
 
 def test_zscore_full_array_flags(fake_data):
     # Make some fake data
-    rng.seed(182)
+    rng = np.random.default_rng(182)
     fake_data[...] = rng.standard_normal((fake_data.shape[0], fake_data.shape[1]))
     flags = np.zeros(fake_data.shape, dtype=np.bool_)
     flags[45, 33] = True
@@ -714,7 +714,7 @@ def test_zscore_full_array_flags(fake_data):
 
 def test_zscore_full_array_modified(fake_data):
     # Make some fake data
-    rng.seed(182)
+    rng = np.random.default_rng(182)
     fake_data[...] = rng.standard_normal((fake_data.shape[0], fake_data.shape[1]))
     out = xrfi.zscore_full_array(fake_data, modified=True)
     fake_med = np.median(fake_data)
@@ -724,7 +724,7 @@ def test_zscore_full_array_modified(fake_data):
 
 def test_zscore_full_array_modified_complex(fake_data):
     # Make some fake data
-    rng.seed(182)
+    rng = np.random.default_rng(182)
     rands = rng.standard_normal((100, 100))
     fake_data = rands + 1j * rands
     out = xrfi.zscore_full_array(fake_data, modified=True)
@@ -735,7 +735,7 @@ def test_zscore_full_array_modified_complex(fake_data):
 
 def test_modzscore_1d_no_detrend():
     npix = 1000
-    rng.seed(182)
+    rng = np.random.default_rng(182)
     data = rng.standard_normal(npix)
     data[50] = 500
     out = xrfi.modzscore_1d(data, detrend=False)
@@ -746,7 +746,7 @@ def test_modzscore_1d_no_detrend():
 
 def test_modzscore_1d():
     npix = 1000
-    rng.seed(182)
+    rng = np.random.default_rng(182)
     data = rng.standard_normal(npix)
     data[50] = 500
     data += .1 * np.arange(npix)
@@ -974,7 +974,7 @@ def test_ws_flag_waterfall():
 
 def test_xrfi_waterfall():
     # test basic functions
-    rng.seed(21)
+    rng = np.random.default_rng(21)
     data = 100 * np.ones((10, 10))
     data += rng.standard_normal((10, 10))
     data[3, 3] += 100
@@ -990,7 +990,7 @@ def test_xrfi_waterfall():
 
 def test_xrfi_waterfall_prior_flags():
     # test with prior flags
-    rng.seed(21)
+    rng = np.random.default_rng(21)
     data = 100 * np.ones((10, 10))
     data += rng.standard_normal(data.shape)
     prior_flags = np.zeros((10, 10), dtype=bool)
@@ -1160,7 +1160,7 @@ def test_flag_apply(
 
 
 def test_simple_flag_waterfall():
-    rng.seed(21)
+    rng = np.random.default_rng(21)
     data = rng.standard_normal((100, 100))
     data[3:, 10] += 200  # this tests spectral thresholding
     data[70, 20:] += 100  # this tests temporal thresholding
@@ -2548,7 +2548,7 @@ def test_xrfi_h1c_apply_errors():
 @pytest.fixture(scope='function')
 def fake_waterfall(uvflag_f):
     # generate a dummy metric waterfall
-    rng.seed(0)
+    rng = np.random.default_rng(0)
     uvm = uvflag_f
     uvm.to_waterfall()
 
@@ -2629,7 +2629,7 @@ def test_threshold_wf_detrend(fake_waterfall):
 
 def test_threshold_wf_detrend_no_check(uvflag_f):
     # generate a dummy metric waterfall
-    rng.seed(0)
+    rng = np.random.default_rng(0)
     uvm = uvflag_f
     uvm.to_waterfall()
 
