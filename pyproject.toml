@@ -34,6 +34,7 @@ readme = {file = ["README.md"]}
 tests = [
     "pytest",
     "pytest-cov",
+    "hera-calibration",
 ]
 all = [
     "hera_qm[tests]"
