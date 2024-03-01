@@ -1410,7 +1410,7 @@ def calculate_metric(uv, algorithm, cal_mode='gain', run_check=True,
         for key, data in uv.antpairpol_iter():
             ind1, ind2, pol = uv._key2inds(key)
             for ind, ipol in zip((ind1, ind2), pol):
-                if ind is None or len(ind)==0:
+                if ind is None or (hasattr(ind, "__len__") and len(ind)==0):
                     continue
 
                 if isinstance(ipol, slice):
