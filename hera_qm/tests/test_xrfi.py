@@ -1634,7 +1634,7 @@ def test_xrfi_run(tmpdir):
             # This tolerance has been lowered due to a singular test failure on MacOS on python 3.10
             # that only appears unpredictably. Given that this code is not used from H6C onwards, it's
             # not worth digging into... frankly most XRFI should be deprecated.
-    
+
     # test cross correlations.
     xrfi.xrfi_run(history='data cross corrs.', data_files=raw_dfile,
                   cross_median_filter=True, cross_mean_filter=True, auto_mean_filter=False, auto_median_filter=False)
@@ -2094,6 +2094,8 @@ def test_day_threshold_run(tmpdir):
         warnings.filterwarnings("ignore", category=AstropyUserWarning)
         warnings.filterwarnings("ignore", category=RuntimeWarning, message="Mean of empty slice")
         warnings.filterwarnings("ignore", category=RuntimeWarning, message="Degrees of freedom")
+        warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in subtract")
+
         xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], history='Just a test', kt_size=3, clobber=True,
                       throw_away_edges=False, a_priori_flag_yaml=a_priori_flag_integrations, a_priori_ants_only=True)
 
