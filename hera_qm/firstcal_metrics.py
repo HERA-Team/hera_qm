@@ -345,7 +345,12 @@ class FirstCalMetrics:
         self.UVC = UVCal()
         self.UVC.read_calfits(calfits_files, use_future_array_shapes=True)
 
-        self.pols = np.array([uvutils.polnum2str(jones, x_orientation=self.UVC.x_orientation)
+        if hasattr(self.UVC, "telescope"):
+            x_orientation = self.UVC.telescope.x_orientation
+        else:
+            x_orientation = self.UVC.x_orientation
+
+        self.pols = np.array([uvutils.polnum2str(jones, x_orientation=x_orientation)
                               for jones in self.UVC.jones_array])
         self.Npols = self.pols.size
 
