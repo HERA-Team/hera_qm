@@ -800,7 +800,11 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
                 pol_selection = np.ones(npols, dtype=bool)
                 antnum = ant
             elif isinstance(ant, (list, tuple, np.ndarray)):
-                pol_num = uvutils.jstr2num(ant[1], x_orientation=uv.x_orientation)
+                if hasattr(uv, "telescope"):
+                    x_orientation = uv.telescope.x_orientation
+                else:
+                    x_orientation = uv.x_orientation
+                pol_num = uvutils.jstr2num(ant[1], x_orientation=x_orientation)
                 if pol_num in pol_array:
                     pol_selection = np.where(pol_array == pol_num)[0]
                 else:

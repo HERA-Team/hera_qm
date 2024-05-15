@@ -11,7 +11,9 @@ import pytest
 import numpy as np
 
 pytestmark = pytest.mark.filterwarnings(
+    # this top one can be removed when we require pyuvdata >= 3.0
     "ignore:.*Using known values for HERA",
+    "ignore:.*using values from known telescopes for HERA",
 )
 
 @pytest.fixture(scope='function')

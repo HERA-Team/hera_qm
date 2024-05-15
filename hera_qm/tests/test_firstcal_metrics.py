@@ -15,7 +15,9 @@ import sys
 import pytest
 
 pytestmark = pytest.mark.filterwarnings(
+    # this top one can be removed when we require pyuvdata >= 3.0
     "ignore:.*Using known values for HERA",
+    "ignore:.*using values from known telescopes for HERA",
     "ignore:.*Increasing the bound and calling fit again may find a better value",
     "ignore:.*Decreasing the bound and calling fit again may find a better value",
 

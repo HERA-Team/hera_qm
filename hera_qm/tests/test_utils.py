@@ -16,10 +16,12 @@ import pyuvdata.utils as uvutils
 from pathlib import Path
 
 pytestmark = pytest.mark.filterwarnings(
+    # this top one can be removed when we require pyuvdata >= 3.0
+    "ignore:.*Using known values for HERA",
+    "ignore:.*using values from known telescopes for HERA",
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
-    "ignore:telescope_location is not set. Using known values for HERA.",
-    "ignore:antenna_positions is not set. Using known values for HERA.",
 )
+
 
 def test_get_metrics_ArgumentParser_ant_metrics():
     a = utils.get_metrics_ArgumentParser('ant_metrics')
@@ -315,7 +317,11 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
                 pol_selection = np.ones(uvd.Npols, dtype=bool)
             elif isinstance(ant, (list, tuple)):
                 antnum = ant[0]
-                pol_num = uvutils.jstr2num(ant[1], x_orientation=uvd.x_orientation)
+                if hasattr(uvd, "telescope"):
+                    x_orientation = uvd.telescope.x_orientation
+                else:
+                    x_orientation = uvd.x_orientation
+                pol_num = uvutils.jstr2num(ant[1], x_orientation=x_orientation)
                 pol_selection = np.where(uvd.polarization_array == pol_num)[0]
             blt_selection = np.logical_or(uvd.ant_1_array == antnum, uvd.ant_2_array == antnum)
             if flag_ants:
@@ -342,6 +348,9 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
 
 
 
+# this top one can be removed when we require pyuvdata >= 3.0
+@pytest.mark.filterwarnings("ignore:Cannot preserve total_quality_array when")
+@pytest.mark.filterwarnings("ignore:Changing number of antennas, but preserving")
 @pytest.mark.parametrize(
     "filein",
     ["a_priori_flags_integrations.yaml",
@@ -386,7 +395,11 @@ def test_apply_yaml_flags_uvcal(filein):
                     pol_selection = np.ones(uvc.Njones, dtype=bool)
                 elif isinstance(ant, (list, tuple)):
                     antnum = ant[0]
-                    pol_num = uvutils.jstr2num(ant[1], x_orientation=uvc.x_orientation)
+                    if hasattr(uvc, "telescope"):
+                        x_orientation = uvc.telescope.x_orientation
+                    else:
+                        x_orientation = uvc.x_orientation
+                    pol_num = uvutils.jstr2num(ant[1], x_orientation=x_orientation)
                     pol_selection = np.where(uvc.jones_array == pol_num)[0]
                 ant_selection = uvc.ant_array == antnum
                 assert np.all(uvc.flag_array[ant_selection, :, :, pol_selection])

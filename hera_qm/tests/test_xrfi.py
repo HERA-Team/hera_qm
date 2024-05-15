@@ -41,8 +41,10 @@ for cnum, cf, uvf in zip(range(3), test_c_files, test_uvh5_files):
     test_uvh5_files[cnum] = os.path.join(DATA_PATH, uvf)
 
 pytestmark = pytest.mark.filterwarnings(
-    "ignore:The uvw_array does not match the expected values given the antenna positions.",
+    # this top one can be removed when we require pyuvdata >= 3.0
     "ignore:.*Using known values for HERA",
+    "ignore:.*using values from known telescopes for HERA",
+    "ignore:The uvw_array does not match the expected values given the antenna positions.",
 )
 
 rng = np.random.default_rng(0)
@@ -1111,6 +1113,7 @@ def test_unflag():
     assert True
 
 
+@pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_flag_apply(
     uvdata_miriad,
     uvflag_flag_miriad,
@@ -1399,6 +1402,14 @@ def test_xrfi_run_step(tmpdir):
     with pytest.raises(ValueError):
         xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True, dtype='uvwhatever')
 
+
+
+# TODO: check whether invalid value encountered in subtract warning is expected
+@pytest.mark.filterwarnings("ignore:invalid value encountered in subtract:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:Mean of empty slice:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:Degrees of freedom <= 0 for slice:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore::astropy.utils.exceptions.AstropyUserWarning")
+@pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 def test_xrfi_run_yaml_flags(tmpdir):
     # test xrfi_run with yaml pre-flagging.
 
@@ -1469,20 +1480,10 @@ def test_xrfi_run_yaml_flags(tmpdir):
 
     # now test apriori flag file.
     # test for different integrations modes (lsts, jds, integrations)
-    msg = 'This object is already a waterfall'
     for test_flag in [a_priori_flag_integrations, a_priori_flag_jds, a_priori_flag_lsts]:
-        with check_warnings(UserWarning, match=msg, nwarnings=8):
-            # TODO: check whether this warning is expected
-            warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in subtract")
-            warnings.filterwarnings("ignore", category=RuntimeWarning, message="Mean of empty slice")
-            warnings.filterwarnings("ignore", category=RuntimeWarning, message="Degrees of freedom <= 0 for slice")
-
-            warnings.filterwarnings("ignore", category=AstropyUserWarning)
-
-            xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
-                          a_priori_flag_yaml=test_flag, history='Just a test',
-                          kt_size=3, throw_away_edges=False)
-
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
+                      a_priori_flag_yaml=test_flag, history='Just a test',
+                      kt_size=3, throw_away_edges=False)
 
         for ext, label in ext_labels.items():
             # by default, only cross median filter / mean filter is not performed.
@@ -1509,6 +1510,7 @@ def test_xrfi_run_yaml_flags(tmpdir):
             if os.path.exists(out):
                 os.remove(out)
 
+@pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -1525,9 +1527,7 @@ def test_xrfi_run(tmpdir):
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
 
-    # check warnings
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3)
+    xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3)
 
     outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
     ext_labels = {'ag_flags1': 'Abscal gains, median filter. Flags.',
@@ -1589,9 +1589,8 @@ def test_xrfi_run(tmpdir):
     # now really do everything.
     uvf_list1 = []
     uvf_list1_names = []
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
-                      history='Just a test', kt_size=3, cross_median_filter=True)
+    xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
+                    history='Just a test', kt_size=3, cross_median_filter=True)
 
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
@@ -1608,9 +1607,8 @@ def test_xrfi_run(tmpdir):
     # now do partial i/o and check equality of outputs.
     uvf_list2 = []
     uvf_list2_names = []
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, Nwf_per_load=1,
-                      history='Just a test', kt_size=3, cross_median_filter=True)
+    xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, Nwf_per_load=1,
+                    history='Just a test', kt_size=3, cross_median_filter=True)
 
     for ext, label in ext_labels.items():
         out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
@@ -1815,6 +1813,8 @@ def test_xrfi_run(tmpdir):
     for fname in [ocal_file, acal_file, model_file, raw_dfile]:
         os.remove(fname)
 
+@pytest.mark.filterwarnings("ignore:This object is already a waterfall")
+@pytest.mark.filterwarnings("ignore:x_orientation is not the same")
 def test_xrfi_run_edgeflag(tmpdir):
     # test that flags within kt_size are flagged.
     # first try out a single file.
@@ -1833,8 +1833,7 @@ def test_xrfi_run_edgeflag(tmpdir):
     model_file = os.path.join(tmp_path, fake_obs + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
     # check warnings
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=2)
+    xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=2)
 
     outdir = os.path.join(tmp_path, 'zen.2457698.40355.xrfi')
     ext_labels = {'ag_flags1': 'Abscal gains, median filter. Flags.',
@@ -1885,7 +1884,7 @@ def test_xrfi_run_edgeflag(tmpdir):
         if ext not in ['cross_metrics1', 'cross_flags1']:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
-            uvf = UVFlag(out)
+            uvf = UVFlag(out, use_future_array_shapes=True)
             if ext == 'flags2.h5':
                 # check that two within edges are flagged
                 assert np.all(uvf.flag_array[:2])
@@ -1920,11 +1919,11 @@ def test_xrfi_run_edgeflag(tmpdir):
         model_file = os.path.join(tmp_path, fo + '.omni_vis.uvh5')
         shutil.copyfile(uvf, model_file)
         model_files.append(model_file)
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles, history='Just a test', kt_size=1)
+
+    xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles, history='Just a test', kt_size=1)
     flags2 = sorted(glob.glob(tmp_path + '/*.xrfi/*.HH.flags2.h5'))
     assert len(flags2) == 3
-    uvf = UVFlag(flags2)
+    uvf = UVFlag(flags2, use_future_array_shapes=True)
     # check that two within edges are flagged
     assert np.all(uvf.flag_array[:1])
     assert np.all(uvf.flag_array[-1:])
@@ -1933,6 +1932,8 @@ def test_xrfi_run_edgeflag(tmpdir):
 
 
 
+@pytest.mark.filterwarnings("ignore:This object is already a waterfall")
+@pytest.mark.filterwarnings("ignore:x_orientation is not the same")
 def test_xrfi_run_multifile(tmpdir):
     # test xrfi_run with multiple files
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
@@ -1959,10 +1960,8 @@ def test_xrfi_run_multifile(tmpdir):
         shutil.copyfile(uvf, model_file)
         model_files.append(model_file)
 
-    # check warnings
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles,
-                      history='Just a test', kt_size=3, cross_median_filter=True)
+    xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles,
+                  history='Just a test', kt_size=3, cross_median_filter=True)
     ext_labels = {'ag_flags1': 'Abscal gains, median filter. Flags.',
                   'ag_flags2': 'Abscal gains, mean filter. Flags.',
                   'ag_metrics1': 'Abscal gains, median filter.',
@@ -2015,16 +2014,14 @@ def test_xrfi_run_multifile(tmpdir):
             # by default, only cross median filter / mean filter is not performed.
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
-            uvf = UVFlag(out)
+            uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
             # all of flags2 should be flagged with this kt_size.
             if ext == 'flags2.h5':
                 assert np.all(uvf.flag_array)
-    # check warnings
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles,
-                      history='Just a test', kt_size=3, cross_median_filter=True,
-                      throw_away_edges=False, clobber=True)
+    xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles,
+                    history='Just a test', kt_size=3, cross_median_filter=True,
+                    throw_away_edges=False, clobber=True)
 
     # check that the number of outdirs is 1
     outdirs = sorted(glob.glob(tmp_path + '/*.xrfi'))
@@ -2036,13 +2033,14 @@ def test_xrfi_run_multifile(tmpdir):
             # by default, only cross median filter / mean filter is not performed.
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
-            uvf = UVFlag(out)
+            uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
             # if we don't throw away the edges, then there shouldn't be flags
             # at the edge.
             if ext == 'flags2.h5':
                 assert not np.all(uvf.flag_array)
 
+@pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 def test_day_threshold_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2061,8 +2059,7 @@ def test_day_threshold_run(tmpdir):
     shutil.copyfile(test_uvh5_file, model_file)
 
     # check warnings
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3, throw_away_edges=False)
+    xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3, throw_away_edges=False)
 
     # Need to adjust time arrays when duplicating files
     uvd = UVData.from_file(data_files[0], use_future_array_shapes=True)
@@ -2085,11 +2082,8 @@ def test_day_threshold_run(tmpdir):
     shutil.copyfile(test_flag_integrations, a_priori_flag_integrations)
 
     # check warnings
-    with check_warnings(
-        UserWarning,
-        match="This object is already a waterfall",
-        nwarnings=8
-    ):
+    msg = ['This object is already a waterfall'] * 8
+    with check_warnings(UserWarning, match=msg):
         # TODO: these three warnings should be checked.
         warnings.filterwarnings("ignore", category=AstropyUserWarning)
         warnings.filterwarnings("ignore", category=RuntimeWarning, message="Mean of empty slice")
@@ -2116,6 +2110,7 @@ def test_day_threshold_run(tmpdir):
         assert os.path.exists(calfile)
 
 
+@pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 def test_day_threshold_run_yaml(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2133,9 +2128,7 @@ def test_day_threshold_run_yaml(tmpdir):
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
 
-    # check warnings
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3, throw_away_edges=False)
+    xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3, throw_away_edges=False)
 
     # Need to adjust time arrays when duplicating files
     uvd = UVData.from_file(data_files[0], use_future_array_shapes=True)
@@ -2155,9 +2148,7 @@ def test_day_threshold_run_yaml(tmpdir):
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
 
-    # check warnings
-    with check_warnings(UserWarning, match="This object is already a waterfall", nwarnings=8):
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], history='Just a test', kt_size=3, clobber=True, throw_away_edges=False)
+    xrfi.xrfi_run(ocal_file, acal_file, model_file, data_files[1], history='Just a test', kt_size=3, clobber=True, throw_away_edges=False)
 
     xrfi.day_threshold_run(data_files, history='just a test')
     types = ['og', 'ox', 'ag', 'ax', 'v', 'cross', 'auto', 'omnical_chi_sq_renormed',
@@ -2172,6 +2163,7 @@ def test_day_threshold_run_yaml(tmpdir):
         assert os.path.exists(calfile)
 
 @pytest.mark.filterwarnings("ignore:All-NaN slice encountered")
+@pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_day_threshold_run_data_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2224,6 +2216,8 @@ def test_day_threshold_run_data_only(tmpdir):
         calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
         assert os.path.exists(calfile)
 
+
+@pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 def test_day_threshold_run_cal_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2242,19 +2236,16 @@ def test_day_threshold_run_cal_only(tmpdir):
     data_files = [raw_dfile]
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
-    with uvtest.check_warnings(
-            UserWarning, match=messages, nwarnings=len(messages)
-    ):
-        xrfi.xrfi_run(
-            acal_file,
-            ocal_file,
-            None,
-            None,
-            history="Just a test",
-            kt_size=3,
-            output_prefixes=raw_dfile,
-            throw_away_edges=False,
-        )
+    xrfi.xrfi_run(
+        acal_file,
+        ocal_file,
+        None,
+        None,
+        history="Just a test",
+        kt_size=3,
+        output_prefixes=raw_dfile,
+        throw_away_edges=False,
+    )
 
     # Need to adjust time arrays when duplicating files
     uvd = UVData.from_file(data_files[0], use_future_array_shapes=True)
@@ -2273,20 +2264,16 @@ def test_day_threshold_run_cal_only(tmpdir):
     uvc.write_calfits(ocal_file)
     acal_file = os.path.join(tmp_path, fake_obses[1] + '.abs.calfits')
     uvc.write_calfits(acal_file)
-    messages = mess1 * 8
-    with uvtest.check_warnings(
-            UserWarning, match=messages, nwarnings=len(messages)
-    ):
-        xrfi.xrfi_run(
-            acal_file,
-            ocal_file,
-            None,
-            None,
-            history="Just a test",
-            kt_size=3,
-            output_prefixes=data_files[1],
-            throw_away_edges=False,
-        )
+    xrfi.xrfi_run(
+        acal_file,
+        ocal_file,
+        None,
+        None,
+        history="Just a test",
+        kt_size=3,
+        output_prefixes=data_files[1],
+        throw_away_edges=False,
+    )
 
     xrfi.day_threshold_run(data_files, history='just a test')
     types = ['ox', 'og', 'ax', 'ag', 'omnical_chi_sq_renormed', 'abscal_chi_sq_renormed',
@@ -2300,6 +2287,8 @@ def test_day_threshold_run_cal_only(tmpdir):
         calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
         assert os.path.exists(calfile)
 
+
+@pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_day_threshold_run_omnivis_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2491,6 +2480,7 @@ def test_xrfi_h1c_run_indata_string_filename_not_string():
                   filename=3)
 
 
+@pytest.mark.filterwarnings("ignore:writing default values for restfreq")
 def test_xrfi_h1c_apply():
     xrfi_path = os.path.join(DATA_PATH, 'test_output')
     wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.h5')
@@ -2666,6 +2656,7 @@ def test_threshold_wf_exceptions(uvflag_f):
 
 
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
+@pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_xrfi_h3c_idr2_1_run(tmp_path, uvcal_calfits):
 
     dec_jds = ['40355', '41101', '41847', '42593', '43339', '44085', '44831']
