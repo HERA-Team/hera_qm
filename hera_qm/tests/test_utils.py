@@ -16,10 +16,12 @@ import pyuvdata.utils as uvutils
 from pathlib import Path
 
 pytestmark = pytest.mark.filterwarnings(
+    # this top one can be removed when we require pyuvdata >= 3.0
+    "ignore:.*Using known values for HERA",
+    "ignore:.*using values from known telescopes for HERA",
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
-    "ignore:telescope_location is not set. Using known values for HERA.",
-    "ignore:antenna_positions is not set. Using known values for HERA.",
 )
+
 
 def test_get_metrics_ArgumentParser_ant_metrics():
     a = utils.get_metrics_ArgumentParser('ant_metrics')
@@ -346,6 +348,9 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
 
 
 
+# this top one can be removed when we require pyuvdata >= 3.0
+@pytest.mark.filterwarnings("ignore:Cannot preserve total_quality_array when")
+@pytest.mark.filterwarnings("ignore:Changing number of antennas, but preserving")
 @pytest.mark.parametrize(
     "filein",
     ["a_priori_flags_integrations.yaml",

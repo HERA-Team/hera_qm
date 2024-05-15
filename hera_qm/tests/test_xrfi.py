@@ -41,8 +41,10 @@ for cnum, cf, uvf in zip(range(3), test_c_files, test_uvh5_files):
     test_uvh5_files[cnum] = os.path.join(DATA_PATH, uvf)
 
 pytestmark = pytest.mark.filterwarnings(
-    "ignore:The uvw_array does not match the expected values given the antenna positions.",
+    # this top one can be removed when we require pyuvdata >= 3.0
     "ignore:.*Using known values for HERA",
+    "ignore:.*using values from known telescopes for HERA",
+    "ignore:The uvw_array does not match the expected values given the antenna positions.",
 )
 
 rng = np.random.default_rng(0)
@@ -1111,6 +1113,7 @@ def test_unflag():
     assert True
 
 
+@pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_flag_apply(
     uvdata_miriad,
     uvflag_flag_miriad,
@@ -1399,6 +1402,14 @@ def test_xrfi_run_step(tmpdir):
     with pytest.raises(ValueError):
         xrfi.xrfi_run_step(uv_files=ocal_file, calculate_uvf_apriori=True, run_filter=True, reinitialize=True, dtype='uvwhatever')
 
+
+
+# TODO: check whether invalid value encountered in subtract warning is expected
+@pytest.mark.filterwarnings("ignore:invalid value encountered in subtract:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:Mean of empty slice:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:Degrees of freedom <= 0 for slice:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore::astropy.utils.exceptions.AstropyUserWarning")
+@pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 def test_xrfi_run_yaml_flags(tmpdir):
     # test xrfi_run with yaml pre-flagging.
 
@@ -1469,23 +1480,10 @@ def test_xrfi_run_yaml_flags(tmpdir):
 
     # now test apriori flag file.
     # test for different integrations modes (lsts, jds, integrations)
-    msg = ['This object is already a waterfall'] * 8 + [
-        "antenna_diameters are not set or are being overwritten. antenna_diameters "
-        "are set using values from known telescopes for HERA."
-    ] * 2
     for test_flag in [a_priori_flag_integrations, a_priori_flag_jds, a_priori_flag_lsts]:
-        with check_warnings(UserWarning, match=msg):
-            # TODO: check whether this warning is expected
-            warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in subtract")
-            warnings.filterwarnings("ignore", category=RuntimeWarning, message="Mean of empty slice")
-            warnings.filterwarnings("ignore", category=RuntimeWarning, message="Degrees of freedom <= 0 for slice")
-
-            warnings.filterwarnings("ignore", category=AstropyUserWarning)
-
-            xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
-                          a_priori_flag_yaml=test_flag, history='Just a test',
-                          kt_size=3, throw_away_edges=False)
-
+        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile,
+                      a_priori_flag_yaml=test_flag, history='Just a test',
+                      kt_size=3, throw_away_edges=False)
 
         for ext, label in ext_labels.items():
             # by default, only cross median filter / mean filter is not performed.
@@ -1513,7 +1511,6 @@ def test_xrfi_run_yaml_flags(tmpdir):
                 os.remove(out)
 
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
-@pytest.mark.filterwarnings("ignore:antenna_diameters are not set")
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -1817,8 +1814,7 @@ def test_xrfi_run(tmpdir):
         os.remove(fname)
 
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
-@pytest.mark.filterwarnings("ignore:antenna_diameters are not set")
-@pytest.mark.filterwarnings("ignore:x_orientation is not the same this object")
+@pytest.mark.filterwarnings("ignore:x_orientation is not the same")
 def test_xrfi_run_edgeflag(tmpdir):
     # test that flags within kt_size are flagged.
     # first try out a single file.
@@ -1888,7 +1884,7 @@ def test_xrfi_run_edgeflag(tmpdir):
         if ext not in ['cross_metrics1', 'cross_flags1']:
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
-            uvf = UVFlag(out)
+            uvf = UVFlag(out, use_future_array_shapes=True)
             if ext == 'flags2.h5':
                 # check that two within edges are flagged
                 assert np.all(uvf.flag_array[:2])
@@ -1927,7 +1923,7 @@ def test_xrfi_run_edgeflag(tmpdir):
     xrfi.xrfi_run(ocal_files, acal_files, model_files, raw_dfiles, history='Just a test', kt_size=1)
     flags2 = sorted(glob.glob(tmp_path + '/*.xrfi/*.HH.flags2.h5'))
     assert len(flags2) == 3
-    uvf = UVFlag(flags2)
+    uvf = UVFlag(flags2, use_future_array_shapes=True)
     # check that two within edges are flagged
     assert np.all(uvf.flag_array[:1])
     assert np.all(uvf.flag_array[-1:])
@@ -1937,8 +1933,7 @@ def test_xrfi_run_edgeflag(tmpdir):
 
 
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
-@pytest.mark.filterwarnings("ignore:antenna_diameters are not set")
-@pytest.mark.filterwarnings("ignore:x_orientation is not the same this object")
+@pytest.mark.filterwarnings("ignore:x_orientation is not the same")
 def test_xrfi_run_multifile(tmpdir):
     # test xrfi_run with multiple files
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
@@ -2019,7 +2014,7 @@ def test_xrfi_run_multifile(tmpdir):
             # by default, only cross median filter / mean filter is not performed.
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
-            uvf = UVFlag(out)
+            uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
             # all of flags2 should be flagged with this kt_size.
             if ext == 'flags2.h5':
@@ -2038,7 +2033,7 @@ def test_xrfi_run_multifile(tmpdir):
             # by default, only cross median filter / mean filter is not performed.
             out = os.path.join(outdir, '.'.join([fake_obs, ext, 'h5']))
             assert os.path.exists(out)
-            uvf = UVFlag(out)
+            uvf = UVFlag(out, use_future_array_shapes=True)
             assert uvf.label == label
             # if we don't throw away the edges, then there shouldn't be flags
             # at the edge.
@@ -2133,13 +2128,7 @@ def test_day_threshold_run_yaml(tmpdir):
     model_file = os.path.join(tmp_path, fake_obses[0] + '.omni_vis.uvh5')
     shutil.copyfile(test_uvh5_file, model_file)
 
-    # check warnings
-    msg = ['This object is already a waterfall'] * 8 + [
-        "antenna_diameters are not set or are being overwritten. antenna_diameters "
-        "are set using values from known telescopes for HERA."
-    ] * 2
-    with check_warnings(UserWarning, match=msg):
-        xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3, throw_away_edges=False)
+    xrfi.xrfi_run(ocal_file, acal_file, model_file, raw_dfile, history='Just a test', kt_size=3, throw_away_edges=False)
 
     # Need to adjust time arrays when duplicating files
     uvd = UVData.from_file(data_files[0], use_future_array_shapes=True)
@@ -2174,6 +2163,7 @@ def test_day_threshold_run_yaml(tmpdir):
         assert os.path.exists(calfile)
 
 @pytest.mark.filterwarnings("ignore:All-NaN slice encountered")
+@pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_day_threshold_run_data_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2228,7 +2218,6 @@ def test_day_threshold_run_data_only(tmpdir):
 
 
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
-@pytest.mark.filterwarnings("ignore:antenna_diameters are not set")
 def test_day_threshold_run_cal_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2298,6 +2287,8 @@ def test_day_threshold_run_cal_only(tmpdir):
         calfile = os.path.join(tmp_path, fake_obs + '.flagged_abs.calfits')
         assert os.path.exists(calfile)
 
+
+@pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_day_threshold_run_omnivis_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2489,6 +2480,7 @@ def test_xrfi_h1c_run_indata_string_filename_not_string():
                   filename=3)
 
 
+@pytest.mark.filterwarnings("ignore:writing default values for restfreq")
 def test_xrfi_h1c_apply():
     xrfi_path = os.path.join(DATA_PATH, 'test_output')
     wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.h5')
@@ -2664,6 +2656,7 @@ def test_threshold_wf_exceptions(uvflag_f):
 
 
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
+@pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_xrfi_h3c_idr2_1_run(tmp_path, uvcal_calfits):
 
     dec_jds = ['40355', '41101', '41847', '42593', '43339', '44085', '44831']
