@@ -52,7 +52,9 @@ rng = np.random.default_rng(0)
 
 @pytest.fixture(scope="session")
 def uvdata_miriad_main():
-    uv = UVData.from_file(test_d_file, use_future_array_shapes=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Future array shapes are now always used")
+        uv = UVData.from_file(test_d_file, use_future_array_shapes=True)
     yield uv
 
     # clean up when done
@@ -74,9 +76,11 @@ def uvdata_miriad(uvdata_miriad_main):
 
 @pytest.fixture(scope="session")
 def uvflag_metric_miriad_main(uvdata_miriad_main):
-    uvm = UVFlag(
-        uvdata_miriad_main, history='I made this', use_future_array_shapes=True
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Future array shapes are now always used")
+        uvm = UVFlag(
+            uvdata_miriad_main, history='I made this', use_future_array_shapes=True
+        )
     yield uvm
     # clean up when done
     del uvm
@@ -96,12 +100,14 @@ def uvflag_metric_miriad(uvflag_metric_miriad_main):
 
 @pytest.fixture(scope="session")
 def uvflag_metric_waterfall_miriad_main(uvdata_miriad_main):
-    uvm = UVFlag(
-        uvdata_miriad_main,
-        history='I made this',
-        waterfall=True,
-        use_future_array_shapes=True
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Future array shapes are now always used")
+        uvm = UVFlag(
+            uvdata_miriad_main,
+            history='I made this',
+            waterfall=True,
+            use_future_array_shapes=True
+        )
     yield uvm
     # clean up when done
     del uvm
@@ -121,7 +127,9 @@ def uvflag_metric_waterfall_miriad(uvflag_metric_waterfall_miriad_main):
 
 @pytest.fixture(scope="session")
 def uvflag_flag_miriad_main(uvdata_miriad_main):
-    uvf = UVFlag(uvdata_miriad_main, mode='flag', use_future_array_shapes=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Future array shapes are now always used")
+        uvf = UVFlag(uvdata_miriad_main, mode='flag', use_future_array_shapes=True)
     yield uvf
     # clean up when done
     del uvf
@@ -141,12 +149,14 @@ def uvflag_flag_miriad(uvflag_flag_miriad_main):
 
 @pytest.fixture(scope="session")
 def uvflag_flag_waterfall_miriad_main(uvdata_miriad_main):
-    uvf = UVFlag(
-        uvdata_miriad_main,
-        mode='flag',
-        waterfall=True,
-        use_future_array_shapes=True
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Future array shapes are now always used")
+        uvf = UVFlag(
+            uvdata_miriad_main,
+            mode='flag',
+            waterfall=True,
+            use_future_array_shapes=True
+        )
     yield uvf
     # clean up when done
     del uvf
@@ -166,7 +176,9 @@ def uvflag_flag_waterfall_miriad(uvflag_flag_waterfall_miriad_main):
 
 @pytest.fixture(scope="session")
 def uvcal_calfits_main():
-    uvc = UVCal.from_file(test_c_file, use_future_array_shapes=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Future array shapes are now always used")
+        uvc = UVCal.from_file(test_c_file, use_future_array_shapes=True)
     yield uvc
 
     # clean up when done
@@ -188,9 +200,11 @@ def uvcal_calfits(uvcal_calfits_main):
 
 @pytest.fixture(scope="session")
 def uvflag_metric_calfits_main(uvcal_calfits_main):
-    uvm = UVFlag(
-        uvcal_calfits_main, history='I made this', use_future_array_shapes=True
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Future array shapes are now always used")
+        uvm = UVFlag(
+            uvcal_calfits_main, history='I made this', use_future_array_shapes=True
+        )
     yield uvm
 
     # clean up when done
@@ -212,7 +226,9 @@ def uvflag_metric_calfits(uvflag_metric_calfits_main):
 
 @pytest.fixture(scope="session")
 def uvflag_flag_calfits_main(uvcal_calfits_main):
-    uvf = UVFlag(uvcal_calfits_main, mode='flag', use_future_array_shapes=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Future array shapes are now always used")
+        uvf = UVFlag(uvcal_calfits_main, mode='flag', use_future_array_shapes=True)
     yield uvf
 
     # clean up when done
@@ -234,7 +250,9 @@ def uvflag_flag_calfits(uvflag_flag_calfits_main):
 
 @pytest.fixture(scope="session")
 def uvflag_f_main():
-    uvf = UVFlag(test_f_file, use_future_array_shapes=True)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Future array shapes are now always used")
+        uvf = UVFlag(test_f_file, use_future_array_shapes=True)
     yield uvf
 
     # clean up when done
@@ -1042,7 +1060,8 @@ def test_flag(
 
     # test time flagging in baseline type
     # convert to current shapes for test coverage
-    uvm.use_current_array_shapes()
+    if hasattr(uvm, "use_current_array_shapes"):
+        uvm.use_current_array_shapes()
     uvm.metric_array = np.zeros_like(uvm.metric_array)
     times = np.unique(uvm.time_array)
     inds1 = np.where(uvm.time_array == times[0])[0]
@@ -1113,6 +1132,7 @@ def test_unflag():
     assert True
 
 
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_flag_apply(
     uvdata_miriad,
@@ -1405,6 +1425,7 @@ def test_xrfi_run_step(tmpdir):
 
 
 # TODO: check whether invalid value encountered in subtract warning is expected
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:invalid value encountered in subtract:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:Mean of empty slice:RuntimeWarning")
 @pytest.mark.filterwarnings("ignore:Degrees of freedom <= 0 for slice:RuntimeWarning")
@@ -1813,6 +1834,7 @@ def test_xrfi_run(tmpdir):
     for fname in [ocal_file, acal_file, model_file, raw_dfile]:
         os.remove(fname)
 
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 @pytest.mark.filterwarnings("ignore:x_orientation is not the same")
 def test_xrfi_run_edgeflag(tmpdir):
@@ -1932,6 +1954,7 @@ def test_xrfi_run_edgeflag(tmpdir):
 
 
 
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 @pytest.mark.filterwarnings("ignore:x_orientation is not the same")
 def test_xrfi_run_multifile(tmpdir):
@@ -2040,6 +2063,7 @@ def test_xrfi_run_multifile(tmpdir):
             if ext == 'flags2.h5':
                 assert not np.all(uvf.flag_array)
 
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 def test_day_threshold_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
@@ -2110,6 +2134,7 @@ def test_day_threshold_run(tmpdir):
         assert os.path.exists(calfile)
 
 
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 def test_day_threshold_run_yaml(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
@@ -2164,6 +2189,7 @@ def test_day_threshold_run_yaml(tmpdir):
 
 @pytest.mark.filterwarnings("ignore:All-NaN slice encountered")
 @pytest.mark.filterwarnings("ignore:instrument is not the same")
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 def test_day_threshold_run_data_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2217,6 +2243,7 @@ def test_day_threshold_run_data_only(tmpdir):
         assert os.path.exists(calfile)
 
 
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 def test_day_threshold_run_cal_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
@@ -2288,6 +2315,7 @@ def test_day_threshold_run_cal_only(tmpdir):
         assert os.path.exists(calfile)
 
 
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_day_threshold_run_omnivis_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
@@ -2655,6 +2683,7 @@ def test_threshold_wf_exceptions(uvflag_f):
     pytest.raises(ValueError, xrfi.threshold_wf, 'foo')  # not a UVFlag object
 
 
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 @pytest.mark.filterwarnings("ignore:instrument is not the same")
 def test_xrfi_h3c_idr2_1_run(tmp_path, uvcal_calfits):

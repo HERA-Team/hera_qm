@@ -10,6 +10,7 @@ from . import __version__
 from . import utils, metrics_io
 import copy
 import os
+import warnings
 
 try:
     from sklearn import gaussian_process as gp
@@ -343,7 +344,11 @@ class FirstCalMetrics:
         """
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
-        self.UVC.read_calfits(calfits_files, use_future_array_shapes=True)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", "Future array shapes are now always used"
+            )
+            self.UVC.read_calfits(calfits_files, use_future_array_shapes=True)
 
         if hasattr(self.UVC, "telescope"):
             x_orientation = self.UVC.telescope.x_orientation

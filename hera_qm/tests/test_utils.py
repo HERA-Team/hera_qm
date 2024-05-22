@@ -262,6 +262,7 @@ def test_strip_extension_return_ext_extension():
     root, ext = utils.strip_extension(path, return_ext=True)
     assert ext == path[-3:]
 
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.parametrize(
     "filein",
     ["a_priori_flags_integrations.yaml",
@@ -351,6 +352,7 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
 # this top one can be removed when we require pyuvdata >= 3.0
 @pytest.mark.filterwarnings("ignore:Cannot preserve total_quality_array when")
 @pytest.mark.filterwarnings("ignore:Changing number of antennas, but preserving")
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.parametrize(
     "filein",
     ["a_priori_flags_integrations.yaml",
@@ -417,6 +419,8 @@ def test_apply_yaml_flags_uvcal(filein):
             pytest.raises(NotImplementedError, utils.apply_yaml_flags, uvc, a_priori_flag_yaml=test_flag,
                          throw_away_flagged_ants=True, ant_indices_only=False)
 
+
+@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 def test_apply_yaml_flags_errors():
     test_flag_jds = os.path.join(DATA_PATH, 'a_priori_flags_jds.yaml')
     test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
