@@ -509,19 +509,21 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
 
     for bl in diff_data:
         ant1, ant2 = split_bl(bl)
-        if (ant1 == ant2):
-            continue
-        if antenna_class is not None and (
-            (ant1 in antenna_class.bad_ants) or (ant2 in antenna_class.bad_ants)
-        ):
+        if (antenna_class is not None) and ((ant1 in antenna_class.bad_ants) or (ant2 in antenna_class.bad_ants)):
             continue
 
         # compute per-channel z-score
         predicted_std = (predict_noise_variance_from_autos(bl, sum_data))**.5
-        # The |diff| is Rayleigh-distributed with mean sigma * sqrt(pi/2) and variance sigma^2*(4-pi)/2
+        # For autos, |diff| is the half-normal distribution with mean sigma * 2/pi and variance sigma^2*(1 - 2/pi)
+        # In this case, sigma = predicted_std
+        if split_bl(bl)[0] == split_bl(bl)[1]:
+            predicted_mean_of_abs = predicted_std * (2 / np.pi)**.5
+            predicted_std_of_abs = predicted_std * (1 - 2 / np.pi)**.5
+        # Otherwise |diff| is Rayleigh-distributed with mean sigma * sqrt(pi/2) and variance sigma^2*(4-pi)/2
         # In this case, sigma = predicted_std / sqrt(2)
-        predicted_mean_of_abs = predicted_std * np.sqrt(np.pi / 4)
-        predicted_std_of_abs = predicted_std * np.sqrt((4 - np.pi) / 4)
+        else:
+            predicted_mean_of_abs = predicted_std * np.sqrt(np.pi / 4)
+            predicted_std_of_abs = predicted_std * np.sqrt((4 - np.pi) / 4)
         zscore = np.where(flag_waterfall, np.nan, (np.abs(diff_data[bl]) - predicted_mean_of_abs) / predicted_std_of_abs)
 
         # compute per-xengine z-score
