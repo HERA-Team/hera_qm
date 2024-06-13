@@ -5,7 +5,12 @@ import os
 import shutil
 import hera_qm.xrfi as xrfi
 import numpy as np
-import pyuvdata.tests as uvtest
+try:
+    from pyuvdata.testing import check_warnings
+except ImportError:
+    # this can be removed once we require pyuvdata >= v3.0
+    from pyuvdata.tests import check_warnings
+
 from pyuvdata import UVData
 from pyuvdata import UVCal
 import hera_qm.utils as utils
@@ -14,7 +19,6 @@ from pyuvdata import UVFlag
 import glob
 import hera_qm.ant_class as ant_class
 from hera_cal import io
-from pyuvdata.tests import check_warnings
 from astropy.utils.exceptions import AstropyUserWarning
 import warnings
 
@@ -361,7 +365,7 @@ def test_check_convolve_dims_3D():
 def test_check_convolve_dims_1D():
     size = 10
     d = np.ones(size)
-    with uvtest.check_warnings(
+    with check_warnings(
             UserWarning,
             match=f"K1 value {size + 1} is larger than the data",
             nwarnings=1
@@ -373,7 +377,7 @@ def test_check_convolve_dims_1D():
 def test_check_convolve_dims_kernel_not_given():
     size = 10
     d = np.ones((size, size))
-    with uvtest.check_warnings(
+    with check_warnings(
             UserWarning,
             match=["No K1 input provided.", "No K2 input provided"],
             nwarnings=2
@@ -386,7 +390,7 @@ def test_check_convolve_dims_kernel_not_given():
 def test_check_convolve_dims_Kt_too_big():
     size = 10
     d = np.ones((size, size))
-    with uvtest.check_warnings(
+    with check_warnings(
             UserWarning,
             match=f"K1 value {size + 1} is larger than the data",
             nwarnings=1,
@@ -399,7 +403,7 @@ def test_check_convolve_dims_Kt_too_big():
 def test_check_convolve_dims_Kf_too_big():
     size = 10
     d = np.ones((size, size))
-    with uvtest.check_warnings(
+    with check_warnings(
             UserWarning,
             match=f"K2 value {size + 1} is larger than the data",
             nwarnings=1,
@@ -632,7 +636,7 @@ def test_detrend_medfilt():
     # run detrend medfilt
     Kt = 101
     Kf = 101
-    with uvtest.check_warnings(
+    with check_warnings(
             UserWarning,
             match=[
                 f"K1 value {Kt} is larger than the data",

@@ -7,7 +7,12 @@ import yaml
 import numpy as np
 import os
 import h5py
-import pyuvdata.tests as uvtest
+try:
+    from pyuvdata.testing import check_warnings
+except ImportError:
+    # this can be removed once we require pyuvdata >= v3.0
+    from pyuvdata.tests import check_warnings
+
 from hera_qm.data import DATA_PATH
 from hera_qm import metrics_io
 import hera_qm.tests as qmtest
@@ -195,7 +200,7 @@ def test_write_metric_warning_json():
     warn_message = ["JSON-type files can still be written but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility."]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         json_dict = metrics_io.write_metric_file(json_file, test_dict, overwrite=True)
@@ -212,7 +217,7 @@ def test_write_metric_warning_pickle():
     warn_message = ["Pickle-type files can still be written but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility."]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         pickle_dict = metrics_io.write_metric_file(
@@ -291,7 +296,7 @@ def test_write_then_load_metric_warning_json():
     warn_message = ["JSON-type files can still be written but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         metrics_io.write_metric_file(json_file, test_dict, overwrite=True)
@@ -299,7 +304,7 @@ def test_write_then_load_metric_warning_json():
     # output_json = metrics_io.write_metric_file(json_file, test_dict)
     warn_message = ["JSON-type files can still be read but are no longer "
                     "written by default.\n"]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         json_dict = metrics_io.load_metric_file(json_file)
@@ -317,7 +322,7 @@ def test_write_then_load_metric_warning_pickle():
     warn_message = ["Pickle-type files can still be written but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         metrics_io.write_metric_file(pickle_file, test_dict, overwrite=True)
@@ -325,7 +330,7 @@ def test_write_then_load_metric_warning_pickle():
     # output_json = metrics_io.write_metric_file(json_file, test_dict)
     warn_message = ["Pickle-type files can still be read but are no longer "
                     "written by default.\n"]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         pickle_dict = metrics_io.load_metric_file(pickle_file)
@@ -343,7 +348,7 @@ def test_read_write_old_firstcal_json_files():
     warn_message = ["JSON-type files can still be read but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         test_metrics = metrics_io.load_metric_file(json_infile)
@@ -368,7 +373,7 @@ def test_read_write_old_omnical_json_files():
     warn_message = ["JSON-type files can still be read but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         test_metrics = metrics_io.load_metric_file(json_infile)
@@ -397,7 +402,7 @@ def test_read_write_new_ant_json_files():
     warn_message = ["JSON-type files can still be read but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         test_metrics = metrics_io.load_metric_file(json_infile)
@@ -425,11 +430,11 @@ def test_read_old_all_string_ant_json_files():
     warn_message = ["JSON-type files can still be read but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         test_metrics_old = metrics_io.load_metric_file(old_json_infile)
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         test_metrics_new = metrics_io.load_metric_file(new_json_infile)
@@ -482,13 +487,13 @@ def test_boolean_read_write_json():
     warn_message = ["JSON-type files can still be written but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         metrics_io.write_metric_file(test_file, test_dict, overwrite=True)
     warn_message = ["JSON-type files can still be read but are no longer "
                     "written by default.\n"]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         json_dict = metrics_io.load_metric_file(test_file)
@@ -505,14 +510,14 @@ def test_boolean_read_write_pickle():
     warn_message = ["Pickle-type files can still be written but are no longer "
                     "written by default.\n"
                     "Write to HDF5 format for future compatibility.", ]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         metrics_io.write_metric_file(test_file, test_dict)
 
     warn_message = ["Pickle-type files can still be read but are no longer "
                     "written by default.\n"]
-    with uvtest.check_warnings(
+    with check_warnings(
             PendingDeprecationWarning, match=warn_message, nwarnings=1
     ):
         input_dict = metrics_io.load_metric_file(test_file)
