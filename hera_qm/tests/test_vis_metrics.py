@@ -10,13 +10,13 @@ import os
 import copy
 import pytest
 import warnings
-from erfa.core import ErfaWarning
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
 )
 
 @pytest.fixture(scope='function')
+@pytest.mark.filterwarnings("ignore:ERFA function")
 def vismetrics_data():
     data = UVData()
     filename = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
@@ -29,8 +29,7 @@ def vismetrics_data():
     while data.Ntimes < 90:
         d2 = copy.deepcopy(data)
         d2.time_array += d2.time_array.max() + d2.integration_time / (24 * 3600)
-        with pytest.raises(ErfaWarning, match='ERFA function'):
-            data += d2
+        data += d2
     ntimes = data.Ntimes
     nchan = data.Nfreqs
     data1 = qmtest.noise(size=(ntimes, nchan))
