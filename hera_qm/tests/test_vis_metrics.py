@@ -10,6 +10,7 @@ import os
 import copy
 import pytest
 import warnings
+from erfa.core import ErfaWarning
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore:The uvw_array does not match the expected values given the antenna positions.",
@@ -19,9 +20,7 @@ pytestmark = pytest.mark.filterwarnings(
 def vismetrics_data():
     data = UVData()
     filename = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", "Future array shapes are now always used")
-        data.read_miriad(filename, use_future_array_shapes=True, check_autos=False)
+    data.read_miriad(filename, check_autos=False)
 
     # massage the object to make it work with check_noise_variance
     data.select(antenna_nums=data.get_ants()[0:10])
@@ -30,7 +29,8 @@ def vismetrics_data():
     while data.Ntimes < 90:
         d2 = copy.deepcopy(data)
         d2.time_array += d2.time_array.max() + d2.integration_time / (24 * 3600)
-        data += d2
+        with pytest.raises(ErfaWarning, match='ERFA function'):
+            data += d2
     ntimes = data.Ntimes
     nchan = data.Nfreqs
     data1 = qmtest.noise(size=(ntimes, nchan))
@@ -79,10 +79,9 @@ def test_check_noise_variance_inttime_error(vismetrics_data):
 def uvd():
     uvd = UVData()
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", "Future array shapes are now always used")
         uvd.read_miriad(
             os.path.join(DATA_PATH, 'zen.2458002.47754.xx.HH.uvA'),
-            projected=False, use_future_array_shapes=True,
+            projected=False,
             check_autos=False
         )
     return uvd
@@ -155,7 +154,7 @@ def test_plot_bl_bl_scatter(uvd):
 @pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 def test_sequential_diff():
     uvd = UVData()
-    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'), use_future_array_shapes=True)
+    uvd.read_miriad(os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA'))
 
     # diff across time
     uvd_diff = vis_metrics.sequential_diff(uvd, axis=0, pad=False)

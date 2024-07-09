@@ -117,8 +117,15 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
     """
     allowed_types = (np.ndarray, np.float32, float, int,
                      bytes, str, list, bool, np.bool_)
+    
+        
     compressable_types = (np.ndarray, list)
     for key in in_dict:
+        # Catch case with numpy 2 where keys of type (np.int32(ant), 'polstr')) are 
+        # converted to string with the full np.int32 identifier in them.
+        if isinstance(key, tuple):
+            key = tuple(int(k) if isinstance(k, (int, np.int32, np.int64)) else k for k in key)
+
         key_str = str(key)
         if key == 'reds':
             in_dict[key] = _reds_list_to_dict(in_dict[key])
@@ -346,17 +353,16 @@ def _recursively_load_dict_to_group(h5file, path, group_is_ordered=False):
 
         item = h5file[path][key]
 
-        if isinstance(item, h5py.Dataset):
-            if item.attrs['key_is_string']:
-                out_dict[str(key)] = item[()]
-            else:
-                out_key = _parse_key(key)
+        if isinstance(item, (h5py.Dataset, h5py.Group)):
+            out_key = str(key) if item.attrs['key_is_string'] else _parse_key(key)
+            #print(key, out_key, item.attrs['key_is_string'])
+            if isinstance(item, h5py.Dataset):
                 out_dict[out_key] = item[()]
 
-        elif isinstance(item, h5py.Group):
-            out_key = str(key) if item.attrs['key_is_string'] else _parse_key(key)
-            out_dict[out_key] = _recursively_load_dict_to_group(h5file, (path + key + '/'),
-                                                                group_is_ordered=item.attrs["group_is_ordered"])
+            elif isinstance(item, h5py.Group):
+                out_dict[out_key] = _recursively_load_dict_to_group(
+                    h5file, (path + key + '/'), group_is_ordered=item.attrs["group_is_ordered"]
+                )
         else:
             raise TypeError("The HDF5 path: {} is not associated with either "
                             "a dataset or group object. "

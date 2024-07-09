@@ -15,7 +15,7 @@ dependencies = [
     "astropy>=5.0.4",
     "h5py>=3.1",
     "pyyaml",
-    "pyuvdata>=2.3",
+    "pyuvdata>=3.0",
     "hera_filters"
 ]
 classifiers = [

@@ -219,6 +219,9 @@ def test_auto_metrics_run():
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="All-NaN slice encountered")
         warnings.filterwarnings("ignore", message="K1 value 8 is larger than the data of dimension 4; using the size of the data for the kernel size")
+        warnings.filterwarnings("ignore", message="Mean of empty slice")
+        warnings.filterwarnings("ignore", message="Degrees of freedom <= 0 for slice")
+        
         ex_ants, modzs, spectra, flags = auto_metrics.auto_metrics_run(metrics_outfile, auto_files,
                                                                    median_round_modz_cut=75., mean_round_modz_cut=5.,
                                                                    edge_cut=100, Kt=8, Kf=8, sig_init=5.0, sig_adj=2.0,
