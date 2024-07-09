@@ -12,7 +12,6 @@ import pickle as pkl
 import json
 import copy
 import os
-import warnings
 
 
 def get_omnical_metrics_dict():

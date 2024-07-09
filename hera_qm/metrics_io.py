@@ -117,11 +117,11 @@ def _recursively_save_dict_to_group(h5file, path, in_dict):
     """
     allowed_types = (np.ndarray, np.float32, float, int,
                      bytes, str, list, bool, np.bool_)
-    
-        
+
+
     compressable_types = (np.ndarray, list)
     for key in in_dict:
-        # Catch case with numpy 2 where keys of type (np.int32(ant), 'polstr')) are 
+        # Catch case with numpy 2 where keys of type (np.int32(ant), 'polstr')) are
         # converted to string with the full np.int32 identifier in them.
         if isinstance(key, tuple):
             key = tuple(int(k) if isinstance(k, (int, np.int32, np.int64)) else k for k in key)
