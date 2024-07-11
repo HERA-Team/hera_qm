@@ -286,7 +286,7 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
     integration_flags = [0, 1] # integrations from yaml file that should be flagged.
     ant_flags = [0, 10, [1, 'Jee'], [3, 'Jnn']]
     uvd = UVData()
-    uvd.read(test_d_file, use_future_array_shapes=True)
+    uvd.read(test_d_file)
     uvd = utils.apply_yaml_flags(uvd, test_flag, flag_freqs=flag_freqs, flag_times=flag_times,
                                 flag_ants=flag_ants, unflag_first=True)
     if 'no_integrations' not in test_flag:
@@ -368,7 +368,7 @@ def test_apply_yaml_flags_uvcal(filein):
     test_flag = os.path.join(DATA_PATH, filein)
     test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
     uvc = UVCal()
-    uvc.read_calfits(test_c_file, use_future_array_shapes=True)
+    uvc.read_calfits(test_c_file)
 
     uvc = utils.apply_yaml_flags(uvc, test_flag, unflag_first=True)
     freq_regions = [(0, 110e6), (150e6, 155e6), (190e6, 200e6)] # frequencies from yaml file.
@@ -420,13 +420,12 @@ def test_apply_yaml_flags_uvcal(filein):
                          throw_away_flagged_ants=True, ant_indices_only=False)
 
 
-@pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 def test_apply_yaml_flags_errors():
     test_flag_jds = os.path.join(DATA_PATH, 'a_priori_flags_jds.yaml')
     test_c_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits')
     # check NotImplementedErrors
     uvc = UVCal()
-    uvc.read_calfits(test_c_file, use_future_array_shapes=True)
+    uvc.read_calfits(test_c_file)
     # check that setting uv to an object that is not a subclass of UVCal or UVData throws a NotImplementedError
     pytest.raises(NotImplementedError, utils.apply_yaml_flags, 'uvdata', test_flag_jds)
 

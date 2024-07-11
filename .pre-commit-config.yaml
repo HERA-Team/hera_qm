@@ -1,3 +1,5 @@
+exclude: '(^docs/conf.py|^hera_qm/data/|.codecov.yml)'
+
 ci:
   autoupdate_schedule: monthly
 

@@ -364,7 +364,11 @@ def test_ant_metrics_run_and_load_antenna_metrics():
     # test a priori flagging via YAML
     four_pol_uvh5 = DATA_PATH + '/zen.2457698.40355.full_pol_test.uvh5'
     apf_yaml = os.path.join(DATA_PATH, 'a_priori_flags_sample.yaml')
-    am = ant_metrics.ant_metrics_run(four_pol_uvh5, diff_files=four_pol_uvh5, overwrite=True, a_priori_xants_yaml=apf_yaml, verbose=True)
+
+    # SGM: not sure if the following warning *should* be raised.
+    with pytest.warns(RuntimeWarning, match='All-NaN slice encountered'):
+        am = ant_metrics.ant_metrics_run(four_pol_uvh5, diff_files=four_pol_uvh5, overwrite=True, a_priori_xants_yaml=apf_yaml, verbose=True)
+
     am_hdf5 = ant_metrics.load_antenna_metrics(four_pol_uvh5.replace('.uvh5', '.ant_metrics.hdf5'))
     for ant in [(0, 'Jee'), (0, 'Jnn'), (10, 'Jee'), (10, 'Jnn'), (1, 'Jee'), (3, 'Jnn')]:
         assert ant in am_hdf5['xants']

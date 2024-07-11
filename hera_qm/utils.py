@@ -733,13 +733,6 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
     if not issubclass(uv.__class__, (UVData, UVCal, UVFlag)):
         raise NotImplementedError("uv must be a UVData, UVCal, or UVFlag object.")
 
-    # this is a no-op if it's already using future shapes
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", "Future array shapes are now always used"
-        )
-        uv.use_future_array_shapes()
-
     # if UVCal provided and lst_array is None, get lst_array from times.
     # If lat_lon_alt is not specified, try to infer it from the telescope name, which calfits files generally carry around
     if unflag_first:

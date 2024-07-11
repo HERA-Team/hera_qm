@@ -345,10 +345,7 @@ class FirstCalMetrics:
         # Instantiate UVCal and read calfits
         self.UVC = UVCal()
         with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore", "Future array shapes are now always used"
-            )
-            self.UVC.read_calfits(calfits_files, use_future_array_shapes=True)
+            self.UVC.read_calfits(calfits_files)
 
         if hasattr(self.UVC, "telescope"):
             x_orientation = self.UVC.telescope.x_orientation
