@@ -349,18 +349,25 @@ def auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125), flag_spe
     ex_bls = {bl for bl in auto_bls if (antenna_class[split_bl(bl)[0]] == 'bad' if antenna_class is not None else False)}
 
     # compute normalized reference bandpass of good antennas for each polarization
-    template_bandpasses = {pol: np.where((flag_spectrum if flag_spectrum is not None else False), np.nan,
-                                         np.nanmean([data[bl] for bl in auto_bls if bl[2] == pol and bl not in ex_bls],
-                                                      axis=(0, 1))) for pol in auto_pols}
-    template_bandpasses = {pol: template_bandpasses[pol] / np.nanmean(template_bandpasses[pol]) for pol in auto_pols}
+    template_bandpasses = {}
+    for pol in auto_pols:
+        if len([bl for bl in auto_bls if bl[2] == pol and bl not in ex_bls]) == 0:
+            template_bandpasses[pol] = None
+        else:
+            avg_spectrum = np.nanmean([data[bl] for bl in auto_bls if bl[2] == pol and bl not in ex_bls], axis=(0, 1))
+            template_bandpasses[pol] = np.where((flag_spectrum if flag_spectrum is not None else False), np.nan, avg_spectrum)
+            template_bandpasses[pol] /= np.nanmean(template_bandpasses[pol])
 
     # compute per-auto distance from reference bandpass
     distance_metrics = {}
     for _i, bl in enumerate(auto_bls):
-        bandpass = np.where((flag_spectrum if flag_spectrum is not None else False), np.nan, np.mean(data[bl], axis=0))
-        bandpass /= np.nanmean(bandpass)
-        distance = (np.nanmean(np.abs(bandpass - template_bandpasses[bl[2]])**2))**.5
-        distance_metrics[bl] = distance if np.isfinite(distance) else np.inf
+        if template_bandpasses[bl[2]] is None:
+            distance_metrics[bl] = np.inf
+        else:
+            bandpass = np.where((flag_spectrum if flag_spectrum is not None else False), np.nan, np.mean(data[bl], axis=0))
+            bandpass /= np.nanmean(bandpass)
+            distance = (np.nanmean(np.abs(bandpass - template_bandpasses[bl[2]])**2))**.5
+            distance_metrics[bl] = distance if np.isfinite(distance) else np.inf
 
     # classify based on distances
     return antenna_bounds_checker(distance_metrics, good=good, suspect=suspect, bad=(-np.inf, np.inf))
