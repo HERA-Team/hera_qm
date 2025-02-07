@@ -217,6 +217,21 @@ def test_auto_shape_checker():
     for ant in {(116, 'Jee'), (116, 'Jnn'), (93, 'Jee'), (65, 'Jee'), (65, 'Jnn'), (93, 'Jnn')}:
         assert ant in auto_shape_class.bad_ants
 
+    # test with all Jee antennas previously marked as bad
+    input_class = auto_slope_class + auto_power_class
+    for ant in input_class.ants:
+        if ant[1] == 'Jee':
+            input_class[ant] = 'bad'
+    auto_shape_class = ant_class.auto_shape_checker(data, good=(0, 0.0625), suspect=(0.0625, 0.125),
+                                                    flag_spectrum=flag_spectrum, antenna_class=input_class)
+    for ant in {(68, 'Jnn'), (160, 'Jnn'), (85, 'Jnn'), (83, 'Jnn'), (98, 'Jnn'), (87, 'Jnn'), (135, 'Jnn'), (157, 'Jnn'), (36, 'Jnn'), (117, 'Jnn'), (53, 'Jnn')}:
+        assert ant in auto_shape_class.good_ants
+    for ant in {(51, 'Jnn')}:
+        assert ant in auto_shape_class.suspect_ants
+    for ant in {(85, 'Jee'), (98, 'Jee'), (36, 'Jee'), (117, 'Jee'), (53, 'Jee'), (135, 'Jee'), (157, 'Jee'), (160, 'Jee'), (83, 'Jee'), (116, 'Jee'), 
+               (68, 'Jee'), (87, 'Jee'), (51, 'Jee'), (116, 'Jnn'), (93, 'Jee'), (65, 'Jee'), (65, 'Jnn'), (93, 'Jnn')}:
+        assert ant in auto_shape_class.bad_ants
+
 
 @pytest.mark.filterwarnings("ignore::numpy.exceptions.ComplexWarning")
 def test_auto_rfi_checker():
