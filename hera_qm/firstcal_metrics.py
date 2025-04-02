@@ -348,7 +348,10 @@ class FirstCalMetrics:
             self.UVC.read_calfits(calfits_files)
 
         if hasattr(self.UVC, "telescope"):
-            x_orientation = self.UVC.telescope.x_orientation
+            if hasattr(self.UVC.telescope, "get_x_orientation_from_feeds"):
+                x_orientation = self.UVC.telescope.get_x_orientation_from_feeds()
+            else:
+                x_orientation = self.UVC.telescope.x_orientation
         else:
             x_orientation = self.UVC.x_orientation
 

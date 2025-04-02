@@ -319,7 +319,10 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
             elif isinstance(ant, (list, tuple)):
                 antnum = ant[0]
                 if hasattr(uvd, "telescope"):
-                    x_orientation = uvd.telescope.x_orientation
+                    if hasattr(uvd.telescope, "get_x_orientation_from_feeds"):
+                        x_orientation = uvd.telescope.get_x_orientation_from_feeds()
+                    else:
+                        x_orientation = uvd.telescope.x_orientation
                 else:
                     x_orientation = uvd.x_orientation
                 pol_num = uvutils.jstr2num(ant[1], x_orientation=x_orientation)
@@ -398,7 +401,10 @@ def test_apply_yaml_flags_uvcal(filein):
                 elif isinstance(ant, (list, tuple)):
                     antnum = ant[0]
                     if hasattr(uvc, "telescope"):
-                        x_orientation = uvc.telescope.x_orientation
+                        if hasattr(uvc.telescope, "get_x_orientation_from_feeds"):
+                            x_orientation = uvc.telescope.get_x_orientation_from_feeds()
+                        else:
+                            x_orientation = uvc.telescope.x_orientation
                     else:
                         x_orientation = uvc.x_orientation
                     pol_num = uvutils.jstr2num(ant[1], x_orientation=x_orientation)

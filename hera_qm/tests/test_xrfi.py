@@ -2090,6 +2090,9 @@ def test_day_threshold_run(tmpdir):
 
     # check warnings
     msg = ['This object is already a waterfall'] * 8
+    if hasattr(UVData().telescope, "feed_array"):
+        msg += ["feed_array is not the same on this object and on uv"] * 5
+        msg += ["feed_angle is not the same on this object and on uv"] * 5
     with check_warnings(UserWarning, match=msg):
         # TODO: these three warnings should be checked.
         warnings.filterwarnings("ignore", category=AstropyUserWarning)

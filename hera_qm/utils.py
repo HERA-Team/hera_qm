@@ -798,7 +798,10 @@ def apply_yaml_flags(uv, a_priori_flag_yaml, lat_lon_alt_degrees=None, telescope
                 antnum = ant
             elif isinstance(ant, (list, tuple, np.ndarray)):
                 if hasattr(uv, "telescope"):
-                    x_orientation = uv.telescope.x_orientation
+                    if hasattr(uv.telescope, "get_x_orientation_from_feeds"):
+                        x_orientation = uv.telescope.get_x_orientation_from_feeds()
+                    else:
+                        x_orientation = uv.telescope.x_orientation
                 else:
                     x_orientation = uv.x_orientation
                 pol_num = uvutils.jstr2num(ant[1], x_orientation=x_orientation)
