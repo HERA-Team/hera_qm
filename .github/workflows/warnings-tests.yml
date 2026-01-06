@@ -33,7 +33,9 @@ jobs:
     - name: Install
       run: |
         pip install --upgrade pip
-        pip install .[tests]
+        pip install "hera-calibration>=3.7.7"
+        pip install --no-deps .
+        pip install pytest pytest-cov
 
     - name: Run Tests
       run: |
