@@ -319,12 +319,13 @@ def test_apply_yaml_flags_uvdata(tmpdir, filein, flag_freqs, flag_times, flag_an
             elif isinstance(ant, (list, tuple)):
                 antnum = ant[0]
                 if hasattr(uvd, "telescope"):
-                    if hasattr(uvd.telescope, "get_x_orientation_from_feeds"):
-                        x_orientation = uvd.telescope.get_x_orientation_from_feeds()
-                    else:
-                        x_orientation = uvd.telescope.x_orientation
+                    x_orientation = uvd.telescope.get_x_orientation_from_feeds()
                 else:
-                    x_orientation = uvd.x_orientation
+                    # For older pyuvdata versions without telescope attribute
+                    if hasattr(uvd, 'get_x_orientation'):
+                        x_orientation = uvd.get_x_orientation()
+                    else:
+                        x_orientation = uvd.x_orientation
                 pol_num = uvutils.jstr2num(ant[1], x_orientation=x_orientation)
                 pol_selection = np.where(uvd.polarization_array == pol_num)[0]
             blt_selection = np.logical_or(uvd.ant_1_array == antnum, uvd.ant_2_array == antnum)
@@ -401,12 +402,13 @@ def test_apply_yaml_flags_uvcal(filein):
                 elif isinstance(ant, (list, tuple)):
                     antnum = ant[0]
                     if hasattr(uvc, "telescope"):
-                        if hasattr(uvc.telescope, "get_x_orientation_from_feeds"):
-                            x_orientation = uvc.telescope.get_x_orientation_from_feeds()
-                        else:
-                            x_orientation = uvc.telescope.x_orientation
+                        x_orientation = uvc.telescope.get_x_orientation_from_feeds()
                     else:
-                        x_orientation = uvc.x_orientation
+                        # For older pyuvdata versions without telescope attribute
+                        if hasattr(uvc, 'get_x_orientation'):
+                            x_orientation = uvc.get_x_orientation()
+                        else:
+                            x_orientation = uvc.x_orientation
                     pol_num = uvutils.jstr2num(ant[1], x_orientation=x_orientation)
                     pol_selection = np.where(uvc.jones_array == pol_num)[0]
                 ant_selection = uvc.ant_array == antnum
