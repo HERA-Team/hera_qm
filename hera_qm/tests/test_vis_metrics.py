@@ -31,7 +31,9 @@ def vismetrics_data():
         while data.Ntimes < 90:
             d2 = copy.deepcopy(data)
             d2.time_array += d2.time_array.max() + d2.integration_time / (24 * 3600)
+            d2.set_lsts_from_time_array()
             data += d2
+        data.set_lsts_from_time_array()
     ntimes = data.Ntimes
     nchan = data.Nfreqs
     data1 = qmtest.noise(size=(ntimes, nchan))
