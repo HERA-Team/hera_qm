@@ -2177,6 +2177,7 @@ def test_day_threshold_run_yaml(tmpdir):
 @pytest.mark.filterwarnings("ignore:instrument is not the same")
 @pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:feed_array is not the same")
+@pytest.mark.filterwarnings("ignore:feed_angle is not the same")
 def test_day_threshold_run_data_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2305,6 +2306,7 @@ def test_day_threshold_run_cal_only(tmpdir):
 @pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:instrument is not the same")
 @pytest.mark.filterwarnings("ignore:feed_array is not the same")
+@pytest.mark.filterwarnings("ignore:feed_angle is not the same")
 def test_day_threshold_run_omnivis_only(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2676,6 +2678,7 @@ def test_threshold_wf_exceptions(uvflag_f):
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
 @pytest.mark.filterwarnings("ignore:instrument is not the same")
 @pytest.mark.filterwarnings("ignore:feed_array is not the same")
+@pytest.mark.filterwarnings("ignore:feed_angle is not the same")
 def test_xrfi_h3c_idr2_1_run(tmp_path, uvcal_calfits):
 
     dec_jds = ['40355', '41101', '41847', '42593', '43339', '44085', '44831']
