@@ -589,7 +589,7 @@ def vis_vs_model_coherence(data_vis, model_vis, flag_waterfall=None, pad=4):
     model_wf = np.atleast_2d(np.asarray(model_vis))
     data_wf = np.atleast_2d(np.asarray(data_vis))
     wgt = np.abs(model_wf)
-    invalid = ~np.isfinite(model_wf) | (wgt == 0)
+    invalid = ~np.isfinite(model_wf) | ~np.isfinite(data_wf) | (wgt == 0)
     if flag_waterfall is not None:
         invalid = invalid | np.atleast_2d(np.asarray(flag_waterfall))
     wgt = np.where(invalid, 0.0, wgt)
@@ -617,8 +617,8 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.8, 1), 
 
     Arguments:
         data: DataContainer of raw visibilities
-        model: mapping such that model[(i, j, pol)] returns that baseline's model visibility
-            (e.g. a RedDataContainer of redundantly-averaged models)
+        model: DataContainer of model visibilities (e.g. a RedDataContainer of
+            redundantly-averaged models), which handles baseline conjugation internally
         bls: list of co-polarized cross-correlation baselines to audit with
         candidate_groups: dict mapping antenna number to candidate antenna numbers to scan
             (e.g. node-mates)
@@ -653,7 +653,8 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.8, 1), 
                     continue
                 coherences.append(vis_vs_model_coherence(data[bl], model[model_bl],
                                                          flag_waterfall=flag_waterfall))
-            out[cand] = (np.nanmean(coherences) if len(coherences) > 0 else np.nan)
+            finite = [coh for coh in coherences if np.isfinite(coh)]
+            out[cand] = (np.mean(finite) if len(finite) > 0 else np.nan)
         return out
 
     # self-coherence sweep of every antenna's visibilities against its own model

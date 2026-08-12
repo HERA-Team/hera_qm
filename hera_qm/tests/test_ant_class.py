@@ -327,7 +327,8 @@ def test_non_noiselike_diff_by_xengine_checker():
 
 
 def _build_identity_sim(nants=8, nfreqs=600, relabels=None, noise=0.02, seed=0):
-    '''Build synthetic (data, model, bls) for identity-audit tests: per-baseline smooth models,
+    '''Build synthetic (data, model, bls) for identity-audit tests, with data and model as
+    DataContainers: per-baseline smooth models,
     data = model x cable-delay phases + noise. If relabels is given (dict mapping true antenna
     to the label its visibilities receive), the data keys are permuted accordingly, mimicking
     a cabling/M&C mislabeling.'''
@@ -360,7 +361,7 @@ def _build_identity_sim(nants=8, nfreqs=600, relabels=None, noise=0.02, seed=0):
                 relabeled[(new_j, new_i, pol)] = np.conj(vis)
         data = relabeled
     bls = sorted(model.keys())
-    return DataContainer(data), model, bls
+    return DataContainer(data), DataContainer(model), bls
 
 
 def test_vis_vs_model_coherence():
@@ -387,6 +388,10 @@ def test_vis_vs_model_coherence():
     flags2[0, :] = True
     assert ant_class.vis_vs_model_coherence(data2, model2, flag_waterfall=flags2) > 0.9
     assert ant_class.vis_vs_model_coherence(data2, model2) > 0.9
+    # non-finite data samples are excluded like flags rather than NaNing the whole statistic
+    nan_data = np.array(data[bls[0]])
+    nan_data[0, 200:210] = np.nan
+    assert ant_class.vis_vs_model_coherence(nan_data, model[bls[0]]) > 0.9
 
 
 def test_antenna_identity_checker_clean():
