@@ -564,3 +564,167 @@ def non_noiselike_diff_by_xengine_checker(sum_data, diff_data, flag_waterfall=No
 
     # run and return classifier
     return antenna_bounds_checker(most_bad_xengines, good=(0, 0), bad=(1, np.inf))
+
+
+def vis_vs_model_coherence(data_vis, model_vis, flag_waterfall=None, pad=4):
+    '''Delay-searched phase coherence of visibilities against a model.
+
+    Computes max over delay of sum_t |FFT_nu(w * V/M / |V/M|)| / sum(w), where w = |M| with
+    flagged or invalid channels zeroed: correctly-labeled working antennas score near 1
+    against their own redundant group's model; visibilities carrying another antenna's signal
+    (or just noise) score near 0. Integrations share one delay (a time-constant cable/geometry
+    property) but combine as magnitudes, immune to inter-integration phase drift. Needs no
+    calibration.
+
+    Arguments:
+        data_vis: complex (Ntimes, Nfreqs) waterfall to test
+        model_vis: complex (Ntimes, Nfreqs) candidate model waterfall
+        flag_waterfall: optional boolean (Ntimes, Nfreqs) channels to exclude
+        pad: FFT zero-padding factor for the delay search
+
+    Returns:
+        coherence: float in [0, 1]; np.nan if no integration has at least 3 usable channels
+            (fewer would make the single-delay fit interpolatory, scoring 1 by construction)
+    '''
+    model_wf = np.atleast_2d(np.asarray(model_vis))
+    data_wf = np.atleast_2d(np.asarray(data_vis))
+    wgt = np.abs(model_wf)
+    invalid = ~np.isfinite(model_wf) | (wgt == 0)
+    if flag_waterfall is not None:
+        invalid = invalid | np.atleast_2d(np.asarray(flag_waterfall))
+    wgt = np.where(invalid, 0.0, wgt)
+    enough_channels = (wgt > 0).sum(axis=1) >= 3
+    wgt = np.where(enough_channels[:, None], wgt, 0.0)
+    if not enough_channels.any():
+        return np.nan
+    with np.errstate(invalid='ignore', divide='ignore'):
+        phasor = np.where(wgt > 0, data_wf / model_wf, 0)
+        phasor /= np.abs(phasor) + 1e-30
+    delay_spectra = np.abs(np.fft.fft(wgt * phasor, n=pad * wgt.shape[1], axis=1))
+    return delay_spectra.sum(axis=0).max() / wgt.sum()
+
+
+def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.8, 1), suspect=(0.7, 1),
+                             repair_margin=0.2, nbl_per_ant=20, flag_waterfall=None,
+                             verbose=True):
+    '''Audits antenna identities to detect mislabelings (e.g. cabling errors permuting antennas
+    within a node), as well as antennas likely to be highly discrepant with the model (e.g.
+    broken or cross-polarized ones). Each antenna's visibilities are checked against their own
+    model with vis_vs_model_coherence; below the good bound, candidates are scanned, and a
+    relabeling requires the winner to reach the good bound, beat the self-coherence by
+    repair_margin, agree with the other polarization's verdict, and maintain permutation
+    consistency (each claimed identity unique and not already healthily its own).
+
+    Arguments:
+        data: DataContainer of raw visibilities
+        model: mapping such that model[(i, j, pol)] returns that baseline's model visibility
+            (e.g. a RedDataContainer of redundantly-averaged models)
+        bls: list of co-polarized cross-correlation baselines to audit with
+        candidate_groups: dict mapping antenna number to candidate antenna numbers to scan
+            (e.g. node-mates)
+        good: bound on self-coherence for a 'good' classification; also the minimum
+            winning-candidate coherence for a relabeling
+        suspect: bound on self-coherence for a 'suspect' classification
+        repair_margin: minimum winner margin over the antenna's self-coherence
+        nbl_per_ant: number of baselines per (antenna, candidate) mean coherence
+        flag_waterfall: optional boolean (Ntimes, Nfreqs) channels to exclude
+        verbose: print relabelings, indecisive low-coherence antennas, and conflicts
+
+    Returns:
+        identity_class: AntennaClassification (self-coherences in ._data): good = coherent
+            with own model, suspect = relabeled or marginally coherent, bad = low coherence
+            with no decisive identity
+        labeled_to_true: dict mapping labeled to true antenna number for accepted relabelings
+        self_coherence: dict mapping (antnum, antpol) to self-coherence (np.nan if unauditable)
+    '''
+    from hera_cal.utils import split_pol
+
+    def _mean_coherence(antnum, pol, candidates):
+        my_bls = [bl for bl in bls if bl[2] == pol and antnum in bl[:2]][:nbl_per_ant]
+        out = {}
+        for cand in candidates:
+            coherences = []
+            for bl in my_bls:
+                partner = (bl[1] if bl[0] == antnum else bl[0])
+                if cand == partner:
+                    continue
+                model_bl = ((cand, partner, pol) if bl[0] == antnum else (partner, cand, pol))
+                if model_bl not in model:
+                    continue
+                coherences.append(vis_vs_model_coherence(data[bl], model[model_bl],
+                                                         flag_waterfall=flag_waterfall))
+            out[cand] = (np.nanmean(coherences) if len(coherences) > 0 else np.nan)
+        return out
+
+    # self-coherence sweep of every antenna's visibilities against its own model
+    pols = sorted({bl[2] for bl in bls})
+    self_coherence = {}
+    for pol in pols:
+        antpol = split_pol(pol)[0]
+        for antnum in sorted({ant for bl in bls if bl[2] == pol for ant in bl[:2]}):
+            self_coherence[(antnum, antpol)] = _mean_coherence(antnum, pol, [antnum])[antnum]
+
+    # scan the low-coherence tail against candidate identities
+    pol_of = {split_pol(pol)[0]: pol for pol in pols}
+    suspects = sorted((ant for ant, coh in self_coherence.items()
+                       if np.isfinite(coh) and coh < good[0]), key=lambda ant: self_coherence[ant])
+    labeled_to_true = {}
+    checked_antnums = set()
+    for ant in suspects:
+        antnum, antpol = ant
+        if antnum in checked_antnums:
+            continue
+        checked_antnums.add(antnum)
+        pol = pol_of[antpol]
+        coh = _mean_coherence(antnum, pol, sorted(candidate_groups.get(antnum, [antnum])))
+        winner = max((cand for cand in coh if np.isfinite(coh[cand])),
+                     key=lambda cand: coh[cand], default=antnum)
+        # a relabeling must be decisive on this pol and not contradicted by the others
+        other_pols_consistent = True
+        for other_pol in pols:
+            if other_pol == pol:
+                continue
+            coh_other = _mean_coherence(antnum, other_pol, [antnum, winner])
+            if (np.isfinite(coh_other.get(winner, np.nan))
+                    and np.nan_to_num(coh_other[winner]) < np.nan_to_num(coh_other.get(antnum, np.nan))):
+                other_pols_consistent = False
+        if (winner != antnum and coh[winner] >= good[0]
+                and coh[winner] > np.nan_to_num(self_coherence[ant]) + repair_margin
+                and other_pols_consistent):
+            labeled_to_true[antnum] = winner
+            if verbose:
+                print(f'The visibilities labeled antenna {antnum} are actually antenna {winner}: '
+                      f'coherence {coh[winner]:.3f} as {winner} vs {self_coherence[ant]:.3f} as labeled.')
+        elif verbose:
+            print(f'The visibilities labeled {ant} have low self-coherence ({self_coherence[ant]:.3f}) '
+                  f'but no decisive identity (best alternative: {winner} at '
+                  f'{np.nan_to_num(coh.get(winner, np.nan)):.3f}); classifying as '
+                  + ('suspect.' if self_coherence[ant] >= suspect[0] else 'bad.'))
+
+    # enforce permutation consistency
+    claimed = list(labeled_to_true.values())
+    for labeled in sorted(labeled_to_true):
+        true_ant = labeled_to_true[labeled]
+        true_label_healthy = any(np.nan_to_num(self_coherence.get((true_ant, split_pol(pol)[0]), np.nan))
+                                 >= good[0] for pol in pols)
+        if claimed.count(true_ant) > 1 or (true_ant not in labeled_to_true and true_label_healthy):
+            if verbose:
+                print(f'CONFLICT: identity {true_ant} is otherwise claimed; NOT relabeling {labeled}.')
+            del labeled_to_true[labeled]
+
+    # classify: relabeled antennas are suspect, self-coherent good, unrepairable low-coherence bad
+    good_ants, suspect_ants, bad_ants = [], [], []
+    for ant, coh in self_coherence.items():
+        if not np.isfinite(coh):
+            continue
+        if ant[0] in labeled_to_true:
+            suspect_ants.append(ant)
+        elif coh >= good[0]:
+            good_ants.append(ant)
+        elif coh >= suspect[0]:
+            suspect_ants.append(ant)
+        else:
+            bad_ants.append(ant)
+    identity_class = AntennaClassification(good=good_ants, suspect=suspect_ants, bad=bad_ants)
+    identity_class._data = {ant: coh for ant, coh in self_coherence.items() if np.isfinite(coh)}
+    return identity_class, labeled_to_true, self_coherence
