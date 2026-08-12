@@ -324,3 +324,191 @@ def test_non_noiselike_diff_by_xengine_checker():
         assert ac[(ant, 'Jee')] == 'good'
     for ant in [7, 8]:
         assert ac[(ant, 'Jee')] == 'bad'
+
+
+def _build_identity_sim(nants=8, nfreqs=600, relabels=None, noise=0.02, seed=0):
+    '''Build synthetic (data, model, bls) for identity-audit tests: per-baseline smooth models,
+    data = model x cable-delay phases + noise. If relabels is given (dict mapping true antenna
+    to the label its visibilities receive), the data keys are permuted accordingly, mimicking
+    a cabling/M&C mislabeling.'''
+    rng = np.random.default_rng(seed)
+    freqs = np.linspace(100e6, 200e6, nfreqs)
+    dlys = {antnum: rng.uniform(-200e-9, 200e-9) for antnum in range(nants)}
+    data, model = {}, {}
+    for pol in ['ee', 'nn']:
+        for i in range(nants):
+            for j in range(i + 1, nants):
+                x = np.linspace(0, 1, nfreqs)
+                amp = 10 * (1 + 0.5 * np.cos(2 * np.pi * x * rng.integers(1, 4)
+                                             + rng.uniform(0, 2 * np.pi)))
+                # phases need smooth CURVATURE, not just ramps: a delay search forgives
+                # any purely linear phase difference between candidate models
+                phs = sum(rng.uniform(2, 6) * np.cos((k + 1) * np.pi * x + rng.uniform(0, 2 * np.pi))
+                          for k in range(4))
+                model[(i, j, pol)] = (amp * np.exp(1j * phs))[None, :]
+                vis = model[(i, j, pol)] * np.exp(2j * np.pi * freqs * (dlys[i] - dlys[j]))[None, :]
+                vis = vis + noise * np.mean(amp) * (rng.normal(size=vis.shape)
+                                                    + 1j * rng.normal(size=vis.shape)) / np.sqrt(2)
+                data[(i, j, pol)] = vis
+    if relabels is not None:
+        relabeled = {}
+        for (i, j, pol), vis in data.items():
+            new_i, new_j = relabels.get(i, i), relabels.get(j, j)
+            if new_i < new_j:
+                relabeled[(new_i, new_j, pol)] = vis
+            else:
+                relabeled[(new_j, new_i, pol)] = np.conj(vis)
+        data = relabeled
+    bls = sorted(model.keys())
+    return DataContainer(data), model, bls
+
+
+def test_vis_vs_model_coherence():
+    data, model, bls = _build_identity_sim(nants=4)
+    # matched data and model: coherent after a single delay
+    assert ant_class.vis_vs_model_coherence(data[bls[0]], model[bls[0]]) > 0.9
+    # data tested against an unrelated baseline's model: incoherent
+    assert ant_class.vis_vs_model_coherence(data[bls[0]], model[bls[1]]) < 0.5
+    # 2 unflagged channels make the single-delay fit interpolatory: nan, not a perfect score
+    flags = np.ones((1, len(model[bls[0]][0])), dtype=bool)
+    assert np.isnan(ant_class.vis_vs_model_coherence(data[bls[0]], model[bls[0]],
+                                                     flag_waterfall=flags))
+    flags[0, :2] = False
+    assert np.isnan(ant_class.vis_vs_model_coherence(data[bls[0]], model[bls[0]],
+                                                     flag_waterfall=flags))
+    flags[0, 2:100] = False
+    assert np.isfinite(ant_class.vis_vs_model_coherence(data[bls[0]], model[bls[0]],
+                                                        flag_waterfall=flags))
+    # all integrations are used: with one integration fully flagged and one clean, the
+    # clean one carries the statistic (and interpolatory integrations are excluded per-time)
+    data2 = np.vstack([data[bls[0]], data[bls[0]]])
+    model2 = np.vstack([model[bls[0]], model[bls[0]]])
+    flags2 = np.zeros_like(data2, dtype=bool)
+    flags2[0, :] = True
+    assert ant_class.vis_vs_model_coherence(data2, model2, flag_waterfall=flags2) > 0.9
+    assert ant_class.vis_vs_model_coherence(data2, model2) > 0.9
+
+
+def test_antenna_identity_checker_clean():
+    data, model, bls = _build_identity_sim()
+    groups = {antnum: list(range(8)) for antnum in range(8)}
+    identity_class, labeled_to_true, self_coherence = ant_class.antenna_identity_checker(
+        data, model, bls, groups)
+    assert labeled_to_true == {}
+    assert len(identity_class.bad_ants) == 0
+    assert len(identity_class.suspect_ants) == 0
+    for ant, coh in self_coherence.items():
+        assert coh > 0.8
+        assert identity_class._data[ant] == coh
+
+
+def test_antenna_identity_checker_finds_swap():
+    # antennas 2 and 3 have their labels exchanged in the data
+    data, model, bls = _build_identity_sim(relabels={2: 3, 3: 2})
+    groups = {antnum: list(range(8)) for antnum in range(8)}
+    # healthy antennas' mean self-coherence includes their baselines TO the swapped pair,
+    # which drags it down in a small array (2 of 7 partners); loosen the good bound accordingly
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups, good=(0.7, 1))
+    assert labeled_to_true == {2: 3, 3: 2}
+    for antnum in [2, 3]:
+        for antpol in ['Jee', 'Jnn']:
+            assert identity_class[(antnum, antpol)] == 'suspect'
+    for antnum in [0, 1, 4, 5, 6, 7]:
+        for antpol in ['Jee', 'Jnn']:
+            assert identity_class[(antnum, antpol)] == 'good'
+
+
+def test_antenna_identity_checker_undecidable():
+    # antenna 4's visibilities are pure noise: low coherence, no decisive identity
+    data, model, bls = _build_identity_sim()
+    rng = np.random.default_rng(1)
+    for bl in bls:
+        if 4 in bl[:2]:
+            data[bl] = rng.normal(size=data[bl].shape) + 1j * rng.normal(size=data[bl].shape)
+    groups = {antnum: list(range(8)) for antnum in range(8)}
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups)
+    assert labeled_to_true == {}
+    for antpol in ['Jee', 'Jnn']:
+        assert identity_class[(4, antpol)] == 'bad'
+
+
+def test_antenna_identity_checker_conflict():
+    # antenna 5's visibilities carry antenna 6's signal, but 6's own visibilities are
+    # healthy: the claim on identity 6 must be refused and 5 classified as bad
+    data, model, bls = _build_identity_sim()
+    rng = np.random.default_rng(2)
+    freqs = np.linspace(100e6, 200e6, 600)
+    for pol in ['ee', 'nn']:
+        for j in range(8):
+            if j in (5, 6):
+                continue
+            model_bl = (min(6, j), max(6, j), pol)
+            mvis = model[model_bl] if 6 < j else np.conj(model[model_bl])
+            vis = mvis * np.exp(2j * np.pi * freqs * 100e-9)[None, :]
+            vis = vis + 0.02 * np.mean(np.abs(mvis)) * (rng.normal(size=vis.shape)
+                                                        + 1j * rng.normal(size=vis.shape))
+            data[(min(5, j), max(5, j), pol)] = (vis if 5 < j else np.conj(vis))
+    groups = {antnum: list(range(8)) for antnum in range(8)}
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups)
+    assert 5 not in labeled_to_true
+    for antpol in ['Jee', 'Jnn']:
+        assert identity_class[(5, antpol)] == 'bad'
+        assert identity_class[(6, antpol)] == 'good'
+
+
+def test_antenna_identity_checker_suspect_tier():
+    # with the good bound raised above healthy scores, everything lands in the suspect
+    # band (and scans of "suspicious" antennas find themselves as winners, so no relabels)
+    data, model, bls = _build_identity_sim(nants=4)
+    groups = {antnum: list(range(4)) for antnum in range(4)}
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups, good=(0.995, 1), suspect=(0.5, 1))
+    assert labeled_to_true == {}
+    assert len(identity_class.good_ants) == 0
+    assert len(identity_class.bad_ants) == 0
+    assert len(identity_class.suspect_ants) == 8
+
+
+def test_antenna_identity_checker_single_pol_mislabel():
+    # only the ee visibilities of antennas 2 and 3 are exchanged: the nn polarization
+    # contradicts the proposed relabeling, so nothing is repaired and the ee entries go bad
+    data, model, bls = _build_identity_sim()
+    remap = {2: 3, 3: 2}
+    new_data = {}
+    for bl in bls:
+        vis = data[bl]
+        if bl[2] == 'ee':
+            i, j = remap.get(bl[0], bl[0]), remap.get(bl[1], bl[1])
+            new_data[(i, j, 'ee') if i < j else (j, i, 'ee')] = (vis if i < j else np.conj(vis))
+        else:
+            new_data[bl] = vis
+    data = DataContainer(new_data)
+    groups = {antnum: list(range(8)) for antnum in range(8)}
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups, good=(0.7, 1))
+    assert labeled_to_true == {}
+    for antnum in [2, 3]:
+        assert identity_class[(antnum, 'Jee')] == 'bad'
+        assert identity_class[(antnum, 'Jnn')] == 'good'
+
+
+def test_antenna_identity_checker_unauditable():
+    # antenna 9 appears in the data and bls but has no model anywhere: unauditable,
+    # so its self-coherence is nan and it is left out of the classification entirely
+    data, model, bls = _build_identity_sim(nants=4)
+    rng = np.random.default_rng(3)
+    extra = {}
+    for pol in ['ee', 'nn']:
+        for j in range(4):
+            extra[(j, 9, pol)] = rng.normal(size=(1, 600)) + 1j * rng.normal(size=(1, 600))
+    data = DataContainer({**{bl: data[bl] for bl in bls}, **extra})
+    bls = bls + sorted(extra.keys())
+    groups = {antnum: list(range(4)) + [9] for antnum in list(range(4)) + [9]}
+    identity_class, labeled_to_true, self_coherence = ant_class.antenna_identity_checker(
+        data, model, bls, groups)
+    assert labeled_to_true == {}
+    assert np.isnan(self_coherence[(9, 'Jee')])
+    assert (9, 'Jee') not in identity_class.ants
