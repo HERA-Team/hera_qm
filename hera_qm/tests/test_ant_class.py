@@ -228,7 +228,7 @@ def test_auto_shape_checker():
         assert ant in auto_shape_class.good_ants
     for ant in {(51, 'Jnn')}:
         assert ant in auto_shape_class.suspect_ants
-    for ant in {(85, 'Jee'), (98, 'Jee'), (36, 'Jee'), (117, 'Jee'), (53, 'Jee'), (135, 'Jee'), (157, 'Jee'), (160, 'Jee'), (83, 'Jee'), (116, 'Jee'), 
+    for ant in {(85, 'Jee'), (98, 'Jee'), (36, 'Jee'), (117, 'Jee'), (53, 'Jee'), (135, 'Jee'), (157, 'Jee'), (160, 'Jee'), (83, 'Jee'), (116, 'Jee'),
                (68, 'Jee'), (87, 'Jee'), (51, 'Jee'), (116, 'Jnn'), (93, 'Jee'), (65, 'Jee'), (65, 'Jnn'), (93, 'Jnn')}:
         assert ant in auto_shape_class.bad_ants
 
@@ -424,6 +424,23 @@ def test_antenna_identity_checker_finds_swap():
             assert identity_class[(antnum, antpol)] == 'good'
 
 
+def test_antenna_identity_checker_repair_to_merely_suspect():
+    # a winner that clears only the suspect bound still earns a relabeling: any identity
+    # beats a known-wrong one, and relabeled antennas are classified suspect regardless
+    data, model, bls = _build_identity_sim(relabels={2: 3, 3: 2})
+    groups = {antnum: list(range(8)) for antnum in range(8)}
+    identity_class, labeled_to_true, self_coherence = ant_class.antenna_identity_checker(
+        data, model, bls, groups, good=(0.999, 1), suspect=(0.5, 1), verbose=False)
+    assert labeled_to_true == {2: 3, 3: 2}
+    for antpol in ['Jee', 'Jnn']:
+        assert identity_class[(2, antpol)] == 'suspect'
+
+    # with the suspect bound above every candidate's coherence, no repair is decisive
+    _, labeled_to_true_strict, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups, good=(0.999, 1), suspect=(0.999, 1), verbose=False)
+    assert labeled_to_true_strict == {}
+
+
 def test_antenna_identity_checker_undecidable():
     # antenna 4's visibilities are pure noise: low coherence, no decisive identity
     data, model, bls = _build_identity_sim()
@@ -450,11 +467,11 @@ def test_antenna_identity_checker_conflict():
             if j in (5, 6):
                 continue
             model_bl = (min(6, j), max(6, j), pol)
-            mvis = model[model_bl] if 6 < j else np.conj(model[model_bl])
+            mvis = model[model_bl] if j > 6 else np.conj(model[model_bl])
             vis = mvis * np.exp(2j * np.pi * freqs * 100e-9)[None, :]
             vis = vis + 0.02 * np.mean(np.abs(mvis)) * (rng.normal(size=vis.shape)
                                                         + 1j * rng.normal(size=vis.shape))
-            data[(min(5, j), max(5, j), pol)] = (vis if 5 < j else np.conj(vis))
+            data[(min(5, j), max(5, j), pol)] = (vis if j > 5 else np.conj(vis))
     groups = {antnum: list(range(8)) for antnum in range(8)}
     identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
         data, model, bls, groups)

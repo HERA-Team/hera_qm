@@ -604,16 +604,18 @@ def vis_vs_model_coherence(data_vis, model_vis, flag_waterfall=None, pad=4):
     return delay_spectra.sum(axis=0).max() / wgt.sum()
 
 
-def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.8, 1), suspect=(0.7, 1),
+def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.75, 1), suspect=(0.5, 1),
                              repair_margin=0.2, nbl_per_ant=20, flag_waterfall=None,
                              verbose=True):
     '''Audits antenna identities to detect mislabelings (e.g. cabling errors permuting antennas
     within a node), as well as antennas likely to be highly discrepant with the model (e.g.
     broken or cross-polarized ones). Each antenna's visibilities are checked against their own
     model with vis_vs_model_coherence; below the good bound, candidates are scanned, and a
-    relabeling requires the winner to reach the good bound, beat the self-coherence by
+    relabeling requires the winner to reach the suspect bound, beat the self-coherence by
     repair_margin, agree with the other polarization's verdict, and maintain permutation
-    consistency (each claimed identity unique and not already healthily its own).
+    consistency (each claimed identity unique and not already healthily its own). A repair is
+    therefore allowed to leave an antenna merely suspect: any identity is better than a known
+    wrong one, and relabeled antennas are classified suspect regardless.
 
     Arguments:
         data: DataContainer of raw visibilities
@@ -622,9 +624,11 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.8, 1), 
         bls: list of co-polarized cross-correlation baselines to audit with
         candidate_groups: dict mapping antenna number to candidate antenna numbers to scan
             (e.g. node-mates)
-        good: bound on self-coherence for a 'good' classification; also the minimum
+        good: bound on self-coherence for a 'good' classification; antennas below it
+            are scanned against candidates, and one that is healthily good under its own
+            label cannot have its identity claimed by another
+        suspect: bound on self-coherence for a 'suspect' classification; also the minimum
             winning-candidate coherence for a relabeling
-        suspect: bound on self-coherence for a 'suspect' classification
         repair_margin: minimum winner margin over the antenna's self-coherence
         nbl_per_ant: number of baselines per (antenna, candidate) mean coherence
         flag_waterfall: optional boolean (Ntimes, Nfreqs) channels to exclude
@@ -689,7 +693,7 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.8, 1), 
             if (np.isfinite(coh_other.get(winner, np.nan))
                     and np.nan_to_num(coh_other[winner]) < np.nan_to_num(coh_other.get(antnum, np.nan))):
                 other_pols_consistent = False
-        if (winner != antnum and coh[winner] >= good[0]
+        if (winner != antnum and coh[winner] >= suspect[0]
                 and coh[winner] > np.nan_to_num(self_coherence[ant]) + repair_margin
                 and other_pols_consistent):
             labeled_to_true[antnum] = winner
