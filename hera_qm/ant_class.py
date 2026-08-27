@@ -605,7 +605,7 @@ def vis_vs_model_coherence(data_vis, model_vis, flag_waterfall=None, pad=4):
 
 
 def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.75, 1), suspect=(0.5, 1),
-                             repair_margin=0.2, nbl_per_ant=20, flag_waterfall=None,
+                             repair_margin=0.1, nbl_per_ant=20, flag_waterfall=None,
                              verbose=True):
     '''Audits antenna identities to detect mislabelings (e.g. cabling errors permuting antennas
     within a node), as well as antennas likely to be highly discrepant with the model (e.g.
