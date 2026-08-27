@@ -615,7 +615,10 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.75, 1),
     repair_margin, agree with the other polarization's verdict, and maintain permutation
     consistency (each claimed identity unique and not already healthily its own). A repair is
     therefore allowed to leave an antenna merely suspect: any identity is better than a known
-    wrong one, and relabeled antennas are classified suspect regardless.
+    wrong one, and relabeled antennas are classified suspect regardless. Accepted relabelings
+    are then closed into full permutations: a broken cycle (e.g. one leg blocked by
+    repair_margin) leaves exactly one number vacated and one antenna not relabled, so 
+    that antenna is relabeled by inference into the vacant slot and classified bad.
 
     Arguments:
         data: DataContainer of raw visibilities
@@ -637,7 +640,7 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.75, 1),
     Returns:
         identity_class: AntennaClassification (self-coherences in ._data): good = coherent
             with own model, suspect = relabeled or marginally coherent, bad = low coherence
-            with no decisive identity
+            with no decisive identity, or a relabeling inferred by closure rather than measured
         labeled_to_true: dict mapping labeled to true antenna number for accepted relabelings
         self_coherence: dict mapping (antnum, antpol) to self-coherence (np.nan if unauditable)
     '''
@@ -717,13 +720,27 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.75, 1),
                 print(f'CONFLICT: identity {true_ant} is otherwise claimed; NOT relabeling {labeled}.')
             del labeled_to_true[labeled]
 
-    # classify: relabeled antennas are suspect, self-coherent good, unrepairable low-coherence bad
+    # close broken cycles: each path's unmoved tail stream is forced into its component's
+    # one vacated number, but is classified bad below since that placement is only inferred
+    inferred_labels = set()
+    for head in sorted(set(labeled_to_true) - set(labeled_to_true.values())):
+        tail = labeled_to_true[head]
+        while tail in labeled_to_true:
+            tail = labeled_to_true[tail]
+        labeled_to_true[tail] = head
+        inferred_labels.add(tail)
+        if verbose:
+            print(f'INFERRED: with its own number claimed and only {head} left vacant, the '
+                  f'visibilities labeled {tail} are assigned to antenna {head} and classified bad.')
+
+    # classify: relabeled antennas are suspect (bad if inferred), self-coherent good,
+    # unrepairable low-coherence bad
     good_ants, suspect_ants, bad_ants = [], [], []
     for ant, coh in self_coherence.items():
         if not np.isfinite(coh):
             continue
         if ant[0] in labeled_to_true:
-            suspect_ants.append(ant)
+            (bad_ants if ant[0] in inferred_labels else suspect_ants).append(ant)
         elif coh >= good[0]:
             good_ants.append(ant)
         elif coh >= suspect[0]:

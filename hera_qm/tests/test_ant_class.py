@@ -441,6 +441,75 @@ def test_antenna_identity_checker_repair_to_merely_suspect():
     assert labeled_to_true_strict == {}
 
 
+def test_antenna_identity_checker_closes_broken_cycles():
+    # antennas 2 and 3 are swapped, but labeled-3's scan cannot see its true identity
+    # (candidate group restricted), so only 2 -> 3 is measured. The checker must close the
+    # cycle anyway: labeled-3's number is claimed and only 2 is left vacant, so it is
+    # inferred there -- otherwise antenna 2 would vanish and two streams would collide on
+    # 3 -- and classified bad, since the placement is forced rather than measured
+    data, model, bls = _build_identity_sim(relabels={2: 3, 3: 2})
+    groups = {antnum: list(range(8)) for antnum in range(8)}
+    groups[3] = [3]
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups, good=(0.7, 1), verbose=False)
+    assert labeled_to_true == {2: 3, 3: 2}
+    for antpol in ['Jee', 'Jnn']:
+        assert identity_class[(2, antpol)] == 'suspect'
+        assert identity_class[(3, antpol)] == 'bad'
+
+
+def test_antenna_identity_checker_closes_5cycle_missing_middle():
+    # a 5-cycle with one scan blinded mid-cycle: the closure must walk the whole remaining
+    # path (2 -> 1 -> 5 -> 4 -> 3) to find that only labeled-3 is unmoved and only 2 is
+    # vacant, recovering the TRUE cycle exactly, with the inferred stream classified bad
+    data, model, bls = _build_identity_sim(nants=12, relabels={1: 2, 2: 3, 3: 4, 4: 5, 5: 1})
+    groups = {antnum: list(range(12)) for antnum in range(12)}
+    groups[3] = [3]
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups, good=(0.7, 1), verbose=False)
+    assert labeled_to_true == {2: 1, 3: 2, 4: 3, 5: 4, 1: 5}
+    for antpol in ['Jee', 'Jnn']:
+        assert identity_class[(3, antpol)] == 'bad'
+        for antnum in [1, 2, 4, 5]:
+            assert identity_class[(antnum, antpol)] == 'suspect'
+
+
+def test_antenna_identity_checker_closes_two_broken_cycles():
+    # two independent swaps, each with one scan blinded: each component closes on its own,
+    # correctly, and only the two inferred streams classify bad
+    data, model, bls = _build_identity_sim(nants=10, relabels={1: 2, 2: 1, 4: 5, 5: 4})
+    groups = {antnum: list(range(10)) for antnum in range(10)}
+    groups[2] = [2]
+    groups[5] = [5]
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups, good=(0.7, 1), verbose=False)
+    assert labeled_to_true == {1: 2, 2: 1, 4: 5, 5: 4}
+    for antpol in ['Jee', 'Jnn']:
+        for antnum in [2, 5]:
+            assert identity_class[(antnum, antpol)] == 'bad'
+        for antnum in [1, 4]:
+            assert identity_class[(antnum, antpol)] == 'suspect'
+
+
+def test_antenna_identity_checker_fragmented_cycle_infers_bad():
+    # a 4-cycle with TWO opposite scans blinded fragments into two accepted paths, and each
+    # closes on itself: {2->1, 1->2} and {4->3, 3->4}. Both inferences are factually WRONG
+    # (the truth is 1->4 and 3->2), which is exactly why inferred placements classify bad:
+    # the bookkeeping stays a closed permutation, but the misplaced streams are never trusted
+    data, model, bls = _build_identity_sim(nants=10, relabels={1: 2, 2: 3, 3: 4, 4: 1})
+    groups = {antnum: list(range(10)) for antnum in range(10)}
+    groups[1] = [1]
+    groups[3] = [3]
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_checker(
+        data, model, bls, groups, good=(0.7, 1), verbose=False)
+    assert labeled_to_true == {2: 1, 1: 2, 4: 3, 3: 4}
+    for antpol in ['Jee', 'Jnn']:
+        for antnum in [1, 3]:
+            assert identity_class[(antnum, antpol)] == 'bad'
+        for antnum in [2, 4]:
+            assert identity_class[(antnum, antpol)] == 'suspect'
+
+
 def test_antenna_identity_checker_undecidable():
     # antenna 4's visibilities are pure noise: low coherence, no decisive identity
     data, model, bls = _build_identity_sim()
