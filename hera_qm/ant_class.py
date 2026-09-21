@@ -821,7 +821,8 @@ def antenna_identity_chisq_checker(data, model, gains, bls, high_chisq_ants, can
     labeled_to_true, chisq_by_label = {}, {}
     for antnum in sorted({ant[0] for ant in high_chisq_ants} - healthy):
         # this antenna's visibilities to healthy antennas, re-keyed as each candidate
-        candidates = [cand for cand in candidate_groups.get(antnum, [antnum]) if cand not in healthy]
+        # (its own label is always tried, whether or not candidate_groups lists it)
+        candidates = [cand for cand in sorted({antnum, *candidate_groups.get(antnum, [])}) if cand not in healthy]
         my_bls = [bl for bl in bls if antnum in bl[:2] and all(a == antnum or a in healthy for a in bl[:2])]
         as_candidate, hyp_autos = {}, {}
         for cand in candidates:
