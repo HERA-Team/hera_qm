@@ -604,6 +604,25 @@ def vis_vs_model_coherence(data_vis, model_vis, flag_waterfall=None, pad=4):
     return delay_spectra.sum(axis=0).max() / wgt.sum()
 
 
+def _close_relabeling_cycles(labeled_to_true, verbose=True):
+    '''Closes accepted relabelings into full permutations, in place. A broken cycle leaves exactly
+    one number vacated (its head, relabeled away but claimed by nobody) and one set of
+    visibilities not relabeled though their number is claimed (its tail), so the tail is forced
+    into the vacant number. Returns the set of labels so placed, by inference rather than
+    measurement.'''
+    inferred_labels = set()
+    for head in sorted(set(labeled_to_true) - set(labeled_to_true.values())):
+        tail = labeled_to_true[head]
+        while tail in labeled_to_true:
+            tail = labeled_to_true[tail]
+        labeled_to_true[tail] = head
+        inferred_labels.add(tail)
+        if verbose:
+            print(f'INFERRED: with its own number claimed and only {head} left vacant, the '
+                  f'visibilities labeled {tail} are assigned to antenna {head} and classified bad.')
+    return inferred_labels
+
+
 def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.75, 1), suspect=(0.5, 1),
                              repair_margin=0.1, nbl_per_ant=20, flag_waterfall=None,
                              verbose=True):
@@ -720,18 +739,8 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.75, 1),
                 print(f'CONFLICT: identity {true_ant} is otherwise claimed; NOT relabeling {labeled}.')
             del labeled_to_true[labeled]
 
-    # close broken cycles: each path's unmoved tail stream is forced into its component's
-    # one vacated number, but is classified bad below since that placement is only inferred
-    inferred_labels = set()
-    for head in sorted(set(labeled_to_true) - set(labeled_to_true.values())):
-        tail = labeled_to_true[head]
-        while tail in labeled_to_true:
-            tail = labeled_to_true[tail]
-        labeled_to_true[tail] = head
-        inferred_labels.add(tail)
-        if verbose:
-            print(f'INFERRED: with its own number claimed and only {head} left vacant, the '
-                  f'visibilities labeled {tail} are assigned to antenna {head} and classified bad.')
+    # close broken cycles; those placements are only inferred, so they are classified bad below
+    inferred_labels = _close_relabeling_cycles(labeled_to_true, verbose=verbose)
 
     # classify: relabeled antennas are suspect (bad if inferred), self-coherent good,
     # unrepairable low-coherence bad
@@ -750,3 +759,126 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.75, 1),
     identity_class = AntennaClassification(good=good_ants, suspect=suspect_ants, bad=bad_ants)
     identity_class._data = {ant: coh for ant, coh in self_coherence.items() if np.isfinite(coh)}
     return identity_class, labeled_to_true, self_coherence
+
+
+def antenna_identity_chisq_checker(data, model, gains, bls, high_chisq_ants, candidate_groups,
+                                   max_chisq=3.0, repair_factor=1.5, autos=None, model_flags=None,
+                                   flag_waterfall=None, ant_to_SNAP_dict=None, dt=None, df=None,
+                                   verbose=True):
+    '''Checks whether antennas with high chi^2 in a sky-model calibration are mislabeled rather
+    than broken: the post-calibration counterpart of antenna_identity_checker, whose
+    delay-searched coherence cannot tell identities apart when one bright source dominates the
+    sky (every visibility is then nearly a pure delay, so even mislabeled visibilities cohere
+    with their own model). An antenna with no healthy polarization (one in gains and not in
+    high_chisq_ants) has its visibilities to healthy antennas re-keyed as each candidate whose
+    own label is not held by a healthy antenna (its own label included), and
+    hera_cal.skycal.expand_sky_gains solves every such identity in closed form against the
+    healthy antennas' frozen gains. It is relabeled if all of its solved polarizations pick the
+    same candidate, with a chi^2 (median over unflagged times and channels) of at most
+    max_chisq and at least repair_factor below that of its own label. Claims on the same
+    identity cancel, and the rest are closed into full permutations as in
+    antenna_identity_checker. Hypothesized baselines are used wherever the model has them, so
+    the model passed in decides e.g. their range of lengths.
+
+    Arguments:
+        data: DataContainer of raw visibilities, including the autocorrelations for noise
+            weights unless autos is given
+        model: DataContainer of model visibilities (e.g. a RedDataContainer of
+            redundantly-averaged models), which handles baseline conjugation internally
+        gains: dict mapping (antnum, antpol) to the (Ntimes, Nfreqs) gains of a sky-model
+            calibration that included the antennas in high_chisq_ants. Not modified.
+        bls: list of co-polarized cross-correlation baselines to check with, e.g. those
+            calibrated with
+        high_chisq_ants: (antnum, antpol) tuples whose chi^2 in that calibration was high
+        candidate_groups: dict mapping antenna number to candidate antenna numbers to try
+            (e.g. node-mates)
+        max_chisq: maximum chi^2 under a new identity for a relabeling (e.g. the bound beyond
+            which the calibration's chi^2 is classified bad)
+        repair_factor: minimum factor by which a new identity must lower each polarization's
+            chi^2 relative to the antenna's own label
+        autos, model_flags, dt, df: as in hera_cal.skycal.build_data_model_ratio
+        flag_waterfall: optional boolean (Ntimes, Nfreqs) times and channels to exclude
+        ant_to_SNAP_dict: optional dict mapping antenna number to SNAP, restricting the solves
+            to inter-SNAP baselines as in hera_cal.skycal.refine_gains. Visibilities keep the
+            SNAP of the correlator input they came through under every identity tried.
+        verbose: print relabelings, indecisive antennas, and inferred placements
+
+    Returns:
+        identity_class: AntennaClassification of the relabeled antennas only, keyed by their
+            labels (each polarization's chi^2 as labeled in ._data): suspect, or bad if the
+            relabeling was inferred by closure rather than measured
+        labeled_to_true: dict mapping labeled to true antenna number for accepted relabelings
+        chisq_by_label: dict mapping (antnum, antpol) of each antenna checked to a dict mapping
+            every candidate tried to that polarization's chi^2 under that identity
+    '''
+    from hera_cal import skycal
+    from hera_cal.datacontainer import DataContainer
+    from hera_cal.utils import split_bl, split_pol, join_bl
+
+    frozen = {ant: gain for ant, gain in gains.items() if ant not in high_chisq_ants}
+    healthy = {ant[0] for ant in frozen}
+    all_autos = (data if autos is None else autos)
+    labeled_to_true, chisq_by_label = {}, {}
+    for antnum in sorted({ant[0] for ant in high_chisq_ants} - healthy):
+        # this antenna's visibilities to healthy antennas, re-keyed as each candidate
+        candidates = [cand for cand in candidate_groups.get(antnum, [antnum]) if cand not in healthy]
+        my_bls = [bl for bl in bls if antnum in bl[:2] and all(a == antnum or a in healthy for a in bl[:2])]
+        as_candidate, hyp_autos = {}, {}
+        for cand in candidates:
+            for bl in my_bls:
+                hyp_bl = tuple(cand if a == antnum else a for a in bl[:2]) + (bl[2],)
+                if hyp_bl in model:
+                    as_candidate[hyp_bl] = data[bl]
+                    for hyp_ant, ant in zip(split_bl(hyp_bl), split_bl(bl)):
+                        hyp_autos[join_bl(hyp_ant, hyp_ant)] = all_autos[join_bl(ant, ant)]
+        hyp_gains, hyp_chisq = dict(frozen), {}
+        if len(as_candidate) > 0:
+            hyp_ants = {ant for bl in as_candidate for ant in split_bl(bl)}
+            skycal.expand_sky_gains(
+                DataContainer(as_candidate), model, hyp_gains, autos=DataContainer(hyp_autos),
+                model_flags=model_flags, bls=list(as_candidate), dt=dt, df=df, chisq_per_ant=hyp_chisq,
+                ant_flags=(None if flag_waterfall is None else {ant: flag_waterfall for ant in hyp_ants}),
+                ant_to_SNAP_dict=(None if ant_to_SNAP_dict is None else
+                                  {**ant_to_SNAP_dict, **{cand: ant_to_SNAP_dict[antnum] for cand in candidates}}))
+        antpols = sorted(ant[1] for ant in high_chisq_ants if ant[0] == antnum and ant in hyp_chisq)
+        if len(antpols) == 0:
+            continue
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            for antpol in antpols:
+                chisq_by_label[(antnum, antpol)] = {
+                    cand: np.nan_to_num(np.nanmedian(np.where(False if flag_waterfall is None else flag_waterfall,
+                                                              np.nan, hyp_chisq[(cand, antpol)])), nan=np.inf)
+                    for cand in candidates if (cand, antpol) in hyp_chisq}
+        winners = [min(chisq_by_label[(antnum, antpol)], key=chisq_by_label[(antnum, antpol)].get)
+                   for antpol in antpols]
+        comparison = (f'{" / ".join(antpols)} chi^2 of '
+                      + ' / '.join(f'{chisq_by_label[(antnum, antpol)][winner]:.2f}' for winner, antpol in zip(winners, antpols))
+                      + f' as {" / ".join(str(winner) for winner in sorted(set(winners)))} vs. '
+                      + ' / '.join(f'{chisq_by_label[(antnum, antpol)][antnum]:.2f}' for antpol in antpols) + ' as labeled')
+        if len(set(winners)) == 1 and winners[0] != antnum and all(
+                chisq_by_label[(antnum, antpol)][winners[0]]
+                <= min(max_chisq, chisq_by_label[(antnum, antpol)][antnum] / repair_factor) for antpol in antpols):
+            labeled_to_true[antnum] = winners[0]
+            if verbose:
+                print(f'The visibilities labeled antenna {antnum} are actually antenna {winners[0]}: {comparison}.')
+        elif verbose and set(winners) == {antnum}:
+            print(f'The visibilities labeled antenna {antnum} fit no other identity better than their own.')
+        elif verbose:
+            print(f'The visibilities labeled antenna {antnum} have no decisive other identity (best: {comparison}).')
+
+    # claims on the same identity cancel; the rest are closed into full permutations
+    claimed = list(labeled_to_true.values())
+    for labeled in sorted(labeled_to_true):
+        if claimed.count(labeled_to_true[labeled]) > 1:
+            if verbose:
+                print(f'CONFLICT: identity {labeled_to_true[labeled]} is otherwise claimed; NOT relabeling {labeled}.')
+            del labeled_to_true[labeled]
+    inferred_labels = _close_relabeling_cycles(labeled_to_true, verbose=verbose)
+
+    antpols = sorted({split_pol(bl[2])[0] for bl in bls})
+    identity_class = AntennaClassification(
+        suspect=[(antnum, antpol) for antnum in labeled_to_true for antpol in antpols if antnum not in inferred_labels],
+        bad=[(antnum, antpol) for antnum in inferred_labels for antpol in antpols])
+    identity_class._data = {ant: chisqs[ant[0]] for ant, chisqs in chisq_by_label.items() if ant[0] in labeled_to_true}
+    return identity_class, labeled_to_true, chisq_by_label
