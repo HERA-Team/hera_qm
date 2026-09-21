@@ -639,6 +639,15 @@ def test_antenna_identity_chisq_checker_finds_swap():
     # the gains passed in are not modified
     assert set(gains) == set(_build_identity_cal()[0])
 
+    # an antenna's own label is always tried, even if its candidates do not list it
+    _, labeled_to_true, chisq_by_label = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, high, {2: [3], 3: [2]}, autos=autos, dt=1, df=1, verbose=False)
+    assert labeled_to_true == {2: 3, 3: 2}
+    assert set(chisq_by_label[(2, 'Jee')]) == {2, 3}
+    _, labeled_to_true, _ = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, high, {}, autos=autos, dt=1, df=1, verbose=False)
+    assert labeled_to_true == {}
+
     # a flag waterfall and a SNAP mapping restrict the cells and baselines used, not the verdict
     flags = np.zeros((1, 600), dtype=bool)
     flags[:, :200] = True
