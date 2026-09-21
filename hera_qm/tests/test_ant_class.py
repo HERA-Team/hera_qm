@@ -603,3 +603,135 @@ def test_antenna_identity_checker_unauditable():
     assert labeled_to_true == {}
     assert np.isnan(self_coherence[(9, 'Jee')])
     assert (9, 'Jee') not in identity_class.ants
+
+
+def _build_identity_cal(nants=8, nfreqs=600, noise=0.02, seed=0):
+    '''The calibration matching _build_identity_sim(): its per-antenna cable-delay gains, flat
+    autocorrelations whose predicted noise (with dt = df = 1) matches the simulated noise, so that
+    chi^2 against the model is ~1 for correctly-labeled visibilities, and node-wide candidates.'''
+    rng = np.random.default_rng(seed)
+    freqs = np.linspace(100e6, 200e6, nfreqs)
+    dlys = {antnum: rng.uniform(-200e-9, 200e-9) for antnum in range(nants)}
+    gains = {(antnum, antpol): np.exp(2j * np.pi * freqs * dlys[antnum])[None, :]
+             for antnum in range(nants) for antpol in ['Jee', 'Jnn']}
+    autos = DataContainer({(antnum, antnum, pol): np.full((1, nfreqs), noise * 10 + 0j)
+                           for antnum in range(nants) for pol in ['ee', 'nn']})
+    groups = {antnum: list(range(nants)) for antnum in range(nants)}
+    return gains, autos, groups
+
+
+def test_antenna_identity_chisq_checker_finds_swap():
+    data, model, bls = _build_identity_sim(relabels={2: 3, 3: 2})
+    gains, autos, groups = _build_identity_cal()
+    high = [(antnum, antpol) for antnum in [2, 3] for antpol in ['Jee', 'Jnn']]
+    identity_class, labeled_to_true, chisq_by_label = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, high, groups, autos=autos, dt=1, df=1)
+    assert labeled_to_true == {2: 3, 3: 2}
+    assert set(identity_class.suspect_ants) == set(high)
+    assert len(identity_class.bad_ants) == 0
+    for ant in high:
+        # only the two unhealthy labels are tried; the true one fits to the noise, the other does not
+        assert set(chisq_by_label[ant]) == {2, 3}
+        # (5 / 6 of the noise level in expectation: the fitted gain takes one of six baselines' degrees of freedom)
+        assert chisq_by_label[ant][5 - ant[0]] == pytest.approx(5 / 6, abs=.2)
+        assert chisq_by_label[ant][ant[0]] > 100
+        assert identity_class._data[ant] == chisq_by_label[ant][ant[0]]
+    # the gains passed in are not modified
+    assert set(gains) == set(_build_identity_cal()[0])
+
+    # a flag waterfall and a SNAP mapping restrict the cells and baselines used, not the verdict
+    flags = np.zeros((1, 600), dtype=bool)
+    flags[:, :200] = True
+    _, labeled_to_true, _ = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, high, groups, autos=autos, dt=1, df=1, flag_waterfall=flags,
+        ant_to_SNAP_dict={antnum: antnum // 2 for antnum in range(8)}, verbose=False)
+    assert labeled_to_true == {2: 3, 3: 2}
+
+
+def test_antenna_identity_chisq_checker_nothing_to_do():
+    data, model, bls = _build_identity_sim()
+    gains, autos, groups = _build_identity_cal()
+    identity_class, labeled_to_true, chisq_by_label = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, [], groups, autos=autos, dt=1, df=1)
+    assert labeled_to_true == {} and chisq_by_label == {} and len(identity_class.ants) == 0
+    # an antenna that is high in one polarization only is not mislabeled, so it is not checked
+    _, labeled_to_true, chisq_by_label = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, [(2, 'Jee')], groups, autos=autos, dt=1, df=1)
+    assert labeled_to_true == {} and chisq_by_label == {}
+    # neither is one with no baselines to check it with
+    _, labeled_to_true, chisq_by_label = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, [(9, 'Jee'), (9, 'Jnn')], groups, autos=autos, dt=1, df=1)
+    assert labeled_to_true == {} and chisq_by_label == {}
+
+
+def test_antenna_identity_chisq_checker_broken_antenna():
+    # antenna 2's visibilities are phase-scrambled: no identity fits, its own included
+    data, model, bls = _build_identity_sim()
+    gains, autos, groups = _build_identity_cal()
+    rng = np.random.default_rng(1)
+    data = DataContainer({bl: (data[bl] * np.exp(2j * np.pi * rng.random(data[bl].shape)) if 2 in bl[:2] else data[bl])
+                          for bl in bls})
+    high = [(2, 'Jee'), (2, 'Jnn'), (3, 'Jee'), (3, 'Jnn')]  # 3 is an unhealthy label for 2 to try
+    identity_class, labeled_to_true, chisq_by_label = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, high, groups, autos=autos, dt=1, df=1)
+    assert labeled_to_true == {}
+    assert len(identity_class.ants) == 0
+    assert min(chisq_by_label[(2, 'Jee')].values()) > 100
+    # antenna 3 is fine as itself, so it fits no other identity better than its own
+    assert chisq_by_label[(3, 'Jee')][3] == pytest.approx(5 / 6, abs=.2)
+
+
+def test_antenna_identity_chisq_checker_infers_dead_partner():
+    # antenna 4's visibilities are labeled 5 and vice versa, but antenna 5 is dead: the
+    # visibilities labeled 4 were never solved for, so their placement can only be inferred
+    data, model, bls = _build_identity_sim(relabels={4: 5, 5: 4})
+    gains, autos, groups = _build_identity_cal()
+    rng = np.random.default_rng(2)
+    data = DataContainer({bl: (1e-3 * rng.normal(size=data[bl].shape) + 0j if 4 in bl[:2] else data[bl]) for bl in bls})
+    gains = {ant: gain for ant, gain in gains.items() if ant[0] != 4}
+    high = [(5, 'Jee'), (5, 'Jnn')]
+    identity_class, labeled_to_true, _ = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, high, groups, autos=autos, dt=1, df=1)
+    assert labeled_to_true == {5: 4, 4: 5}
+    assert set(identity_class.suspect_ants) == set(high)
+    assert set(identity_class.bad_ants) == {(4, 'Jee'), (4, 'Jnn')}
+
+
+def test_antenna_identity_chisq_checker_single_pol_mislabel():
+    # only the ee visibilities of antennas 2 and 3 are exchanged, so their polarizations
+    # disagree about who they are and nothing is relabeled
+    data, model, bls = _build_identity_sim()
+    gains, autos, groups = _build_identity_cal()
+    remap = {2: 3, 3: 2}
+    new_data = {}
+    for bl in bls:
+        i, j = ((remap.get(bl[0], bl[0]), remap.get(bl[1], bl[1])) if bl[2] == 'ee' else bl[:2])
+        new_data[(i, j, bl[2]) if i < j else (j, i, bl[2])] = (data[bl] if i < j else np.conj(data[bl]))
+    high = [(antnum, antpol) for antnum in [2, 3] for antpol in ['Jee', 'Jnn']]
+    identity_class, labeled_to_true, chisq_by_label = ant_class.antenna_identity_chisq_checker(
+        DataContainer(new_data), model, gains, bls, high, groups, autos=autos, dt=1, df=1)
+    assert labeled_to_true == {}
+    assert len(identity_class.ants) == 0
+    assert chisq_by_label[(2, 'Jee')][3] < chisq_by_label[(2, 'Jee')][2]
+    assert chisq_by_label[(2, 'Jnn')][2] < chisq_by_label[(2, 'Jnn')][3]
+
+
+def test_antenna_identity_chisq_checker_conflict():
+    # the visibilities labeled 2 and those labeled 4 are both antenna 3's (whose own label is
+    # dead), so the claims on identity 3 cancel and nothing is relabeled
+    data, model, bls = _build_identity_sim()
+    gains, autos, groups = _build_identity_cal()
+    new_data = {bl: data[bl] for bl in bls}
+    for label in [2, 4]:
+        for partner in [0, 1, 5, 6, 7]:
+            for pol in ['ee', 'nn']:
+                new_data[(min(label, partner), max(label, partner), pol)] = (
+                    data[(3, partner, pol)] if label < partner else data[(partner, 3, pol)])
+    gains = {ant: gain for ant, gain in gains.items() if ant[0] != 3}
+    high = [(antnum, antpol) for antnum in [2, 4] for antpol in ['Jee', 'Jnn']]
+    identity_class, labeled_to_true, chisq_by_label = ant_class.antenna_identity_chisq_checker(
+        DataContainer(new_data), model, gains, bls, high, groups, autos=autos, dt=1, df=1)
+    assert labeled_to_true == {}
+    assert len(identity_class.ants) == 0
+    for ant in high:
+        assert min(chisq_by_label[ant], key=chisq_by_label[ant].get) == 3
