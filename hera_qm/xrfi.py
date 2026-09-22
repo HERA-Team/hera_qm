@@ -1264,6 +1264,12 @@ def flag_apply(uvf, uv, keep_existing=True, force_pol=False, history='',
             raise ValueError('UVFlag objects must be in mode "flag" to apply to data.')
         if uvf_i.type == 'waterfall':
             uvf_i = uvf_i.copy()  # don't change the input object
+            if force_pol and hasattr(uv.telescope, 'feed_array'):
+                # a pol-collapsed waterfall need not share feed metadata with uv;
+                # match them to avoid spurious pyuvdata warnings when broadcasting
+                for feed_param in ['Nfeeds', 'feed_array', 'feed_angle']:
+                    setattr(uvf_i.telescope, feed_param,
+                            copy.deepcopy(getattr(uv.telescope, feed_param)))
             if expected_type == 'baseline':
                 uvf_i.to_baseline(uv, force_pol=force_pol, run_check=run_check,
                                   check_extra=check_extra,

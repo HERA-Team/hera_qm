@@ -1515,6 +1515,7 @@ def test_xrfi_run_yaml_flags(tmpdir):
                 os.remove(out)
 
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
+@pytest.mark.filterwarnings("ignore:K1 value 8 is larger than the data of dimension 3")
 def test_xrfi_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2048,6 +2049,7 @@ def test_xrfi_run_multifile(tmpdir):
 
 @pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
+@pytest.mark.filterwarnings("ignore:All-NaN slice encountered")
 def test_day_threshold_run(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2090,9 +2092,6 @@ def test_day_threshold_run(tmpdir):
 
     # check warnings
     msg = ['This object is already a waterfall'] * 8
-    if hasattr(UVData().telescope, "feed_array"):
-        msg += ["feed_array is not the same on this object and on uv"] * 5
-        msg += ["feed_angle is not the same on this object and on uv"] * 5
     with check_warnings(UserWarning, match=msg):
         # TODO: these three warnings should be checked.
         warnings.filterwarnings("ignore", category=AstropyUserWarning)
@@ -2122,6 +2121,7 @@ def test_day_threshold_run(tmpdir):
 
 @pytest.mark.filterwarnings("ignore:Future array shapes are now always used")
 @pytest.mark.filterwarnings("ignore:This object is already a waterfall")
+@pytest.mark.filterwarnings("ignore:All-NaN slice encountered")
 def test_day_threshold_run_yaml(tmpdir):
     # The warnings are because we use UVFlag.to_waterfall() on the total chisquareds
     # This doesn't hurt anything, and lets us streamline the pipe
@@ -2495,6 +2495,7 @@ def test_xrfi_h1c_run_indata_string_filename_not_string():
 
 
 @pytest.mark.filterwarnings("ignore:writing default values for restfreq")
+@pytest.mark.filterwarnings("ignore:antnums_to_baseline. found antenna numbers > 255")
 def test_xrfi_h1c_apply():
     xrfi_path = os.path.join(DATA_PATH, 'test_output')
     wf_file1 = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA.omni.calfits.g.flags.h5')
