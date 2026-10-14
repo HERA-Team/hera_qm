@@ -648,6 +648,14 @@ def test_antenna_identity_chisq_checker_finds_swap():
         data, model, gains, bls, high, {}, autos=autos, dt=1, df=1, verbose=False)
     assert labeled_to_true == {}
 
+    # the correlator's noise excess divides every chi^2 the check computes; the ratios between labels, and so the verdict, stay
+    _, labeled_to_true_2, chisq_by_label_2 = ant_class.antenna_identity_chisq_checker(
+        data, model, gains, bls, high, groups, autos=autos, dt=1, df=1, noise_excess=2.0, verbose=False)
+    assert labeled_to_true_2 == {2: 3, 3: 2}
+    for ant in high:
+        for label, chisq in chisq_by_label[ant].items():
+            assert chisq_by_label_2[ant][label] == pytest.approx(chisq / 2)
+
     # a flag waterfall and a SNAP mapping restrict the cells and baselines used, not the verdict
     flags = np.zeros((1, 600), dtype=bool)
     flags[:, :200] = True
