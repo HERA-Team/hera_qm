@@ -764,7 +764,7 @@ def antenna_identity_checker(data, model, bls, candidate_groups, good=(0.75, 1),
 def antenna_identity_chisq_checker(data, model, gains, bls, high_chisq_ants, candidate_groups,
                                    max_chisq=3.0, repair_factor=1.5, autos=None, model_flags=None,
                                    flag_waterfall=None, ant_to_SNAP_dict=None, dt=None, df=None,
-                                   verbose=True):
+                                   noise_excess=1.0, verbose=True):
     '''Checks whether antennas with high chi^2 in a sky-model calibration are mislabeled rather
     than broken: the post-calibration counterpart of antenna_identity_checker, whose
     delay-searched coherence cannot tell identities apart when one bright source dominates the
@@ -796,7 +796,8 @@ def antenna_identity_chisq_checker(data, model, gains, bls, high_chisq_ants, can
             which the calibration's chi^2 is classified bad)
         repair_factor: minimum factor by which a new identity must lower each polarization's
             chi^2 relative to the antenna's own label
-        autos, model_flags, dt, df: as in hera_cal.skycal.build_data_model_ratio
+        autos, model_flags, dt, df, noise_excess: as in hera_cal.skycal.build_data_model_ratio. noise_excess
+            puts the correlator's noise in the chi^2 compared to max_chisq.
         flag_waterfall: optional boolean (Ntimes, Nfreqs) times and channels to exclude
         ant_to_SNAP_dict: optional dict mapping antenna number to SNAP, restricting the solves
             to inter-SNAP baselines as in hera_cal.skycal.refine_gains. Visibilities keep the
@@ -837,7 +838,8 @@ def antenna_identity_chisq_checker(data, model, gains, bls, high_chisq_ants, can
             hyp_ants = {ant for bl in as_candidate for ant in split_bl(bl)}
             skycal.expand_sky_gains(
                 DataContainer(as_candidate), model, hyp_gains, autos=DataContainer(hyp_autos),
-                model_flags=model_flags, bls=list(as_candidate), dt=dt, df=df, chisq_per_ant=hyp_chisq,
+                model_flags=model_flags, bls=list(as_candidate), dt=dt, df=df, noise_excess=noise_excess,
+                chisq_per_ant=hyp_chisq,
                 ant_flags=(None if flag_waterfall is None else {ant: flag_waterfall for ant in hyp_ants}),
                 ant_to_SNAP_dict=(None if ant_to_SNAP_dict is None else
                                   {**ant_to_SNAP_dict, **{cand: ant_to_SNAP_dict[antnum] for cand in candidates}}))
