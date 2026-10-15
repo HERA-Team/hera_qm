@@ -927,7 +927,7 @@ class OmniCal_Metrics:
 
         ax = ax.figure.add_axes([0.99, 0.1, 0.02, 0.8])
         ax.axis('off')
-        ax.legend(plist, self.ant_array)
+        ax.legend(plist, self.ant_array[ants])
 
         if save is True:
             if fname is None:
